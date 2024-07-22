@@ -286,6 +286,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   mtsFlag           = other.mtsFlag;
 #if JVET_AG0061_INTER_LFNST_NSPT
   lfnstFlag         = other.lfnstFlag;
+#if JVET_AI0050_INTER_MTSS
+  lfnstIntra        = other.lfnstIntra;
+#endif
 #endif
   lfnstIdx          = other.lfnstIdx;
   tileIdx           = other.tileIdx;
@@ -446,6 +449,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   dimdDerivedIntraDir = other.dimdDerivedIntraDir;
+#if JVET_AI0050_INTER_MTSS
+  dimdDerivedIntraDir2nd = other.dimdDerivedIntraDir2nd;
+#endif
 #endif
 #endif
 #if JVET_AG0276_NLIC
@@ -566,6 +572,9 @@ void CodingUnit::initData()
   mtsFlag           = 0;
 #if JVET_AG0061_INTER_LFNST_NSPT
   lfnstFlag         = 0;
+#if JVET_AI0050_INTER_MTSS
+  lfnstIntra        = 0;
+#endif
 #endif
   lfnstIdx          = 0;
   tileIdx           = 0;
@@ -727,6 +736,9 @@ void CodingUnit::initData()
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   dimdDerivedIntraDir = 0;
+#if JVET_AI0050_INTER_MTSS
+  dimdDerivedIntraDir2nd = 0;
+#endif
 #endif
 #endif
 #if JVET_AG0276_NLIC
@@ -939,7 +951,7 @@ const uint8_t CodingUnit::checkAllowedSbt() const
   {
     return 0;
   }
-#if JVET_Y0065_GPM_INTRA
+#if JVET_Y0065_GPM_INTRA && !JVET_AI0050_SBT_LFNST
   if (firstPU->gpmIntraFlag)
   {
     return 0;
@@ -1983,6 +1995,9 @@ void TransformUnit::initData()
     mtsIdx[i]        = MTS_DCT2_DCT2;
 #if JVET_AG0061_INTER_LFNST_NSPT
     lfnstIdx[i]      = 0;
+#if JVET_AI0050_INTER_MTSS
+    lfnstIntra[i]    = 0;
+#endif
 #endif
   }
   depth              = 0;
@@ -2079,6 +2094,9 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
     mtsIdx[i]        = other.mtsIdx[i];
 #if JVET_AG0061_INTER_LFNST_NSPT
     lfnstIdx[i]      = other.lfnstIdx[i];
+#if JVET_AI0050_INTER_MTSS
+    lfnstIntra[i]    = other.lfnstIntra[i];
+#endif
 #endif
   }
   depth              = other.depth;
@@ -2126,6 +2144,9 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
   mtsIdx[i]        = other.mtsIdx[i];
 #if JVET_AG0061_INTER_LFNST_NSPT
   lfnstIdx[i]      = other.lfnstIdx[i];
+#if JVET_AI0050_INTER_MTSS
+  lfnstIntra[i]    = other.lfnstIntra[i];
+#endif
 #endif
   noResidual       = other.noResidual;
   jointCbCr        = isChroma( i ) ? other.jointCbCr : jointCbCr;

@@ -712,7 +712,31 @@ const CtxSet ContextSetCfg::AfMmvdIdx = ContextSetCfg::addCtxSet({
  { 131, 118, 228, 119 },
  { 114, 103, 104, 119 }, 
 });
-
+#if JVET_AI0050_INTER_MTSS
+const CtxSet ContextSetCfg::InterLFNSTIntraIdx = ContextSetCfg::addCtxSet({
+// ctx 1408
+ { CNU },
+ { CNU },
+ { CNU },
+ { CNU },
+ { DWS },
+ { DWS },
+ { DWS },
+ { DWS },
+ { DWE },
+ { DWE },
+ { DWE },
+ { DWE },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+});
+#endif
 const CtxSet ContextSetCfg::AfMmvdOffsetStep = ContextSetCfg::addCtxSet({
 // ctx 111 116
  {  21,  37,  37,  37,  44,  50 },

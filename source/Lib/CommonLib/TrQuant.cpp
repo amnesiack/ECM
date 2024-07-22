@@ -524,7 +524,17 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
     }
     if (tu.cu->geoFlag)
     {
+#if JVET_AI0050_INTER_MTSS
+      intraMode = tu.cu->dimdDerivedIntraDir;
+#else
       intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
+#endif
+    }
+#endif
+#if JVET_AI0050_INTER_MTSS
+    if (tu.cu->lfnstIntra)
+    {
+      intraMode = tu.cu->dimdDerivedIntraDir2nd;
     }
 #endif
 #if JVET_AB0155_SGPM
@@ -769,6 +779,9 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
   const uint32_t  width    = area.width;
   const uint32_t  height   = area.height;
   const uint32_t  lfnstIdx = tu.cu->lfnstIdx;
+#if JVET_AI0050_INTER_MTSS
+  const uint32_t  lfnstIntra = tu.cu->lfnstIntra;
+#endif
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   if( lfnstIdx && tu.mtsIdx[compID] != MTS_SKIP && (tu.cu->isSepTree() ? true : isLuma(compID)) )
 #else
@@ -833,7 +846,17 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
     }
     if (tu.cu->geoFlag)
     {
+#if JVET_AI0050_INTER_MTSS
+      intraMode = tu.cu->dimdDerivedIntraDir;
+#else
       intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
+#endif
+    }
+#endif
+#if JVET_AI0050_INTER_MTSS
+    if (tu.cu->lfnstIntra)
+    {
+      intraMode = tu.cu->dimdDerivedIntraDir2nd;
     }
 #endif
 #if JVET_AB0155_SGPM
@@ -907,7 +930,11 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
       TCoeff*         lfnstTemp;
       TCoeff*         coeffTemp;
 #if JVET_AG0061_INTER_LFNST_NSPT
+#if JVET_AI0050_INTER_MTSS
+      TCoeff *        tempCoeff = loadTr ? m_mtsCoeffs[lfnstIdx ? lfnstIdx + NUM_TRAFO_MODES_MTS + 3 * lfnstIntra - 1 : tu.mtsIdx[compID]] : m_tempCoeff;
+#else
       TCoeff *        tempCoeff = loadTr ? m_mtsCoeffs[lfnstIdx ? lfnstIdx + NUM_TRAFO_MODES_MTS - 1 : tu.mtsIdx[compID]] : m_tempCoeff;
+#endif
 #else
       TCoeff *        tempCoeff = loadTr ? m_mtsCoeffs[tu.mtsIdx[compID]] : m_tempCoeff;
 #endif
@@ -1178,6 +1205,12 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
 
   trTypeHor = DCT2;
   trTypeVer = DCT2;
+#if JVET_AI0050_SBT_LFNST
+  if (isSBT && tu.cu->lfnstIdx)
+  {
+    return;
+  }
+#endif
 
   if (isISP && tu.cu->lfnstIdx)
   {
@@ -2005,10 +2038,23 @@ void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const 
   {
 #if JVET_AG0061_INTER_LFNST_NSPT
     tu.mtsIdx[compID]   = it->first < NUM_TRAFO_MODES_MTS ? it->first : 0;
+#if JVET_AI0050_INTER_MTSS
+    int factor = (it->first - NUM_TRAFO_MODES_MTS) / 3;
+    tu.lfnstIdx[compID] = it->first < NUM_TRAFO_MODES_MTS ? 0 : it->first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
+    tu.lfnstIntra[compID] = it->first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (it->first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
+#else
     tu.lfnstIdx[compID] = it->first < NUM_TRAFO_MODES_MTS ? 0 : it->first - NUM_TRAFO_MODES_MTS + 1;
+#endif
+#if JVET_AI0050_SBT_LFNST
+    if ((compID == COMPONENT_Y && !tu.cu->sbtInfo) || (!tu.noResidual && compID == COMPONENT_Y && tu.cu->sbtInfo))
+#else
     if (compID == COMPONENT_Y)
+#endif
     {
       tu.cu->lfnstIdx = tu.lfnstIdx[compID];
+#if JVET_AI0050_INTER_MTSS
+      tu.cu->lfnstIntra = tu.lfnstIntra[compID];
+#endif
     }
     CoeffBuf tempCoeff(m_mtsCoeffs[it->first], rect);
 #else
@@ -2159,7 +2205,11 @@ void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const 
   CHECK(cs.sps->getMaxTbSize() < uiWidth, "Unsupported transformation size");
 
 #if JVET_AG0061_INTER_LFNST_NSPT
+#if JVET_AI0050_INTER_MTSS
+  CoeffBuf tempCoeff(loadTr ? m_mtsCoeffs[tu.lfnstIdx[compID] ? (tu.lfnstIdx[compID] + NUM_TRAFO_MODES_MTS + 3 * tu.lfnstIntra[compID] - 1) : tu.mtsIdx[compID]] : m_tempCoeff, rect);
+#else
   CoeffBuf tempCoeff(loadTr ? m_mtsCoeffs[tu.lfnstIdx[compID] ? tu.lfnstIdx[compID] + NUM_TRAFO_MODES_MTS - 1 : tu.mtsIdx[compID]] : m_tempCoeff, rect);
+#endif
 #else
   CoeffBuf tempCoeff(loadTr ? m_mtsCoeffs[tu.mtsIdx[compID]] : m_tempCoeff, rect);
 #endif
@@ -2791,7 +2841,17 @@ int TrQuant::getLfnstIdx(const TransformUnit &tu, ComponentID compID)
   }
   if (tu.cu->geoFlag)
   {
+#if JVET_AI0050_INTER_MTSS
+    intraMode = tu.cu->dimdDerivedIntraDir;
+#else
     intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
+#endif
+  }
+#endif
+#if JVET_AI0050_INTER_MTSS
+  if (tu.cu->lfnstIntra)
+  {
+    intraMode = tu.cu->dimdDerivedIntraDir2nd;
   }
 #endif
 #if JVET_AB0155_SGPM
