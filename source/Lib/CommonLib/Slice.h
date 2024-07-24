@@ -1621,10 +1621,10 @@ private:
 #endif
   bool              m_SBT;
 #if JVET_AI0050_INTER_MTSS
-  bool              m_InterMTSS; 
+  bool              m_interMTSS; 
 #endif
 #if JVET_AI0050_SBT_LFNST
-  bool              m_SbtLFNST;
+  bool              m_sbtLFNST;
 #endif
   bool              m_ISP;
   ChromaFormat      m_chromaFormatIdc;
@@ -2457,12 +2457,12 @@ void                    setCCALFEnabledFlag( bool b )                           
   void                    setUseSBT( bool b )                                                             { m_SBT = b; }
   bool                    getUseSBT() const                                                               { return m_SBT; }
 #if JVET_AI0050_INTER_MTSS
-  void                    setUseInterMTSS(bool b)                                                         { m_InterMTSS = b; }
-  bool                    getUseInterMTSS() const                                                         { return m_InterMTSS; }
+  void                    setUseInterMTSS(bool b)                                                         { m_interMTSS = b; }
+  bool                    getUseInterMTSS() const                                                         { return m_interMTSS; }
 #endif
 #if JVET_AI0050_SBT_LFNST
-  void                    setUseSbtLFNST(bool b)                                                          { m_SbtLFNST = b; }
-  bool                    getUseSbtLFNST() const                                                          { return m_SbtLFNST; }
+  void                    setUseSbtLFNST(bool b)                                                          { m_sbtLFNST = b; }
+  bool                    getUseSbtLFNST() const                                                          { return m_sbtLFNST; }
 #endif
   void                    setUseISP( bool b )                                                             { m_ISP = b; }
   bool                    getUseISP() const                                                               { return m_ISP; }
