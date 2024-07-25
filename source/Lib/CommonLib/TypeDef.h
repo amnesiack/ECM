@@ -339,7 +339,6 @@
 #define JVET_AH0314_ADAPTIVE_GPM_BLENDING_IMPROV          1 // JVET-AH0314: Adaptive GPM blending
 #define JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0        1 // JVET-AH0066 & JVET-AH0202: Inter CCP merge mode with zero luma CBF
 #define JVET_AH0068_RM_TEMP_BUFF_CONSTRAINT               1 // JVET-AH0068 test a: Removing the one-CTU-row temporal buffer constraint for all relevant tools
-#define JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE            1 // JVET-AI0046: High Precision Sample Based BDOF
 #define JVET_AH0119_SUBBLOCK_TM                           1 // JVET-AH0119 extend affine TM and apply sbtmvp TM
 // Inter template matching tools
 #define ENABLE_INTER_TEMPLATE_MATCHING                    1 // It controls whether template matching is enabled for inter prediction
@@ -384,7 +383,6 @@
 #if SIGN_PREDICTION
 #define JVET_Y0141_SIGN_PRED_IMPROVE                      1 // JVET-Y0141 test3: Sign prediction improvement                          
 #define JVET_AD0105_ASPECT1_NUM_SIGN_PRED_BY_QP           1 // JVET-AD0105 Aspect1: NumSignPred based on QP
-#define JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX               1 // JVET-AI0096: Fix to sign prediction for handling bit depths other than 10
 #endif
 #define JVET_W0103_INTRA_MTS                              1 // JVET-W0103: Extended Intra MTS
 #if JVET_W0103_INTRA_MTS
@@ -406,8 +404,6 @@
 #define JVET_AG0100_TRANSFORM_COEFFICIENT_CODING          1 // JVET_AG0100: 3.2b Transform coefficient coding
 #define JVET_AG0143_INTER_INTRA                           1 // JVET_AG0143: 3.1c CABAC inter/intra model switch
 #define JVET_AH0103_LOW_DELAY_LFNST_NSPT                  1 // JVET_AH0103: Low-delay configurations for LFNST/NSPT
-#define JVET_AI0050_INTER_MTSS                            1 // JVET_AI0050: Multiple LFNST/NSPT kernel set selection for GPM coded block
-#define JVET_AI0050_SBT_LFNST                             1 // JVET_AI0050: Enable LFNST/NSPT for SBT coded block
 
 // Entropy Coding
 #define EC_HIGH_PRECISION                                 1 // CABAC high precision
@@ -420,7 +416,6 @@
 #define JVET_AG0196_WINDOWS_OFFSETS_SLICETYPE             1 // JVET-AG0196 5.2: window offsets per slice type
 #define JVET_AG0117_CABAC_SPATIAL_TUNING                  1 // JVET-AG0117 5.3: spatial CABAC tuning
 #define JVET_AH0176_LOW_DELAY_B_CTX                       1 // JVET-AH0176 6.1: context initialization for B-slice
-#define JVET_AI0281_CABAC_RETRAIN                         1 // JVET-AI0281: context initialization training
 
 // Loop filters
 #define ALF_IMPROVEMENT                                   1 // ALF improvement
@@ -447,11 +442,7 @@
 #define JVET_AG0157_ALF_CHROMA_FIXED_FILTER               1 // JVET-AG0157: Fixed filter for chroma ALF
 #define JVET_AG0158_ALF_LUMA_COEFF_PRECISION              1 // JVET-AG0158: adaptive precision for luma ALF coefficients
 #define JVET_AG0145_ADAPTIVE_CLIPPING                     1 // JVET-AG0145: Adaptive clipping with signalled lower and upper bounds
-#if JVET_AG0145_ADAPTIVE_CLIPPING
-#define JVET_AI0096_ADAPTIVE_CLIPPING_BIT_DEPTH_FIX       1 // JVET-AI0096: Fix to adaptive clipping for handling bit depths other than 10
-#endif
 #define JVET_AH0057_CCALF_COEFF_PRECISION                 1 // JVET-AH0057: adaptive precision for CCALF coefficients
-#define JVET_AI0058_ALF_RELAXED_RDO_LUMA                  1 // JVET-AI0058: Relaxed ALF Luma RDO
 
 // SIMD optimizations
 #if IF_12TAP

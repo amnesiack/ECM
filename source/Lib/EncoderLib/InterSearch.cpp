@@ -13153,11 +13153,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       const bool mtsAllowed = CU::isMTSAllowed( *tu.cu, compID );
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
-#if JVET_AI0050_SBT_LFNST
-      const bool lfnstAllowed = CU::isLfnstAllowed(*tu.cu, compID) && cu.lfnstFlag && !tu.noResidual;
-#else
       const bool lfnstAllowed = CU::isLfnstAllowed(*tu.cu, compID) && cu.lfnstFlag;
-#endif
 #endif
 
 #if JVET_AG0061_INTER_LFNST_NSPT
@@ -13173,11 +13169,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
       std::vector<TrMode> trModes;
 #if TU_256
-#if JVET_AI0050_SBT_LFNST
-      if (tu.idx != cu.firstTU->idx && ((cu.sbtInfo && tu.noResidual) || !cu.sbtInfo))
-#else
-      if (tu.idx != cu.firstTU->idx)
-#endif
+      if(tu.idx != cu.firstTU->idx)
       {
         trModes.push_back( TrMode( cu.firstTU->mtsIdx[compID], true ) );
         nNumTransformCands = 1;
@@ -13190,11 +13182,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
           nNumTransformCands = 0;
         }
 #if JVET_AG0061_INTER_LFNST_NSPT
-#if JVET_AI0050_SBT_LFNST
-        else if (!((cu.mtsFlag || (cu.lfnstFlag && !tu.noResidual)) && compID == COMPONENT_Y))
-#else
         else if (!((cu.mtsFlag || cu.lfnstFlag) && compID == COMPONENT_Y))
-#endif
 #elif JVET_AA0133_INTER_MTS_OPT
         else if (!(cu.mtsFlag && compID == COMPONENT_Y))
 #else
@@ -13241,12 +13229,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #if JVET_AG0061_INTER_LFNST_NSPT
         if (lfnstAllowed)
         {
-#if JVET_AI0050_INTER_MTSS
-          int numMode = cu.cs->sps->getUseInterMTSS() && tu.cu->geoFlag ? 6 : 3;
-          for (int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + numMode; i++)   // 3 or 6 lfnst
-#else
           for (int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + 3; i++)   // 3 lfnst
-#endif
           {
             {
               trModes.push_back(TrMode(i, true));
@@ -13460,25 +13443,12 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             }
 #if JVET_AG0061_INTER_LFNST_NSPT
             tu.mtsIdx[compID]   = trModes[transformMode].first < NUM_TRAFO_MODES_MTS ? trModes[transformMode].first : 0;
-#if JVET_AI0050_INTER_MTSS
-            int factor = (trModes[transformMode].first - NUM_TRAFO_MODES_MTS) / 3;
-            tu.lfnstIdx[compID] = trModes[transformMode].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[transformMode].first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
-            tu.lfnstIntra[compID] = trModes[transformMode].first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (trModes[transformMode].first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
-#else
             tu.lfnstIdx[compID] = trModes[transformMode].first < NUM_TRAFO_MODES_MTS
                                     ? 0
                                     : trModes[transformMode].first - NUM_TRAFO_MODES_MTS + 1;
-#endif
-#if JVET_AI0050_SBT_LFNST
-            if ((compID == COMPONENT_Y && !cu.sbtInfo) || (!tu.noResidual && compID == COMPONENT_Y && cu.sbtInfo))
-#else
             if (compID == COMPONENT_Y)
-#endif
             {
               tu.cu->lfnstIdx = tu.lfnstIdx[compID];
-#if JVET_AI0050_INTER_MTSS
-              tu.cu->lfnstIntra = tu.lfnstIntra[compID];
-#endif
             }
 #else
             tu.mtsIdx[compID] = trModes[transformMode].first;
@@ -13532,30 +13502,13 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             if( transformMode == 0 )
             {
 #if JVET_AG0061_INTER_LFNST_NSPT
-#if JVET_AI0050_INTER_MTSS
-              m_pcTrQuant->transformNxN(tu, compID, cQP, &trModes, m_pcEncCfg->getMTSInterMaxCand() + 6);
-#else
               m_pcTrQuant->transformNxN(tu, compID, cQP, &trModes, m_pcEncCfg->getMTSInterMaxCand() + 3);
-#endif
               tu.mtsIdx[compID] = trModes[0].first < NUM_TRAFO_MODES_MTS ? trModes[0].first : 0;
-#if JVET_AI0050_INTER_MTSS
-              int factor = (trModes[0].first - NUM_TRAFO_MODES_MTS) / 3;
-              tu.lfnstIdx[compID] = trModes[0].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[0].first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
-              tu.lfnstIntra[compID] = trModes[0].first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (trModes[0].first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
-#else
               tu.lfnstIdx[compID] =
                 trModes[0].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[0].first - NUM_TRAFO_MODES_MTS + 1;
-#endif
-#if JVET_AI0050_SBT_LFNST
-              if ((compID == COMPONENT_Y && !tu.cu->sbtInfo) || (!tu.noResidual && compID == COMPONENT_Y && tu.cu->sbtInfo))
-#else
               if (compID == COMPONENT_Y)
-#endif
               {
                 tu.cu->lfnstIdx = tu.lfnstIdx[compID];
-#if JVET_AI0050_INTER_MTSS
-                tu.cu->lfnstIntra = tu.lfnstIntra[compID];
-#endif
               }
 #else
               m_pcTrQuant->transformNxN(tu, compID, cQP, &trModes, m_pcEncCfg->getMTSInterMaxCand());
@@ -13927,11 +13880,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
           }
 #if JVET_AG0061_INTER_LFNST_NSPT
-#if JVET_AI0050_SBT_LFNST
-          else if ((cu.mtsFlag && compID == COMPONENT_Y) || (transformMode > 0) || (cu.lfnstFlag && !tu.noResidual && compID == COMPONENT_Y))
-#else
           else if ((cu.mtsFlag && compID == COMPONENT_Y) || (transformMode > 0) || (cu.lfnstFlag && compID == COMPONENT_Y))
-#endif
 #elif JVET_AA0133_INTER_MTS_OPT
           else if ((cu.mtsFlag && compID == COMPONENT_Y) || (transformMode > 0))
 #else
@@ -14014,11 +13963,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       if (compID == 0)
       {
 #if JVET_AG0061_INTER_LFNST_NSPT
-#if JVET_AI0050_SBT_LFNST
-        if (cu.mtsFlag || (cu.lfnstFlag && !bestTU.noResidual))
-#else
         if (cu.mtsFlag || cu.lfnstFlag)
-#endif
 #else
         if (cu.mtsFlag)
 #endif
@@ -14044,16 +13989,9 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       // copy component
       tu.copyComponentFrom(bestTU, compID);
 #if JVET_AG0061_INTER_LFNST_NSPT
-#if JVET_AI0050_SBT_LFNST
-      if ((compID == COMPONENT_Y && !tu.cu->sbtInfo) || (!tu.noResidual && compID == COMPONENT_Y && tu.cu->sbtInfo))
-#else
       if (compID == COMPONENT_Y)
-#endif
       {
         tu.cu->lfnstIdx = tu.lfnstIdx[compID];
-#if JVET_AI0050_INTER_MTSS
-        tu.cu->lfnstIntra = tu.lfnstIntra[compID];
-#endif
       }
 #endif
       csFull->getResiBuf( compArea ).copyFrom( saveCS.getResiBuf( compArea ) );
@@ -14709,34 +14647,12 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
     else
       THROW( "Implicit TU split not available!" );
 
-#if JVET_AI0050_SBT_LFNST
-    bool isValid = false;
-#endif
     do
     {
-#if JVET_AI0050_SBT_LFNST
-      if (cu.sbtInfo)
-      {
-        bool isSubValid = false;
-        isSubValid = xEstimateInterResidualQT(*csSplit, partitioner, bCheckFull ? nullptr : puiZeroDist, luma, chroma, orgResi);
-        if (!csSplit->tus.back()->noResidual)
-        {
-          isValid = isSubValid;
-        }
-      }
-      else
-      {
-        xEstimateInterResidualQT(*csSplit, partitioner, bCheckFull ? nullptr : puiZeroDist
-          , luma, chroma
-          , orgResi
-        );
-      }
-#else
       xEstimateInterResidualQT(*csSplit, partitioner, bCheckFull ? nullptr : puiZeroDist
         , luma, chroma
         , orgResi
       );
-#endif
 
       csSplit->cost = m_pcRdCost->calcRdCost( csSplit->fracBits, csSplit->dist );
     } while( partitioner.nextPart( *csSplit ) );
@@ -14807,12 +14723,6 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       csSplit->releaseIntermediateData();
       csFull ->releaseIntermediateData();
     }
-#if JVET_AI0050_SBT_LFNST
-    if (cu.sbtInfo)
-    {
-      return isValid;
-    }
-#endif
   }
 #if JVET_AA0133_INTER_MTS_OPT
   return true;

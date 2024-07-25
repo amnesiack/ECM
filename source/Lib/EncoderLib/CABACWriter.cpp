@@ -2652,13 +2652,8 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
         m_BinEncoder.encodeBin(isFusion ? 1 : 0, Ctx::ChromaFusionMode());
 #endif
       }
-#if JVET_AH0136_CHROMA_REORDERING
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x,
-             pu.blocks[CHANNEL_TYPE_CHROMA].y, isDbvChromaMode ? DBV_CHROMA_IDX : pu.intraDir[CHANNEL_TYPE_CHROMA]);
-#else
       DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
         pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
-#endif
       return;
     }
   }
@@ -8665,9 +8660,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
     ( cu.isSepTree() && cu.chType == CHANNEL_TYPE_CHROMA && std::min( cu.blocks[ 1 ].width, cu.blocks[ 1 ].height ) < 4 )
 #endif
     || ( cu.blocks[ chIdx ].lumaSize().width > cu.cs->sps->getMaxTbSize() || cu.blocks[ chIdx ].lumaSize().height > cu.cs->sps->getMaxTbSize() )
-#if JVET_AG0061_INTER_LFNST_NSPT && JVET_AI0050_SBT_LFNST
-    || ( !cu.cs->sps->getUseSbtLFNST() && cu.sbtInfo && CU::isInter( cu ))
-#elif JVET_AG0061_INTER_LFNST_NSPT
+#if JVET_AG0061_INTER_LFNST_NSPT
     || ( cu.sbtInfo && CU::isInter( cu ) ) //JVET-AG0208 (EE2-related: On LFNST/NSPT index signalling)
 #endif
     )
@@ -8739,12 +8732,6 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
         m_BinEncoder.encodeBin(idxLFNST > 2, Ctx::InterLFNSTIdx(2));
       }
     }
-#if JVET_AI0050_INTER_MTSS
-    if (cu.cs->sps->getUseInterMTSS() && idxLFNST > 0 && cu.geoFlag)
-    {
-      m_BinEncoder.encodeBin(cu.lfnstIntra, Ctx::InterLFNSTIntraIdx());
-    }
-#endif
   }
   else
   {
@@ -9511,11 +9498,10 @@ void CABACWriter::tmp_flag(const CodingUnit& cu)
       {
         m_BinEncoder.encodeBinEP(tmpFusionIdx > 1 ? 1 : 0);
       }
-      DTRACE(g_trace_ctx, D_SYNTAX, "tmp_fusion_idx() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpIdx);
 #if JVET_AG0136_INTRA_TMP_LIC
       m_BinEncoder.encodeBin(cu.tmpLicFlag, Ctx::TmpLic(0));
-      DTRACE(g_trace_ctx, D_SYNTAX, "tmpLicFlag pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpLicFlag);
 #endif
+      DTRACE(g_trace_ctx, D_SYNTAX, "tmp_fusion_idx() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpIdx);
     }
     else
     {
@@ -9584,7 +9570,6 @@ void CABACWriter::tmp_flag(const CodingUnit& cu)
             m_BinEncoder.encodeBin(0, Ctx::TmpFlag(7));
           }
         }
-        DTRACE(g_trace_ctx, D_SYNTAX, "tmpFracIdx pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpFracIdx);
 #else
         m_BinEncoder.encodeBin(cu.tmpIsSubPel != 0 ? 1 : 0, Ctx::TmpFlag(4));
         if (cu.tmpIsSubPel)

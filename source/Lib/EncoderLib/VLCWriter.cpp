@@ -1277,12 +1277,6 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   WRITE_FLAG( pcSPS->getUseIntraLFNSTISlice() ? 1 : 0, "sps_intra_lfnst_intra_slice_enabled_flag" );
   WRITE_FLAG( pcSPS->getUseIntraLFNSTPBSlice() ? 1 : 0, "sps_intra_lfnst_inter_slice_enabled_flag" );
   WRITE_FLAG( pcSPS->getUseInterLFNST() ? 1 : 0, "sps_inter_lfnst_enabled_flag" );
-#if JVET_AI0050_INTER_MTSS
-  if (pcSPS->getUseInterLFNST())
-  {
-    WRITE_FLAG(pcSPS->getUseInterMTSS() ? 1 : 0, "sps_inter_mtss_enabled_flag");
-  }
-#endif
 #else
   WRITE_FLAG(pcSPS->getUseLFNST() ? 1 : 0, "sps_lfnst_enabled_flag");
 #endif
@@ -1530,12 +1524,6 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   }
 #endif
   WRITE_FLAG( pcSPS->getUseSBT() ? 1 : 0,                                                      "sps_sbt_enabled_flag");
-#if JVET_AI0050_SBT_LFNST
-  if (pcSPS->getUseSBT())
-  {
-    WRITE_FLAG( pcSPS->getUseSbtLFNST() ? 1 : 0,                                               "sps_sbt_lfnst_enabled_flag");
-  }
-#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
   WRITE_FLAG( pcSPS->getUseDMVDMode() ? 1 : 0,                                                 "sps_dmvd_enabled_flag" );
 #endif
@@ -1589,7 +1577,7 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_AG0276_LIC_FLAG_SIGNALING
     if (pcSPS->getUseAffMergeOppositeLic())
     {
-      WRITE_UVLC(AFF_MRG_MAX_NUM_CANDS_OPPOSITELIC - pcSPS->getMaxNumAffineOppositeLicMergeCand(), "eight_minus_max_num_aff_oppositelic_merge_cand");
+      WRITE_UVLC(AFF_MRG_MAX_NUM_CANDS_OPPOSITELIC - pcSPS->getMaxNumAffineOppositeLicMergeCand(), "eight_minus_max_num_oppositelic_subblock_merge_cand");
     }
 #endif
     if (pcSPS->getAMVREnabledFlag())
@@ -1907,11 +1895,11 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_AE0094_IBC_NONADJACENT_SPATIAL_CANDIDATES
     WRITE_FLAG(pcSPS->getUseIbcNonAdjCand() ? 1 : 0, "sps_ibc_non_adjacent_spatial_candidates_enabled_flag");
 #endif
-  }
 #if JVET_AG0136_INTRA_TMP_LIC
-  WRITE_FLAG( pcSPS->getItmpLicExtension ( ) ? 1 : 0 , "sps_itmp_lic_extension_flag" );
-  WRITE_FLAG( pcSPS->getItmpLicMode ( ) ? 1 : 0 , "sps_itmp_lic_mode_flag" );
+    WRITE_FLAG( pcSPS->getItmpLicExtension ( ) ? 1 : 0 , "sps_itmp_lic_extension_flag" );
+    WRITE_FLAG( pcSPS->getItmpLicMode ( ) ? 1 : 0 , "sps_itmp_lic_mode_flag" );
 #endif
+  }
 #if !JVET_S0074_SPS_REORDER
   WRITE_FLAG(pcSPS->getUseLmcs() ? 1 : 0, "sps_lmcs_enable_flag");
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
@@ -3576,11 +3564,7 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
   }
   if (pcSlice->getSliceType() == I_SLICE)
   {
-#if JVET_AI0096_ADAPTIVE_CLIPPING_BIT_DEPTH_FIX
-    int deltaMin = pcSlice->getPic()->lumaClpRngforQuant.min - 16 * (1 << (pcSlice->getSPS()->getBitDepth(toChannelType(COMPONENT_Y)) - 8));
-#else
     int deltaMin = pcSlice->getPic()->lumaClpRngforQuant.min - 64;
-#endif
     if (deltaMin > 0)
     {
       deltaMin = (deltaMin >> clipDeltaShift);
@@ -3589,11 +3573,7 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
     {
       deltaMin = -((-deltaMin) >> clipDeltaShift);
     }
-#if JVET_AI0096_ADAPTIVE_CLIPPING_BIT_DEPTH_FIX
-    int deltaMax = pcSlice->getPic()->lumaClpRngforQuant.max - (235 * (1 << (pcSlice->getSPS()->getBitDepth(toChannelType(COMPONENT_Y)) - 8)));
-#else
     int deltaMax = pcSlice->getPic()->lumaClpRngforQuant.max - 940;
-#endif
     if (deltaMax > 0)
     {
       deltaMax = (deltaMax >> clipDeltaShift);

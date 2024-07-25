@@ -8865,9 +8865,7 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
 #else
     || (cu.isSepTree() && cu.chType == CHANNEL_TYPE_CHROMA && std::min(cu.blocks[1].width, cu.blocks[1].height) < 4)
 #endif
-#if JVET_AG0061_INTER_LFNST_NSPT && JVET_AI0050_SBT_LFNST
-    || ( !cu.cs->sps->getUseSbtLFNST() && cu.sbtInfo && CU::isInter( cu ) )
-#elif JVET_AG0061_INTER_LFNST_NSPT
+#if JVET_AG0061_INTER_LFNST_NSPT
     || ( cu.sbtInfo && CU::isInter( cu ) ) //JVET-AG0208 (EE2-related: On LFNST/NSPT index signalling)
 #endif
     || (cu.blocks[chIdx].lumaSize().width > cu.cs->sps->getMaxTbSize()
@@ -8943,12 +8941,6 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
       }
     }
     cu.lfnstIdx = idxLFNST;
-#if JVET_AI0050_INTER_MTSS
-    if (cu.cs->sps->getUseInterMTSS() && cu.lfnstIdx > 0 && cu.geoFlag)
-    {
-      cu.lfnstIntra = m_BinDecoder.decodeBin(Ctx::InterLFNSTIntraIdx());
-    }
-#endif
   }
   else
   {
@@ -9678,7 +9670,6 @@ void CABACReader::tmp_flag(CodingUnit& cu)
       cu.tmpLicFlag = m_BinDecoder.decodeBin(Ctx::TmpLic(0));
       cu.ibcLicFlag = cu.tmpLicFlag;
       cu.ibcLicIdx = 0;
-      DTRACE(g_trace_ctx, D_SYNTAX, "tmpLicFlag pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpLicFlag);
 #endif
     }
     else
@@ -9763,7 +9754,6 @@ void CABACReader::tmp_flag(CodingUnit& cu)
         }
         cu.tmpIsSubPel  = 0;
         cu.tmpSubPelIdx = -1;
-        DTRACE(g_trace_ctx, D_SYNTAX, "tmpFracIdx pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpFracIdx);
 #else
         cu.tmpIsSubPel = m_BinDecoder.decodeBin(Ctx::TmpFlag(4));
         if (cu.tmpIsSubPel)
@@ -9775,8 +9765,8 @@ void CABACReader::tmp_flag(CodingUnit& cu)
           }
           cu.tmpSubPelIdx = m_BinDecoder.decodeBinsEP(3);
         }
-        DTRACE(g_trace_ctx, D_SYNTAX, "tmp_is_subpel() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpIsSubPel);
 #endif
+        DTRACE(g_trace_ctx, D_SYNTAX, "tmp_is_subpel() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpIsSubPel);
       }
       else
       {

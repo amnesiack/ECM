@@ -1501,9 +1501,6 @@ static const int SBT_MAX_SIZE =                                    64; ///< maxi
 #endif
 static const int SBT_NUM_SL =                                      10; ///< maximum number of historical PU decision saved for a CU
 static const int SBT_NUM_RDO =                                      2; ///< maximum number of SBT mode tried for a PU
-#if JVET_AI0050_SBT_LFNST
-static const int NUM_SBT_LFNST_RDO =                                2;
-#endif
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
 static const int NUM_INTER_CU_INFO_SAVE =                           8; ///< maximum number of inter cu information saved for fast algorithm
 static const int LDT_MODE_TYPE_INHERIT =                            0; ///< No need to signal mode_constraint_flag, and the modeType of the region is inherited from its parent node
@@ -1622,12 +1619,8 @@ static const int SIGN_PRED_FREQ_RANGE   = 32;///< not configurable
 #else
 static const int SIGN_PRED_FREQ_RANGE   = 4; ///< not configurable
 #endif
-#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
-static const int SIGN_PRED_RESIDUAL_BITS  = 8; ///< not configurable
-#else
 static const int SIGN_PRED_SHIFT        = 8; ///< not configurable
 static const int SIGN_PRED_OFFSET       = 1 << ( SIGN_PRED_SHIFT - 1 ); ///< not configurable
-#endif
 #endif
 #if MULTI_HYP_PRED
 static const auto MULTI_HYP_PRED_MAX_CANDS =                     4;
