@@ -2284,6 +2284,10 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   bool bIsJCCR = tu.jointCbCr && isChroma(compID);
   ComponentID residCompID = compID;
   bool bJccrWithCr = bIsJCCR && !(tu.jointCbCr >> 1);
+#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
+  const int signPredShift = 10 + SIGN_PRED_RESIDUAL_BITS  - tu.cs->sps->getBitDepth(toChannelType(COMPONENT_Y));
+  const int signPredOffset = 1 << (signPredShift - 1);
+#endif
   if(bJccrWithCr)
   {
     residCompID = COMPONENT_Cr;
@@ -2357,7 +2361,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   };
 #endif
 
+#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
+  auto createTemplate = [this, tu, signPredShift](ComponentID comp, uint32_t width, uint32_t height, uint32_t mtsIdx) -> void
+#else
   auto createTemplate = [this,tu](ComponentID comp, uint32_t width, uint32_t height, uint32_t mtsIdx) -> void
+#endif
   {
     // This is the function used to generate template values stored in g_initRomSignPred[]
     TCoeff *memCoeff = (TCoeff *)xMalloc(TCoeff, width*height);
@@ -2395,8 +2403,12 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
       Position curr(j%SIGN_PRED_FREQ_RANGE, j/SIGN_PRED_FREQ_RANGE);
 #endif
       coeff.at(prev) = 0;
+#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
+      coeff.at(curr) = 1 << signPredShift;
+#else
       // Is this the correct value to use? Shouldn't it depend on bit depth?
       coeff.at(curr) = 1 << SIGN_PRED_SHIFT;
+#endif
 
       xIT( tu, comp, coeff, resi);
 
@@ -2431,7 +2443,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   };
 
 #if JVET_Y0141_SIGN_PRED_IMPROVE
+#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
+  auto createTemplateLFNST = [this, tu, signPredShift](ComponentID comp, uint32_t width, uint32_t height, uint32_t lfnstIdx) -> void
+#else
   auto createTemplateLFNST = [this, tu](ComponentID comp, uint32_t width, uint32_t height, uint32_t lfnstIdx) -> void
+#endif
   {
     const uint32_t stride = width + height;
     const uint32_t length = width + height;
@@ -2448,7 +2464,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
     {
       coeff.fill(0);
       Position curr((j%signPredWidth), (j / signPredWidth));
+#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
+      coeff.at(curr) = 1 << signPredShift;
+#else
       coeff.at(curr) = 1 << SIGN_PRED_SHIFT;
+#endif
 
       xInvLfnst(tu, comp);
       xIT(tu, comp, coeff, resi);
@@ -2636,7 +2656,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
     {
       // coeffVal should be in -32768..32767 range and templateBasisVec[j] in -63..63
       // output range should be about -8064..8064
+#if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
+      templateVec[j] = (coeffVal * templateBasisVec[j] + signPredOffset) >> signPredShift;
+#else
       templateVec[j] = (coeffVal * templateBasisVec[j] + SIGN_PRED_OFFSET) >> SIGN_PRED_SHIFT;
+#endif
     }
   }
 

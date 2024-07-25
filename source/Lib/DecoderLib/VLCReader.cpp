@@ -2502,7 +2502,7 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   pcSPS->setUseAffMergeOppositeLic(false);
   if (pcSPS->getUseAffine())
   {
-    READ_FLAG(uiCode, "sps_affine_oppolic_merge_enabled_flag");            pcSPS->setUseAffMergeOppositeLic(uiCode != 0);
+    READ_FLAG(uiCode, "sps_affine_oppositelic_merge_enabled_flag");            pcSPS->setUseAffMergeOppositeLic(uiCode != 0);
   }
 #endif
   if ( pcSPS->getUseAffine() )
@@ -2526,7 +2526,7 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AG0276_LIC_FLAG_SIGNALING
     if (pcSPS->getUseAffMergeOppositeLic())
     {
-      READ_UVLC(uiCode, "eight_minus_max_num_aff_oppolic_merge_cand");
+      READ_UVLC(uiCode, "eight_minus_max_num_aff_oppositelic_merge_cand");
       pcSPS->setMaxNumAffineOppositeLicMergeCand(AFF_MRG_MAX_NUM_CANDS_OPPOSITELIC - uiCode);
     }
 #endif
@@ -2908,13 +2908,15 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AE0094_IBC_NONADJACENT_SPATIAL_CANDIDATES
     READ_FLAG( uiCode, "sps_ibc_non_adjacent_spatial_candidates_enabled_flag");    pcSPS->setUseIbcNonAdjCand(uiCode != 0);
 #endif
-#if JVET_AG0136_INTRA_TMP_LIC
-    READ_FLAG( uiCode, "sps_itmp_lic_extension_flag" );                    pcSPS->setItmpLicExtension ( uiCode != 0 );
-    READ_FLAG( uiCode, "sps_itmp_lic_mode_flag" );                              pcSPS->setItmpLicMode ( uiCode != 0 );
-#endif
   }
   else
+  {
     pcSPS->setMaxNumIBCMergeCand(0);
+  }
+#if JVET_AG0136_INTRA_TMP_LIC
+  READ_FLAG( uiCode, "sps_itmp_lic_extension_flag" );                    pcSPS->setItmpLicExtension ( uiCode != 0 );
+  READ_FLAG( uiCode, "sps_itmp_lic_mode_flag" );                              pcSPS->setItmpLicMode ( uiCode != 0 );
+#endif
 
 #if !JVET_S0074_SPS_REORDER
   READ_FLAG(uiCode, "sps_lmcs_enable_flag");                   pcSPS->setUseLmcs(uiCode == 1);
@@ -5637,8 +5639,14 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     {
       deltaMin = -((-deltaMin) << clipDeltaShift);
     }
+#if JVET_AI0096_ADAPTIVE_CLIPPING_BIT_DEPTH_FIX
+    pcSlice->setLumaPelMax(std::min(deltaMax + (235 * (1 << (sps->getBitDepth(toChannelType(COMPONENT_Y)) - 8))), (1 << sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1));
+    pcSlice->setLumaPelMin(std::max(0, deltaMin + (16 * (1 << (sps->getBitDepth(toChannelType(COMPONENT_Y)) - 8)))));
+#else
     pcSlice->setLumaPelMax(std::min(deltaMax + 940, (1 << sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1));
     pcSlice->setLumaPelMin(std::max(0, deltaMin + 64));
+#endif
+
   }
   else
   {
