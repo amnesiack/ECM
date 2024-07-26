@@ -410,6 +410,7 @@ public:
     return ((512 - n) * r.estFracBits(0) + n * r.estFracBits(1) + 256) >> 9;
 #endif
   }
+
 private:
   uint16_t m_state[2];
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT 
@@ -495,7 +496,14 @@ public:
 #if JVET_Y0065_GPM_INTRA
   static const CtxSet   GPMIntraFlag;
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  static const CtxSet   GpmInterIbcFlag;
+  static const CtxSet   GpmInterIbcIdx;
+#endif
   static const CtxSet   PredMode;
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  static const CtxSet   SeparateTree;
+#endif
   static const CtxSet   MultiRefLineIdx;
   static const CtxSet   IntraLumaMpmFlag;
 #if SECONDARY_MPM

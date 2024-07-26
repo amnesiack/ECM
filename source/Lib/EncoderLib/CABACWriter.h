@@ -107,15 +107,32 @@ public:
                                           const uint8_t *controlIdc, Position lumaPos, const int setNum );
 #endif
   // coding (quad)tree (clause 7.3.8.4)
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  void        coding_tree               ( const CodingStructure&        cs,       Partitioner&      pm,         CUCtx& cuCtx, int (&qps)[2], Partitioner* pPartitionerChroma = nullptr, CUCtx* pCuCtxChroma = nullptr);
+  void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm,    const CodingUnit* cu );
+#else
   void        coding_tree               ( const CodingStructure&        cs,       Partitioner&      pm,         CUCtx& cuCtx, Partitioner* pPartitionerChroma = nullptr, CUCtx* pCuCtxChroma = nullptr);
   void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm );
+#endif
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   void        mode_constraint           ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm,    const ModeType modeType );
 #endif
   // coding unit (clause 7.3.8.5)
   void        coding_unit               ( const CodingUnit&             cu,       Partitioner&      pm,         CUCtx& cuCtx );
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  void        cu_skip_flag              ( const CodingUnit&             cu , Partitioner& partitioner);
+#else
   void        cu_skip_flag              ( const CodingUnit&             cu );
+#endif
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  void        pred_mode                 ( const CodingUnit&             cu,       Partitioner&      pm );
+#else
   void        pred_mode                 ( const CodingUnit&             cu );
+#endif
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  void        separate_tree_cu_flag     ( const CodingUnit&             cu,       Partitioner&      pm );
+#endif
   void        bdpcm_mode                ( const CodingUnit&             cu,       const ComponentID compID );
 
   void        cu_pred_data              ( const CodingUnit&             cu );
@@ -243,7 +260,11 @@ public:
   );
 #if JVET_Y0065_GPM_INTRA
   uint64_t    geo_intraFlag_est         ( const TempCtx& ctxStart, const int flag);
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  uint64_t    geo_intraIdx_est          ( const int intraIdx, const bool isGeoIbc);
+#else
   uint64_t    geo_intraIdx_est          ( const int intraIdx);
+#endif
 #endif
   uint64_t    geo_mmvdFlag_est(const TempCtx& ctxStart, const int flag);
   uint64_t    geo_mmvdIdx_est(const TempCtx& ctxStart, const int mmvdIdx, const bool extMMVD);

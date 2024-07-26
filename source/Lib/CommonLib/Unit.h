@@ -514,7 +514,19 @@ struct CodingUnit : public UnitArea
   uint8_t        curPLTSize[MAX_NUM_CHANNEL_TYPE];
   Pel            curPLT[MAX_NUM_COMPONENT][MAXPLTSIZE];
 
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  bool           isSST;
+  bool           separateTree;
+  int            intraRegionRootDepth;  
+  int            intraRegionRootQtDepth;
+  int            intraRegionRootBtDepth;
+  int            intraRegionRootMtDepth;
+  int            intraRegionRootImplicitBtDepth;
+
+  CodingUnit() : chType( CH_L ), isSST( false ) { }
+#else
   CodingUnit() : chType( CH_L ) { }
+#endif
   CodingUnit(const UnitArea &unit);
   CodingUnit(const ChromaFormat _chromaFormat, const Area &area);
 
@@ -642,6 +654,9 @@ struct InterPredictionData
   uint8_t     geoMergeIdx1;
 #if JVET_Y0065_GPM_INTRA
   bool        gpmIntraFlag;
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  bool        gpmInterIbcFlag;
 #endif
 #if JVET_W0097_GPM_MMVD_TM
   bool        geoMMVDFlag0;

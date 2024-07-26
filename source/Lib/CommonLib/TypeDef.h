@@ -204,6 +204,9 @@
 #define JVET_AD0120_LBCCP                                 1 // JVET-AD0120: Local-Boosting Cross-Component Prediction, wherein the template part is controlled by CCCM SPS
 #define JVET_AE0043_CCP_MERGE_TEMPORAL                    1 // JVET-AE0043: Cross-component merge mode with temporal candidates
 #define JVET_AG0058_EIP                                   1 // JVET-AG0058: Extrapolation filter-based intra prediction mode
+#if JVET_AG0058_EIP
+#define JVET_AI0066_REGULARIZED_EIP                       1 // JVET-AI0066: L2 Regularization for EIP
+#endif
 #define JVET_AG0154_DECODER_DERIVED_CCP_FUSION            1 // JVET-AG0154: Decoder derived CCP mode with fusion candidates
 #define JVET_AG0059_CCP_MERGE_ENHANCEMENT                 1 // JVET-AG0059: Enhancements on CCP merge for chroma intra coding
 #define JVET_AH0065_RELAX_LINE_BUFFER                     1 // JVET-AH0065: Relaxing line buffer restriction
@@ -211,6 +214,8 @@
 #define JVET_AH0136_CHROMA_REORDERING                     1 // JVET-AH0136: Non-CCP intra chroma mode reordering
 #define JVET_AH0135_TEMPORAL_PARTITIONING                 1 // JVET_AH0135: Temporal partitioning prediction
 #define JVET_AH0209_PDP                                   1 // JVET_AH0209: Matrix based position dependent intra prediction replacing conventional intra modes
+#define JVET_AI0136_ADAPTIVE_DUAL_TREE                    1 // JVET-AI0136: Adaptive dual tree in inter slices
+
 //IBC
 #define JVET_Y0058_IBC_LIST_MODIFY                        1 // JVET-Y0058: Modifications of IBC merge/AMVP list construction, ARMC-TM-IBC part is included under JVET_W0090_ARMC_TM
 #define JVET_Z0075_IBC_HMVP_ENLARGE                       1 // JVET-Z0075: Enlarged HMVP table for IBC
@@ -246,6 +251,7 @@
 #define JVET_AE0174_NONINTER_TM_TOOLS_CONTROL             1 // JVET-AE0174: Add non-inter TM sps flag to control whether template matching is used for non-inter (Intra and IBC) tools
 #define JVET_AE0094_IBC_NONADJACENT_SPATIAL_CANDIDATES    1 // JVET-AE0094: IBC with non-adjacent spatial candidates
 #define JVET_AG0091_ARBVP                                 1 // JVET-AG0091: Auto-relocated block vector prediction
+#define JVET_AI0082_TEMPORAL_BV                           1 // JVET-AI0081: Temporal BV for IBC merge list construction
 
 #if JVET_AC0071_DBV && JVET_V0130_INTRA_TMP
 #define JVET_AF0066_ENABLE_DBV_4_SINGLE_TREE              1 // JVET-AF0066: Enable DBV mode in single tree configuration
@@ -302,6 +308,7 @@
 #define JVET_Z0139_HIST_AFF                               1 // JVET-Z0139: Affine HMVP 
 #define JVET_Z0139_NA_AFF                                 1 // JVET-Z0139: Constructed non-adjacent spatial neighbors for affine mode
 #define JVET_AA0058_GPM_ADAPTIVE_BLENDING                 1 // JVET-AA0058: GPM adaptive blending
+#define JVET_AI0082_GPM_WITH_INTER_IBC                    1 // JVET-AI0082: GPM with inter prediction and IBC
 #define JVET_AA0146_WRAP_AROUND_FIX                       1 // JVET-AA0146: bugfix&cleanup for wrap around motion compensation
 #define JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION          1 // JVET-AA0107 Regression based affine merge candidate derivation
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
@@ -336,11 +343,17 @@
 #define JVET_AG0098_AMVP_WITH_SBTMVP                      1 // JVET-AG0098: AMVP with SbTMVP mode
 #define JVET_AG0067_DMVR_EXTENSIONS                       1 // JVET-AG0067: On DMVR Extensions
 #define JVET_AH0069_CMVP                                  1 // JVET-AH0069: Chained motion vector prediction
+#if JVET_AH0069_CMVP
+#define JVET_AI0103_ADDITIONAL_CMVP                       1 // JVET-AI0103: Additional chained motion vector prediction candidates
+#endif
 #define JVET_AH0314_ADAPTIVE_GPM_BLENDING_IMPROV          1 // JVET-AH0314: Adaptive GPM blending
 #define JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0        1 // JVET-AH0066 & JVET-AH0202: Inter CCP merge mode with zero luma CBF
 #define JVET_AH0068_RM_TEMP_BUFF_CONSTRAINT               1 // JVET-AH0068 test a: Removing the one-CTU-row temporal buffer constraint for all relevant tools
 #define JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE            1 // JVET-AI0046: High Precision Sample Based BDOF
+#define JVET_AI0197_AFFINE_TMVP                           1 // JVET-AI0197: Affine candidates derived from temporal collocated pictures
 #define JVET_AH0119_SUBBLOCK_TM                           1 // JVET-AH0119 extend affine TM and apply sbtmvp TM
+#define JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED            1 // JVET-AI0094: Sharp motion compensation filter for bi-prediction
+
 // Inter template matching tools
 #define ENABLE_INTER_TEMPLATE_MATCHING                    1 // It controls whether template matching is enabled for inter prediction
 #if ENABLE_INTER_TEMPLATE_MATCHING

@@ -1986,6 +1986,17 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   {
     pcSPS->setUseDualITree(0);
   }
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  READ_FLAG( uiCode, "inter_slice_separate_tree_enabled_flag" );    pcSPS->setUseInterSliceSeparateTree( uiCode == 1 );
+  if ( pcSPS->getInterSliceSeparateTreeEnabled() )
+  {
+    READ_UVLC( uiCode,  "log2_shared_tree_upper_bound_inter_slice_minus4" );
+    READ_UVLC( uiCode,  "log2_separate_tree_lower_bound_inter_slice_minus4" );
+  }
+#endif
+
+
   if (pcSPS->getUseDualITree())
   {
     READ_UVLC(uiCode, "sps_log2_diff_min_qt_min_cb_intra_slice_chroma"); minQT[2] = 1 << (uiCode + pcSPS->getLog2MinCodingBlockSize());
@@ -2638,6 +2649,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
       {
         READ_FLAG( uiCode,    "sps_gpm_tm_enabled_flag" );                      pcSPS->setUseGPMTMMode( uiCode != 0 );
       }
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+      READ_FLAG(uiCode, "sps_gpm_inter_ibc_enabled_flag");
+      pcSPS->setUseGeoInterIbc(uiCode != 0);
 #endif
     }
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG

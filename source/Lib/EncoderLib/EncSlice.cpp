@@ -44,7 +44,6 @@
 #include "CommonLib/dtrace_blockstatistics.h"
 #endif
 
-
 #include <math.h>
 
 //! \ingroup EncoderLib
@@ -2031,7 +2030,11 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
   {
 #if JVET_AA0070_RRIBC
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    m_pcCuEncoder->getIbcHashMap().rebuildPicHashMap(cs.picture->getTrueOrigBuf(), CS::isDualITree(cs) || cs.slice->isIntra());
+#else
     m_pcCuEncoder->getIbcHashMap().rebuildPicHashMap(cs.picture->getTrueOrigBuf(), CS::isDualITree(cs));
+#endif
 #else
     m_pcCuEncoder->getIbcHashMap().rebuildPicHashMap(cs.picture->getTrueOrigBuf());
 #endif
@@ -2108,6 +2111,18 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       hashBlkHitPerc = ( hashBlkHitPerc == -1 ) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc( cs.area.Y() ) : hashBlkHitPerc;
       bool isSCC = hashBlkHitPerc >= 20;
       spsTmp->setUsePDP( !isSCC );
+    }
+  }
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  if (m_pcCuEncoder->getEncCfg()->getUseGeoInterIbc())
+  {
+    SPS* spsTmp = const_cast<SPS*>(cs.sps);
+    hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
+    bool isSCC = hashBlkHitPerc >= 20;
+    if (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE)
+    {
+      spsTmp->setUseGeoInterIbc(isSCC);
     }
   }
 #endif
@@ -2429,11 +2444,23 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       int numberOfSkipPixel = 0;
       for (auto &cu : cs.traverseCUs(ctuArea, CH_L))
       {
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+        if ( cu.separateTree && cu.chType != CH_L )
+        {
+          continue;
+        }
+#endif
         numberOfSkipPixel += cu.skip*cu.lumaSize().area();
       }
 
       for( auto &cu : cs.traverseCUs( ctuArea, CH_L ) )
       {
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+        if ( cu.separateTree && cu.chType != CH_L )
+        {
+          continue;
+        }
+#endif
         if( !cu.skip || cu.rootCbf )
         {
           numberOfEffectivePixels += cu.lumaSize().area();

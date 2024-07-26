@@ -429,6 +429,17 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #endif
   imv               = other.imv;
   imvNumCand        = other.imvNumCand;
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  isSST                          = other.isSST;
+  separateTree                   = other.separateTree;
+  intraRegionRootDepth           = other.intraRegionRootDepth;  
+  intraRegionRootQtDepth         = other.intraRegionRootQtDepth;
+  intraRegionRootBtDepth         = other.intraRegionRootBtDepth;
+  intraRegionRootMtDepth         = other.intraRegionRootMtDepth;
+  intraRegionRootImplicitBtDepth = other.intraRegionRootImplicitBtDepth;
+#endif
+
   bcwIdx            = other.bcwIdx;
   for (int i = 0; i<2; i++)
     refIdxBi[i] = other.refIdxBi[i];
@@ -811,6 +822,16 @@ void CodingUnit::initData()
   modeType          = MODE_TYPE_ALL;
   modeTypeSeries    = 0;
 #endif
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  isSST                          = false;
+  separateTree                   = false;
+  intraRegionRootDepth           = -1;
+  intraRegionRootQtDepth         = -1;
+  intraRegionRootBtDepth         = -1;
+  intraRegionRootMtDepth         = -1;
+  intraRegionRootImplicitBtDepth = -1;
+#endif
 }
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
 const bool CodingUnit::isSepTree() const
@@ -1090,6 +1111,9 @@ void PredictionUnit::initData()
 #if JVET_Y0065_GPM_INTRA
   gpmIntraFlag = false;
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  gpmInterIbcFlag = false;
+#endif
 #if JVET_W0097_GPM_MMVD_TM
   geoMMVDFlag0 = false;
   geoMMVDIdx0 = MAX_UCHAR;
@@ -1313,6 +1337,9 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
 #if JVET_Y0065_GPM_INTRA
   gpmIntraFlag = predData.gpmIntraFlag;
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  gpmInterIbcFlag = predData.gpmInterIbcFlag;
+#endif
 #if JVET_W0097_GPM_MMVD_TM
   geoMMVDFlag0 = predData.geoMMVDFlag0;
   geoMMVDIdx0 = predData.geoMMVDIdx0;
@@ -1461,6 +1488,7 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
 PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
 {
 
+
   for( uint32_t i = 0; i < MAX_NUM_CHANNEL_TYPE; i++ )
   {
     intraDir[ i ] = other.intraDir[ i ];
@@ -1543,6 +1571,9 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   geoMergeIdx1 = other.geoMergeIdx1;
 #if JVET_Y0065_GPM_INTRA
   gpmIntraFlag = other.gpmIntraFlag;
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  gpmInterIbcFlag = other.gpmInterIbcFlag;
 #endif
 #if JVET_W0097_GPM_MMVD_TM
   geoMMVDFlag0 = other.geoMMVDFlag0;
@@ -1804,7 +1835,11 @@ const MotionInfo& PredictionUnit::getMotionInfo( const Position& pos ) const
     }
   }
 #endif
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  CHECKD( Y().valid() && !Y().contains(pos), "Trying to access motion info outsied of PU");
+#else
   CHECKD( !Y().contains( pos ), "Trying to access motion info outsied of PU" );
+#endif
   return cs->getMotionInfo( pos );
 }
 
@@ -2259,7 +2294,11 @@ bool TransformUnit::checkLFNSTApplied(ComponentID compID)
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   bool  lfnstApplied = lfnstIdx && this->mtsIdx[compID] != MTS_SKIP && (this->cu->isSepTree() ? true : isLuma(compID));
 #else
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  bool  lfnstApplied = lfnstIdx && this->mtsIdx[compID] != MTS_SKIP && (cu->separateTree ? true : isLuma(compID));
+#else
   bool  lfnstApplied = lfnstIdx && this->mtsIdx[compID] != MTS_SKIP && (CS::isDualITree(*this->cs) ? true : isLuma(compID));
+#endif
 #endif
   return lfnstApplied;
 }

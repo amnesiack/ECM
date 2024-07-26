@@ -1209,6 +1209,16 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   {
     WRITE_FLAG(pcSPS->getUseDualITree(), "qtbtt_dual_tree_intra_flag");
   }
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  WRITE_FLAG( pcSPS->getInterSliceSeparateTreeEnabled() ? 1 : 0,              "inter_slice_separate_tree_enabled_flag" );
+  if ( pcSPS->getInterSliceSeparateTreeEnabled() )
+  {
+    WRITE_UVLC( ID_SEP_TREE_BLK_SIZE_LIMIT1 - (MIN_CU_LOG2<<1), "log2_shared_tree_upper_bound_inter_slice_minus4" );
+    WRITE_UVLC( ID_SEP_TREE_BLK_SIZE_LIMIT2 - (MIN_CU_LOG2<<1), "log2_separate_tree_lower_bound_inter_slice_minus4" );
+  }
+#endif
+
   if (pcSPS->getUseDualITree())
   {
     WRITE_UVLC(floorLog2(pcSPS->getMinQTSize(I_SLICE, CHANNEL_TYPE_CHROMA)) - pcSPS->getLog2MinCodingBlockSize(), "sps_log2_diff_min_qt_min_cb_intra_slice_chroma");
@@ -1674,6 +1684,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
       {
         WRITE_FLAG(pcSPS->getUseGPMTMMode() ? 1 : 0, "sps_gpm_tm_enabled_flag");
       }
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+      WRITE_FLAG(pcSPS->getUseGeoInterIbc() ? 1 : 0, "sps_gpm_inter_ibc_enabled_flag");
 #endif
     }
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG

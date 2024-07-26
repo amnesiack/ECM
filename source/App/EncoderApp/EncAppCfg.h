@@ -392,6 +392,9 @@ protected:
   double    m_ttFastSkipThr;
 #endif
   bool      m_dualTree;
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  bool      m_interSliceSeparateTreeEnabled;
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool      m_intraLFNSTISlice;
   bool      m_intraLFNSTPBSlice;
@@ -534,6 +537,9 @@ protected:
   bool      m_ciipTimd;
 #endif
   bool      m_Geo;
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  bool      m_geoInterIbc;
+#endif
   bool      m_HashME;
   bool      m_allowDisFracMMVD;
   bool      m_AffineAmvr;

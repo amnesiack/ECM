@@ -754,7 +754,6 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if ENABLE_SIMD_OPT && defined(TARGET_SIMD_X86)
   ("SIMD",                                            ignore,                                      string(""), "SIMD extension to use (SCALAR, SSE41, SSE42, AVX, AVX2, AVX512), default: the highest supported extension\n")
 #endif
-  // File, I/O and source parameters
   ("InputFile,i",                                     m_inputFileName,                             string(""), "Original YUV input file name")
   ("InputPathPrefix,-ipp",                            inputPathPrefix,                             string(""), "pathname to prepend to input filename")
   ("BitstreamFile,b",                                 m_bitstreamFileName,                         string(""), "Bitstream output file name")
@@ -1028,6 +1027,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("TTFastSkipThr",                                   m_ttFastSkipThr,                                  1.075, "Threshold value of fast skip method for TT split partition")
 #endif
   ("DualITree",                                       m_dualTree,                                       false, "Use separate QTBT trees for intra slice luma and chroma channel types")
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  ("InterSliceSeparateTree",                          m_interSliceSeparateTreeEnabled,                  false,  "Separate partitioning trees for inter slice")
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   ( "IntraLFNSTISlice",                               m_intraLFNSTISlice,                               false, "Enable intra-LFNST for I-Slice (0:off, 1:on)  [default: off]" )
   ( "IntraLFNSTPBSlice",                              m_intraLFNSTPBSlice,                              false, "Enable intra-LFNST for P/B-Slice (0:off, 1:on)  [default: off]" )
@@ -1186,6 +1188,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("CIIPTIMD",                                        m_ciipTimd,                                       true, "Enable CIIP-TIMD mode")
 #endif
   ("Geo",                                             m_Geo,                                            false, "Enable geometric partitioning mode (0:off, 1:on)")
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  ("GeoInterIbc",                                     m_geoInterIbc,                                    true, "GPM with inter and IBC (0:off, 1:on)  [default: off]" )
+#endif
   ("HashME",                                          m_HashME,                                         false, "Enable hash motion estimation (0:off, 1:on)")
 
   ("AllowDisFracMMVD",                                m_allowDisFracMMVD,                               false, "Disable fractional MVD in MMVD mode adaptively")
@@ -5613,6 +5618,9 @@ void EncAppCfg::xPrintParameter()
     msg(VERBOSE, "PROF:%d ", m_PROF);
     msg(VERBOSE, "SbTMVP:%d ", m_sbTmvpEnableFlag);
     msg( VERBOSE, "DualITree:%d ", m_dualTree );
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    msg( VERBOSE, "InterSliceSeparateTree:%d ", m_interSliceSeparateTreeEnabled );
+#endif
     msg( VERBOSE, "IMV:%d ", m_ImvMode );
     msg( VERBOSE, "BIO:%d ", m_BIO );
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC && !JVET_AA0132_CONFIGURABLE_TM_TOOLS
@@ -5645,6 +5653,9 @@ void EncAppCfg::xPrintParameter()
     msg(VERBOSE, "CIIPAffine:%d ", m_useCiipAffine);
 #endif
     msg( VERBOSE, "Geo:%d ", m_Geo );
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+    msg( VERBOSE, "GeoInterIbc:%d ", m_geoInterIbc );
+#endif
     m_allowDisFracMMVD = m_MMVD ? m_allowDisFracMMVD : false;
     if ( m_MMVD )
       msg(VERBOSE, "AllowDisFracMMVD:%d ", m_allowDisFracMMVD);

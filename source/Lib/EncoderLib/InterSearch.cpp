@@ -8280,11 +8280,19 @@ void InterSearch::setGeoSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx& mer
 #if JVET_Y0065_GPM_INTRA
                                              , IntraPrediction* pcIntraPred
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+                                             , Mv* geoBvList
+#endif
                                              , int mmvdCand0, int mmvdCand1)
 {
 #if JVET_Y0065_GPM_INTRA
   bool isIntra[2];
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  bool isIbc[2];
+  xRemapMrgIndexAndMmvdIdx(mergeCand0, mergeCand1, mmvdCand0, mmvdCand1, isIntra[0], isIntra[1], isIbc[0], isIbc[1]);
+#else
   xRemapMrgIndexAndMmvdIdx(mergeCand0, mergeCand1, mmvdCand0, mmvdCand1, isIntra[0], isIntra[1]);
+#endif
 #endif
   const int idx0 = mmvdCand0 + 1;
   const int idx1 = mmvdCand1 + 1;
@@ -8300,6 +8308,9 @@ void InterSearch::setGeoSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx& mer
 #if JVET_Y0065_GPM_INTRA
                       , pcIntraPred
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+                      , geoBvList
+#endif
                       , m_gpmPartTplCost[idx0][mergeCand0]
                       , m_gpmPartTplCost[idx1][mergeCand1]
                       , mergeCtx0
@@ -8310,6 +8321,9 @@ void InterSearch::setGeoSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx& mer
 #else
                       + (isIntra[0] ? GEO_MAX_NUM_UNI_CANDS : 0)
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+                      + (isIbc[0] ? GEO_MAX_NUM_INTRA_CANDS : 0)
+#endif
 #endif
                       , mergeCtx1
                       , mergeCand1
@@ -8318,6 +8332,9 @@ void InterSearch::setGeoSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx& mer
                       + (isIntra[1] ? GEO_MAX_ALL_INTER_UNI_CANDS : 0)
 #else
                       + (isIntra[1] ? GEO_MAX_NUM_UNI_CANDS : 0)
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+                      + (isIbc[1] ? GEO_MAX_NUM_INTRA_CANDS : 0)
 #endif
 #endif
                       , numValidInList
@@ -8363,7 +8380,12 @@ int InterSearch::convertGeoSplitModeToSyntax(int splitDir, int mergeCand0, int m
 {
 #if JVET_Y0065_GPM_INTRA
   bool isIntra[2];
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  bool isIbc[2];
+  xRemapMrgIndexAndMmvdIdx(mergeCand0, mergeCand1, mmvdCand0, mmvdCand1, isIntra[0], isIntra[1], isIbc[0], isIbc[1]);
+#else
   xRemapMrgIndexAndMmvdIdx(mergeCand0, mergeCand1, mmvdCand0, mmvdCand1, isIntra[0], isIntra[1]);
+#endif
 #endif
   return m_gpmacsSplitModeTmSel[mmvdCand0 + 1][mmvdCand1 + 1][mergeCand0][mergeCand1][splitDir];
 }
@@ -8374,6 +8396,9 @@ bool InterSearch::selectGeoSplitModes(PredictionUnit &pu,
 #endif
 #if JVET_Y0065_GPM_INTRA
                                       IntraPrediction* pcIntraPred,
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+                                      Mv* geoBvList,
 #endif
                                       uint32_t (&gpmTplCostPart0)[2][GEO_NUM_PARTITION_MODE],
                                       uint32_t (&gpmTplCostPart1)[2][GEO_NUM_PARTITION_MODE],
@@ -8405,6 +8430,9 @@ bool InterSearch::selectGeoSplitModes(PredictionUnit &pu,
   Pel* pRefLeftPart0   = m_acYuvRefAMLTemplatePart0[1];
   Pel* pRefTopPart1    = m_acYuvRefAMLTemplatePart1[0];
   Pel* pRefLeftPart1   = m_acYuvRefAMLTemplatePart1[1];
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  std::vector<Pel>* lut = m_pcReshape->getSliceReshaperInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() ? &m_pcReshape->getInvLUT() : nullptr;
+#endif
 
   // First partition
   if (fillRefTplPart0)
@@ -8413,6 +8441,9 @@ bool InterSearch::selectGeoSplitModes(PredictionUnit &pu,
     fillPartGPMRefTemplate<0, false>(pu, mergeCtx0, mergeCand0, mmvdCand0, pRefTopPart0, pRefLeftPart0, &affMergeCtx);
 #else
     fillPartGPMRefTemplate<0, false>(pu, mergeCtx0, mergeCand0, mmvdCand0, pRefTopPart0, pRefLeftPart0);
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+    fillPartGpmInterIbcRefTemplate<0, false>(pu, lut, geoBvList, mergeCand0, mmvdCand0, pRefTopPart0, pRefLeftPart0);
 #endif
 #if JVET_Y0065_GPM_INTRA
     xCollectIntraGeoPartCost<0>(pu, pcIntraPred, mergeCand0, gpmTplCostPart0[0]);
@@ -8426,6 +8457,9 @@ bool InterSearch::selectGeoSplitModes(PredictionUnit &pu,
     fillPartGPMRefTemplate<1, false>(pu, mergeCtx1, mergeCand1, mmvdCand1, pRefTopPart1, pRefLeftPart1, &affMergeCtx);
 #else
     fillPartGPMRefTemplate<1, false>(pu, mergeCtx1, mergeCand1, mmvdCand1, pRefTopPart1, pRefLeftPart1);
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+    fillPartGpmInterIbcRefTemplate<1, false>(pu, lut, geoBvList, mergeCand1, mmvdCand1, pRefTopPart1, pRefLeftPart1);
 #endif
 #if JVET_Y0065_GPM_INTRA
     xCollectIntraGeoPartCost<1>(pu, pcIntraPred, mergeCand1, gpmTplCostPart1[1]);
@@ -8773,6 +8807,16 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
   {
     return;
   }
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+#if JVET_AG0164_AFFINE_GPM
+  if (mergeCand >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS)
+#else
+  if (mergeCand >= GEO_MAX_NUM_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS)
+#endif
+  {
+    return;
+  }
+#endif
 
   std::vector<Pel>* LUT = m_pcReshape->getSliceReshaperInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() ? &m_pcReshape->getInvLUT() : nullptr;
   pcIntraPred->fillIntraGPMRefTemplateAll(pu, m_bAMLTemplateAvailabe[0], m_bAMLTemplateAvailabe[1], true, false, false, LUT, (partIdx == 0 ? mergeCand : 0), (partIdx == 1 ? mergeCand : 0));
@@ -14666,6 +14710,12 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
     {
       for( auto &currTU : csSplit->traverseTUs( currArea, partitioner.chType ) )
       {
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+        if ( currTU.chType != partitioner.chType )
+        {
+          continue;
+        }
+#endif
         for( unsigned ch = 0; ch < numTBlocks; ch++ )
         {
           compCbf[ ch ] |= ( TU::getCbfAtDepth( currTU, ComponentID(ch), currDepth + 1 ) ? 1 : 0 );
@@ -14929,7 +14979,11 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
     PredictionUnit &pu = *cs.getPU( partitioner.chType );
 
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    m_CABACEstimator->cu_skip_flag  ( cu, partitioner );
+#else
     m_CABACEstimator->cu_skip_flag  ( cu );
+#endif
     m_CABACEstimator->merge_data(pu);
 #if INTER_LIC
     m_CABACEstimator->cu_lic_flag(cu);
@@ -15823,7 +15877,11 @@ uint64_t InterSearch::xGetSymbolFracBitsInter(CodingStructure &cs, Partitioner &
   {
     cu.skip = true;
     CHECK(cu.colorTransform, "ACT should not be enabled for skip mode");
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    m_CABACEstimator->cu_skip_flag  ( cu, partitioner );
+#else
     m_CABACEstimator->cu_skip_flag  ( cu );
+#endif
     if (cu.firstPU->ciipFlag)
     {
       // CIIP shouldn't be skip, the upper level function will deal with it, i.e. setting the overall cost to MAX_DOUBLE
@@ -15839,8 +15897,13 @@ uint64_t InterSearch::xGetSymbolFracBitsInter(CodingStructure &cs, Partitioner &
     CHECK( cu.skip, "Skip flag has to be off at this point!" );
 
     if (cu.Y().valid())
-    m_CABACEstimator->cu_skip_flag( cu );
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    m_CABACEstimator->cu_skip_flag( cu, partitioner );
+    m_CABACEstimator->pred_mode   ( cu, partitioner );
+#else
+      m_CABACEstimator->cu_skip_flag( cu );
     m_CABACEstimator->pred_mode   ( cu );
+#endif
     m_CABACEstimator->cu_pred_data( cu );
     CUCtx cuCtx;
     cuCtx.isDQPCoded = true;

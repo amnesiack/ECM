@@ -970,6 +970,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setUseCiipTimd                                       (m_ciipTimd);
 #endif
   m_cEncLib.setUseGeo                                            ( m_Geo );
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  m_cEncLib.setUseGeoInterIbc                                    ( m_Geo ? m_geoInterIbc : false );
+#endif
   m_cEncLib.setUseHashME                                         ( m_HashME );
 
   m_cEncLib.setAllowDisFracMMVD                                  ( m_allowDisFracMMVD );
@@ -1115,6 +1118,10 @@ void EncApp::xInitLibCfg()
       m_cEncLib.setVirtualBoundariesPosY                           ( m_virtualBoundariesPosY[ i ], i );
     }
   }
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  m_cEncLib.setInterSliceSeparateTreeEnabled                     ( m_interSliceSeparateTreeEnabled );
+#endif
 
   m_cEncLib.setMaxCUWidth                                        ( m_uiCTUSize );
   m_cEncLib.setMaxCUHeight                                       ( m_uiCTUSize );

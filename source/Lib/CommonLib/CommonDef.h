@@ -190,7 +190,12 @@ static const int AMVP_DECIMATION_FACTOR =                           2;
 #endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AI0103_ADDITIONAL_CMVP
+static const int NUM_CMVP_CANDS =                                  4; ///< CMVP
+static const int NUM_MERGE_CANDS =                                 28 + NUM_CMVP_CANDS; ///< for new maximum buffer of merging candidates
+#else
 static const int NUM_MERGE_CANDS =                                 28; ///< for maximum buffer of merging candidates
+#endif
 static const int NUM_TMVP_CANDS =                                  8; ///< TMVP
 static const int MAX_PAIR_CANDS =                                  4; ///< MAX Pairiwse candidates for Regular TM and BM merge modes
 #else
@@ -234,7 +239,12 @@ static const int RMVF_AFFINE_MRG_MAX_CAND_LIST_SIZE = 31;
 #else
 static const int RMVF_AFFINE_MRG_MAX_CAND_LIST_SIZE = 30;
 #endif
+#if JVET_AI0197_AFFINE_TMVP
+static const int ADDITIONAL_AFFINE_CAND_NUM   = 24;
+static const int AFFINE_MRG_MAX_NUM_CANDS_ALL = AFFINE_MRG_MAX_NUM_CANDS + ADDITIONAL_AFFINE_CAND_NUM;
+#else
 static const int ADDITIONAL_AFFINE_CAND_NUM = 15;
+#endif
 #if JVET_AB0189_RMVF_BITLENGTH_CONTROL
 static const int RMVF_MV_RANGE = (1 << 12);
 static const int RMVF_CUSIZE_THRED = 128;
@@ -326,6 +336,15 @@ static const int MIP_MAX_HEIGHT =                                  MAX_INTRA_SIZ
 static const int MIP_MAX_WIDTH =                                   MAX_TB_SIZEY;
 static const int MIP_MAX_HEIGHT =                                  MAX_TB_SIZEY;
 #endif
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+static const int ID_SEP_TREE_BLK_SIZE_LIMIT1 =                     10; // W*H>=2^BLK_SIZE_LIMIT1 implies separate tree
+static const int ID_SEP_TREE_BLK_SIZE_LIMIT2 =                     7;  // W*H<=2^BLK_SIZE_LIMIT2 implies shared tree
+static const int ID_SEP_TREE_TID_OFF         =                     3;  
+
+static const int MAX_TREE_TYPE              =                      3; ///< LumaChromaSharedTree(0), LumaSeparateTree(1), ChromaSeparateTree(2)
+#endif
+
 #if JVET_AH0209_PDP
 static const int PDP_NUM_MODES =                                  67;
 static const int PDP_NUM_SIZES =                                  18;
@@ -1180,7 +1199,11 @@ static const double AMAXBT_TH128 =                                 60.0;
 static const int ADAPTIVE_SUB_GROUP_SIZE =                         5;
 #if JVET_Z0139_HIST_AFF || JVET_Z0139_NA_AFF
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
+#if JVET_AI0197_AFFINE_TMVP
+static const int ADAPTIVE_AFFINE_SUB_GROUP_SIZE = AFFINE_MRG_MAX_NUM_CANDS_ALL;
+#else
 static const int ADAPTIVE_AFFINE_SUB_GROUP_SIZE = RMVF_AFFINE_MRG_MAX_CAND_LIST_SIZE;
+#endif
 #else
 static const int ADAPTIVE_AFFINE_SUB_GROUP_SIZE = AFFINE_MRG_MAX_NUM_CANDS;
 #endif
@@ -1326,6 +1349,13 @@ static const int CFLM_MAX_REF_SAMPLES = CCCM_MAX_REF_SAMPLES;
 static const int INTER_CCCM_NUM_PARAMS = 8;
 static const int INTER_CCCM_MAX_REF_SAMPLES = 256;
 #endif
+#if JVET_AG0058_EIP
+#if JVET_AI0066_REGULARIZED_EIP
+static const int REGULARIZED_EIP_L2_SAMPLE_THRESHOLD = 2024;
+static const int REGULARIZED_EIP_L2_SMALL = 192;
+static const int REGULARIZED_EIP_L2_LARGE = 128;
+#endif
+#endif
 #if JVET_AC0071_DBV
 static const int NUM_DBV_POSITION = 5;
 static const int DBV_TEMPLATE_SIZE = 1;
@@ -1403,7 +1433,12 @@ static const int GEO_MAX_NUM_UNI_AFF_CANDS_ARMC                     = 22;
 
 #if JVET_Y0065_GPM_INTRA
 static const int GEO_MAX_NUM_INTRA_CANDS =                          3;
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+static const int GEO_MAX_NUM_IBC_CANDS =                            4;
+static const int GEO_NUM_INTRA_RDO_BUFFER =                         23 + GEO_MAX_NUM_IBC_CANDS;
+#else
 static const int GEO_NUM_INTRA_RDO_BUFFER =                         23;
+#endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
 static const int GEO_BLEND_MAX_NUM_CANDS =                        ((GEO_MAX_NUM_UNI_CANDS + 1) >> 1) * ((GEO_MAX_NUM_UNI_CANDS + 1) >> 1) / 2;
 static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_UNI_CANDS + 67 + 1 + 1;
@@ -1414,7 +1449,11 @@ static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_
 static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_UNI_CANDS + GEO_NUM_INTRA_RDO_BUFFER;
 #endif
 #endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+static const int GEO_MAX_NUM_CANDS = (GEO_MAX_NUM_UNI_CANDS+GEO_MAX_NUM_INTRA_CANDS+GEO_MAX_NUM_IBC_CANDS) * ((GEO_MAX_NUM_UNI_CANDS+GEO_MAX_NUM_INTRA_CANDS+GEO_MAX_NUM_IBC_CANDS) - 1);
+#else
 static const int GEO_MAX_NUM_CANDS = (GEO_MAX_NUM_UNI_CANDS+GEO_MAX_NUM_INTRA_CANDS) * ((GEO_MAX_NUM_UNI_CANDS+GEO_MAX_NUM_INTRA_CANDS) - 1);
+#endif
 #else
 static const int GEO_MAX_NUM_CANDS = GEO_MAX_NUM_UNI_CANDS * (GEO_MAX_NUM_UNI_CANDS - 1);
 #endif
@@ -1456,6 +1495,9 @@ static const int GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ = 1 // regular merge(1)
 #endif
 #if JVET_Y0065_GPM_INTRA
                                                  + 1 // intra(1)
+#endif
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+                                                 + 1 // IBC(1)
 #endif
 ;
 #else
@@ -1710,6 +1752,7 @@ static const int CCCM_REF_SAMPLES_MAX =       CCCM_MAX_REF_SAMPLES;
 static constexpr int CABAC_SPATIAL_MAX_BINS                  = 128;
 static constexpr int CABAC_SPATIAL_MAX_BINS_PER_CTX          =   4;
 #endif
+
 
 // ====================================================================================================================
 // Macro functions

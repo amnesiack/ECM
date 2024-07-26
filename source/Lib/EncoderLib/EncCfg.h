@@ -541,6 +541,9 @@ protected:
   bool      m_ciipTimd;
 #endif
   bool      m_Geo;
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  bool      m_geoInterIbc;
+#endif
   bool      m_allowDisFracMMVD;
   bool      m_AffineAmvr;
   bool      m_HashME;
@@ -643,6 +646,11 @@ protected:
   ReshapeCW m_reshapeCW;
   int       m_CSoffset;
   bool      m_encDbOpt;
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  bool      m_interSliceSeparateTreeEnabled;
+#endif
+
   bool      m_useFastLCTU;
   bool      m_useFastMrg;
 #if MERGE_ENC_OPT
@@ -1817,6 +1825,10 @@ public:
 #endif
   void      setUseGeo                       ( bool b )       { m_Geo = b; }
   bool      getUseGeo                       ()         const { return m_Geo; }
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  void      setUseGeoInterIbc               ( bool b )       { m_geoInterIbc = b; }
+  bool      getUseGeoInterIbc               ()         const { return m_geoInterIbc; }
+#endif
   void      setAllowDisFracMMVD             ( bool b )       { m_allowDisFracMMVD = b;    }
   bool      getAllowDisFracMMVD             ()         const { return m_allowDisFracMMVD; }
   void      setUseHashME                    ( bool b )       { m_HashME = b; }
@@ -1986,6 +1998,12 @@ public:
   const ReshapeCW& getReshapeCW             ()                           { return m_reshapeCW; }
   void      setReshapeCSoffset              (int CSoffset)          { m_CSoffset = CSoffset; }
   int       getReshapeCSoffset              ()                      { return m_CSoffset; }
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+  void      setInterSliceSeparateTreeEnabled( bool b )       { m_interSliceSeparateTreeEnabled = b; }
+  bool      getInterSliceSeparateTreeEnabled()         const { return m_interSliceSeparateTreeEnabled; }
+#endif
+
   void      setMaxCUWidth                   ( uint32_t  u )      { m_maxCUWidth  = u; }
   uint32_t      getMaxCUWidth                   () const         { return m_maxCUWidth; }
   void      setMaxCUHeight                  ( uint32_t  u )      { m_maxCUHeight = u; }

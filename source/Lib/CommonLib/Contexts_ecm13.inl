@@ -450,6 +450,56 @@ const CtxSet ContextSetCfg::GPMIntraFlag = ContextSetCfg::addCtxSet({
  { 133 }, 
 });
 
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+const CtxSet ContextSetCfg::GpmInterIbcFlag = ContextSetCfg::addCtxSet
+({
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  });
+
+const CtxSet ContextSetCfg::GpmInterIbcIdx = ContextSetCfg::addCtxSet
+({
+  { CNU, CNU, CNU, },
+  { CNU, CNU, CNU, },
+  { CNU, CNU, CNU, },
+  { CNU, CNU, CNU, },
+  { DWS, DWS, DWS, },
+  { DWS, DWS, DWS, },
+  { DWS, DWS, DWS, },
+  { DWS, DWS, DWS, },
+  { DWE, DWE, DWE, },
+  { DWE, DWE, DWE, },
+  { DWE, DWE, DWE, },
+  { DWE, DWE, DWE, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  });
+#endif
+
 const CtxSet ContextSetCfg::MmvdFlag = ContextSetCfg::addCtxSet({
 // ctx 81 84
  {  25,  34,  35,  35 },
@@ -6367,6 +6417,33 @@ const CtxSet ContextSetCfg::CCPMergeFusionType = ContextSetCfg::addCtxSet({
   { 119 },
   { 119 },
 });
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+const CtxSet ContextSetCfg::SeparateTree = ContextSetCfg::addCtxSet
+({
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { DWS, DWS, DWS },
+  { DWS, DWS, DWS },
+  { DWS, DWS, DWS },
+  { DWS, DWS, DWS },
+  { DWE, DWE, DWE },
+  { DWE, DWE, DWE },
+  { DWE, DWE, DWE },
+  { DWE, DWE, DWE },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  });
+#endif
+
 #endif
 #if JVET_AH0076_OBIC
 const CtxSet ContextSetCfg::obicFlag = ContextSetCfg::addCtxSet
