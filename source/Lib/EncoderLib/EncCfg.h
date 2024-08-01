@@ -414,6 +414,12 @@ protected:
 #else
   bool      m_LFNST;
 #endif
+#if JVET_AI0050_INTER_MTSS
+  bool      m_useInterMTSS;
+#endif
+#if JVET_AI0050_SBT_LFNST
+  bool      m_useSbtLFNST;
+#endif
   bool      m_useFastLFNST;
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool      m_useFastInterLFNST;
@@ -421,6 +427,9 @@ protected:
   bool      m_sbTmvpEnableFlag;
   bool      m_Affine;
   bool      m_AffineType;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool      m_useAltCost;
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool      m_useAffineTM; 
 #if JVET_AG0276_NLIC
@@ -1186,6 +1195,11 @@ protected:
   bool         m_pdp;
 #endif
 
+#if JVET_AI0183_MVP_EXTENSION
+  bool         m_scaledMvExtTmvp;
+  bool         m_scaledMvExtBiTmvp;
+#endif
+
 public:
   EncCfg()
   {
@@ -1576,7 +1590,14 @@ public:
   void      setUseFastInterLFNST            ( bool b )       { m_useFastInterLFNST = b; }
   bool      getUseFastInterLFNST()                     const { return m_useFastInterLFNST; }
 #endif
-
+#if JVET_AI0050_INTER_MTSS
+  void      setUseInterMTSS                 ( bool b )       { m_useInterMTSS = b; }
+  bool      getUseInterMTSS()                          const { return m_useInterMTSS; }
+#endif
+#if JVET_AI0050_SBT_LFNST
+  void      setUseSBTLFNST                  ( bool b )       { m_useSbtLFNST = b; }
+  bool      getUseSBTLFNST()                           const { return m_useSbtLFNST; }
+#endif
   void      setUseLMChroma                  ( int n )        { m_LMChroma = n; }
   int       getUseLMChroma()                           const { return m_LMChroma; }
   void      setHorCollocatedChromaFlag( bool b )             { m_horCollocatedChromaFlag = b; }
@@ -1590,6 +1611,10 @@ public:
   bool      getAffine                       ()         const { return m_Affine; }
   void      setAffineType( bool b )                          { m_AffineType = b; }
   bool      getAffineType()                            const { return m_AffineType; }
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  void      setUseAltCost(bool b)                            { m_useAltCost = b; }
+  bool      getUseAltCost()                            const { return m_useAltCost; }
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   void      setUseAffineTM( bool b )                         { m_useAffineTM = b; }
   bool      getUseAffineTM()                           const { return  m_useAffineTM; }
@@ -1971,6 +1996,12 @@ public:
 #if JVET_AH0209_PDP
   void      setUsePDP( bool n )                             { m_pdp = n; }
   bool      getUsePDP()                               const { return m_pdp; }
+#endif
+#if JVET_AI0183_MVP_EXTENSION
+  void      setConfigScaledMvExtTmvp( bool n )                 { m_scaledMvExtTmvp = n; }
+  bool      getConfigScaledMvExtTmvp()                   const { return m_scaledMvExtTmvp; }
+  void      setConfigScaledMvExtBiTmvp( bool n )                 { m_scaledMvExtBiTmvp = n; }
+  bool      getConfigScaledMvExtBiTmvp()                   const { return m_scaledMvExtBiTmvp; }
 #endif
 
   // ADD_NEW_TOOL : (encoder lib) add access functions here

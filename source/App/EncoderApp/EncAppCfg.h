@@ -406,9 +406,18 @@ protected:
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool      m_useFastInterLFNST;
 #endif
+#if JVET_AI0050_INTER_MTSS
+  bool      m_useInterMTSS;
+#endif
+#if JVET_AI0050_SBT_LFNST
+  bool      m_useSbtLFNST;
+#endif
   bool      m_sbTmvpEnableFlag;
   bool      m_Affine;
   bool      m_AffineType;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool      m_useAltCost;
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool      m_useAffineTM;
 #if JVET_AG0276_NLIC
@@ -670,6 +679,10 @@ protected:
 #endif
 #if JVET_AH0209_PDP
   bool      m_pdp;
+#endif
+#if JVET_AI0183_MVP_EXTENSION
+  bool      m_scaledMvExtTmvp;
+  bool      m_scaledMvExtBiTmvp;
 #endif
   
   // ADD_NEW_TOOL : (encoder app) add tool enabling flags and associated parameters here

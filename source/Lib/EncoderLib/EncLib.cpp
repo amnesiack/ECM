@@ -1848,6 +1848,14 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   sps.setUseFastSubTmvp                     ((m_sourceWidth * m_sourceHeight) > (m_intraPeriod == -1 ? 0 : 832 * 480));
 #endif
+#if JVET_AI0183_MVP_EXTENSION
+  sps.setConfigScaledMvExtTmvp( m_scaledMvExtTmvp );
+  if (m_intraPeriod == -1)
+  {
+    sps.setConfigScaledMvExtTmvp( false );
+    setMaxNumAffineMergeCand(getMaxNumAffineMergeCand() - 2);
+  }
+#endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   sps.setUseArmcRefinedMotion               ( m_armcRefinedMotion );
 #endif
@@ -1878,6 +1886,16 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
   sps.setUseAffine             ( m_Affine );
   sps.setUseAffineType         ( m_AffineType );
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  sps.setUseAltCost            ( m_useAltCost );
+  if ((getSourceWidth() * getSourceHeight()) > (832 * 480) && ((getSourceWidth() * getSourceHeight()) < (1920 * 1080)))
+  {
+    if (getBaseQP() > 27)
+    {
+      sps.setUseAltCost(false);
+    }
+  }
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   sps.setUseAffineTM           ( m_useAffineTM );
 #if JVET_AG0276_NLIC
@@ -1961,6 +1979,12 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setUseIntraMTS           ( m_IntraMTS );
   sps.setUseInterMTS           ( m_InterMTS );
   sps.setUseSBT                             ( m_SBT );
+#if JVET_AI0050_INTER_MTSS
+  sps.setUseInterMTSS          ( m_useInterMTSS );
+#endif
+#if JVET_AI0050_SBT_LFNST
+  sps.setUseSbtLFNST           ( m_useSbtLFNST );
+#endif
   sps.setUseSMVD                ( m_SMVD );
   sps.setUseBcw                ( m_bcw );
 #if INTER_LIC
@@ -2146,6 +2170,13 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AH0209_PDP
   sps.setUsePDP( m_pdp );
 #endif
+#if JVET_AI0183_MVP_EXTENSION
+  sps.setConfigScaledMvExtBiTmvp( m_scaledMvExtBiTmvp );
+  if (getBaseQP() < 27 && ((getSourceWidth() * getSourceHeight()) < (3840 * 2160)))
+  {
+    sps.setConfigScaledMvExtBiTmvp( false );
+  }
+#endif
   // ADD_NEW_TOOL : (encoder lib) set tool enabling flags and associated parameters here
   sps.setUseISP                             ( m_ISP );
   sps.setUseLmcs                            ( m_lmcsEnabled );
@@ -2221,6 +2252,30 @@ void EncLib::xInitSPS( SPS& sps )
 
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT
   sps.setTempCabacInitMode( m_tempCabacInitMode );
+#endif
+
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  sps.setAlfScalePrevEnabled( true );
+  if ( getIntraPeriod() == 1 )
+  {
+    sps.setAlfScaleMode( 0 );
+  }
+  else if ( getIntraPeriod() < 0 )
+  {
+    if ( m_sourceWidth * m_sourceHeight < 1920 * 1080 )
+    {
+      sps.setAlfScaleMode( 2 );
+      sps.setAlfScalePrevEnabled( false );
+    }
+    else
+    {
+      sps.setAlfScaleMode( 3 );
+    }
+  }
+  else
+  {
+    sps.setAlfScaleMode( 1 );
+  }
 #endif
 
   if (sps.getVuiParametersPresentFlag())

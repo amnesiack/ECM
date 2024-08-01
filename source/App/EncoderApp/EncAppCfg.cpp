@@ -1041,10 +1041,19 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   ( "FastInterLFNST",                                 m_useFastInterLFNST,                              false, "Fast methods for inter-LFNST/NSPT" )
 #endif
+#if JVET_AI0050_INTER_MTSS
+  ("InterMTSS",                                       m_useInterMTSS,                                    true, "Inter MTSS (0:off, 1:on)  [default: on]")
+#endif
+#if JVET_AI0050_SBT_LFNST
+  ("SbtLFNST",                                        m_useSbtLFNST,                                     true, "SBT-LFNST (0:off, 1:on)  [default: on]")
+#endif
   ("SbTMVP",                                          m_sbTmvpEnableFlag,                               false, "Enable Subblock Temporal Motion Vector Prediction (0: off, 1: on) [default: off]")
   ("MMVD",                                            m_MMVD,                                            true, "Enable Merge mode with Motion Vector Difference (0:off, 1:on)  [default: 1]")
   ("Affine",                                          m_Affine,                                         false, "Enable affine prediction (0:off, 1:on)  [default: off]")
   ("AffineType",                                      m_AffineType,                                      true,  "Enable affine type prediction (0:off, 1:on)  [default: on]" )
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  ("AltCost",                                         m_useAltCost,                                      true, "Enable alternating cost function based on parity of merge index (0:off, 1:on)  [default: on]")
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   ("AffineTM",                                        m_useAffineTM,                                     true, "Enable TM-based subblock motion refinement (0:off, 1:on)  [default: on]")
 #if JVET_AG0276_NLIC
@@ -1349,6 +1358,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AH0209_PDP
   ("PDP",                                            m_pdp,                                             true, "PDP (0:off, 1:on)  [default: on]" )
+#endif
+#if JVET_AI0183_MVP_EXTENSION
+  ("ScaleMvExtTmvp",                                  m_scaledMvExtTmvp,                                 true, "ScaleMvExtTmvp" )
+  ("ScaleMvExtBiTmvp",                                m_scaledMvExtBiTmvp,                               true, "ScaleMvExtBiTmvp" )
 #endif
   // ADD_NEW_TOOL : (encoder app) add parsing parameters here
   ( "VirtualBoundariesPresentInSPSFlag",              m_virtualBoundariesPresentFlag,                    true, "Virtual Boundary position information is signalled in SPS or PH (1:SPS, 0:PH)  [default: on]" )
@@ -5609,6 +5622,12 @@ void EncAppCfg::xPrintParameter()
 #else
     msg( VERBOSE, "LFNST:%d ", m_LFNST );
 #endif
+#if JVET_AI0050_INTER_MTSS
+    msg( VERBOSE, "InterMTSS:%d ", m_useInterMTSS );
+#endif
+#if JVET_AI0050_SBT_LFNST
+    msg( VERBOSE, "SbtLFNST:%d ", m_useSbtLFNST );
+#endif
     msg( VERBOSE, "MMVD:%d ", m_MMVD);
     msg( VERBOSE, "Affine:%d ", m_Affine );
     if ( m_Affine )
@@ -6014,6 +6033,10 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS
   msg( VERBOSE, ") " );
+#endif
+#if JVET_AI0183_MVP_EXTENSION
+  msg( VERBOSE, "ScaleMvExtTmvp:%d ", m_scaledMvExtTmvp );
+  msg( VERBOSE, "ScaleMvExtBiTmvp:%d ", m_scaledMvExtBiTmvp );
 #endif
 
   // transform and coefficient coding

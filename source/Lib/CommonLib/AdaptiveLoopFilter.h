@@ -238,15 +238,31 @@ public:
   template<AlfFilterType filtTypeCcAlf>
 #if JVET_AF0197_LUMA_RESIDUAL_TAP_IN_CCALF
 #if JVET_AH0057_CCALF_COEFF_PRECISION
-  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const CPelUnitBuf& resiSrc, const Pel clippingValues[4], const int coeffPrec );
+  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const CPelUnitBuf& resiSrc, const Pel clippingValues[4], const int coeffPrec 
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSAOSrc
+#endif
+  );
 #else
-  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const CPelUnitBuf& resiSrc, const Pel clippingValues[4] );
+  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const CPelUnitBuf& resiSrc, const Pel clippingValues[4] 
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSAOSrc
+#endif
+  );
 #endif
 #else
 #if JVET_AH0057_CCALF_COEFF_PRECISION
-  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const int coeffPrec);
+  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const int coeffPrec
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSAOSrc
+#endif
+  );
 #else
-  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs);
+  static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSAOSrc
+#endif
+  );
 #endif
 #endif
 #else
@@ -313,15 +329,31 @@ public:
 #endif
 #if JVET_AF0197_LUMA_RESIDUAL_TAP_IN_CCALF
 #if JVET_AH0057_CCALF_COEFF_PRECISION
-  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const CPelUnitBuf &resiSrc, const Pel clippingValues[4], const int coeffPrec );
+  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const CPelUnitBuf &resiSrc, const Pel clippingValues[4], const int coeffPrec 
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSrcSAO
+#endif
+    );
 #else
-  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const CPelUnitBuf &resiSrc, const Pel clippingValues[4] );
+  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const CPelUnitBuf &resiSrc, const Pel clippingValues[4] 
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSrcSAO
+#endif
+    );
 #endif
 #else
 #if JVET_AH0057_CCALF_COEFF_PRECISION
-  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const int coeffPrec);
+  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const int coeffPrec
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSrcSAO
+#endif
+    );
 #else
-  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs);
+  void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+    , const CPelUnitBuf& recSrcSAO
+#endif
+    );
 #endif
 #endif
   template<AlfFilterType filtType>
@@ -400,6 +432,19 @@ public:
     , char coeffBits
 #endif
   );
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  void    alfAddCorrect( AlfClassifier** classifier, const PelUnitBuf& recDst, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blk, const ComponentID compId, char coeffBits, int* idxCorr );
+  void    alfAddCorrectChroma( CodingStructure& cs, PelUnitBuf& tmpYuv_recSAO );
+  void    setAlfScaleMode( const int mode );
+  int     getScaleCorrInt   ( const int s );
+  double  getScaleCorrDouble( const int s );
+  void    storeAlfScalePrev( CodingStructure& cs, Slice& slice );
+  void    backupAlfScalePrev( std::vector<int> (&alfScalePrevBckup)[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA] ) const;
+  void    restoreAlfScalePrev( const std::vector<int> (&alfScalePrevBckup)[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA] );
+  void    getAlfScalePrev( CodingStructure& cs, Slice& slice );
+  std::vector<int>&  getAlfScalePrev( const int apsIdx, const int alt ) { return m_idxCorrPrev[apsIdx][alt]; }
+  void    resetAlfScalePrev( Slice& slice );
+#endif
   void (*m_filter9x9Blk)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
                          , Pel ***fixedFilterResultsPerCtu, bool isFixedFilterPaddedPerCtu
@@ -802,6 +847,9 @@ protected:
   uint8_t*                     m_ctuAlternative[MAX_NUM_COMPONENT];
   PelStorage                   m_tempBuf;
   PelStorage                   m_tempBuf2;
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  PelStorage                   m_tempBuf3;
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
   PelStorage                   m_tempBufBeforeDb;
   PelStorage                   m_tempBufBeforeDb2;
@@ -809,6 +857,10 @@ protected:
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   PelStorage                   m_tempBufResi;
   PelStorage                   m_tempBufResi2;
+#endif
+#if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+  PelStorage                   m_tempBufSAO;
+  PelStorage                   m_tempBufSAO2;
 #endif
   int                          m_inputBitDepth[MAX_NUM_CHANNEL_TYPE];
   int                          m_picWidth;
@@ -831,6 +883,14 @@ protected:
 #endif
   ChromaFormat                 m_chromaFormat;
   ClpRngs                      m_clpRngs;
+
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  int                          m_nbCorr;
+  std::vector<int>             m_scaleCorr;
+  int                          m_nbCorrChroma;
+  std::vector<int>             m_scaleCorrChroma;
+  std::vector<int>             m_idxCorrPrev[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA];
+#endif
 };
 
 #endif

@@ -49,6 +49,7 @@
 #include "HRD.h"
 #include <unordered_map>
 #include "AlfParameters.h"
+#include "Unit.h"
 #if MULTI_HYP_PRED
 #include "MotionInfo.h"
 #endif
@@ -1623,7 +1624,17 @@ private:
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   bool              m_enableMaxMttIncrease;
 #endif
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  int               m_alfScaleMode;
+  bool              m_alfScalePrevEnabled;
+#endif
   bool              m_SBT;
+#if JVET_AI0050_INTER_MTSS
+  bool              m_interMTSS; 
+#endif
+#if JVET_AI0050_SBT_LFNST
+  bool              m_sbtLFNST;
+#endif
   bool              m_ISP;
   ChromaFormat      m_chromaFormatIdc;
 #if !JVET_S0052_RM_SEPARATE_COLOUR_PLANE
@@ -1791,6 +1802,9 @@ private:
   bool              m_SMVD;
   bool              m_Affine;
   bool              m_AffineType;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool              m_useAltCost;
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool              m_useAffineTM;
 #if JVET_AG0276_NLIC
@@ -1973,6 +1987,11 @@ private:
 
 #if JVET_AH0209_PDP
   bool              m_pdp;
+#endif
+
+#if JVET_AI0183_MVP_EXTENSION
+  bool              m_scaledMvExtTmvp;
+  bool              m_scaledMvExtBiTmvp;
 #endif
 
 public:
@@ -2460,6 +2479,14 @@ void                    setCCALFEnabledFlag( bool b )                           
   unsigned                getPLTMode() const                                                              { return m_PLTMode; }
   void                    setUseSBT( bool b )                                                             { m_SBT = b; }
   bool                    getUseSBT() const                                                               { return m_SBT; }
+#if JVET_AI0050_INTER_MTSS
+  void                    setUseInterMTSS(bool b)                                                         { m_interMTSS = b; }
+  bool                    getUseInterMTSS() const                                                         { return m_interMTSS; }
+#endif
+#if JVET_AI0050_SBT_LFNST
+  void                    setUseSbtLFNST(bool b)                                                          { m_sbtLFNST = b; }
+  bool                    getUseSbtLFNST() const                                                          { return m_sbtLFNST; }
+#endif
   void                    setUseISP( bool b )                                                             { m_ISP = b; }
   bool                    getUseISP() const                                                               { return m_ISP; }
 
@@ -2593,6 +2620,13 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getEnableMaxMttIncrease()                                  const     { return m_enableMaxMttIncrease; }
   void      setEnableMaxMttIncrease(bool b)                                      { m_enableMaxMttIncrease = b; }
 #endif
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  int       getAlfScaleMode    ()                                      const     { return m_alfScaleMode; }
+  void      setAlfScaleMode    ( int m )                                         { m_alfScaleMode = m; }
+  int       getAlfScaleNbCorr  ()                                      const     { return ( m_alfScaleMode ? ((m_alfScaleMode == 1) ? 5 : 9) : 0 ); }
+  bool      getAlfScalePrevEnabled()                                   const     { return m_alfScalePrevEnabled; }
+  void      setAlfScalePrevEnabled(bool b)                                       { m_alfScalePrevEnabled = b;    }
+#endif
   void      setUseCiip         ( bool b )                                        { m_ciip = b; }
   bool      getUseCiip         ()                                      const     { return m_ciip; }
 #if JVET_X0141_CIIP_TIMD_TM && JVET_W0123_TIMD_FUSION
@@ -2658,6 +2692,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   void      setUseFastSubTmvp     ( bool b )                                        { m_fastSubTmvp = b; }
   bool      getUseFastSubTmvp     ()                                      const     { return m_fastSubTmvp; }
+#endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  void      setUseAltCost         ( bool b )                                        { m_useAltCost = b; }
+  bool      getUseAltCost         ()                                      const     { return m_useAltCost; }
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   void      setUseAffineTM        ( bool b )                                        { m_useAffineTM = b; }
@@ -2730,6 +2768,13 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   void     setUseInterSliceSeparateTree     ( bool b )                              { m_interSliceSeparateTree = b;    }
   bool     getInterSliceSeparateTreeEnabled ()                            const     { return m_interSliceSeparateTree; }
+#endif
+
+#if JVET_AI0183_MVP_EXTENSION
+  void      setConfigScaledMvExtTmvp( bool n )                     { m_scaledMvExtTmvp = n; }
+  bool      getConfigScaledMvExtTmvp()                       const { return m_scaledMvExtTmvp; }
+  void      setConfigScaledMvExtBiTmvp( bool n )                   { m_scaledMvExtBiTmvp = n; }
+  bool      getConfigScaledMvExtBiTmvp()                     const { return m_scaledMvExtBiTmvp; }
 #endif
 };
 
@@ -3714,6 +3759,10 @@ private:
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   std::vector<int>           m_implicitRefIdx[2][NUM_REF_PIC_LIST_01][NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+#if JVET_AI0183_MVP_EXTENSION
+  std::vector<int>           m_implicitRefIdx2nd[2][NUM_REF_PIC_LIST_01][NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+  std::vector<int>           m_implicitRefIdx3rd[2][NUM_REF_PIC_LIST_01][NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+#endif
 #else
   std::vector<int>           m_implicitRefIdx[NUM_REF_PIC_LIST_01][NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
 #endif
@@ -3779,6 +3828,11 @@ private:
   int                        m_tileGroupCcAlfCrApsId;
   bool                       m_disableSATDForRd;
   bool                       m_isLossless;
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  bool                       m_useScaleAlf; // at least one APS uses alf-residuals-rescaling
+  ScaleAlf                   m_scaleAlfParam[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA];
+  int                        m_idxCorrChroma[3];
+#endif
 
 #if JVET_AG0145_ADAPTIVE_CLIPPING
   int                        m_lumaPelMax;
@@ -3830,6 +3884,48 @@ public:
 
   void                        setAlfAPSs(APS** apss)                                 { memcpy(m_alfApss, apss, sizeof(m_alfApss));                   }
   APS**                       getAlfAPSs()                                           { return m_alfApss;                                             }
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  bool                        getUseAlfScale()                                       { return m_useScaleAlf; }
+  void                        setUseAlfScale( bool s )                               { m_useScaleAlf = s; }
+  void                        resetAlfScale()
+  {
+    for (int i = 0; i < ALF_CTB_MAX_NUM_APS; i++)
+    {
+      for (int j = 0; j < MAX_NUM_ALF_ALTERNATIVES_LUMA; j++)
+      {
+        m_scaleAlfParam[i][j].reset();
+      }
+    }
+  }
+  ScaleAlf*                   getAlfScalePtr( const int apsId, const int altNum )   { return &m_scaleAlfParam[m_tileGroupLumaApsId[apsId]][altNum]; }
+  ScaleAlf&                   getAlfScale( const int apsId, const int altNum )      { return m_scaleAlfParam[m_tileGroupLumaApsId[apsId]][altNum];  }
+  void  copyAlfScale( Slice& slice )
+  {
+    m_useScaleAlf = slice.m_useScaleAlf;
+    for (int i = 0; i < ALF_CTB_MAX_NUM_APS; i++)
+    {
+      for (int j = 0; j < MAX_NUM_ALF_ALTERNATIVES_LUMA; j++)
+      {
+        ScaleAlf& scaleAlfParam = slice.m_scaleAlfParam[i][j];
+        if ( scaleAlfParam.initDone ) 
+        {
+          scaleAlfParam.setMinMax( slice.getLumaPelMin(), slice.getLumaPelMax() );
+          scaleAlfParam.setGroupSize( scaleAlfParam.groupShift );
+          scaleAlfParam.fillIdxCorr();
+
+          m_scaleAlfParam[i][j] = scaleAlfParam;
+        }
+      }
+    }
+    for (int c = 0; c < MAX_NUM_COMPONENT; c++)
+    {
+      m_idxCorrChroma[c] = slice.m_idxCorrChroma[c];
+    }
+  }
+  void                        setAlfScaleChroma( int compIdx, const int s )          { m_idxCorrChroma[compIdx] = s;    }
+  int                         getAlfScaleChroma( int compIdx ) const                 { return m_idxCorrChroma[compIdx]; }
+#endif
+
   void                        setSaoEnabledFlag(ChannelType chType, bool s)          {m_saoEnabledFlag[chType] =s;                                   }
   bool                        getSaoEnabledFlag(ChannelType chType) const            { return m_saoEnabledFlag[chType];                              }
 #if JVET_W0066_CCSAO
@@ -3940,11 +4036,52 @@ public:
 
       m_implicitRefIdx[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].resize(numSlices);
       std::fill(m_implicitRefIdx[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].begin(), m_implicitRefIdx[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].end(), -1);
+#if JVET_AI0183_MVP_EXTENSION
+      m_implicitRefIdx2nd[col][REF_PIC_LIST_0][REF_PIC_LIST_0][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx2nd[col][REF_PIC_LIST_0][REF_PIC_LIST_0][refIdx].begin(),
+                m_implicitRefIdx2nd[col][REF_PIC_LIST_0][REF_PIC_LIST_0][refIdx].end(), -1);
+
+      m_implicitRefIdx2nd[col][REF_PIC_LIST_0][REF_PIC_LIST_1][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx2nd[col][REF_PIC_LIST_0][REF_PIC_LIST_1][refIdx].begin(),
+                m_implicitRefIdx2nd[col][REF_PIC_LIST_0][REF_PIC_LIST_1][refIdx].end(), -1);
+
+      m_implicitRefIdx2nd[col][REF_PIC_LIST_1][REF_PIC_LIST_0][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx2nd[col][REF_PIC_LIST_1][REF_PIC_LIST_0][refIdx].begin(),
+                m_implicitRefIdx2nd[col][REF_PIC_LIST_1][REF_PIC_LIST_0][refIdx].end(), -1);
+
+      m_implicitRefIdx2nd[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx2nd[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].begin(),
+                m_implicitRefIdx2nd[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].end(), -1);
+      m_implicitRefIdx3rd[col][REF_PIC_LIST_0][REF_PIC_LIST_0][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx3rd[col][REF_PIC_LIST_0][REF_PIC_LIST_0][refIdx].begin(),
+                m_implicitRefIdx3rd[col][REF_PIC_LIST_0][REF_PIC_LIST_0][refIdx].end(), -1);
+
+      m_implicitRefIdx3rd[col][REF_PIC_LIST_0][REF_PIC_LIST_1][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx3rd[col][REF_PIC_LIST_0][REF_PIC_LIST_1][refIdx].begin(),
+                m_implicitRefIdx3rd[col][REF_PIC_LIST_0][REF_PIC_LIST_1][refIdx].end(), -1);
+
+      m_implicitRefIdx3rd[col][REF_PIC_LIST_1][REF_PIC_LIST_0][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx3rd[col][REF_PIC_LIST_1][REF_PIC_LIST_0][refIdx].begin(),
+                m_implicitRefIdx3rd[col][REF_PIC_LIST_1][REF_PIC_LIST_0][refIdx].end(), -1);
+
+      m_implicitRefIdx3rd[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].resize(numSlices);
+      std::fill(m_implicitRefIdx3rd[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].begin(),
+                m_implicitRefIdx3rd[col][REF_PIC_LIST_1][REF_PIC_LIST_1][refIdx].end(), -1);
+#endif
     }
   }
   void                        setImRefIdx(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int curRefIdx, int col) { m_implicitRefIdx[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx] = curRefIdx; }
   int                         getImRefIdx(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int col = 0) { return m_implicitRefIdx[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx]; }
   int                         getImRefIdx(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int col = 0) const { return m_implicitRefIdx[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx]; }
+#if JVET_AI0183_MVP_EXTENSION
+  void                        setImRefIdx2nd(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int curRefIdx, int col) { m_implicitRefIdx2nd[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx] = curRefIdx; }
+  int                         getImRefIdx2nd(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int col = 0) { return m_implicitRefIdx2nd[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx]; }
+  int                         getImRefIdx2nd(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int col = 0) const { return m_implicitRefIdx2nd[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx]; }
+  void                        setImRefIdx3rd(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int curRefIdx, int col) { m_implicitRefIdx3rd[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx] = curRefIdx; }
+  int                         getImRefIdx3rd(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int col = 0) { return m_implicitRefIdx3rd[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx]; }
+  int                         getImRefIdx3rd(int sliceIdx, RefPicList colRefPicList, RefPicList curRefPicList, int colRefIdx, int col = 0) const { return m_implicitRefIdx3rd[col][colRefPicList][curRefPicList][colRefIdx][sliceIdx]; }
+#endif
+
 #else
   void resizeImBuf(int numSlices)
   {
@@ -4045,6 +4182,13 @@ public:
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
   void                        generateEqualPocDist();
   bool                        getPairEqualPocDist(int refIdx0, int refIdx1) const { return m_pairEqualPocDist[refIdx0][refIdx1]; };
+#endif
+#if JVET_AI0183_MVP_EXTENSION
+  void                        generateIntersectingMv();
+  void                        getPuIntersectingMv(Position topLeftPuPos, Size puSize, IntersectingMvData* resultIntersectingMvDataPtr);
+  bool                        getIntersectingPositionMv(Position& intersectingScaledPosTL, Mv& srcIntersectingMv, Mv& dstIntersectingMv, Position srcScaledPosTL,
+                                                        Mv srcRefMv, Picture* srcRefPic, Picture* dstRefPic, const Position boundaryPosMin, const Position boundaryPosMax, const int scaleFactorToCurrent);
+  bool                        checkValidIntersectingMv(IntersectingMvData* curIntersectingMvDataBufPtr, RefPicList srcRefListIdx, int8_t srcRefIdx, Mv srcMv, RefPicList dstRefListIdx, int8_t dstRefIdx, Mv dstMv);
 #endif
 #if MULTI_HYP_PRED
   void                        setMultiHypRefPicList();

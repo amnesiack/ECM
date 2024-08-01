@@ -216,6 +216,7 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
 
     for( int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++ )
     {
+
       if (cs.slice->getTileGroupAlfEnabledFlag((ComponentID)compIdx))
       {
         uint8_t* ctbAlfFlag = cs.slice->getPic()->getAlfCtuEnableFlag( compIdx );
@@ -9218,7 +9219,9 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
 #else
     || (cu.isSepTree() && cu.chType == CHANNEL_TYPE_CHROMA && std::min(cu.blocks[1].width, cu.blocks[1].height) < 4)
 #endif
-#if JVET_AG0061_INTER_LFNST_NSPT
+#if JVET_AG0061_INTER_LFNST_NSPT && JVET_AI0050_SBT_LFNST
+    || ( !cu.cs->sps->getUseSbtLFNST() && cu.sbtInfo && CU::isInter( cu ) )
+#elif JVET_AG0061_INTER_LFNST_NSPT
     || ( cu.sbtInfo && CU::isInter( cu ) ) //JVET-AG0208 (EE2-related: On LFNST/NSPT index signalling)
 #endif
     || (cu.blocks[chIdx].lumaSize().width > cu.cs->sps->getMaxTbSize()
@@ -9294,6 +9297,12 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
       }
     }
     cu.lfnstIdx = idxLFNST;
+#if JVET_AI0050_INTER_MTSS
+    if (cu.cs->sps->getUseInterMTSS() && cu.lfnstIdx > 0 && cu.geoFlag)
+    {
+      cu.lfnstIntra = m_BinDecoder.decodeBin(Ctx::InterLFNSTIntraIdx());
+    }
+#endif
   }
   else
   {

@@ -818,12 +818,21 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setLFNST                                             ( m_LFNST );
 #endif
   m_cEncLib.setUseFastLFNST                                      ( m_useFastLFNST );
+#if JVET_AI0050_INTER_MTSS
+  m_cEncLib.setUseInterMTSS                                      ( m_useInterMTSS );
+#endif
+#if JVET_AI0050_SBT_LFNST
+  m_cEncLib.setUseSBTLFNST                                       ( m_useSbtLFNST );
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   m_cEncLib.setUseFastInterLFNST                                 ( m_useFastInterLFNST );
 #endif
-  m_cEncLib.setSbTmvpEnabledFlag(m_sbTmvpEnableFlag);
+  m_cEncLib.setSbTmvpEnabledFlag                                 ( m_sbTmvpEnableFlag );
   m_cEncLib.setAffine                                            ( m_Affine );
   m_cEncLib.setAffineType                                        ( m_AffineType );
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  m_cEncLib.setUseAltCost                                        ( m_useAltCost );
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   m_cEncLib.setUseAffineTM                                       ( m_useAffineTM );
 #if JVET_AG0276_NLIC
@@ -1100,6 +1109,10 @@ void EncApp::xInitLibCfg()
 #endif
 #if JVET_AH0209_PDP
   m_cEncLib.setUsePDP                                           ( m_pdp );
+#endif
+#if JVET_AI0183_MVP_EXTENSION
+  m_cEncLib.setConfigScaledMvExtTmvp                             ( m_scaledMvExtTmvp );
+  m_cEncLib.setConfigScaledMvExtBiTmvp                           ( m_scaledMvExtBiTmvp );
 #endif
 
   // ADD_NEW_TOOL : (encoder app) add setting of tool enabling flags and associated parameters here

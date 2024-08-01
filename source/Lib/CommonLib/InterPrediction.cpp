@@ -13315,7 +13315,11 @@ void InterPrediction::adjustMergeCandidatesInOneCandidateGroupSubTMVP(Prediction
 #endif
 #if JVET_W0090_ARMC_TM
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
+#if JVET_AI0187_TMVP_FOR_CMVP
+void InterPrediction::adjustMergeCandidatesInOneCandidateGroup(PredictionUnit &pu, MergeCtx& mvpMergeCandCtx, int numRetrievedMergeCand, int mrgCandIdx, bool ReduceCandsForSimilarTMCost)
+#else
 void InterPrediction::adjustMergeCandidatesInOneCandidateGroup(PredictionUnit &pu, MergeCtx& mvpMergeCandCtx, int numRetrievedMergeCand, int mrgCandIdx)
+#endif
 {
   if (mvpMergeCandCtx.numValidMergeCand <= 1)
   {
@@ -13324,10 +13328,17 @@ void InterPrediction::adjustMergeCandidatesInOneCandidateGroup(PredictionUnit &p
 
   const int numCandInCategory = std::min(numRetrievedMergeCand, mvpMergeCandCtx.numValidMergeCand);
 
+#if JVET_AI0187_TMVP_FOR_CMVP
+  uint32_t rdCandList[NUM_MERGE_CANDS];
+  Distortion candCostList[NUM_MERGE_CANDS];
+
+  for (uint32_t j = 0; j < NUM_MERGE_CANDS; j++)
+#else
   uint32_t rdCandList[MRG_MAX_NUM_CANDS];
   Distortion candCostList[MRG_MAX_NUM_CANDS];
 
   for (uint32_t j = 0; j < MRG_MAX_NUM_CANDS; j++)
+#endif
   {
     rdCandList[j] = j;
     candCostList[j] = MAX_UINT;
@@ -13340,6 +13351,29 @@ void InterPrediction::adjustMergeCandidatesInOneCandidateGroup(PredictionUnit &p
 
   int nWidth = pu.lumaSize().width;
   int nHeight = pu.lumaSize().height;
+
+#if JVET_AI0187_TMVP_FOR_CMVP
+  bool CheckLic = true;
+  if (!pu.cu->slice->getCheckLDB())
+  {
+    int tplSize = 0;
+    if (m_bAMLTemplateAvailabe[0])
+    {
+      tplSize += nWidth;
+    }
+
+    if (m_bAMLTemplateAvailabe[1])
+    {
+      tplSize += nHeight;
+    }
+    int   ctuSize = pu.cs->slice->getSPS()->getCTUSize();
+    int thres = (256 == ctuSize) ? 32 : 16;
+    if (tplSize < thres)
+    {
+      CheckLic = false;
+    }
+  }
+#endif
 
   auto origMergeIdx = pu.mergeIdx;
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
@@ -13364,6 +13398,64 @@ void InterPrediction::adjustMergeCandidatesInOneCandidateGroup(PredictionUnit &p
 
       getBlkAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft);
 
+#if JVET_AI0187_TMVP_FOR_CMVP
+      if (ReduceCandsForSimilarTMCost && CheckLic && mvpMergeCandCtx.interDirNeighbours[uiMergeCand] != 3)
+      {
+        Distortion uiNoLICCost = MAX_UINT64;
+        Distortion uiBestCost = MAX_UINT64;
+        Distortion scaledCost = MAX_UINT64;
+        bool bestLICFlag = false;
+        for (int idx = 0; idx < 2; idx++)
+        {
+          bool licFlag = (idx == 0) ? false : true;
+#if INTER_LIC
+          uiCost = 0;
+          cDistParam.useMR = licFlag;
+#endif
+          if (m_bAMLTemplateAvailabe[0])
+          {
+            m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
+
+            uiCost += cDistParam.distFunc(cDistParam);
+          }
+
+          if (m_bAMLTemplateAvailabe[1])
+          {
+            m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
+
+            uiCost += cDistParam.distFunc(cDistParam);
+          }
+
+          if (licFlag == false)
+          {
+            uiNoLICCost = uiCost;
+            if (pu.cu->slice->getCheckLDB())
+            {
+              scaledCost = (uiCost >> 1) + (uiCost >> 4);
+            }
+            else
+            {
+              scaledCost = (uiCost >> 1);
+            }
+          }
+          else
+          {
+            scaledCost = uiCost;
+          }
+
+          if (scaledCost < uiBestCost)
+          {
+            uiBestCost = scaledCost;
+            bestLICFlag = licFlag;
+          }
+        }
+        uiCost = uiNoLICCost;
+        mvpMergeCandCtx.licFlags[uiMergeCand] = bestLICFlag;
+      }
+      else
+      {
+        cDistParam.useMR = false;
+#endif
       if (m_bAMLTemplateAvailabe[0])
       {
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
@@ -13377,15 +13469,77 @@ void InterPrediction::adjustMergeCandidatesInOneCandidateGroup(PredictionUnit &p
 
         uiCost += cDistParam.distFunc(cDistParam);
       }
+#if JVET_AI0187_TMVP_FOR_CMVP
+    }
+#endif
     }
     else
     {
       uiCost = mvpMergeCandCtx.candCost[uiMergeCand];
     }
 
-    updateCandList(uiMergeCand, uiCost, numCandInCategory, rdCandList, candCostList);
+#if JVET_AI0187_TMVP_FOR_CMVP
+    if (ReduceCandsForSimilarTMCost)
+    {
+      updateCandList(uiMergeCand, uiCost, mvpMergeCandCtx.numValidMergeCand, rdCandList, candCostList);
+    }
+    else
+    {
+#endif
+      updateCandList(uiMergeCand, uiCost, numCandInCategory, rdCandList, candCostList);
+#if JVET_AI0187_TMVP_FOR_CMVP
+    }
+#endif
   }
   pu.mergeIdx = origMergeIdx;
+#if JVET_AI0187_TMVP_FOR_CMVP
+  if (ReduceCandsForSimilarTMCost)
+  {
+    Distortion cost = pu.cs->slice->getCostForARMC();
+    uint32_t   candToBeRemoved = MRG_MAX_NUM_CANDS;
+    Distortion min = MAX_UINT64;
+    for (int sizeCandList = mvpMergeCandCtx.numValidMergeCand; sizeCandList > numRetrievedMergeCand; sizeCandList--)
+    {
+      min = MAX_UINT64;
+#if TM_MRG
+      if (pu.tmMergeFlag
+#if JVET_AA0132_CONFIGURABLE_TM_TOOLS
+        && pu.cs->sps->getUseTMMrgMode()
+#endif
+        )
+      {
+        candToBeRemoved = 0;
+        min = candCostList[0];
+      }
+#endif
+      for (uint32_t uiMergeCand = 0; uiMergeCand < sizeCandList - 1; ++uiMergeCand)
+      {
+        if (min > abs((int)(candCostList[uiMergeCand + 1] - candCostList[uiMergeCand])))
+        {
+          min = abs((int)(candCostList[uiMergeCand + 1] - candCostList[uiMergeCand]));
+          candToBeRemoved = uiMergeCand + 1;
+        }
+      }
+      if (min < cost)
+      {
+        uint32_t candToBeReplaced = sizeCandList - 1;
+        uint32_t   rdCand = rdCandList[candToBeRemoved];
+        Distortion candCost = candCostList[(candToBeRemoved)];
+        for (int ui = candToBeRemoved; ui < (candToBeReplaced > sizeCandList - 1 ? sizeCandList - 1 : candToBeReplaced); ui++)
+        {
+          candCostList[ui] = candCostList[(ui + 1)];
+          rdCandList[ui] = rdCandList[(ui + 1)];
+        }
+        candCostList[candToBeReplaced] = candCost;
+        rdCandList[candToBeReplaced] = rdCand;
+      }
+      else
+      {
+        break;
+      }
+    }
+  }
+#endif
 
   updateCandInOneCandidateGroup(mvpMergeCandCtx, rdCandList, numCandInCategory);
 
@@ -14101,6 +14255,19 @@ void InterPrediction::adjustMergeCandidatesLicFlag(PredictionUnit& pu, MergeCtx&
     {
       continue;
     }
+#if JVET_AI0187_TMVP_FOR_CMVP
+    if (mrgCtx.candtype[uiMergeCand] == 2)
+    {
+      pu.cu->licFlag = mrgCtx.licFlags[uiMergeCand];
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+      if (!pu.cu->licFlag)
+      {
+        mrgCtx.setDefaultLICParamToCtx(uiMergeCand);
+      }
+#endif
+      continue;
+    }
+#endif
     mrgCtx.setMergeInfo(pu, uiMergeCand);
     origLICFlag = pu.cu->licFlag;
     pu.cu->licFlag = false;
@@ -15252,6 +15419,9 @@ void InterPrediction::updateCandInMultiCandidateGroups(uint32_t* rdCandList, uin
 #if MULTI_HYP_PRED
     mrgCtx.addHypNeighbours[uiMergeCand] = srcMrgCtx.addHypNeighbours[srcMrgIdx];
 #endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtx.candtype[uiMergeCand] = srcMrgCtx.candtype[uiMergeCand];
+#endif
   }
 }
 #else
@@ -15368,6 +15538,9 @@ void  InterPrediction::updateCandInTwoCandidateGroups(MergeCtx& mrgCtx, uint32_t
 #if MULTI_HYP_PRED
     mrgCtxTmp.addHypNeighbours[uiMergeCand] = mrgCtx.addHypNeighbours[uiMergeCand];
 #endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtxTmp.candtype[uiMergeCand] = mrgCtx.candtype[uiMergeCand];
+#endif
 
   }
   //update
@@ -15393,6 +15566,9 @@ void  InterPrediction::updateCandInTwoCandidateGroups(MergeCtx& mrgCtx, uint32_t
 #if MULTI_HYP_PRED
       mrgCtx.addHypNeighbours[uiMergeCand] = mrgCtx2.addHypNeighbours[rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand];
 #endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+      mrgCtx.candtype[uiMergeCand] = mrgCtx2.candtype[rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand];
+#endif
 
     }
     else
@@ -15414,6 +15590,9 @@ void  InterPrediction::updateCandInTwoCandidateGroups(MergeCtx& mrgCtx, uint32_t
 #endif
 #if MULTI_HYP_PRED
       mrgCtx.addHypNeighbours[uiMergeCand] = mrgCtxTmp.addHypNeighbours[rdCandList[uiMergeCand]];
+#endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+      mrgCtx.candtype[uiMergeCand] = mrgCtxTmp.candtype[rdCandList[uiMergeCand]];
 #endif
     }
   }
@@ -15443,6 +15622,9 @@ void  InterPrediction::updateCandInOneCandidateGroup(MergeCtx& mrgCtx, uint32_t*
 #if MULTI_HYP_PRED
     mrgCtxTmp.addHypNeighbours[uiMergeCand] = mrgCtx.addHypNeighbours[uiMergeCand];
 #endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtxTmp.candtype[uiMergeCand] = mrgCtx.candtype[uiMergeCand];
+#endif
   }
   //update
   for (uint32_t uiMergeCand = 0; uiMergeCand < numCandInCategory; uiMergeCand++)
@@ -15464,6 +15646,9 @@ void  InterPrediction::updateCandInOneCandidateGroup(MergeCtx& mrgCtx, uint32_t*
 #endif
 #if MULTI_HYP_PRED
     mrgCtx.addHypNeighbours[uiMergeCand] = mrgCtxTmp.addHypNeighbours[rdCandList[uiMergeCand]];
+#endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtx.candtype[uiMergeCand] = mrgCtxTmp.candtype[uiMergeCand];
 #endif
   }
 }
@@ -15688,6 +15873,9 @@ void  InterPrediction::updateCandInOneCandidateGroup(MergeCtx& mrgCtx, uint32_t*
 #if MULTI_HYP_PRED
     mrgCtxTmp.addHypNeighbours[uiMergeCand] = mrgCtx.addHypNeighbours[uiMergeCand];
 #endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtxTmp.candtype[uiMergeCand] = mrgCtx.candtype[uiMergeCand];
+#endif
     if (applyBDMVR)
     {
       applyBDMVRTmp[uiMergeCand] = applyBDMVR[uiMergeCand];
@@ -15713,6 +15901,9 @@ void  InterPrediction::updateCandInOneCandidateGroup(MergeCtx& mrgCtx, uint32_t*
 #endif
 #if MULTI_HYP_PRED
     mrgCtx.addHypNeighbours[uiMergeCand] = mrgCtxTmp.addHypNeighbours[rdCandList[uiMergeCand]];
+#endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtx.candtype[uiMergeCand] = mrgCtxTmp.candtype[uiMergeCand];
 #endif
     if (applyBDMVR)
     {
@@ -15901,6 +16092,9 @@ void  InterPrediction::updateCandInfo(MergeCtx& mrgCtx, uint32_t(*RdCandList)[MR
 #if MULTI_HYP_PRED
     mrgCtxTmp.addHypNeighbours[ui].clear();
 #endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtx.candtype[ui] = -1;
+#endif
   }
   for (uint32_t uiMergeCand = ((mrgCandIdx < 0) ? 0 : (mrgCandIdx / ADAPTIVE_SUB_GROUP_SIZE)*ADAPTIVE_SUB_GROUP_SIZE); uiMergeCand < (((mrgCandIdx < 0) || ((mrgCandIdx / ADAPTIVE_SUB_GROUP_SIZE + 1)*ADAPTIVE_SUB_GROUP_SIZE > mrgCtx.numValidMergeCand)) ? mrgCtx.numValidMergeCand : ((mrgCandIdx / ADAPTIVE_SUB_GROUP_SIZE + 1)*ADAPTIVE_SUB_GROUP_SIZE)); ++uiMergeCand)
   {
@@ -15927,6 +16121,9 @@ void  InterPrediction::updateCandInfo(MergeCtx& mrgCtx, uint32_t(*RdCandList)[MR
 #endif
 #if MULTI_HYP_PRED
     mrgCtxTmp.addHypNeighbours[uiMergeCand] = mrgCtx.addHypNeighbours[uiMergeCand];
+#endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtxTmp.candtype[uiMergeCand] = mrgCtx.candtype[uiMergeCand];
 #endif
   }
   //update
@@ -15958,6 +16155,9 @@ void  InterPrediction::updateCandInfo(MergeCtx& mrgCtx, uint32_t(*RdCandList)[MR
 #endif
 #if MULTI_HYP_PRED
     mrgCtx.addHypNeighbours  [uiMergeCand]            = mrgCtxTmp.addHypNeighbours  [srcCand];
+#endif
+#if JVET_AI0187_TMVP_FOR_CMVP
+    mrgCtx.candtype[uiMergeCand] = mrgCtxTmp.candtype[srcCand];
 #endif
 #else
     mrgCtx.bcwIdx[uiMergeCand] = mrgCtxTmp.bcwIdx[RdCandList[uiMergeCand / ADAPTIVE_SUB_GROUP_SIZE][uiMergeCand%ADAPTIVE_SUB_GROUP_SIZE]];
@@ -17036,7 +17236,11 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
   if (maxNumAffineMergeCand > 2)
   {
     Distortion cost = pu.cs->slice->getCostForARMC();
+#if JVET_AI0183_MVP_EXTENSION
+    uint32_t   candToBeRemoved = std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 1;
+#else
     uint32_t   candToBeRemoved = AFFINE_MRG_MAX_NUM_CANDS - 1;
+#endif
     Distortion min = MAX_UINT64;
 
     for (int sizeCandList = maxNumAffineMergeCand; sizeCandList > 1; sizeCandList--)
@@ -17050,7 +17254,11 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
           candToBeRemoved = uiMergeCand + 1;
         }
       }
+#if JVET_AI0183_MVP_EXTENSION
+      if (candToBeRemoved > std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 2)
+#else
       if (candToBeRemoved > AFFINE_MRG_MAX_NUM_CANDS - 2)
+#endif
       {
         continue;
       }
@@ -17058,7 +17266,11 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
       {
         uint32_t candToBeReplaced = sizeCandList - 1;
 
+#if JVET_AI0183_MVP_EXTENSION
+        for (uint32_t uiMergeCand = std::min( (int) (candToBeRemoved + 1), (int) (std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 1) );uiMergeCand < std::min((int)sizeCandList, (int)(std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 1)); ++uiMergeCand)
+#else
         for (uint32_t uiMergeCand = std::min( (int) (candToBeRemoved + 1), (int) (AFFINE_MRG_MAX_NUM_CANDS - 1) ); uiMergeCand < std::min((int)sizeCandList, (int)(AFFINE_MRG_MAX_NUM_CANDS - 1)); ++uiMergeCand)
+#endif
         {
           if (cost < abs((int)(candCostList[0][uiMergeCand] - candCostList[0][candToBeRemoved])))
           {
@@ -17109,7 +17321,11 @@ void  InterPrediction::updateAffineCandInfo(PredictionUnit &pu, AffineMergeCtx& 
 {
   AffineMergeCtx affMrgCtxTmp;
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
+#if JVET_AI0183_MVP_EXTENSION
+  const uint32_t maxNumAffineMergeCand = pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand() + ADDITIONAL_AFFINE_CAND_NUM + (pu.cs->slice->getCheckLDC() ? 0 : ADAPT_SBTMVP_CAND_NUM);
+#else
   const uint32_t maxNumAffineMergeCand = pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand() + ADDITIONAL_AFFINE_CAND_NUM;
+#endif
   const uint32_t outputListSize = pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand();
 #else
   const uint32_t maxNumAffineMergeCand = pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand();
@@ -17707,7 +17923,11 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
   if (maxNumAffineMergeCand > 2)
   {
     Distortion cost = pu.cs->slice->getCostForARMC();
+#if JVET_AI0183_MVP_EXTENSION
+    uint32_t   candToBeRemoved = std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 1;
+#else
     uint32_t   candToBeRemoved = AFFINE_MRG_MAX_NUM_CANDS - 1;
+#endif
     Distortion min = MAX_UINT64;
 
     for (int sizeCandList = maxNumAffineMergeCand; sizeCandList > 1; sizeCandList--)
@@ -17721,7 +17941,11 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
           candToBeRemoved = uiMergeCand + 1;
         }
       }
+#if JVET_AI0183_MVP_EXTENSION
+      if (candToBeRemoved > std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 2)
+#else
       if (candToBeRemoved > AFFINE_MRG_MAX_NUM_CANDS - 2)
+#endif
       {
         continue;
       }
@@ -17729,7 +17953,11 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
       {
         uint32_t candToBeReplaced = sizeCandList - 1;
 
+#if JVET_AI0183_MVP_EXTENSION
+        for (uint32_t uiMergeCand = std::min((int)(candToBeRemoved + 1), (int)(std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 1)); uiMergeCand < std::min((int)sizeCandList, (int)(std::min((uint32_t)AFFINE_MRG_MAX_NUM_CANDS, pu.cs->slice->getPicHeader()->getMaxNumAffineMergeCand()) - 1)); ++uiMergeCand)
+#else
         for (uint32_t uiMergeCand = std::min((int)(candToBeRemoved + 1), (int)(AFFINE_MRG_MAX_NUM_CANDS - 1)); uiMergeCand < std::min((int)sizeCandList, (int)(AFFINE_MRG_MAX_NUM_CANDS - 1)); ++uiMergeCand)
+#endif
         {
           if (cost < abs((int)(candCostList[uiMergeCand] - candCostList[candToBeRemoved])))
           {
@@ -23157,7 +23385,11 @@ Distortion InterPrediction::deriveTMMv2Pel(const PredictionUnit& pu, int step, b
   InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
     , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
   );
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  TplMatchingCtrl tplCtrl(pu, interRes, refPic, fillCurTpl, COMPONENT_Y, true, -1, maxSearchRounds, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, mv, (doSimilarityCheck ? &(otherMvf->mv) : nullptr), curBestCost);
+#else
   TplMatchingCtrl tplCtrl(pu, interRes, refPic, fillCurTpl, COMPONENT_Y, true, maxSearchRounds, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, mv, (doSimilarityCheck ? &(otherMvf->mv) : nullptr), curBestCost);
+#endif
   if (!tplCtrl.getTemplatePresentFlag())
   {
     return std::numeric_limits<Distortion>::max();
@@ -23312,7 +23544,11 @@ void InterPrediction::deriveTemplateLIC(TplMatchingCtrl& tplCtrl, RefPicList eRe
 #endif
 }
 #endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+Distortion InterPrediction::deriveTMMv(const PredictionUnit& pu, bool fillCurTpl, Distortion curBestCost, RefPicList eRefList, int refIdx, int maxSearchRounds, Mv& mv, const MvField* otherMvf, int mergeIdx)
+#else
 Distortion InterPrediction::deriveTMMv(const PredictionUnit& pu, bool fillCurTpl, Distortion curBestCost, RefPicList eRefList, int refIdx, int maxSearchRounds, Mv& mv, const MvField* otherMvf)
+#endif
 {
   CHECK(refIdx < 0, "Invalid reference index for TM");
   const CodingUnit& cu   = *pu.cu;
@@ -23341,7 +23577,11 @@ Distortion InterPrediction::deriveTMMv(const PredictionUnit& pu, bool fillCurTpl
   InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
                            ,  m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
   );
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  TplMatchingCtrl tplCtrl(pu, interRes, refPic, fillCurTpl, COMPONENT_Y, true, mergeIdx, maxSearchRounds, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, mv, (doSimilarityCheck ? &(otherMvf->mv) : nullptr), curBestCost);
+#else
   TplMatchingCtrl tplCtrl(pu, interRes, refPic, fillCurTpl, COMPONENT_Y, true, maxSearchRounds, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, mv, (doSimilarityCheck ? &(otherMvf->mv) : nullptr), curBestCost);
+#endif
   if (!tplCtrl.getTemplatePresentFlag())
   {
     return std::numeric_limits<Distortion>::max();
@@ -23510,7 +23750,11 @@ Distortion InterPrediction::deriveTMMv(const PredictionUnit& pu, bool fillCurTpl
 
 #if TM_MRG || (JVET_Z0084_IBC_TM && IBC_TM_MRG)
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+void InterPrediction::deriveTMMv(PredictionUnit& pu, Distortion* tmCost, int mergeIdx)
+#else
 void InterPrediction::deriveTMMv(PredictionUnit& pu, Distortion* tmCost)
+#endif
 #else
 void InterPrediction::deriveTMMv(PredictionUnit& pu)
 #endif
@@ -23530,7 +23774,11 @@ void InterPrediction::deriveTMMv(PredictionUnit& pu)
   {
     if (pu.interDir & (iRefList + 1))
     {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      minCostUni[iRefList] = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), (RefPicList)iRefList, pu.refIdx[iRefList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[iRefList], nullptr, mergeIdx);
+#else
       minCostUni[iRefList] = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), (RefPicList)iRefList, pu.refIdx[iRefList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[iRefList]);
+#endif
     }
   }
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
@@ -23541,13 +23789,21 @@ void InterPrediction::deriveTMMv(PredictionUnit& pu)
     {
       RefPicList eTargetPicList = (minCostUni[0] <= minCostUni[1]) ? REF_PIC_LIST_1 : REF_PIC_LIST_0;
       MvField    mvfBetterUni(pu.mv[1 - eTargetPicList], pu.refIdx[1 - eTargetPicList]);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      Distortion biCost = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], 0, pu.mv[eTargetPicList], &mvfBetterUni, mergeIdx);
+#else
       Distortion biCost = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], 0, pu.mv[eTargetPicList], &mvfBetterUni);
+#endif
 #if JVET_AE0091_HIGH_ACCURACY_TEMPLATE_MATCHING
       if ((biCost > (minCostUni[1 - eTargetPicList] + (minCostUni[1 - eTargetPicList] >> 3))) || !pu.cs->slice->getCheckLDC())
       {
         eTargetPicList = (minCostUni[0] <= minCostUni[1]) ? REF_PIC_LIST_0 : REF_PIC_LIST_1;
         MvField mvfBetterUni2nd(pu.mv[1 - eTargetPicList], pu.refIdx[1 - eTargetPicList]);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        biCost = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[eTargetPicList], &mvfBetterUni2nd, mergeIdx);
+#else
         biCost = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[eTargetPicList], &mvfBetterUni2nd);
+#endif
       }
 #endif
       *tmCost = biCost;
@@ -23576,13 +23832,21 @@ void InterPrediction::deriveTMMv(PredictionUnit& pu)
 
     RefPicList eTargetPicList = (minCostUni[0] <= minCostUni[1]) ? REF_PIC_LIST_1 : REF_PIC_LIST_0;
     MvField    mvfBetterUni(pu.mv[1 - eTargetPicList], pu.refIdx[1 - eTargetPicList]);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    Distortion minCostBi = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[eTargetPicList], &mvfBetterUni, mergeIdx);
+#else
     Distortion minCostBi = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[eTargetPicList], &mvfBetterUni);
+#endif
 #if JVET_AE0091_HIGH_ACCURACY_TEMPLATE_MATCHING
     if ((minCostBi > (minCostUni[1 - eTargetPicList] + (minCostUni[1 - eTargetPicList] >> 3))) || !pu.cs->slice->getCheckLDC())
     {
       eTargetPicList = (minCostUni[0] <= minCostUni[1]) ? REF_PIC_LIST_0 : REF_PIC_LIST_1;
       MvField mvfBetterUni2nd(pu.mv[1 - eTargetPicList], pu.refIdx[1 - eTargetPicList]);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      minCostBi = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[eTargetPicList], &mvfBetterUni2nd, mergeIdx);
+#else
       minCostBi = deriveTMMv(pu, true, std::numeric_limits<Distortion>::max(), eTargetPicList, pu.refIdx[eTargetPicList], TM_MAX_NUM_OF_ITERATIONS, pu.mv[eTargetPicList], &mvfBetterUni2nd);
+#endif
     }
 #endif
 
@@ -23616,6 +23880,9 @@ TplMatchingCtrl::TplMatchingCtrl( const PredictionUnit&     pu,
                                   const bool                fillCurTpl,
                                   const ComponentID         compID,
                                   const bool                useWeight,
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+                                  const int                 mergeIdx,
+#endif
                                   const int                 maxSearchRounds,
                                         Pel*                curTplAbove,
                                         Pel*                curTplLeft,
@@ -23638,6 +23905,9 @@ TplMatchingCtrl::TplMatchingCtrl( const PredictionUnit&     pu,
 , m_otherRefListMv  (otherRefListMv)
 , m_minCost         (curBestCost)
 , m_useWeight       (useWeight)
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+, m_mergeIdx        (mergeIdx)
+#endif
 , m_maxSearchRounds (maxSearchRounds)
 , m_compID          (compID)
 {
@@ -24932,6 +25202,21 @@ Distortion TplMatchingCtrl::xGetTempMatchError(const Mv& mv)
 
   // compute matching cost
   Distortion partSum = 0;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  if (m_mergeIdx != -1
+    && m_cu.cs->sps->getUseAltCost()
+    )
+  {
+    if (m_mergeIdx % 2 == 0)
+    {
+      m_useWeight = true;
+    }
+    else
+    {
+      m_useWeight = false;
+    }
+  }
+#endif
   if (m_useWeight)
   {
     DistParam cDistParam;
@@ -25148,8 +25433,29 @@ void InterPrediction::clearAmvpTmvpBuffer()
 
 #if MULTI_PASS_DMVR
 #if JVET_X0049_ADAPT_DMVR
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+bool InterPrediction::processBDMVRPU2Dir(PredictionUnit& pu, bool subPURefine[2], Mv(&finalMvDir)[2], int mergeIdx)
+#else
 bool InterPrediction::processBDMVRPU2Dir(PredictionUnit& pu, bool subPURefine[2], Mv(&finalMvDir)[2])
+#endif
 {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadmard = false;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    mergeIdx = mergeIdx % BM_MRG_MAX_NUM_CANDS;
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmard = true;
+    }
+    else
+    {
+      useHadmard = false;
+    }
+  }
+#endif
   const int lumaArea = pu.lumaSize().area();
   bool       bUseMR = lumaArea > 64;
 #if JVET_Y0089_DMVR_BCW
@@ -25161,7 +25467,11 @@ bool InterPrediction::processBDMVRPU2Dir(PredictionUnit& pu, bool subPURefine[2]
   Mv         mvInitial_PU[2] = { pu.mv[0], pu.mv[1] };
   Mv         mvFinal[2] = { pu.mv[0], pu.mv[1] };
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  Distortion initCost = xBDMVRGetMatchingError(pu, mvInitial_PU, bUseMR, useHadmard);
+#else
   Distortion initCost = xBDMVRGetMatchingError(pu, mvInitial_PU, bUseMR, false);
+#endif
   if (initCost < lumaArea)
   {
     subPURefine[0] = false;
@@ -25175,7 +25485,11 @@ bool InterPrediction::processBDMVRPU2Dir(PredictionUnit& pu, bool subPURefine[2]
   if (pu.cu->cs->pcv->isEncoder || (!pu.cu->cs->pcv->isEncoder && pu.bmDir == 1))
   {
 #endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    minCost = xBDMVRMvOneTemplateHPelSquareSearch<1>(mvFinal, initCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, useHadmard);
+#else
   minCost = xBDMVRMvOneTemplateHPelSquareSearch<1>(mvFinal, initCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, false);
+#endif
   subPURefine[0] = minCost >= lumaArea;
   finalMvDir[0] = mvFinal[0];
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
@@ -25188,7 +25502,11 @@ bool InterPrediction::processBDMVRPU2Dir(PredictionUnit& pu, bool subPURefine[2]
 #endif
   mvFinal[0] = mvInitial_PU[0];
   mvFinal[1] = mvInitial_PU[1];
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  minCost = xBDMVRMvOneTemplateHPelSquareSearch<2>(mvFinal, initCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, useHadmard);
+#else
   minCost = xBDMVRMvOneTemplateHPelSquareSearch<2>(mvFinal, initCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, false);
+#endif
   subPURefine[1] = minCost >= lumaArea;
   finalMvDir[1] = mvFinal[1];
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
@@ -25203,7 +25521,11 @@ static const int ACTIVITY_TH[MAX_QP + 1] =
 };
 #endif
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+void InterPrediction::processBDMVRSubPU(PredictionUnit& pu, bool subPURefine, int mergeIdx)
+#else
 void InterPrediction::processBDMVRSubPU(PredictionUnit& pu, bool subPURefine)
+#endif
 {
 
   if (!subPURefine)
@@ -25260,7 +25582,25 @@ void InterPrediction::processBDMVRSubPU(PredictionUnit& pu, bool subPURefine)
   PelUnitBuf predBuf[2] = { PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_0], BDMVR_BUF_STRIDE, dx, dy)),
     PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_1], BDMVR_BUF_STRIDE, dx, dy)) };
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadamard = true;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    mergeIdx = mergeIdx % BM_MRG_MAX_NUM_CANDS;
+    if (mergeIdx % 2 == 0)
+    {
+      useHadamard = true;
+    }
+    else
+    {
+      useHadamard = false;
+    }
+  }
+#else
   bool useHadamard = true;          // STAD cost function
+#endif
   m_pcRdCost->setDistParam(cDistParam, predBuf[0].Y(), predBuf[1].Y(), pu.cu->slice->clpRng(COMPONENT_Y).bd, COMPONENT_Y, useHadamard);
 
   // prepare buffer for pre-interpolaction 
@@ -25336,21 +25676,53 @@ void InterPrediction::processBDMVRSubPU(PredictionUnit& pu, bool subPURefine)
 #endif
       if (adaptRange)
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        if(useHadamard)
+        {
+#endif
         minCost = xBDMVRMvIntPelFullSearch<true, true>(mvOffset, minCost, mvInitial,
           maxSearchRound,
           adaptiveSearchRangeHor, adaptiveSearchRangeVer,
           pu.bmMergeFlag,
           earlyTerminateTh, cDistParam,
           pelBuffer, BDMVR_BUF_STRIDE);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        }
+        else
+        {
+          minCost = xBDMVRMvIntPelFullSearch<true, false>(mvOffset, minCost, mvInitial,
+            maxSearchRound,
+            adaptiveSearchRangeHor, adaptiveSearchRangeVer,
+            pu.bmMergeFlag,
+            earlyTerminateTh, cDistParam,
+            pelBuffer, BDMVR_BUF_STRIDE);
+        }
+#endif
       }
       else
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+          if (useHadamard)
+          {
+#endif
         minCost = xBDMVRMvIntPelFullSearch<false, true>(mvOffset, minCost, mvInitial,
           maxSearchRound,
           adaptiveSearchRangeHor, adaptiveSearchRangeVer,
           pu.bmMergeFlag,
           earlyTerminateTh, cDistParam,
           pelBuffer, BDMVR_BUF_STRIDE);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+          }
+          else
+          {
+            minCost = xBDMVRMvIntPelFullSearch<false, false>(mvOffset, minCost, mvInitial,
+              maxSearchRound,
+              adaptiveSearchRangeHor, adaptiveSearchRangeVer,
+              pu.bmMergeFlag,
+              earlyTerminateTh, cDistParam,
+              pelBuffer, BDMVR_BUF_STRIDE);
+          }
+#endif
       }
 #if JVET_AF0057
       if (checkDmvr)
@@ -25376,7 +25748,11 @@ void InterPrediction::processBDMVRSubPU(PredictionUnit& pu, bool subPURefine)
         if (minCost >= tmpCost)
         {
           minCost += tmpCost;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+          minCost = xBDMVRMvSquareSearch<true>(mvFinal, minCost/*std::numeric_limits<Distortion>::max()*/, subPu, mvInitial, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, false, useHadamard);
+#else
           minCost = xBDMVRMvSquareSearch<true>(mvFinal, minCost/*std::numeric_limits<Distortion>::max()*/, subPu, mvInitial, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, false, true);
+#endif
         }
       }
       else
@@ -25431,7 +25807,11 @@ void InterPrediction::processBDMVRSubPU(PredictionUnit& pu, bool subPURefine)
 #endif
 #if JVET_AB0112_AFFINE_DMVR
 #if JVET_AC0144_AFFINE_DMVR_REGRESSION
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+void InterPrediction::bmAffineInit(const PredictionUnit& pu, int mergeIdx)
+#else
 void InterPrediction::bmAffineInit(const PredictionUnit &pu)
+#endif
 {
   m_bmChFmt = pu.chromaFormat;
   m_bmClpRng = pu.cs->slice->clpRng(COMPONENT_Y);
@@ -25488,7 +25868,28 @@ void InterPrediction::bmAffineInit(const PredictionUnit &pu)
 
   bmInitAffineSubBlocks(puPos, width, height, dx, dy, mvScaleHor, mvScaleVer, deltaMvHorX, deltaMvHorY, deltaMvVerX, deltaMvVerY);
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadmard = true;
+  bool useMR = false;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmard = true;
+      useMR      = false;
+    }
+    else
+    {
+      useHadmard = false;
+      useMR      = true;
+    }
+  }
+  xInitBilateralMatching(pu.lwidth(), pu.lheight(), m_bmClpRng.bd, useMR, useHadmard);
+#else
   xInitBilateralMatching(pu.lwidth(), pu.lheight(), m_bmClpRng.bd, false, true);
+#endif
 #else
   xInitBilateralMatching(m_bmSubBlkW, m_bmSubBlkH, m_bmClpRng.bd, false, true);
 #endif
@@ -25531,7 +25932,11 @@ void InterPrediction::bmInitAffineSubBlocks(const Position puPos, const int widt
   }
 }
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+void InterPrediction::bmAdaptiveAffineIntSearch(const PredictionUnit& pu, Mv(&mvOffsetL0)[2], Distortion& minCostL0, Mv(&mvOffsetL1)[2], Distortion& minCostL1, int mergeIdx)
+#else
 void InterPrediction::bmAdaptiveAffineIntSearch(const PredictionUnit &pu, Mv(&mvOffsetL0)[2], Distortion &minCostL0, Mv(&mvOffsetL1)[2], Distortion &minCostL1)
+#endif
 {
 
   int iWidthExt = m_bmSubBlkW + (AFFINE_DMVR_INT_SRCH_RANGE << 1);
@@ -25544,10 +25949,31 @@ void InterPrediction::bmAdaptiveAffineIntSearch(const PredictionUnit &pu, Mv(&mv
   Mv mvInitial[2];
   Mv mvPreInterOffset = Mv((AFFINE_DMVR_INT_SRCH_RANGE << MV_FRACTIONAL_BITS_INTERNAL), (AFFINE_DMVR_INT_SRCH_RANGE << MV_FRACTIONAL_BITS_INTERNAL));
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
   bool useHadmard = true;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmard = true;
+    }
+    else
+    {
+      useHadmard = false;
+    }
+  }
+#else
+  bool useHadmard = true;
+#endif
   DistParam cDistParam;
   cDistParam.applyWeight = false;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  cDistParam.useMR = !useHadmard;
+#else
   cDistParam.useMR = false;
+#endif
   int bmCostShift = 0;
   int bitDepth = pu.cu->slice->clpRng(COMPONENT_Y).bd;
 #if FULL_NBIT
@@ -25938,7 +26364,11 @@ bool InterPrediction::bmAdaptiveAffineRegression(PredictionUnit &pu, Distortion 
   }
 }
 #endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+void InterPrediction::bmAffineIntSearch(const PredictionUnit& pu, Mv(&mvOffset)[2], Distortion& minCost, Distortion totalCost[(AFFINE_DMVR_INT_SRCH_RANGE << 1) + 1][(AFFINE_DMVR_INT_SRCH_RANGE << 1) + 1], int mergeIdx)
+#else
 void InterPrediction::bmAffineIntSearch(const PredictionUnit &pu, Mv(&mvOffset)[2], Distortion &minCost, Distortion totalCost[(AFFINE_DMVR_INT_SRCH_RANGE << 1) + 1][(AFFINE_DMVR_INT_SRCH_RANGE << 1) + 1])
+#endif
 {
 
   int iWidthExt = m_bmSubBlkW + (AFFINE_DMVR_INT_SRCH_RANGE << 1);
@@ -25950,10 +26380,31 @@ void InterPrediction::bmAffineIntSearch(const PredictionUnit &pu, Mv(&mvOffset)[
   Mv mvInitial[2];
   Mv mvPreInterOffset = Mv((AFFINE_DMVR_INT_SRCH_RANGE << MV_FRACTIONAL_BITS_INTERNAL), (AFFINE_DMVR_INT_SRCH_RANGE << MV_FRACTIONAL_BITS_INTERNAL));
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
   bool useHadmard = true;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmard = true;
+    }
+    else
+    {
+      useHadmard = false;
+    }
+  }
+#else
+  bool useHadmard = true;
+#endif
   DistParam cDistParam;
   cDistParam.applyWeight = false;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  cDistParam.useMR = !useHadmard;
+#else
   cDistParam.useMR = false;
+#endif
   int bmCostShift = 0;
   int bitDepth = pu.cu->slice->clpRng(COMPONENT_Y).bd;
 #if FULL_NBIT
@@ -26509,6 +26960,9 @@ bool InterPrediction::processBDMVR4Affine(PredictionUnit& pu
 #if JVET_AH0119_SUBBLOCK_TM
   , AffineMergeCtx &affineMergeCtx, bool doTM
 #endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  , int mergeIdx
+#endif
 )
 {
   if (!pu.cs->slice->getSPS()->getUseDMVDMode() || !pu.cs->slice->isInterB())
@@ -26539,7 +26993,11 @@ bool InterPrediction::processBDMVR4Affine(PredictionUnit& pu
 #endif
     )
   {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    processTM4Affine(pu, affineMergeCtx, -1, true, true, mergeIdx);
+#else
     processTM4Affine(pu, affineMergeCtx, -1, true);
+#endif
     pu.mvAffi[0][0] += m_bdmvrSubPuMvBuf[0][0];
     pu.mvAffi[0][1] += m_bdmvrSubPuMvBuf[0][1];
     pu.mvAffi[0][2] += m_bdmvrSubPuMvBuf[0][2];
@@ -26550,11 +27008,19 @@ bool InterPrediction::processBDMVR4Affine(PredictionUnit& pu
 #endif
 #endif
 #if JVET_AC0144_AFFINE_DMVR_REGRESSION
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bmAffineInit(pu, mergeIdx);
+#else
   bmAffineInit(pu);
+#endif
 
   Distortion minCost = std::numeric_limits<Distortion>::max();
   Distortion totalCost[(AFFINE_DMVR_INT_SRCH_RANGE << 1) + 1][(AFFINE_DMVR_INT_SRCH_RANGE << 1) + 1] = { { 0, } };
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bmAffineIntSearch(pu, mvFinal_PU, minCost, totalCost, mergeIdx);
+#else
   bmAffineIntSearch(pu, mvFinal_PU, minCost, totalCost);
+#endif
 
   Distortion localCostArray[9] = { std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max(),
     std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max(),
@@ -26648,7 +27114,11 @@ bool InterPrediction::processBDMVR4Affine(PredictionUnit& pu
   return true; 
 }
 #if JVET_AH0119_SUBBLOCK_TM
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx& affineMergeCtx, int uiAffMergeCand, Distortion& uiCostOri, Distortion& uiCostBest, uint32_t targetList, int mergeIdx)
+#else
 bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, Distortion& uiCostOri, Distortion& uiCostBest, uint32_t targetList)
+#endif
 {
   static const Mv   cSearchOffsetI[21] = { Mv(0 , 0), Mv(-1 , 1) , Mv(0 , 1) , Mv(1 ,  1) , Mv(-1 , 2) , Mv(0 , 2) , Mv(1 ,  2) , Mv(1 ,  0) , Mv(1 , -1) , Mv(0 , -1) , Mv(-1 , -1) , Mv(1 , -2) , Mv(0 , -2) , Mv(-1 , -2) , Mv(-1 , 0), Mv(2 , -1) , Mv(2 , 0) , Mv(2 , 1), Mv(-2 , -1) , Mv(-2 , 0) , Mv(-2 , 1) };
   static const Mv   cSearchOffsetF[9] = { Mv(0 , 0), Mv(-1 , 1) , Mv(0 , 1) , Mv(1 ,  1) , Mv(1 ,  0) , Mv(1 , -1) , Mv(0 , -1) , Mv(-1 , -1) , Mv(-1 , 0) };
@@ -26669,6 +27139,23 @@ bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx 
   int puHeight = numPartCol == 1 ? puSize.height : 1 << ATMVP_SUB_BLOCK_SIZE;
   int puWidth = numPartLine == 1 ? puSize.width : 1 << ATMVP_SUB_BLOCK_SIZE;
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadmardInteger = false;
+  int tmCostShift = 0;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmardInteger = true;
+    }
+    else
+    {
+      useHadmardInteger = false;
+    }
+  }
+#endif
   for (int searchIndex = 0; searchIndex < 21; searchIndex++) // integer search
   {
     uiCost = 0;
@@ -26680,14 +27167,24 @@ bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx 
         , uiCostBest== MAX_UINT64 ? 2: (searchIndex == 0 ? 1-targetList : targetList), searchIndex == 0 ? true : false, mvOffset, targetList);
       if (m_bAMLTemplateAvailabe[0])
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmardInteger);
+        uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
         uiCost += cDistParam.distFunc(cDistParam);
+#endif
       }
 
       if (m_bAMLTemplateAvailabe[1])
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmardInteger);
+        uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
         uiCost += cDistParam.distFunc(cDistParam);
+#endif
       }
 
     if (searchIndex == 0 && uiCostBest == MAX_UINT64)
@@ -26717,6 +27214,23 @@ bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx 
       }
     }
   }
+
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadmardFrac = false;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmardFrac = true;
+    }
+    else
+    {
+      useHadmardFrac = false;
+    }
+  }
+#endif
   mvOffsetBest = Mv(0, 0);
   for (int searchIndex = 1; searchIndex < 9; searchIndex++) // fractional search
   {
@@ -26729,14 +27243,24 @@ bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx 
         , targetList, false, mvOffset, targetList);
       if (m_bAMLTemplateAvailabe[0])
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmardFrac);
+        uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
         uiCost += cDistParam.distFunc(cDistParam);
+#endif
       }
 
       if (m_bAMLTemplateAvailabe[1])
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmardFrac);
+        uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
         uiCost += cDistParam.distFunc(cDistParam);
+#endif
       }
     if (uiCost < uiCostBest)
     {
@@ -26760,7 +27284,11 @@ bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx 
   }
   return true;
 }
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+bool InterPrediction::processTM4SbTmvp(PredictionUnit& pu, AffineMergeCtx& affineMergeCtx, int uiAffMergeCand, bool isEncoder, int mergeIdx)
+#else
 bool InterPrediction::processTM4SbTmvp(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, bool isEncoder)
+#endif
 {
   if (!pu.cs->slice->getSPS()->getTMToolsEnableFlag())
   {
@@ -26783,7 +27311,11 @@ bool InterPrediction::processTM4SbTmvp(PredictionUnit& pu, AffineMergeCtx &affin
   for (int iRefList = 0; iRefList < (pu.cu->slice->isInterB() ? NUM_REF_PIC_LIST_01 : 1); ++iRefList)
   {
     targetList = iRefList;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    processTM4SbTmvpBaseMV(pu, affineMergeCtx, uiAffMergeCand, uiCostOri, uiCostBest, targetList, mergeIdx);
+#else
     processTM4SbTmvpBaseMV(pu, affineMergeCtx, uiAffMergeCand, uiCostOri, uiCostBest, targetList);
+#endif
     targetList = 1 - targetList;
   }
 
@@ -26803,6 +27335,9 @@ bool InterPrediction::processTM4SbTmvp(PredictionUnit& pu, AffineMergeCtx &affin
 bool InterPrediction::processTM4Affine(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, bool isEncoder
 #if JVET_AH0119_SUBBLOCK_TM  
   , bool isTmPara
+#endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  , int mergeIdx
 #endif
 )
 {
@@ -26903,13 +27438,22 @@ bool InterPrediction::processTM4Affine(PredictionUnit& pu, AffineMergeCtx &affin
       continue;
     }
     
+
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    processTM4AffineBaseMV(pu, affineMergeCtx, uiAffMergeCand, cpBestMVF, uiCostOri, uiCostBest, targetList, mergeIdx);
+#else
     processTM4AffineBaseMV(pu, affineMergeCtx, uiAffMergeCand, cpBestMVF, uiCostOri, uiCostBest, targetList);
+#endif
 
     if (pu.refIdx[0] < 0 || pu.refIdx[1] < 0)
     {
       if (isTmPara)
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+         processTM4AffinePara(pu, affineMergeCtx, uiAffMergeCand, targetList, cpBestMVF, uiCostOri, uiCostBest, mergeIdx);
+#else
          processTM4AffinePara(pu, affineMergeCtx, uiAffMergeCand, targetList, cpBestMVF, uiCostOri, uiCostBest);
+#endif
       }
     }
     targetList = 1 - targetList;
@@ -27160,7 +27704,11 @@ bool InterPrediction::processTM4Affine(PredictionUnit& pu, AffineMergeCtx &affin
   return true;
 }
 #if JVET_AH0119_SUBBLOCK_TM
-bool InterPrediction::processTM4AffineBaseMV(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, Mv(&bestCPMV)[2][3], Distortion& uiCostOri, Distortion& uiCostBest, uint32_t targetList)
+bool InterPrediction::processTM4AffineBaseMV(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, Mv(&bestCPMV)[2][3], Distortion& uiCostOri, Distortion& uiCostBest, uint32_t targetList
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+, int mergeIdx
+#endif
+)
 {
   Distortion uiCost = 0;;
   DistParam cDistParam;
@@ -27197,16 +27745,43 @@ bool InterPrediction::processTM4AffineBaseMV(PredictionUnit& pu, AffineMergeCtx 
 #endif
     , ( uiCostBest == MAX_UINT64 && pu.refIdx[0] >= 0 && pu.refIdx[1] >= 0) ? -1 : ( uiCostBest != MAX_UINT64 ? 1- targetList : targetList)
     , (uiCostBest != MAX_UINT64) ? true : false );
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadmard = false;
+  int tmCostShift = 0;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmard = true;
+    }
+    else
+    {
+      useHadmard = false;
+    }
+  }
+#endif
   if (m_bAMLTemplateAvailabe[0])
   {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+    uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
     uiCost += cDistParam.distFunc(cDistParam);
+#endif
   }
 
   if (m_bAMLTemplateAvailabe[1])
   {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+    uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
     uiCost += cDistParam.distFunc(cDistParam);
+#endif
   }
   if (uiCostBest == MAX_UINT64)
   {
@@ -27242,16 +27817,26 @@ bool InterPrediction::processTM4AffineBaseMV(PredictionUnit& pu, AffineMergeCtx 
         , targetList,  false);
       if (m_bAMLTemplateAvailabe[0])
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+        uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
 
         uiCost += cDistParam.distFunc(cDistParam);
+#endif
       }
 
       if (m_bAMLTemplateAvailabe[1])
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+        uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
         m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
 
         uiCost += cDistParam.distFunc(cDistParam);
+#endif
       }
       if (uiCost < uiCostBest)
       {
@@ -27299,16 +27884,27 @@ bool InterPrediction::processTM4AffineBaseMV(PredictionUnit& pu, AffineMergeCtx 
       , targetList, false);
     if (m_bAMLTemplateAvailabe[0])
     {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+      uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
       m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
       uiCost += cDistParam.distFunc(cDistParam);
+#endif
     }
 
     if (m_bAMLTemplateAvailabe[1])
     {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+      uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
       m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
       uiCost += cDistParam.distFunc(cDistParam);
+#endif
     }
     if (uiCost < uiCostBest)
+
     {
       uiCostBest = uiCost;
       for (int i = 0; i < 2; i++)
@@ -27330,7 +27926,11 @@ bool InterPrediction::processTM4AffineBaseMV(PredictionUnit& pu, AffineMergeCtx 
   }
   return true;
 }
-Distortion InterPrediction::xGetTemplateMatchingError(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int interpolationIdx, bool isStore)
+Distortion InterPrediction::xGetTemplateMatchingError(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int interpolationIdx, bool isStore
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  , int mergeIdx
+#endif
+)
 {
   Distortion uiCost = 0;
   int nWidth = pu.lumaSize().width;
@@ -27347,18 +27947,45 @@ Distortion InterPrediction::xGetTemplateMatchingError(PredictionUnit& pu, Affine
     , true, affineMergeCtx
 #endif
     , interpolationIdx, isStore);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadmard = false;
+  int tmCostShift = 0;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    if (mergeIdx % 2 == 0)
+    {
+      useHadmard = true;
+    }
+    else
+    {
+      useHadmard = false;
+    }
+  }
+#endif
   if (m_bAMLTemplateAvailabe[0])
   {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+    uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
 
     uiCost += cDistParam.distFunc(cDistParam);
+#endif
   }
 
   if (m_bAMLTemplateAvailabe[1])
   {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, useHadmard);
+    uiCost += cDistParam.distFunc(cDistParam) >> tmCostShift;
+#else
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeft.Y(), pcBufPredRefLeft.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
 
     uiCost += cDistParam.distFunc(cDistParam);
+#endif
   }
   return uiCost;
 }
@@ -27427,7 +28054,11 @@ void InterPrediction::xUpdateCPMV(PredictionUnit &pu, int32_t targetRefList, con
 #define AFFINE_TM_ROUND_NUM1 3
 #define AFFINE_TM_ROUND_NUM2 3
 #define AFFINE_TM_ROUND_NUM3 3
-bool InterPrediction::processTM4AffinePara(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, int32_t targetRefList, Mv(&cpBestMVF)[2][3], Distortion& uiCostOri, Distortion& uiCostBest)
+bool InterPrediction::processTM4AffinePara(PredictionUnit& pu, AffineMergeCtx &affineMergeCtx, int uiAffMergeCand, int32_t targetRefList, Mv(&cpBestMVF)[2][3], Distortion& uiCostOri, Distortion& uiCostBest
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  , int mergeIdx
+#endif
+)
 {
   if (!pu.cs->slice->getSPS()->getTMToolsEnableFlag())
   {
@@ -27485,7 +28116,11 @@ bool InterPrediction::processTM4AffinePara(PredictionUnit& pu, AffineMergeCtx &a
 
         xUpdateCPMV(pu, targetRefList, curCPMV, deltaMvHorX, deltaMvHorY, deltaMvVerX, deltaMvVerY, baseCP);
         Distortion tmCost = 0;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        tmCost += xGetTemplateMatchingError(pu, affineMergeCtx, targetRefList, mergeIdx);
+#else
         tmCost += xGetTemplateMatchingError(pu, affineMergeCtx , targetRefList );
+#endif
         if (tmCost < uiCostBest)
         {
           nBestDirect = nDirect;
@@ -27561,7 +28196,11 @@ bool InterPrediction::processTM4AffinePara(PredictionUnit& pu, AffineMergeCtx &a
 #endif
 #endif
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+bool InterPrediction::processBDMVR4AdaptiveAffine(PredictionUnit& pu, Mv(&mvAffiL0)[2][3], Mv(&mvAffiL1)[2][3], EAffineModel& affTypeL0, EAffineModel& affTypeL1, int mergeIdx)
+#else
 bool InterPrediction::processBDMVR4AdaptiveAffine(PredictionUnit& pu, Mv(&mvAffiL0)[2][3], Mv(&mvAffiL1)[2][3], EAffineModel& affTypeL0, EAffineModel& affTypeL1)
+#endif
 {
   if (!pu.cs->slice->getSPS()->getUseDMVDMode() || !pu.cs->slice->isInterB())
   {
@@ -27578,11 +28217,19 @@ bool InterPrediction::processBDMVR4AdaptiveAffine(PredictionUnit& pu, Mv(&mvAffi
   mvFinalPUL1[0].setZero();
   mvFinalPUL1[1].setZero();
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bmAffineInit(pu, mergeIdx);
+#else
   bmAffineInit(pu);
+#endif
 
   Distortion minCostL0 = std::numeric_limits<Distortion>::max();
   Distortion minCostL1 = std::numeric_limits<Distortion>::max();
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bmAdaptiveAffineIntSearch(pu, mvFinalPUL0, minCostL0, mvFinalPUL1, minCostL1, mergeIdx);
+#else
   bmAdaptiveAffineIntSearch(pu, mvFinalPUL0, minCostL0, mvFinalPUL1, minCostL1);
+#endif
   const int lumaArea = pu.lumaSize().area();
 
   //  sub-pel search for L0
@@ -27845,7 +28492,11 @@ bool InterPrediction::processBDMVR4AdaptiveAffine(PredictionUnit& pu, Mv(&mvAffi
 }
 #endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+bool InterPrediction::processBDMVR(PredictionUnit& pu, int step, Distortion* tmCost, int mergeIdx)
+#else
 bool InterPrediction::processBDMVR(PredictionUnit& pu, int step, Distortion* tmCost)
+#endif
 #else
 bool InterPrediction::processBDMVR(PredictionUnit& pu)
 #endif
@@ -27889,20 +28540,53 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
 
 #if JVET_X0049_BDMVR_SW_OPT
 #if JVET_X0049_ADAPT_DMVR
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    bool useHadmard = false;
+    if (mergeIdx != -1
+      && pu.cu->cs->sps->getUseAltCost()
+      )
+    {
+      mergeIdx = mergeIdx % BM_MRG_MAX_NUM_CANDS;
+      if (mergeIdx % 2 == 0)
+      {
+        useHadmard = true;
+      }
+      else
+      {
+        useHadmard = false;
+      }
+    }
+#endif
     if (pu.bmDir == 1)
     {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      minCost = xBDMVRGetMatchingError(pu, mvInitial_PU, bUseMR, useHadmard);
+#else
       minCost = xBDMVRGetMatchingError(pu, mvInitial_PU, bUseMR, false);
+#endif
       if (minCost >= lumaArea)
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        minCost = xBDMVRMvOneTemplateHPelSquareSearch<1>(mvFinal_PU, minCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, useHadmard);
+#else
         minCost = xBDMVRMvOneTemplateHPelSquareSearch<1>(mvFinal_PU, minCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, false);
+#endif
       }
     }
     else if (pu.bmDir == 2)
     {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      minCost = xBDMVRGetMatchingError(pu, mvInitial_PU, bUseMR, useHadmard);
+#else
       minCost = xBDMVRGetMatchingError(pu, mvInitial_PU, bUseMR, false);
+#endif
       if (minCost >= lumaArea)
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        minCost = xBDMVRMvOneTemplateHPelSquareSearch<2>(mvFinal_PU, minCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, useHadmard);
+#else
         minCost = xBDMVRMvOneTemplateHPelSquareSearch<2>(mvFinal_PU, minCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, false);
+#endif
       }
     }
     else
@@ -27964,7 +28648,11 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
         }
       }
 #endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      minCost = xBDMVRMvSquareSearch<false>( mvFinal_PU, minCost, pu, mvInitial_PU, BDMVR_INTME_SQUARE_SEARCH_MAX_NUM_ITERATIONS, MV_FRACTIONAL_BITS_INTERNAL,     bUseMR, useHadmard );
+#else
       minCost = xBDMVRMvSquareSearch<false>( mvFinal_PU, minCost, pu, mvInitial_PU, BDMVR_INTME_SQUARE_SEARCH_MAX_NUM_ITERATIONS, MV_FRACTIONAL_BITS_INTERNAL,     bUseMR, false );
+#endif
       if (minCost > 0)
       {
 #if JVET_AG0276_LIC_FLAG_SIGNALING && JVET_AG0276_LIC_BDOF_BDMVR
@@ -28025,7 +28713,11 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
           }
         }
 #endif
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        minCost = xBDMVRMvSquareSearch<true>(mvFinal_PU, minCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, useHadmard);
+#else
         minCost = xBDMVRMvSquareSearch<true>(mvFinal_PU, minCost, pu, mvInitial_PU, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, bUseMR, false);
+#endif
       }
 #if JVET_AG0276_LIC_FLAG_SIGNALING && JVET_AG0276_LIC_BDOF_BDMVR
       m_numTemplate[COMPONENT_Y][0] = 0;
@@ -28062,7 +28754,11 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
   )
   {
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    deriveTMMv(pu, tmCost, mergeIdx);
+#else
     deriveTMMv(pu, tmCost);
+#endif
 #else
     deriveTMMv(pu);
 #endif
@@ -28147,7 +28843,25 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
   PelUnitBuf predBuf[2] = { PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_0], BDMVR_BUF_STRIDE, dx, dy)),
     PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_1], BDMVR_BUF_STRIDE, dx, dy)) };
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  bool useHadamard = true;
+  if (mergeIdx != -1
+    && pu.cu->cs->sps->getUseAltCost()
+    )
+  {
+    mergeIdx = mergeIdx % BM_MRG_MAX_NUM_CANDS;
+    if (mergeIdx % 2 == 0)
+    {
+      useHadamard = true;
+    }
+    else
+    {
+      useHadamard = false;
+    }
+  }
+#else
   bool useHadamard = true;          // STAD cost function
+#endif
   m_pcRdCost->setDistParam(cDistParam, predBuf[0].Y(), predBuf[1].Y(), pu.cu->slice->clpRng(COMPONENT_Y).bd, COMPONENT_Y, useHadamard);
 
   // prepare buffer for pre-interpolaction 
@@ -28224,6 +28938,10 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
 #endif
       if (adaptRange)
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        if (useHadamard)
+        {
+#endif
         minCost = xBDMVRMvIntPelFullSearch<true, true>(mvOffset, minCost, mvInitial,
           maxSearchRound,
           adaptiveSearchRangeHor, adaptiveSearchRangeVer,
@@ -28236,9 +28954,31 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
 #endif
           earlyTerminateTh, cDistParam,
           pelBuffer, BDMVR_BUF_STRIDE);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        }
+        else
+        {
+          minCost = xBDMVRMvIntPelFullSearch<true, false>(mvOffset, minCost, mvInitial,
+            maxSearchRound,
+            adaptiveSearchRangeHor, adaptiveSearchRangeVer,
+#if JVET_X0056_DMVD_EARLY_TERMINATION
+            true,
+#elif JVET_X0049_ADAPT_DMVR
+            pu.bmMergeFlag,
+#else
+            false,
+#endif
+            earlyTerminateTh, cDistParam,
+            pelBuffer, BDMVR_BUF_STRIDE);
+        }
+#endif
       }
       else
       {
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        if (useHadamard)
+        {
+#endif
         minCost = xBDMVRMvIntPelFullSearch<false, true>(mvOffset, minCost, mvInitial,
           maxSearchRound,
           adaptiveSearchRangeHor, adaptiveSearchRangeVer,
@@ -28251,6 +28991,24 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
 #endif
           earlyTerminateTh, cDistParam,
           pelBuffer, BDMVR_BUF_STRIDE);
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+        }
+        else
+        {
+          minCost = xBDMVRMvIntPelFullSearch<false, false>(mvOffset, minCost, mvInitial,
+            maxSearchRound,
+            adaptiveSearchRangeHor, adaptiveSearchRangeVer,
+#if JVET_X0056_DMVD_EARLY_TERMINATION
+            true,
+#elif JVET_X0049_ADAPT_DMVR
+            pu.bmMergeFlag,
+#else
+            false,
+#endif
+            earlyTerminateTh, cDistParam,
+            pelBuffer, BDMVR_BUF_STRIDE);
+        }
+#endif
       }
 #if JVET_AF0057
       if (checkDmvr)
@@ -28275,7 +29033,11 @@ bool InterPrediction::processBDMVR(PredictionUnit& pu)
         if (minCost >= tmpCost)
         {
           minCost += tmpCost;
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+          minCost = xBDMVRMvSquareSearch<true>(mvFinal, minCost/*std::numeric_limits<Distortion>::max()*/, subPu, mvInitial, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, false, useHadamard);
+#else
           minCost = xBDMVRMvSquareSearch<true>(mvFinal, minCost/*std::numeric_limits<Distortion>::max()*/, subPu, mvInitial, 2, MV_FRACTIONAL_BITS_INTERNAL - 1, false, true);
+#endif
         }
       }
       else
@@ -34081,7 +34843,11 @@ void InterPrediction::deriveMvdSign( const Mv& cMvPred, const Mv& cMvdKnownAtDec
     , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
   );
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+  TplMatchingCtrl tplCtrl(pu, interRes, refPic, true, COMPONENT_Y, true, -1, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0);
+#else
   TplMatchingCtrl tplCtrl(pu, interRes, refPic, true, COMPONENT_Y, true, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0);
+#endif
 
   std::vector<std::pair<Mv, Distortion>> aMvCostVec(patternsNum);
 
@@ -34925,7 +35691,11 @@ void InterPrediction::defineSignHypMatchAffine(PredictionUnit& pu, const RefPicL
       CHECK(refIdx < 0, "Invalid reference index for SMVD L0");
       const Picture& refPic = *pu.cu->slice->getRefPic(REF_PIC_LIST_0, refIdx)->unscaledPic;
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+      TplMatchingCtrl tplCtrl(pu, interRes, refPic, true, COMPONENT_Y, true, -1, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0);
+#else
       TplMatchingCtrl tplCtrl(pu, interRes, refPic, true, COMPONENT_Y, true, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0);
+#endif
 #if JVET_Z0067_RPR_ENABLE
       bool  bIsRefScaled = pu.cu->slice->getRefPic(REF_PIC_LIST_0, refIdx)->isRefScaled(pu.cs->pps);
 #endif
@@ -37284,7 +38054,11 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
       , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
     );
 
+#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+    TplMatchingCtrl tplCtrl(pu, interRes, recPic, true, COMPONENT_Y, false, -1, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0, 1, true);
+#else
     TplMatchingCtrl tplCtrl(pu, interRes, recPic, true, COMPONENT_Y, false, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0, 1, true);
+#endif
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
     static std::vector<std::pair<Mv, Distortion>> aMvCostVec;
     aMvCostVec.resize(patternsNum);

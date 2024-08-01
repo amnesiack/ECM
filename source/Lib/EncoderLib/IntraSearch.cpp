@@ -1984,7 +1984,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   CHECK(cu.tmpLicFlag, "cu.tmpLicFlag == 1");
                   cu.ibcLicFlag = cu.tmpLicFlag;
                   cu.ibcLicIdx = uiRdModeListTmp[idxInList].tmpLicIdc;
+#if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+                  searchFracCandidate(&cu, getTargetPatch(), templateType);
+#else
                   searchFracCandidate(&cu, getTargetPatch(floorLog2(std::max(cu.lwidth(), cu.lheight())) - 2), templateType);
+#endif
                   for (int spIdx = 0; spIdx < std::min(2, (int) m_mtmpFracCandList[cu.tmpIdx].size()); spIdx++)
                   {
                     cu.tmpIsSubPel = m_mtmpFracCandList[cu.tmpIdx][spIdx].m_subpel;
@@ -2051,7 +2055,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   CHECK(!cu.tmpLicFlag, "cu.tmpLicFlag != 0");
                   cu.ibcLicFlag = cu.tmpLicFlag;
                   cu.ibcLicIdx = uiRdModeListTmpLic[idxInList].tmpLicIdc;
+#if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+                  searchFracCandidate(&cu, getTargetPatch(), templateType);
+#else
                   searchFracCandidate(&cu, getTargetPatch(floorLog2(std::max(cu.lwidth(), cu.lheight())) - 2), templateType);
+#endif
                   for (int spIdx = 0; spIdx < std::min(2, (int) m_mtmpFracCandList[cu.tmpIdx].size()); spIdx++)
                   {
                     cu.tmpIsSubPel = m_mtmpFracCandList[cu.tmpIdx][spIdx].m_subpel;
@@ -2774,13 +2782,33 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 if(modeInfo.mipTrFlg)
                 {
                   PelBuf eipSaveBuf(m_eipMergePredBuf[modeIdx], pu.Y());
-                  m_eipMergeModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu);
+#if JVET_AI0050_INTER_MTSS
+                  int secondDimdIntraDir = 0;
+#endif
+                  m_eipMergeModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
+#if JVET_AI0050_INTER_MTSS
+                    , secondDimdIntraDir
+#endif
+                  );
+#if JVET_AI0050_INTER_MTSS
+                  cu.dimdDerivedIntraDir2nd = secondDimdIntraDir;
+#endif
                   CHECK(modeIdx >= NUM_EIP_MERGE_SIGNAL, "modeIdx >= NUM_EIP_MERGE_SIGNAL");
                 }
                 else
                 {
                   PelBuf eipSaveBuf(m_eipPredBuf[modeIdx], pu.Y());
-                  m_eipModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu);
+#if JVET_AI0050_INTER_MTSS
+                  int secondDimdIntraDir = 0;
+#endif
+                  m_eipModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
+#if JVET_AI0050_INTER_MTSS
+                    , secondDimdIntraDir
+#endif
+                  );
+#if JVET_AI0050_INTER_MTSS
+                  cu.dimdDerivedIntraDir2nd = secondDimdIntraDir;
+#endif
                   CHECK(modeIdx >= NUM_DERIVED_EIP, "modeIdx >= NUM_DERIVED_EIP");
                 }
               }
