@@ -1138,6 +1138,13 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   tempCS->splitRdCostBest = NULL;
 #endif
   m_modeCtrl->initCULevel( partitioner, *tempCS );
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+  m_pcInterSearch->setDIMDForOBMC(false);
+  m_pcInterSearch->setModeGetCheck(0, false);
+  m_pcInterSearch->setModeGetCheck(1, false);
+  m_pcInterSearch->setClearModeBuf(0);
+  m_pcInterSearch->setClearModeBuf(1);
+#endif
 #if JVET_Z0054_BLK_REF_PIC_REORDER
   m_pcInterSearch->setFillCurTplAboveARMC(false);
   m_pcInterSearch->setFillCurTplLeftARMC(false);
@@ -4750,7 +4757,11 @@ void EncCu::xCheckRDCostHashInter( CodingStructure *&tempCS, CodingStructure *&b
 #else
   cu.obmcFlag = true;
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+  m_pcInterSearch->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraSearch);
+#else
   m_pcInterSearch->subBlockOBMC(*cu.firstPU);
+#endif
   cu.isobmcMC = false;
 #endif
     xEncodeInterResidual(tempCS, bestCS, partitioner, encTestMode, 0
@@ -9214,7 +9225,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AG0135_AFFINE_CIIP
           }
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+          m_pcInterSearch->subBlockOBMC(pu, nullptr, m_pcIntraSearch);
+#else
           m_pcInterSearch->subBlockOBMC(pu);
+#endif
           cu.isobmcMC = false;
 #endif
 #if JVET_AG0135_AFFINE_CIIP
@@ -9758,7 +9773,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_X0090_CIIP_FIX
       if (!pu.ciipFlag)
       {
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+        m_pcInterSearch->subBlockOBMC(pu, nullptr, m_pcIntraSearch);
+#else
         m_pcInterSearch->subBlockOBMC(pu);
+#endif
       }
 #else
       m_pcInterSearch->subBlockOBMC( pu );
@@ -10261,7 +10280,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
     obmcBuf.copyFrom(predSrc);
     pu.cu->isobmcMC = true;
     pu.cu->obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+    m_pcInterSearch->subBlockOBMC(pu, &obmcBuf, m_pcIntraSearch);
+#else
     m_pcInterSearch->subBlockOBMC(pu, &obmcBuf);
+#endif
     pu.cu->affine = false;
     pu.cu->isobmcMC = false;
   };
@@ -11695,7 +11718,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
       cu.isobmcMC = true;
       cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      m_pcInterSearch->subBlockOBMC(pu, !isIntra0 ? &predSrc0 : &predSrc1, m_pcIntraSearch);
+#else
       m_pcInterSearch->subBlockOBMC(pu, !isIntra0 ? &predSrc0 : &predSrc1);
+#endif
       cu.isobmcMC = false;
 #endif
 #if JVET_AG0164_AFFINE_GPM
@@ -11712,7 +11739,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
           PU::spanMotionInfo2(pu, MergeCtx());
           cu.isobmcMC = true;
           cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+          m_pcInterSearch->subBlockOBMC(pu, &predSrc0, m_pcIntraSearch);
+#else
           m_pcInterSearch->subBlockOBMC(pu, &predSrc0);
+#endif
           pu.cu->affine = false;
           pu.cu->isobmcMC = false;
 
@@ -11726,7 +11757,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
           PU::spanMotionInfo2(pu, MergeCtx());
           cu.isobmcMC = true;
           cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+          m_pcInterSearch->subBlockOBMC(pu, &predSrc1, m_pcIntraSearch);
+#else
           m_pcInterSearch->subBlockOBMC(pu, &predSrc1);
+#endif
           pu.cu->affine = false;
           pu.cu->isobmcMC = false;
 
@@ -12045,7 +12080,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
       cu.isobmcMC = true;
       cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      m_pcInterSearch->subBlockOBMC(pu, nullptr, m_pcIntraSearch);
+#else
       m_pcInterSearch->subBlockOBMC(pu);
+#endif
       cu.isobmcMC = false;
 #if JVET_Y0065_GPM_INTRA
       }
@@ -13937,7 +13976,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
         cu.isobmcMC = true;
         cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+        m_pcInterSearch->subBlockOBMC(pu, !isIntra0 ? &predSrcTemp0 : &predSrcTemp1, m_pcIntraSearch);
+#else
         m_pcInterSearch->subBlockOBMC(pu, !isIntra0 ? &predSrcTemp0 : &predSrcTemp1);
+#endif
         cu.isobmcMC = false;
 #endif
 #if JVET_AG0164_AFFINE_GPM
@@ -13954,7 +13997,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
             PU::spanMotionInfo2(pu, MergeCtx());
             cu.isobmcMC = true;
             cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+            m_pcInterSearch->subBlockOBMC(pu, &predSrcTemp0, m_pcIntraSearch);
+#else
             m_pcInterSearch->subBlockOBMC(pu, &predSrcTemp0);
+#endif
             pu.cu->affine = false;
             cu.isobmcMC = false;
 
@@ -13968,7 +14015,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
             PU::spanMotionInfo2(pu, MergeCtx());
             cu.isobmcMC = true;
             cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+            m_pcInterSearch->subBlockOBMC(pu, &predSrcTemp1, m_pcIntraSearch);
+#else
             m_pcInterSearch->subBlockOBMC(pu, &predSrcTemp1);
+#endif
             pu.cu->affine = false;
             cu.isobmcMC = false;
           }
@@ -14537,7 +14588,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
         cu.isobmcMC = true;
         cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+        m_pcInterSearch->subBlockOBMC(pu, nullptr, m_pcIntraSearch);
+#else
         m_pcInterSearch->subBlockOBMC(pu);
+#endif
         cu.isobmcMC = false;
 #if JVET_Y0065_GPM_INTRA
         }
@@ -14747,7 +14802,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
       {
         cu.isobmcMC = true;
         cu.obmcFlag = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+        m_pcInterSearch->subBlockOBMC(pu, nullptr, m_pcIntraSearch);
+#else
         m_pcInterSearch->subBlockOBMC(pu);
+#endif
         cu.isobmcMC = false;
       }
 #endif
@@ -22074,7 +22133,11 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
       CHECK(cu.obmcFlag == false, "this is not possible");
 #endif
       cu.isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      m_pcInterSearch->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraSearch);
+#else
       m_pcInterSearch->subBlockOBMC(*cu.firstPU);
+#endif
       cu.isobmcMC = false;
       xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
                             , 0
@@ -22191,7 +22254,11 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
 #else
   cu.obmcFlag = true;
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+  m_pcInterSearch->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraSearch);
+#else
   m_pcInterSearch->subBlockOBMC(*cu.firstPU);
+#endif
   cu.isobmcMC = false;
 #endif
   xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
@@ -22608,7 +22675,11 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
 #endif
       CodingStructure *prevCS = tempCS;
       cu.isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      m_pcInterSearch->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraSearch);
+#else
       m_pcInterSearch->subBlockOBMC(*cu.firstPU);
+#endif
       cu.isobmcMC = false;
       xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
                             , 0
@@ -22724,7 +22795,11 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
 #else
   cu.obmcFlag = true;
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+  m_pcInterSearch->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraSearch);
+#else
   m_pcInterSearch->subBlockOBMC(*cu.firstPU);
+#endif
   cu.isobmcMC = false;
 #endif
   xEncodeInterResidual( tempCS, bestCS, partitioner, encTestModeBase, 0
@@ -24730,7 +24805,11 @@ void EncCu::xCheckRDCostInterMultiHyp2Nx2N(CodingStructure *&tempCS, CodingStruc
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     }
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+    m_pcInterSearch->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraSearch);
+#else
     m_pcInterSearch->subBlockOBMC(*cu.firstPU);
+#endif
     cu.isobmcMC = false;
 #endif
     xEncodeInterResidual(tempCS, bestCS, partitioner, encTestMode);
