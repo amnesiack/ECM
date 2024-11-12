@@ -1141,6 +1141,9 @@ void PredictionUnit::initData()
   geoTmFlag1 = false;
 #endif
 #endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  geoBlendTmFlag = false;
+#endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = MAX_UCHAR;
 #endif
@@ -1371,6 +1374,9 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   geoTmFlag0 = predData.geoTmFlag0;
   geoTmFlag1 = predData.geoTmFlag1;
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  geoBlendTmFlag = predData.geoBlendTmFlag;
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = predData.geoBldIdx;
@@ -1611,6 +1617,9 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   geoTmFlag0 = other.geoTmFlag0;
   geoTmFlag1 = other.geoTmFlag1;
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  geoBlendTmFlag = other.geoBlendTmFlag;
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = other.geoBldIdx;
