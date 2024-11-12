@@ -528,8 +528,14 @@ protected:
 
   void xCalDebCost            ( CodingStructure &cs, Partitioner &partitioner, bool calDist = false );
   Distortion getDistortionDb  ( CodingStructure &cs, CPelBuf org, CPelBuf reco, ComponentID compID, const CompArea& compArea, bool afterDb );
-
-  void xCompressCU            ( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& pm, double maxCostAllowed = MAX_DOUBLE );
+#if JVET_AJ0226_MTT_SKIP
+  void xStoreMttSplitFlagCabacBits(CodingStructure*& tempCS, Partitioner& partitioner, int mttSplitFlagCabacBits);
+#endif
+  void xCompressCU            ( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& pm, double maxCostAllowed = MAX_DOUBLE 
+#if JVET_AJ0226_MTT_SKIP 
+    , int mttSplitFlagCabacBits = 0
+#endif
+  );
 #if ENABLE_SPLIT_PARALLELISM
   void xCompressCUParallel    ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm );
   void copyState              ( EncCu* other, Partitioner& pm, const UnitArea& currArea, const bool isDist );
@@ -538,15 +544,31 @@ protected:
     xCheckBestMode         ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestmode );
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
 #if JVET_Y0152_TT_ENC_SPEEDUP
-  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass, double *splitRdCostBest );
+  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass, double *splitRdCostBest 
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #else
-  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass );
+  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass 
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #endif
 #else
 #if JVET_Y0152_TT_ENC_SPEEDUP
-  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, double *splitRdCostBest);
+  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, double *splitRdCostBest
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #else
-  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode );
+  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode 
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #endif
 #endif
   bool xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, bool adaptiveColorTrans);
