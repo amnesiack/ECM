@@ -24497,6 +24497,9 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
 #if JVET_AI0050_INTER_MTSS
             , secondDimdIntraDir
 #endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+            , true
+#endif
           );
 #if JVET_AI0050_INTER_MTSS
           cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
@@ -24793,6 +24796,9 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
         cu->dimdDerivedIntraDir = m_pcIntraSearch->deriveIpmForTransform(cu->cs->getPredBuf(*cu->firstPU).Y(), *cu
 #if JVET_AI0050_INTER_MTSS
           , secondDimdIntraDir
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+          , true
 #endif
         );
 #if JVET_AI0050_INTER_MTSS
