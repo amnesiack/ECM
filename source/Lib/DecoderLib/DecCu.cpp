@@ -5248,6 +5248,9 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
         m_pcInterPred->clearAmvpTmvpBuffer();
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+        m_pcInterPred->clearAffineAmvpBuffer();
+#endif
         if (pu.cu->affine)
         {
           for (uint32_t uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++)
@@ -5374,7 +5377,6 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
           pu.refIdx[refListAmvp] = orgRefIdxAMVP;
         }
 #endif
-
         if( pu.cu->affine )
         {
           for ( uint32_t uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
@@ -5383,8 +5385,11 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
             if ( pu.cs->slice->getNumRefIdx( eRefList ) > 0 && ( pu.interDir & ( 1 << uiRefListIdx ) ) )
             {
               AffineAMVPInfo affineAMVPInfo;
-              PU::fillAffineMvpCand( pu, eRefList, pu.refIdx[eRefList], affineAMVPInfo );
-
+              PU::fillAffineMvpCand( pu, eRefList, pu.refIdx[eRefList], affineAMVPInfo 
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+                , m_pcInterPred
+#endif  
+              );
               const unsigned mvpIdx = pu.mvpIdx[eRefList];
 
               pu.mvpNum[eRefList] = affineAMVPInfo.numCand;
