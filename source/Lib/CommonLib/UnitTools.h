@@ -499,7 +499,11 @@ namespace PU
 #else
   void fillIBCMvpCand                 (PredictionUnit &pu, AMVPInfo &amvpInfo);
 #endif
-  void fillAffineMvpCand              (      PredictionUnit &pu, const RefPicList &eRefPicList, const int &refIdx, AffineAMVPInfo &affiAMVPInfo);
+  void fillAffineMvpCand              (      PredictionUnit &pu, const RefPicList &eRefPicList, const int &refIdx, AffineAMVPInfo &affiAMVPInfo
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+    , InterPrediction* interPred = nullptr
+#endif
+  );
   bool addMVPCandUnscaled             (const PredictionUnit &pu, const RefPicList &eRefPicList, const int &iRefIdx, const Position &pos, const MvpDir &eDir, AMVPInfo &amvpInfo);
   void xInheritedAffineMv             ( const PredictionUnit &pu, const PredictionUnit* puNeighbour, RefPicList eRefPicList, Mv rcMv[3] );
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
@@ -935,6 +939,26 @@ namespace PU
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool checkAffineTMCondition(const PredictionUnit& pu);
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  enum ExtAffineAmvpType
+  {
+    EXT_AFFINE_AMVP_TYPE_NONE = 0,
+    EXT_AFFINE_AMVP_TYPE_NA_TEMP = 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS10 = (1 << 8) + (1 << 4) + 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS4 = (2 << 8) + (1 << 4) + 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS5 = (3 << 8) + (1 << 4) + 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS4_REORDER_FIRST =  (2 << 8) + (2 << 4) + 1
+  };
+  enum ExtRegularAmvpType
+  {
+    EXT_REGULAR_AMVP_TYPE_NONE = 0,
+    EXT_REGULAR_AMVP_TYPE_NA_SPATIAL = (1 << 4),
+    EXT_REGULAR_AMVP_TYPE_LISTS10 = (1 << 4) + 1
+  };
+  int checkExtAffineAmvpCondition(const PredictionUnit& pu);
+  int checkExtRegularAmvpCondition(const PredictionUnit& pu);
+#endif
+
 #if INTER_LIC
   void spanLicFlags(PredictionUnit &pu, const bool LICFlag);
 #endif
