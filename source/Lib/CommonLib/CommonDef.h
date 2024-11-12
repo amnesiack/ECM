@@ -608,7 +608,12 @@ static const int RVM_VCEGAM10_M =                                   4;
 
 #if JVET_AB0157_INTRA_FUSION
 static const int SIZE_CONSTRAINT =                                 32;
+#if JVET_AJ0267_ADAPTIVE_HOG
+static const int DIMD_FUSION_NUM =                                  8;
+static const int DIMD_FUSION_NUM_SMALL =                            6;
+#else
 static const int DIMD_FUSION_NUM =                                  6;
+#endif
 #endif
 
 #if JVET_Y0116_EXTENDED_MRL_LIST
@@ -687,6 +692,9 @@ static const int LM_CHROMA_IDX = NUM_LUMA_MODE; ///< chroma mode index for deriv
 #if ENABLE_DIMD
 static const int DIMD_IDX =                                        99; ///< index for intra DIMD mode
 #endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+static const uint32_t DIMD_SMALL_BLOCK_THR =                       32; ///< maximum area of a block to which 2x2 DIMD edge operator is applied
+#endif 
 #if JVET_AH0076_OBIC
 static const int OBIC_IDX =                                       250;
 static const int OBIC_FUSION_NUM =                                  6;
@@ -745,6 +753,11 @@ static const int EIP_TPL_SIZE =                                     1;
 static const int NUM_EIP_BASE_RECOTYPE =                            3;
 static const int NUM_EIP_COMB = NUM_EIP_SHAPE * NUM_EIP_BASE_RECOTYPE;
 static const int NUM_DERIVED_EIP                  = NUM_EIP_SHAPE * 3;
+#endif
+#if JVET_AJ0267_ADAPTIVE_HOG
+static const int MAX_DIMD_TEMPLATE_SIZE =                           12;
+static const int MAX_DIMD_TEMPLATE_SIZE_SMALL =                      8;
+static const int DIMD_MAX_AMP =                                   1700;
 #endif
 #if MMLM
 static const int MMLM_CHROMA_IDX = LM_CHROMA_IDX + 1; ///< MDLM_L

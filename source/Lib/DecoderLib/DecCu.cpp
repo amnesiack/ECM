@@ -2800,6 +2800,9 @@ void DecCu::xDecodeInterTexture(CodingUnit &cu)
 #if JVET_AI0050_INTER_MTSS
         , secondDimdIntraDir
 #endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+        , true
+#endif 
       );
     }
     else
@@ -2809,6 +2812,9 @@ void DecCu::xDecodeInterTexture(CodingUnit &cu)
 #if JVET_AI0050_INTER_MTSS
         , secondDimdIntraDir
 #endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+        , true
+#endif 
       );
 #if JVET_AI0050_SBT_LFNST
     }

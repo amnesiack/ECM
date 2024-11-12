@@ -1482,11 +1482,27 @@ int getAllowedCurEip(const CodingUnit& cu, const ComponentID compId, static_vect
 bool getColocatedBVP(const PredictionUnit &pu, const Position &posIn, MotionInfo &rcMv, const int col);
 void getTemporalBv(const PredictionUnit &pu, std::vector<MotionInfo>& temporalMiCandList);
 #endif
-#endif
-#if JVET_AG0061_INTER_LFNST_NSPT
-int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh);
-#endif
 
+
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+inline bool use2x2EdgeOperator(const Size& sz) { return sz.area() <= DIMD_SMALL_BLOCK_THR ? true : false; };
+#endif 
+#if JVET_AG0061_INTER_LFNST_NSPT
+int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+                  , const int filterSizeIdx = 0// 0 - default, 1 - small
+#endif  
+);
+#endif
+#if JVET_AJ0267_ADAPTIVE_HOG
+void buildHistogramAdaptive(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, uint32_t* uiSizeExt, int *piHistogram, int direction,
+                  const int cuHeight, const int cuWidth, int maxTemplateSize, bool* isExtraAvailable, uint64_t maxAmp
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+                  , const int filterSizeIdx = 0// 0 - default, 1 - small
+#endif  
+);
+#endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
-void calcGradForOBMC(const PredictionUnit pu, const Pel *pReco, const int iStride, const int totalUnits, const int templateSize, const int blkSize, int *modeBuf, const int isAbove, const bool isExistFirst, const bool isExistLast);
+void calcGradForOBMC(const PredictionUnit pu, const Pel* pReco, const int iStride, const int totalUnits, const int templateSize, const int blkSize, int* modeBuf, const int isAbove, const bool isExistFirst, const bool isExistLast);
+#endif
 #endif

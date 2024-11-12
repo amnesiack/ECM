@@ -839,6 +839,9 @@ public:
 
 #if ENABLE_DIMD
   static void deriveDimdMode      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+#if JVET_AJ0267_ADAPTIVE_HOG
+  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+#endif
 #if JVET_Z0050_DIMD_CHROMA_FUSION && ENABLE_DIMD
   static void deriveDimdChromaMode(const CPelBuf &recoBufY, const CPelBuf &recoBufCb, const CPelBuf &recoBufCr, const CompArea &areaY, const CompArea &areaCb, const CompArea &areaCr, CodingUnit &cu);
 #if JVET_AH0136_CHROMA_REORDERING
@@ -853,6 +856,9 @@ public:
 #if JVET_AI0050_INTER_MTSS
     , int &secondMode
 #endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+    , const bool enableAlignedDesign = false
+#endif 
   );
 #endif
 #if !JVET_AG0061_INTER_LFNST_NSPT
@@ -907,7 +913,11 @@ public:
 #if JVET_AH0076_OBIC
   void deriveObicMode             ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu );
   void generateObicBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[OBIC_FUSION_NUM - 1], bool blendModes[OBIC_FUSION_NUM - 1], int planarIdx);
+#if JVET_AJ0267_ADAPTIVE_HOG
+  void generateDimdBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[DIMD_FUSION_NUM - 2], PelBuf &plnBlock);
+#else
   void generateDimdBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf &piBlock0, PelBuf &piBlock1, PelBuf &piBlock2, PelBuf &piBlock3, PelBuf &plnBlock);
+#endif
 #endif
 #if JVET_AB0155_SGPM
   int deriveTimdMode              ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool bFull = true, bool bHorVer = false );

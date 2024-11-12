@@ -33226,7 +33226,11 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm)
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
 int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction,
-                   int bw, int bh)
+                   int bw, int bh
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP 
+                 , const int filterSizeIdx
+#endif  
+)
 {
   const int wStep = 1, hStep = 1;
   int       angTable[17]   = { 0,     2048,  4096,  6144,  8192,  12288, 16384, 20480, 24576,
@@ -33240,6 +33244,12 @@ int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t ui
   {
     for (uint32_t x = 0; x < uiWidth; x += wStep)
     {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      if (filterSizeIdx == 2 && (direction == 3) && x != 0 && y != 0)
+      {
+        continue;
+      }
+#endif 
       if ((direction == 3) && x == (uiWidth - 1) && y == (uiHeight - 1))
       {
         continue;
@@ -33247,10 +33257,27 @@ int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t ui
 
       const Pel *pRec = pReco + y * iStride + x;
 
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      int iDy = 0;
+      int iDx = 0;
+      if (filterSizeIdx == 1)
+      {
+        // 2x2
+        iDy = pRec[-iStride - 1] + 1 * pRec[-1] - pRec[-iStride] - 1 * pRec[0];
+        iDx = pRec[-1] + 1 * pRec[0] - pRec[-iStride - 1] - 1 * pRec[-iStride];
+      }
+
+      if (filterSizeIdx == 0)
+      {
+        iDy = pRec[-iStride - 1] + 2 * pRec[-1] + pRec[iStride - 1] - pRec[-iStride + 1] - 2 * pRec[+1] - pRec[iStride + 1];
+        iDx = pRec[iStride - 1] + 2 * pRec[iStride] + pRec[iStride + 1] - pRec[-iStride - 1] - 2 * pRec[-iStride] - pRec[-iStride + 1];
+      }
+#else 
       int iDy =
         pRec[-iStride - 1] + 2 * pRec[-1] + pRec[iStride - 1] - pRec[-iStride + 1] - 2 * pRec[+1] - pRec[iStride + 1];
       int iDx = pRec[iStride - 1] + 2 * pRec[iStride] + pRec[iStride + 1] - pRec[-iStride - 1] - 2 * pRec[-iStride]
                 - pRec[-iStride + 1];
+#endif
 
       if (iDy == 0 && iDx == 0)
       {
@@ -33499,6 +33526,333 @@ void calcGradForOBMC(const PredictionUnit pu, const Pel *pReco, const int iStrid
     modeBuf[i] = bestMode;
     i++;
   }
+}
+#endif
+
+#if JVET_AJ0267_ADAPTIVE_HOG
+void buildHistogramAdaptive(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, uint32_t* uiSizeExt, int *piHistogram, int direction,
+                  const int cuHeight, const int cuWidth, int maxTemplateSize, bool* isExtraAvailable, uint64_t maxAmp
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+                , const int filterSizeIdx
+#endif  
+)
+{
+  const int dimdLutSize = 64;
+  const int bitShift2 = 3;
+  const int offset2 = ((bitShift2 > 0) ? (1 << (bitShift2 - 1)) : 0);
+  const int bitShift = (3 + bitShift2);
+  const int dimdLut[dimdLutSize] = {  16, 15, 14, 14, 13, 12, 11, 11, 10, 9, 9, 8, 8, 7, 7, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int       offsets[4]     = { HOR_IDX, HOR_IDX, VER_IDX, VER_IDX };
+  int       dirs[4]        = { -1, 1, -1, 1 };
+  int       mapXgrY1[2][2] = { { 1, 0 }, { 0, 1 } };
+  int       mapXgrY0[2][2] = { { 2, 3 }, { 3, 2 } };
+  uint64_t totAmp = 0;
+  const int maxWeightShift = 2;
+  const int maxWeightOffset = 2;
+  const int weightTable[MAX_DIMD_TEMPLATE_SIZE] = {4, 4, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1};
+  int weight = 4;
+  int otherRegion;
+  int iDx, iDy;
+  int region = 0;
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+  const int sides = (filterSizeIdx == 0 ? 2 : 1);
+#else
+  const int sides = 2;
+#endif
+  const int sideOffset = (sides >> 1);
+
+  if (direction == 1)
+  {
+    const int maxTemplate= (cuWidth <= 8 ? (MAX_DIMD_TEMPLATE_SIZE_SMALL - sides) :( MAX_DIMD_TEMPLATE_SIZE - sides));
+    const int maxX= std::min((int)(uiWidth - sides), maxTemplate);
+    for (int x = 0; x < maxX; x++)
+    {
+      weight = weightTable[x];
+      int currX = uiWidth - 1 - x - sideOffset;
+      int i = (x >> 2);
+      int maxY = (uiSizeExt[i] - sideOffset);
+      int minY = (!isExtraAvailable[i]) ? 1 : 0;
+      if (x > 0 && (x % 4) == 0)
+      {
+        int im1 = ((x - 1) >> 2);
+        maxY = std::max((uiSizeExt[im1] - sideOffset),(uiSizeExt[i] - sideOffset));
+        minY = (minY || !isExtraAvailable[im1]) ? 1 : 0;
+      }
+      else if ((x % 4) == 3)
+      {
+        int ip1 =  ((x + 1) >> 2);
+        maxY = std::max((uiSizeExt[ip1] - sideOffset),(uiSizeExt[i] - sideOffset));
+        minY = (minY || !isExtraAvailable[ip1]) ? 1 : 0;
+      }
+      for (int currY = minY; currY < maxY; currY++)
+      {
+        const Pel *pRec = pReco + currY * iStride + currX;
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+        if (filterSizeIdx == 1)
+        {
+          iDy = pRec[-iStride - 1] + 1 * pRec[-1] - pRec[-iStride] - 1 * pRec[0];
+          iDx = pRec[-1] + 1 * pRec[0] - pRec[-iStride - 1] - 1 * pRec[-iStride];
+        }
+        else
+        {
+#endif
+        iDy = pRec[-iStride - 1] + 2 * pRec[-1] + pRec[iStride - 1] - pRec[-iStride + 1] - 2 * pRec[+1] - pRec[iStride + 1];
+        iDx = pRec[iStride - 1] + 2 * pRec[iStride] + pRec[iStride + 1] - pRec[-iStride - 1] - 2 * pRec[-iStride] - pRec[-iStride + 1];
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+        }
+#endif
+        if (iDy == 0 && iDx == 0)
+        {
+          continue;
+        }
+        int iAmp       = (int) (abs(iDx) + abs(iDy));
+        int iAngUneven = -1;
+        if (iDx != 0 && iDy != 0)
+        {
+          int signx  = iDx < 0 ? 1 : 0;
+          int signy  = iDy < 0 ? 1 : 0;
+          int absx   = iDx < 0 ? -iDx : iDx;
+          int absy   = iDy < 0 ? -iDy : iDy;
+          int gtY    = absx > absy ? 1 : 0;
+          region = gtY ? mapXgrY1[signy][signx] : mapXgrY0[signy][signx];
+          int s0  = gtY ? absy : absx;
+          int s1  = gtY ? absx : absy;
+          int bs1 = floorLog2(s1);
+          int bs0 = floorLog2(s0);
+          int offset1 = (bs1 > 0) ? (1 << (bs1 - 1)) : 0;
+          int offset0 = (bs0 > 0) ? (1 << (bs0 - 1)) : 0;
+          int ls1     = (bs1 << bitShift) + (((s1 << bitShift) + offset1) >> bs1);
+          int ls0     = (bs0 << bitShift) + (((s0 << bitShift) + offset0) >> bs0);
+          int idx1 = (ls1 - ls0 + offset2) >> bitShift2;
+          if (idx1 > dimdLutSize - 1)
+          {
+            idx1 = dimdLutSize - 1;
+          }
+          int idx = dimdLut[idx1];
+          iAngUneven = offsets[region] + dirs[region] * idx;
+        }
+        else
+        {
+          iAngUneven = (iDx == 0 ? VER_IDX : HOR_IDX);
+        }
+        if (currY > cuHeight && iAngUneven > HOR_IDX  && iAngUneven < VER_IDX )
+        {
+          iAmp = 0;
+        }
+        else
+        {
+          iAmp = (iAmp*weight + maxWeightOffset) >> maxWeightShift;
+        }
+        if (x == 0 && iAmp != 0 && cuHeight >= 64)
+        {
+          const Pel *pRec = pReco + currY * iStride + (currX - 1);
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+          if (filterSizeIdx == 1)
+          {
+            iDy = pRec[-iStride - 1] + 1 * pRec[-1] - pRec[-iStride] - 1 * pRec[0];
+            iDx = pRec[-1] + 1 * pRec[0] - pRec[-iStride - 1] - 1 * pRec[-iStride];
+          }
+          else
+          {
+#endif
+          iDy = pRec[-iStride - 1] + 2 * pRec[-1] + pRec[iStride - 1] - pRec[-iStride + 1] - 2 * pRec[+1] - pRec[iStride + 1];
+          iDx = pRec[iStride - 1] + 2 * pRec[iStride] + pRec[iStride + 1] - pRec[-iStride - 1] - 2 * pRec[-iStride] - pRec[-iStride + 1];
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+          }
+#endif
+          otherRegion = region;
+          int iAngUnevenWeight = -1;
+          if (iDx != 0 && iDy != 0)
+          {
+            int signx  = iDx < 0 ? 1 : 0;
+            int signy  = iDy < 0 ? 1 : 0;
+            int absx   = iDx < 0 ? -iDx : iDx;
+            int absy   = iDy < 0 ? -iDy : iDy;
+            int gtY    = absx > absy ? 1 : 0;
+            region = gtY ? mapXgrY1[signy][signx] : mapXgrY0[signy][signx];
+            if (!(otherRegion != -1 && region != otherRegion))
+            {
+              int s0  = gtY ? absy : absx;
+              int s1  = gtY ? absx : absy;
+              int bs1 = floorLog2(s1);
+              int bs0 = floorLog2(s0);
+              int offset1 = (bs1 > 0) ? (1 << (bs1 - 1)) : 0;
+              int offset0 = (bs0 > 0) ? (1 << (bs0 - 1)) : 0;
+              int ls1     = (bs1 << bitShift) + (((s1 << bitShift) + offset1) >> bs1);
+              int ls0     = (bs0 << bitShift) + (((s0 << bitShift) + offset0) >> bs0);
+              int idx1 = (ls1 - ls0 + offset2) >> bitShift2;
+              if (idx1 > dimdLutSize - 1)
+                idx1 = dimdLutSize - 1;
+              int idx = dimdLut[idx1];
+              iAngUnevenWeight = offsets[region] + dirs[region] * idx;
+            }
+          }
+          else
+          {
+            iAngUnevenWeight = (iDx == 0 ? VER_IDX : HOR_IDX);
+          }
+          if (abs(iAngUneven - iAngUnevenWeight) <= 1)
+          {
+            iAmp = iAmp + (iAmp >> 3);
+          }
+        }
+        piHistogram[iAngUneven] += iAmp;
+        totAmp += iAmp;
+        if (totAmp >= maxAmp)
+        {
+          return;
+        }
+      }
+    }
+  }
+  else if (direction == 2)
+  {
+    const int maxTemplate= (cuHeight <= 8 ? (MAX_DIMD_TEMPLATE_SIZE_SMALL - sides) :( MAX_DIMD_TEMPLATE_SIZE - sides));
+    const int maxY= std::min((int)(uiHeight - sides), maxTemplate);
+    for (int y = 0; y < maxY; y++)
+    {
+      weight = weightTable[y];
+      int currY = uiHeight - 1 - y - sideOffset;
+      int i = (y >> 2);
+      int maxX = (uiSizeExt[i] - sideOffset);
+      int minX = (!isExtraAvailable[i]) ? 1 : 0;
+      if (y > 0 && (y % 4) == 0)
+      {
+        int im1 = ((y - 1) >> 2);
+        maxX = std::max((uiSizeExt[im1] - sideOffset),(uiSizeExt[i] - sideOffset));
+        minX = (minX|| !isExtraAvailable[im1]) ? 1 : 0;
+      }
+      else if ((y % 4) == 3)
+      {
+        int ip1 =  ((y + 1) >> 2);
+        maxX = std::max((uiSizeExt[ip1] - sideOffset),(uiSizeExt[i] - sideOffset));
+        minX = (minX || !isExtraAvailable[ip1]) ? 1 : 0;
+      }
+      for (int currX = minX; currX < maxX; currX++)
+      {
+        const Pel *pRec = pReco + currY * iStride + currX;
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+        if (filterSizeIdx == 1)
+        {
+          iDy = pRec[-iStride - 1] + 1 * pRec[-1] - pRec[-iStride] - 1 * pRec[0];
+          iDx = pRec[-1] + 1 * pRec[0] - pRec[-iStride - 1] - 1 * pRec[-iStride];
+        }
+        else
+        {
+#endif
+        iDy = pRec[-iStride - 1] + 2 * pRec[-1] + pRec[iStride - 1] - pRec[-iStride + 1] - 2 * pRec[+1] - pRec[iStride + 1];
+        iDx = pRec[iStride - 1] + 2 * pRec[iStride] + pRec[iStride + 1] - pRec[-iStride - 1] - 2 * pRec[-iStride] - pRec[-iStride + 1];
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+        }
+#endif
+        if (iDy == 0 && iDx == 0)
+        {
+          continue;
+        }
+
+        int iAmp       = (int) (abs(iDx) + abs(iDy));
+        int iAngUneven = -1;
+        if (iDx != 0 && iDy != 0)
+        {
+          int signx  = iDx < 0 ? 1 : 0;
+          int signy  = iDy < 0 ? 1 : 0;
+          int absx   = iDx < 0 ? -iDx : iDx;
+          int absy   = iDy < 0 ? -iDy : iDy;
+          int gtY    = absx > absy ? 1 : 0;
+          region = gtY ? mapXgrY1[signy][signx] : mapXgrY0[signy][signx];
+          int s0  = gtY ? absy : absx;
+          int s1  = gtY ? absx : absy;
+          int bs1 = floorLog2(s1);
+          int bs0 = floorLog2(s0);
+          int offset1 = (bs1 > 0) ? (1 << (bs1 - 1)) : 0;
+          int offset0 = (bs0 > 0) ? (1 << (bs0 - 1)) : 0;
+          int ls1     = (bs1 << bitShift) + (((s1 << bitShift) + offset1) >> bs1);
+          int ls0     = (bs0 << bitShift) + (((s0 << bitShift) + offset0) >> bs0);
+          int idx1 = (ls1 - ls0 + offset2) >> bitShift2;
+          if (idx1 > dimdLutSize - 1)
+          {
+            idx1 = dimdLutSize - 1;
+          }
+          int idx = dimdLut[idx1];
+          iAngUneven = offsets[region] + dirs[region] * idx;
+        }
+        else
+        {
+          iAngUneven = (iDx == 0 ? VER_IDX : HOR_IDX);
+        }
+        if (currX > cuWidth && iAngUneven > HOR_IDX  && iAngUneven < VER_IDX )
+        {
+          iAmp = 0;
+        }
+        else
+        {
+          iAmp = (iAmp*weight + maxWeightOffset) >> maxWeightShift;
+        }
+        if (y == 0 && iAmp != 0 && cuWidth >= 64)
+        {
+          const Pel *pRec = pReco + (currY - 1) * iStride + currX;
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+          if (filterSizeIdx == 1)
+          {
+            iDy = pRec[-iStride - 1] + 1 * pRec[-1] - pRec[-iStride] - 1 * pRec[0];
+            iDx = pRec[-1] + 1 * pRec[0] - pRec[-iStride - 1] - 1 * pRec[-iStride];
+          }
+          else
+          {
+#endif
+          iDy = pRec[-iStride - 1] + 2 * pRec[-1] + pRec[iStride - 1] - pRec[-iStride + 1] - 2 * pRec[+1] - pRec[iStride + 1];
+          iDx = pRec[iStride - 1] + 2 * pRec[iStride] + pRec[iStride + 1] - pRec[-iStride - 1] - 2 * pRec[-iStride] - pRec[-iStride + 1];
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+          }
+#endif
+          otherRegion = region;
+          int iAngUnevenWeight = -1;
+          if (iDx != 0 && iDy != 0)
+          {
+            int signx  = iDx < 0 ? 1 : 0;
+            int signy  = iDy < 0 ? 1 : 0;
+            int absx   = iDx < 0 ? -iDx : iDx;
+            int absy   = iDy < 0 ? -iDy : iDy;
+            int gtY    = absx > absy ? 1 : 0;
+            region = gtY ? mapXgrY1[signy][signx] : mapXgrY0[signy][signx];
+            if (!(otherRegion != -1 && region != otherRegion))
+            {
+              int s0  = gtY ? absy : absx;
+              int s1  = gtY ? absx : absy;
+              int bs1 = floorLog2(s1);
+              int bs0 = floorLog2(s0);
+              int offset1 = (bs1 > 0) ? (1 << (bs1 - 1)) : 0;
+              int offset0 = (bs0 > 0) ? (1 << (bs0 - 1)) : 0;
+              int ls1     = (bs1 << bitShift) + (((s1 << bitShift) + offset1) >> bs1);
+              int ls0     = (bs0 << bitShift) + (((s0 << bitShift) + offset0) >> bs0);
+              int idx1 = (ls1 - ls0 + offset2) >> bitShift2;
+              if (idx1 > dimdLutSize - 1)
+              {
+                idx1 = dimdLutSize - 1;
+              }
+              int idx = dimdLut[idx1];
+              iAngUnevenWeight = offsets[region] + dirs[region] * idx;
+            }
+          }
+          else
+          {
+            iAngUnevenWeight = (iDx == 0 ? VER_IDX : HOR_IDX);
+          }
+          if (abs(iAngUneven - iAngUnevenWeight) <= 1)
+          {
+            iAmp = iAmp + (iAmp >> 3);
+          }
+        }
+        piHistogram[iAngUneven] += iAmp;
+        totAmp += iAmp;
+        if (totAmp >= maxAmp)
+        {
+          return;
+        }
+      }
+    }
+  }
+  return;
 }
 #endif
 

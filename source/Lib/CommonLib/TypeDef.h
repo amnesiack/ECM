@@ -124,6 +124,8 @@
 #if ENABLE_DIMD
 #define JVET_V0087_DIMD_NO_ISP                            1 // JVET-V0087: Disallow combination of DIMD and ISP
 #define JVET_X0124_TMP_SIGNAL                             1 // JVET-X0124: Cleanup on signalling of intra template matching
+#define JVET_AJ0203_DIMD_2X2_EDGE_OP                      1 // DIMD with 2x2 edge operator applied to small blocks
+#define JVET_AJ0267_ADAPTIVE_HOG                          1 // JVET-AJ0267: Adaptive HoG for DIMD
 #endif
 
 #define JVET_V0130_INTRA_TMP                              1 // JVET-V0130: Template matching prediction
