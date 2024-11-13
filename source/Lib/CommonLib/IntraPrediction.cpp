@@ -11847,10 +11847,15 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
       {
         for (int i = lastFilled; i >= 1; i--)
         {
+          CHECK( i < 0, "Wrong index" );
+          CHECK( i >= DIMD_FUSION_NUM - 1, "Wrong index" );
+
           iRatio[i] -=1;
-          cu.dimdRelWeight[Clip3(0, DIMD_FUSION_NUM - 1, i+1)] = iRatio[i];
+          cu.dimdRelWeight[i+1] = iRatio[i];
+
           if (cu.dimdRelWeight[i+1] == 0)
           {
+            CHECK( i < 1, "Wrong index" );
             cu.dimdBlendMode[i-1] = 0;
             countBlendMode--;
           }
@@ -12387,10 +12392,15 @@ void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompA
       {
         for (int i = lastFilled; i >= 1; i--)
         {
+          CHECK( i < 0, "Wrong index" );
+          CHECK( i >= DIMD_FUSION_NUM - 1, "Wrong index" );
+
           iRatio[i] -=1;
-          cu.dimdRelWeight[Clip3(0, DIMD_FUSION_NUM - 1, i+1)] = iRatio[i];
+          cu.dimdRelWeight[i+1] = iRatio[i];
+
           if (cu.dimdRelWeight[i+1] == 0)
           {
+            CHECK( i < 1, "Wrong index" );
             cu.dimdBlendMode[i-1] = 0;
             countBlendMode--;
           }
