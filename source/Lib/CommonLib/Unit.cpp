@@ -445,6 +445,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   eipFlag = other.eipFlag;
   eipMerge = other.eipMerge;
   eipModel = other.eipModel;
+#if JVET_AJ0082_MM_EIP
+  eipMmFlag = other.eipMmFlag;
+#endif
 #endif
 #if ENABLE_OBMC
   obmcFlag          = other.obmcFlag;
@@ -764,6 +767,9 @@ void CodingUnit::initData()
 #if JVET_AG0058_EIP
   eipFlag = false;
   eipMerge = false;
+#if JVET_AJ0082_MM_EIP
+  eipMmFlag = false;
+#endif
 #endif
 #if ENABLE_OBMC
   obmcFlag          = true;
