@@ -824,7 +824,7 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setUseBLambdaForNonKeyLowDelayPictures               ( m_bUseBLambdaForNonKeyLowDelayPictures );
   m_cEncLib.setUseISP                                            ( m_ISP );
   m_cEncLib.setUseFastISP                                        ( m_useFastISP );
-#if JVET_AE0057_MTT_ET 
+#if JVET_AJ0226_MTT_SKIP 
   m_cEncLib.setUseMttSkip                                        (m_useMttSkip);
 #endif
 

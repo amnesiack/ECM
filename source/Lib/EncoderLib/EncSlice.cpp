@@ -1562,7 +1562,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   for( uint32_t ctuIdx = 0; ctuIdx < pcSlice->getNumCtuInSlice(); ctuIdx++ )
   {
     const int32_t ctuRsAddr = pcSlice->getCtuAddrInSlice( ctuIdx );
-
+#if JVET_AJ0226_MTT_SKIP 
+    m_pcCuEncoder->getModeCtrl()->resetSplitSignalCostParams();
+#endif
     // update CABAC state
     const uint32_t ctuXPosInCtus        = ctuRsAddr % widthInCtus;
     const uint32_t ctuYPosInCtus        = ctuRsAddr / widthInCtus;
