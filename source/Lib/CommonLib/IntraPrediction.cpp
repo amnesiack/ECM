@@ -9434,22 +9434,40 @@ void IntraPrediction::calcTimdMrgCandCosts(
   distParamSad[1].useMR       = false;
   if (eTempType == LEFT_ABOVE_NEIGHBOR)
   {
+#if JVET_AJ0096_SATD_REORDER_INTRA
+    m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg + iTempWidth, piPred + iTempWidth, iOrgStride,
+                                    uiPredStride, channelBitDepth, COMPONENT_Y, uiWidth, iTempHeight, 0, 1, true);
+                                    m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg + iTempHeight * iOrgStride,
+                                    piPred + iTempHeight * uiPredStride, iOrgStride, uiPredStride, channelBitDepth,
+                                    COMPONENT_Y, iTempWidth, uiHeight, 0, 1, true);
+#else
     m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg + iTempWidth, piPred + iTempWidth, iOrgStride,
                                      uiPredStride, channelBitDepth, COMPONENT_Y, uiWidth, iTempHeight, 0, 1,
                                      false);   // Use HAD (SATD) cost
     m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg + iTempHeight * iOrgStride,
                                      piPred + iTempHeight * uiPredStride, iOrgStride, uiPredStride, channelBitDepth,
                                      COMPONENT_Y, iTempWidth, uiHeight, 0, 1, false);   // Use HAD (SATD) cost
+#endif
   }
   else if (eTempType == LEFT_NEIGHBOR)
   {
+#if JVET_AJ0096_SATD_REORDER_INTRA
+    m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, iTempWidth, uiHeight, 0, 1, true);
+#else
     m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
                                      COMPONENT_Y, iTempWidth, uiHeight, 0, 1, false);
+#endif
   }
   else if (eTempType == ABOVE_NEIGHBOR)
   {
+#if JVET_AJ0096_SATD_REORDER_INTRA
+    m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, uiWidth, iTempHeight, 0, 1, true);
+#else
     m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
                                      COMPONENT_Y, uiWidth, iTempHeight, 0, 1, false);
+#endif
   }
   initTimdIntraPatternLuma(cu, area, eTempType != ABOVE_NEIGHBOR ? iTempWidth : 0,
                            eTempType != LEFT_NEIGHBOR ? iTempHeight : 0, uiRefWidth, uiRefHeight);
