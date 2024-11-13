@@ -83,7 +83,7 @@
 #define JVET_S0175_ASPECT6                                1 // The general_nal_hrd_params_present_flag and general_vcl_hrd_params_present_flag are allowed to both be equal to 0
 #define JVET_R0046_IRAP_ASPECT2                           1 // Add a constraint on an ILRP being either an IRAP picture or having TemporalId less than or equal to Max (0, vps_max_tid_il_ref_pics_plus1[ refPicVpsLayerId ] - 1 )
 #define JVET_T0064                                        1 // JVET-T0064: control of filter strength for ALF
-#define JVET_AE0057_MTT_ET                                1 // JVET-AE0057: MTT split modes early termination
+#define JVET_AJ0226_MTT_SKIP                              1 // JVET-AJ00226: MTT split modes early termination
 #define JVET_AD0045                                       1 // JVET-AD0045: encoder control for DMVR
 
 //########### place macros to be be kept below this line ###############

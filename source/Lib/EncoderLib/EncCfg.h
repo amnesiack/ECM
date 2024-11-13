@@ -408,7 +408,7 @@ protected:
   bool      m_useFastMIP;
   int       m_fastLocalDualTreeMode;
   uint32_t  m_log2MaxTbSize;
-#if JVET_AE0057_MTT_ET
+#if JVET_AJ0226_MTT_SKIP
   bool      m_useMttSkip;
 #endif
 
@@ -1276,7 +1276,7 @@ public:
   bool      getUseFastMIP                   () const         { return m_useFastMIP; }
   void     setFastLocalDualTreeMode         ( int i )        { m_fastLocalDualTreeMode = i; }
   int      getFastLocalDualTreeMode         () const         { return m_fastLocalDualTreeMode; }
-#if JVET_AE0057_MTT_ET
+#if JVET_AJ0226_MTT_SKIP
   void      setUseMttSkip                   (bool i)         { m_useMttSkip = i; }
   bool      getUseMttSkip                   () const         { return m_useMttSkip; }
 #endif  
