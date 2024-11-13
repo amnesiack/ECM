@@ -375,6 +375,8 @@
 #define JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE           1 // JVET-AI0185 adaptive cost function selection in merge mode
 #define JVET_AI0183_MVP_EXTENSION                         1 // JVET-AI0183 MVP extension
 #define JVET_AJ0126_INTER_AMVP_ENHANCEMENT                1 // JVET-AJ0126: Enhanced inter AMVP (inter TM part is controlled by EnableTMTools)
+#define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
+
 // Inter template matching tools
 #define JVET_AJ0096_SATD_REORDER_INTER                    1 // JVET-AJ0096: SATD-based reordering for inter coding
 #define ENABLE_INTER_TEMPLATE_MATCHING                    1 // It controls whether template matching is enabled for inter prediction
