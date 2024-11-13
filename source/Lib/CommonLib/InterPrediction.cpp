@@ -1,4 +1,4 @@
-/* The copyright in this software is being made available under the BSD
+﻿/* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
@@ -9139,7 +9139,11 @@ void InterPrediction::initTplWeightTable()
 
     for (int wIdx = 0; wIdx < GEO_NUM_CU_SIZE; wIdx++)
     {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; ++splitDir)
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
+#endif
       {
         int16_t(&offset)[2] = g_weightOffset[splitDir][hIdx][wIdx];
 
@@ -9207,6 +9211,9 @@ void InterPrediction::deriveGpmSplitMode(PredictionUnit& pu, MergeCtx &geoMrgCtx
 #else
   bool refinedSplitMode = !PU::checkRprRefExistingInGpm(pu, geoMrgCtx, pu.geoMergeIdx0, geoMrgCtx, pu.geoMergeIdx1)
                        && xAMLGetCurBlkTemplate(pu, pu.lwidth(), pu.lheight());
+#endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
 #endif
   if (refinedSplitMode)
   {
@@ -9314,8 +9321,13 @@ void InterPrediction::deriveGpmSplitMode(PredictionUnit& pu, MergeCtx &geoMrgCtx
 #endif
         for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
         {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          pIntraRefTop [partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx, 0);
+          pIntraRefLeft[partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx, 1);
+#else
           pIntraRefTop [partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, splitDir, realCandIdx, 0);
           pIntraRefLeft[partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, splitDir, realCandIdx, 1);
+#endif
         }
       }
     }
@@ -9988,12 +10000,22 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #endif
   );
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  int whIdx = !cu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(cu.firstPU->lwidth()) - floorLog2(cu.firstPU->lheight()) + GEO_SQUARE_IDX);
+  MergeCtx& geoTmMrgCtx0 = geoTmMrgCtx[g_geoTmShape[0][g_geoParams[g_gpmSplitDir[whIdx][cu.firstPU->geoSplitDir]][0]]];
+  MergeCtx& geoTmMrgCtx1 = geoTmMrgCtx[g_geoTmShape[1][g_geoParams[g_gpmSplitDir[whIdx][cu.firstPU->geoSplitDir]][0]]];
+#else
   MergeCtx& geoTmMrgCtx0 = geoTmMrgCtx[g_geoTmShape[0][g_geoParams[cu.firstPU->geoSplitDir][0]]];
   MergeCtx& geoTmMrgCtx1 = geoTmMrgCtx[g_geoTmShape[1][g_geoParams[cu.firstPU->geoSplitDir][0]]];
 #endif
 #endif
+#endif
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  const uint8_t splitDir = g_gpmSplitDir[whIdx][cu.firstPU->geoSplitDir];
+#else
   const uint8_t splitDir = cu.firstPU->geoSplitDir;
+#endif
   const uint8_t candIdx0 = cu.firstPU->geoMergeIdx0;
   const uint8_t candIdx1 = cu.firstPU->geoMergeIdx1;
 #if JVET_W0097_GPM_MMVD_TM
@@ -10077,7 +10099,11 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #endif
     if (isIntra0)
     {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM, splitDir, g_geoTmShape[0][g_geoParams[g_gpmSplitDir[whIdx][pu.geoSplitDir]][0]]);
+#else
       PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM, splitDir, g_geoTmShape[0][g_geoParams[pu.geoSplitDir][0]]);
+#endif
 #if JVET_AG0164_AFFINE_GPM
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS];
 #else
@@ -10274,7 +10300,11 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #endif
     if (isIntra1)
     {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM+GEO_MAX_NUM_INTRA_CANDS, splitDir, g_geoTmShape[1][g_geoParams[g_gpmSplitDir[whIdx][pu.geoSplitDir]][0]]);
+#else
       PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM+GEO_MAX_NUM_INTRA_CANDS, splitDir, g_geoTmShape[1][g_geoParams[pu.geoSplitDir][0]]);
+#endif
 #if JVET_AG0164_AFFINE_GPM
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS];
 #else
@@ -10485,7 +10515,11 @@ void InterPrediction::motionCompensationIbcGpm( CodingUnit &cu, MergeCtx &ibcGpm
     cu.timdMode = pcIntraPred->deriveTimdMode(cu.cs->picture->getRecoBuf(cu.Y()), cu.Y(), cu);
   }
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  const uint8_t splitDir = g_ibcGpmSplitDir[cu.firstPU->ibcGpmSplitDir];
+#else
   const uint8_t splitDir = cu.firstPU->ibcGpmSplitDir;
+#endif
   const uint8_t candIdx0 = cu.firstPU->ibcGpmMergeIdx0;
   const uint8_t candIdx1 = cu.firstPU->ibcGpmMergeIdx1;
   const uint8_t bldIdx = cu.firstPU->ibcGpmBldIdx;
@@ -10507,7 +10541,11 @@ void InterPrediction::motionCompensationIbcGpm( CodingUnit &cu, MergeCtx &ibcGpm
     bool isIntra1 = candIdx1 >= IBC_GPM_MAX_NUM_UNI_CANDS;
     if (isIntra0)
     {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM, splitDir, g_geoTmShape[0][g_geoParams[g_ibcGpmSplitDir[pu.ibcGpmSplitDir]][0]]);
+#else
       PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM, splitDir, g_geoTmShape[0][g_geoParams[pu.ibcGpmSplitDir][0]]);
+#endif
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx0 - IBC_GPM_MAX_NUM_UNI_CANDS];
       pcIntraPred->initIntraPatternChType(cu, pu.Y());
       pcIntraPred->predIntraAng(COMPONENT_Y, tmpGeoBuf0.Y(), pu);
@@ -10549,7 +10587,11 @@ void InterPrediction::motionCompensationIbcGpm( CodingUnit &cu, MergeCtx &ibcGpm
 
     if (isIntra1)
     {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM+GEO_MAX_NUM_INTRA_CANDS, splitDir, g_geoTmShape[1][g_geoParams[g_ibcGpmSplitDir[pu.ibcGpmSplitDir]][0]]);
+#else
       PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM+GEO_MAX_NUM_INTRA_CANDS, splitDir, g_geoTmShape[1][g_geoParams[pu.ibcGpmSplitDir][0]]);
+#endif
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx1 - IBC_GPM_MAX_NUM_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS];
       pcIntraPred->initIntraPatternChType(cu, pu.Y());
       pcIntraPred->predIntraAng(COMPONENT_Y, tmpGeoBuf1.Y(), pu);
@@ -10706,6 +10748,9 @@ void InterPrediction::getBestGeoTMModeList(PredictionUnit &pu, uint8_t& numValid
   // Check split mode cost
   uint32_t uiCost[GEO_NUM_PARTITION_MODE] = { 0, };
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
   if (m_bAMLTemplateAvailabe[0])
   {
     SizeType   szPerLine       = pu.lwidth();
@@ -10723,13 +10768,24 @@ void InterPrediction::getBestGeoTMModeList(PredictionUnit &pu, uint8_t& numValid
     DistParam cDistParam;
     cDistParam.applyWeight = false;
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+    for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+    {
+      int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
     for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
     {
+#endif
       uint8_t shapeIdx0 = g_geoTmShape[0][g_geoParams[splitDir][0]];
       uint8_t shapeIdx1 = g_geoTmShape[1][g_geoParams[splitDir][0]];
       weightedGeoTpl<true>(pu, splitDir, pcBufPredRefTop, pcBufPredRefTopPart0[shapeIdx0], pcBufPredRefTopPart1[shapeIdx1]);
       uint32_t tempDist = (uint32_t)cDistParam.distFunc(cDistParam);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      uiCost[splitDirIdx] += tempDist;
+#else
       uiCost[splitDir] += tempDist;
+#endif
     }
   }
 
@@ -10751,13 +10807,23 @@ void InterPrediction::getBestGeoTMModeList(PredictionUnit &pu, uint8_t& numValid
     DistParam cDistParam;
     cDistParam.applyWeight = false;
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeftTr.Y(), pcBufPredRefLeftTr.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false); // To enable SIMD for cost computation
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+    {
+      int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
     for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
     {
+#endif
       uint8_t shapeIdx0  = g_geoTmShape[0][g_geoParams[splitDir][0]];
       uint8_t shapeIdx1  = g_geoTmShape[1][g_geoParams[splitDir][0]];
       weightedGeoTpl<false>(pu, splitDir, pcBufPredRefLeft, pcBufPredRefLeftPart0[shapeIdx0], pcBufPredRefLeftPart1[shapeIdx1]);
       uint32_t tempDist = (uint32_t)cDistParam.distFunc(cDistParam);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      uiCost[splitDirIdx] += tempDist;
+#else
       uiCost[splitDir] += tempDist;
+#endif
     }
   }
 
@@ -10785,6 +10851,9 @@ void InterPrediction::getBestGeoModeList(PredictionUnit &pu, uint8_t& numValidIn
 
   // Check split mode cost
   uint32_t uiCost[GEO_NUM_PARTITION_MODE] = { 0, };
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
 
   if (m_bAMLTemplateAvailabe[0])
   {
@@ -10797,15 +10866,30 @@ void InterPrediction::getBestGeoModeList(PredictionUnit &pu, uint8_t& numValidIn
     DistParam cDistParam;
     cDistParam.applyWeight = false;
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurTop.Y(), pcBufPredRefTop.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+    {
+      int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
     for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
     {
+#endif
 #if JVET_Y0065_GPM_INTRA
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      pcBufPredRefTopPart0.Y().buf = pIntraRefTopPart0 == nullptr ? pcBufPredRefTopPart0.Y().buf : pIntraRefTopPart0[splitDirIdx];
+      pcBufPredRefTopPart1.Y().buf = pIntraRefTopPart1 == nullptr ? pcBufPredRefTopPart1.Y().buf : pIntraRefTopPart1[splitDirIdx];
+#else
       pcBufPredRefTopPart0.Y().buf = pIntraRefTopPart0 == nullptr ? pcBufPredRefTopPart0.Y().buf : pIntraRefTopPart0[splitDir];
       pcBufPredRefTopPart1.Y().buf = pIntraRefTopPart1 == nullptr ? pcBufPredRefTopPart1.Y().buf : pIntraRefTopPart1[splitDir];
 #endif
+#endif
       weightedGeoTpl<true>(pu, splitDir, pcBufPredRefTop, pcBufPredRefTopPart0, pcBufPredRefTopPart1);
       uint32_t tempDist = (uint32_t)cDistParam.distFunc(cDistParam);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      uiCost[splitDirIdx] += tempDist;
+#else
       uiCost[splitDir] += tempDist;
+#endif
     }
   }
 
@@ -10821,15 +10905,30 @@ void InterPrediction::getBestGeoModeList(PredictionUnit &pu, uint8_t& numValidIn
     DistParam cDistParam;
     cDistParam.applyWeight = false;
     m_pcRdCost->setDistParam(cDistParam, pcBufPredCurLeftTr.Y(), pcBufPredRefLeftTr.Y(), pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA), COMPONENT_Y, false); // To enable SIMD for cost computation
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+    {
+      int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
     for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
     {
+#endif
 #if JVET_Y0065_GPM_INTRA
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      pcBufPredRefLeftPart0.Y().buf = pIntraRefLeftPart0 == nullptr ? pcBufPredRefLeftPart0.Y().buf : pIntraRefLeftPart0[splitDirIdx];
+      pcBufPredRefLeftPart1.Y().buf = pIntraRefLeftPart1 == nullptr ? pcBufPredRefLeftPart1.Y().buf : pIntraRefLeftPart1[splitDirIdx];
+#else
       pcBufPredRefLeftPart0.Y().buf = pIntraRefLeftPart0 == nullptr ? pcBufPredRefLeftPart0.Y().buf : pIntraRefLeftPart0[splitDir];
       pcBufPredRefLeftPart1.Y().buf = pIntraRefLeftPart1 == nullptr ? pcBufPredRefLeftPart1.Y().buf : pIntraRefLeftPart1[splitDir];
 #endif
+#endif
       weightedGeoTpl<false>(pu, splitDir, pcBufPredRefLeft, pcBufPredRefLeftPart0, pcBufPredRefLeftPart1);
       uint32_t tempDist = (uint32_t)cDistParam.distFunc(cDistParam);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      uiCost[splitDirIdx] += tempDist;
+#else
       uiCost[splitDir] += tempDist;
+#endif
     }
   }
 

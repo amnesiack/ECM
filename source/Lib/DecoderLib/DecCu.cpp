@@ -2014,8 +2014,14 @@ void DecCu::xReconInter(CodingUnit &cu)
 #endif
     );
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !cu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(cu.firstPU->lwidth()) - floorLog2(cu.firstPU->lheight()) + GEO_SQUARE_IDX);
+    MergeCtx& m_geoTmMrgCtx0 = m_geoTmMrgCtx[g_geoTmShape[0][g_geoParams[g_gpmSplitDir[whIdx][cu.firstPU->geoSplitDir]][0]]];
+    MergeCtx& m_geoTmMrgCtx1 = m_geoTmMrgCtx[g_geoTmShape[1][g_geoParams[g_gpmSplitDir[whIdx][cu.firstPU->geoSplitDir]][0]]];
+#else
     MergeCtx& m_geoTmMrgCtx0 = m_geoTmMrgCtx[g_geoTmShape[0][g_geoParams[cu.firstPU->geoSplitDir][0]]];
     MergeCtx& m_geoTmMrgCtx1 = m_geoTmMrgCtx[g_geoTmShape[1][g_geoParams[cu.firstPU->geoSplitDir][0]]];
+#endif
 #endif
 #if JVET_W0097_GPM_MMVD_TM
     PU::spanGeoMMVDMotionInfo
@@ -3059,6 +3065,9 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
       {
         if( pu.cu->geoFlag )
         {     
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          int whIdx = !cu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(cu.firstPU->lwidth()) - floorLog2(cu.firstPU->lheight()) + GEO_SQUARE_IDX);
+#endif
 #if JVET_AG0164_AFFINE_GPM
           if (pu.affineGPM[0] || pu.affineGPM[1])
           {
@@ -3176,7 +3185,11 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
             for (uint8_t tmType = GEO_TM_SHAPE_AL; tmType < GEO_NUM_TM_MV_CAND; ++tmType)
             {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+              if (tmType == GEO_TM_SHAPE_L || (!pu.cs->slice->getSPS()->getUseAltGPMSplitModeCode() && tmType != g_geoTmShape[0][g_geoParams[g_gpmSplitDir[whIdx][pu.geoSplitDir]][0]]))
+#else
               if (tmType == GEO_TM_SHAPE_L || (!pu.cs->slice->getSPS()->getUseAltGPMSplitModeCode() && tmType != g_geoTmShape[0][g_geoParams[pu.geoSplitDir][0]]))
+#endif
               {
                 continue;
               }
@@ -3282,7 +3295,11 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
             for (uint8_t tmType = GEO_TM_SHAPE_AL; tmType < GEO_NUM_TM_MV_CAND; ++tmType)
             {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+              if (tmType == GEO_TM_SHAPE_A || (!pu.cs->slice->getSPS()->getUseAltGPMSplitModeCode() && tmType != g_geoTmShape[1][g_geoParams[g_gpmSplitDir[whIdx][pu.geoSplitDir]][0]]))
+#else
               if (tmType == GEO_TM_SHAPE_A || (!pu.cs->slice->getSPS()->getUseAltGPMSplitModeCode() && tmType != g_geoTmShape[1][g_geoParams[pu.geoSplitDir][0]]))
+#endif
               {
                 continue;
               }
