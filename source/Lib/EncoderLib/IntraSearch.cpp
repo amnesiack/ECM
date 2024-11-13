@@ -2684,6 +2684,23 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                  PelBuf predBuf(m_intraPredBuf[dimdMode], tmpArea);
 #endif
                   piPred.copyFrom(predBuf);
+#if JVET_AJ0267_ADAPTIVE_HOG
+                  PelBuf predFusion[ DIMD_FUSION_NUM - 2 ];
+                  const UnitArea localUnitArea( pu.chromaFormat, Area( 0, 0, iWidth, iHeight ) );
+                  for( int i = 0; i < DIMD_FUSION_NUM - 2; i++ )
+                  {
+                    predFusion[ i ] = m_tempBuffer[ i + 1 ].getBuf( localUnitArea.Y() );
+#if JVET_AH0209_PDP
+                    dimdMode = cu.dimdBlendMode[ i ] > 0 ? cu.dimdBlendMode[ i ] : PLANAR_IDX;
+                    PelBuf predBufTmp( dimdMode && m_pdpIntraPredReady[ dimdMode ] ? m_pdpIntraPredBuf[ dimdMode ] : m_intraPredBuf[ dimdMode ], tmpArea );
+#else
+                    PelBuf predBufTmp( ( m_intraPredBuf[ cu.dimdBlendMode[ i ] > 0 ? cu.dimdBlendMode[ i ] : PLANAR_IDX ] ), tmpArea );
+#endif
+                    predFusion[ i ].copyFrom( predBufTmp );
+                  }
+                  PelBuf planarBuf( m_intraPredBuf[ PLANAR_IDX ], tmpArea );
+                  generateDimdBlending( piPred, pu, predFusion, planarBuf );
+#else
 #if JVET_AH0209_PDP
                   dimdMode = cu.dimdBlendMode[0] > 0 ? cu.dimdBlendMode[0] : PLANAR_IDX;
                   PelBuf blendBuf0(dimdMode && m_pdpIntraPredReady[dimdMode] ? m_pdpIntraPredBuf[dimdMode] : m_intraPredBuf[dimdMode], tmpArea);
@@ -2702,6 +2719,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   PelBuf planarBuf(m_intraPredBuf[PLANAR_IDX], tmpArea);
   #endif
                   generateDimdBlending(piPred, pu, blendBuf0, blendBuf1, blendBuf2, blendBuf3, planarBuf);
+#endif
                 }
                 else
                 {

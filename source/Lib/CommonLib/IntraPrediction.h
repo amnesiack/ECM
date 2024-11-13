@@ -912,11 +912,11 @@ public:
 #endif
 #if JVET_AH0076_OBIC
   void deriveObicMode             ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu );
-  void generateObicBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[OBIC_FUSION_NUM - 1], bool blendModes[OBIC_FUSION_NUM - 1], int planarIdx);
+  void generateObicBlending       ( PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[OBIC_FUSION_NUM - 1], bool blendModes[OBIC_FUSION_NUM - 1], int planarIdx );
 #if JVET_AJ0267_ADAPTIVE_HOG
-  void generateDimdBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[DIMD_FUSION_NUM - 2], PelBuf &plnBlock);
+  void generateDimdBlending       ( PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[DIMD_FUSION_NUM - 2], PelBuf &plnBlock );
 #else
-  void generateDimdBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf &piBlock0, PelBuf &piBlock1, PelBuf &piBlock2, PelBuf &piBlock3, PelBuf &plnBlock);
+  void generateDimdBlending       ( PelBuf &piPred, const PredictionUnit &pu, PelBuf &piBlock0, PelBuf &piBlock1, PelBuf &piBlock2, PelBuf &piBlock3, PelBuf &plnBlock );
 #endif
 #endif
 #if JVET_AB0155_SGPM
