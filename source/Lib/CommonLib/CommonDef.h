@@ -1689,6 +1689,10 @@ static const int SBT_MAX_SIZE =                                    64; ///< maxi
 #endif
 static const int SBT_NUM_SL =                                      10; ///< maximum number of historical PU decision saved for a CU
 static const int SBT_NUM_RDO =                                      2; ///< maximum number of SBT mode tried for a PU
+#if JVET_AJ0260_SBT_CORNER_MODE
+static const int SBT_QUAD_MIN_BLOCK_SIZE =                          8;
+static const int SBT_QUARTER_MIN_BLOCK_SIZE =                      16;
+#endif
 #if JVET_AI0050_SBT_LFNST
 static const int NUM_SBT_LFNST_RDO =                                2;
 #endif

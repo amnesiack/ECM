@@ -1028,8 +1028,8 @@ const uint8_t CodingUnit::checkAllowedSbt() const
   uint8_t sbtAllowed = 0;
   int cuWidth  = lwidth();
   int cuHeight = lheight();
-  bool allow_type[NUMBER_SBT_IDX];
-  memset( allow_type, false, NUMBER_SBT_IDX * sizeof( bool ) );
+  bool allowType[NUMBER_SBT_IDX];
+  memset( allowType, false, NUMBER_SBT_IDX * sizeof( bool ) );
 
   //parameter
   int maxSbtCUSize = cs->sps->getMaxTbSize();
@@ -1041,14 +1041,18 @@ const uint8_t CodingUnit::checkAllowedSbt() const
     return 0;
   }
 
-  allow_type[SBT_VER_HALF] = cuWidth  >= minSbtCUSize;
-  allow_type[SBT_HOR_HALF] = cuHeight >= minSbtCUSize;
-  allow_type[SBT_VER_QUAD] = cuWidth  >= ( minSbtCUSize << 1 );
-  allow_type[SBT_HOR_QUAD] = cuHeight >= ( minSbtCUSize << 1 );
+  allowType[SBT_VER_HALF] = cuWidth  >= minSbtCUSize;
+  allowType[SBT_HOR_HALF] = cuHeight >= minSbtCUSize;
+  allowType[SBT_VER_QUAD] = cuWidth  >= ( minSbtCUSize << 1 );
+  allowType[SBT_HOR_QUAD] = cuHeight >= ( minSbtCUSize << 1 );
+#if JVET_AJ0260_SBT_CORNER_MODE
+  allowType[ SBT_QUAD ]    = cuWidth >= minSbtCUSize && cuHeight >= minSbtCUSize && cuWidth >= SBT_QUAD_MIN_BLOCK_SIZE    && cuHeight >= SBT_QUAD_MIN_BLOCK_SIZE;
+  allowType[ SBT_QUARTER ] = cuWidth >= minSbtCUSize && cuHeight >= minSbtCUSize && cuWidth >= SBT_QUARTER_MIN_BLOCK_SIZE && cuHeight >= SBT_QUARTER_MIN_BLOCK_SIZE;
+#endif
 
   for( int i = 0; i < NUMBER_SBT_IDX; i++ )
   {
-    sbtAllowed += (uint8_t)allow_type[i] << i;
+    sbtAllowed += (uint8_t)allowType[i] << i;
   }
 
   return sbtAllowed;
@@ -1064,12 +1068,68 @@ uint8_t CodingUnit::getSbtTuSplit() const
   case SBT_HOR_HALF: sbtTuSplitType = ( getSbtPos() == SBT_POS0 ? 0 : 1 ) + SBT_HOR_HALF_POS0_SPLIT; break;
   case SBT_VER_QUAD: sbtTuSplitType = ( getSbtPos() == SBT_POS0 ? 0 : 1 ) + SBT_VER_QUAD_POS0_SPLIT; break;
   case SBT_HOR_QUAD: sbtTuSplitType = ( getSbtPos() == SBT_POS0 ? 0 : 1 ) + SBT_HOR_QUAD_POS0_SPLIT; break;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD:     sbtTuSplitType = getSbtPos() + SBT_QUAD_POSTL_SPLIT;    break;
+  case SBT_QUARTER:  sbtTuSplitType = getSbtPos() + SBT_QUARTER_POSTL_SPLIT; break;
+#endif
   default: assert( 0 );  break;
   }
 
+#if JVET_AJ0260_SBT_CORNER_MODE
+  CHECK( sbtTuSplitType < SBT_VER_HALF_POS0_SPLIT || sbtTuSplitType >= NUM_PART_SPLIT, "Wrong SBT split type" );
+#else
   assert( sbtTuSplitType <= SBT_HOR_QUAD_POS1_SPLIT && sbtTuSplitType >= SBT_VER_HALF_POS0_SPLIT );
+#endif
   return sbtTuSplitType;
 }
+
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+int CodingUnit::getSbtTuIdx() const
+{
+  int idx = 0;
+
+  if( sbtInfo )
+  {
+    const int sbtIdx = getSbtIdx();
+    const int sbtPos = getSbtPos();
+
+    if( sbtIdx == SBT_QUAD )
+    {
+      idx = sbtPos;
+    }
+    else if( sbtIdx == SBT_QUARTER )
+    {
+      if( sbtPos == 0 )
+      {
+        idx = 0;
+      }
+      else if( sbtPos == 1 )
+      {
+        idx = 3;
+      }
+      else if( sbtPos == 2 )
+      {
+        idx = 12;
+      }
+      else if( sbtPos == 3 )
+      {
+        idx = 15;
+      }
+      else
+      {
+        CHECK( true, "Wrong SBT position" );
+      }
+    }
+    else
+    {
+      idx = sbtPos;
+    }
+  }
+
+  return idx;
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // prediction unit method definitions
@@ -2358,6 +2418,35 @@ void TransformUnit::checkTuNoResidual( unsigned idx )
   {
     noResidual = true;
   }
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( CU::getSbtIdx( cu->sbtInfo ) == SBT_QUAD )
+  {
+    noResidual = CU::getSbtPos( cu->sbtInfo ) != idx ? true : false;
+  }
+  else if( CU::getSbtIdx( cu->sbtInfo ) == SBT_QUARTER )
+  {
+    if( CU::getSbtPos( cu->sbtInfo ) == 0 && idx == 0 )
+    {
+      noResidual = false;
+    }
+    else if( CU::getSbtPos( cu->sbtInfo ) == 1 && idx == 3 )
+    {
+      noResidual = false;
+    }
+    else if( CU::getSbtPos( cu->sbtInfo ) == 2 && idx == 12 )
+    {
+      noResidual = false;
+    }
+    else if( CU::getSbtPos( cu->sbtInfo ) == 3 && idx == 15 )
+    {
+      noResidual = false;
+    }
+    else
+    {
+      noResidual = true;
+    }
+  }
+#endif
 }
 
 int TransformUnit::getTbAreaAfterCoefZeroOut(ComponentID compID) const

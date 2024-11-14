@@ -3558,6 +3558,94 @@ void CABACWriter::sbt_mode( const CodingUnit& cu )
   uint8_t sbtHorHalfAllow = CU::targetSbtAllowed( SBT_HOR_HALF, sbtAllowed );
   uint8_t sbtVerQuadAllow = CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed );
   uint8_t sbtHorQuadAllow = CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed );
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  const uint8_t sbtQuadModeAllowed = CU::targetSbtAllowed( SBT_QUAD, sbtAllowed );
+  const uint8_t sbtQuarterModeAllowed = CU::targetSbtAllowed( SBT_QUARTER, sbtAllowed );
+
+  auto sbtQuadMode = [&]( const bool isLast, int& modeIdx )
+  {
+    if( sbtQuadModeAllowed )
+    {
+      modeIdx++;
+
+      const bool bSbtQuad = sbtIdx == SBT_QUAD;
+
+      CHECK( !sbtVerHalfAllow && !sbtHorHalfAllow, "Wrong SBT QUAD setting" );
+
+      // SBT QUAD restriction
+      CHECK( cuWidth < SBT_QUAD_MIN_BLOCK_SIZE, "Width must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+      CHECK( cuHeight < SBT_QUAD_MIN_BLOCK_SIZE, "Height must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+
+      if( !isLast )
+      {
+        m_BinEncoder.encodeBin( bSbtQuad, Ctx::SbtQuadFlag( 2 ) );
+      }
+
+      if( bSbtQuad )
+      {
+        //pos
+        uint8_t horIdx = ( sbtPos >> 0 ) & 0x1;
+        uint8_t verIdx = ( sbtPos >> 1 ) & 0x1;
+        m_BinEncoder.encodeBin( horIdx, Ctx::SbtPosFlag( 1 ) );
+        m_BinEncoder.encodeBin( verIdx, Ctx::SbtPosFlag( 2 ) );
+        DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbtInfo=%d\n", cu.lx(), cu.ly(), ( int ) cu.sbtInfo );
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  auto sbtQuarterMode = [&]( const bool isLast, int& modeIdx )
+  {
+    if( sbtQuarterModeAllowed )
+    {
+      modeIdx++;
+
+      const bool bSbtQuarter = sbtIdx == SBT_QUARTER;
+
+      // SBT QUARTER restriction
+      CHECK( cuWidth < SBT_QUARTER_MIN_BLOCK_SIZE, "Width must be SBT_QUARTER_MIN_BLOCK_SIZE or larger for SBT QUARTER" );
+      CHECK( cuHeight < SBT_QUARTER_MIN_BLOCK_SIZE, "Height must be SBT_QUARTER_MIN_BLOCK_SIZE or larger for SBT QUARTER" );
+
+      if( !isLast )
+      {
+        m_BinEncoder.encodeBin( bSbtQuarter, Ctx::SbtQuadFlag( 3 ) );
+      }
+
+      if( bSbtQuarter )
+      {
+        //pos
+        uint8_t horIdx = ( sbtPos >> 0 ) & 0x1;
+        uint8_t verIdx = ( sbtPos >> 1 ) & 0x1;
+        m_BinEncoder.encodeBin( horIdx, Ctx::SbtPosFlag( 3 ) );
+        m_BinEncoder.encodeBin( verIdx, Ctx::SbtPosFlag( 4 ) );
+        DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbtInfo=%d\n", cu.lx(), cu.ly(), ( int ) cu.sbtInfo );
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  auto sbtRectMode = [&]( const bool isLast, int& modeIdx )
+  {
+    modeIdx++;
+
+    const bool sbtRect = sbtIdx <= SBT_HOR_QUAD;
+
+    if( !isLast )
+    {
+      m_BinEncoder.encodeBin( sbtRect, Ctx::SbtQuadFlag( 1 ) );
+    }
+
+    if( !sbtRect )
+    {
+      return false;
+    }
+#endif
+
   //bin - type
   if( ( sbtHorHalfAllow || sbtVerHalfAllow ) && ( sbtHorQuadAllow || sbtVerQuadAllow ) )
   {
@@ -3583,6 +3671,29 @@ void CABACWriter::sbt_mode( const CodingUnit& cu )
   m_BinEncoder.encodeBin( sbtPosFlag, Ctx::SbtPosFlag( 0 ) );
 
   DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbt_info=%d\n", cu.lx(), cu.ly(), (int)cu.sbtInfo );
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  return true;
+
+  };
+
+  int numSbtModesM1 = 1 - ( ( sbtVerHalfAllow + sbtHorHalfAllow + sbtVerQuadAllow + sbtHorQuadAllow ) ? 1 : 0 ) + ( sbtQuadModeAllowed ? 1 : 0 ) + ( sbtQuarterModeAllowed ? 1 : 0 );
+
+  int modeIdx = 0;
+
+  if( sbtRectMode( modeIdx == numSbtModesM1, modeIdx ) )
+  {
+    return;
+  }
+  else if( sbtQuadMode( modeIdx == numSbtModesM1, modeIdx ) )
+  {
+    return;
+  }
+  else if( sbtQuarterMode( modeIdx == numSbtModesM1, modeIdx ) )
+  {
+    return;
+  }
+#endif
 }
 
 void CABACWriter::end_of_ctu( const CodingUnit& cu, CUCtx& cuCtx )
@@ -9476,6 +9587,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
   {
     uint32_t idxLFNST = cu.lfnstIdx;
     assert(idxLFNST < 4);
+
     m_BinEncoder.encodeBin(idxLFNST > 0, Ctx::InterLFNSTIdx(0));
     if (idxLFNST > 0)
     {

@@ -12891,10 +12891,17 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
   //                         if this cost is larger than the best cost, no need to try a specific SBT mode
   int cuWidth  = cu.lwidth();
   int cuHeight = cu.lheight();
+#if JVET_AJ0260_SBT_CORNER_MODE
+  const int numPartX = cuWidth  >= 8 ? 4 : 1;
+  const int numPartY = cuHeight >= 8 ? 4 : 1;
+
+  std::vector<std::vector<Distortion>> dist( numPartY, std::vector<Distortion>( numPartX, 0 ));
+#else
   int numPartX = cuWidth  >= 16 ? 4 : ( cuWidth  == 4 ? 1 : 2 );
   int numPartY = cuHeight >= 16 ? 4 : ( cuHeight == 4 ? 1 : 2 );
   Distortion dist[4][4];
   memset( dist, 0, sizeof( Distortion ) * 16 );
+#endif
 
   for( uint32_t c = 0; c < getNumberValidTBlocks( *cs.pcv ); c++ )
   {
@@ -13027,6 +13034,48 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     m_estMinDistSbt[SBT_HOR_Q1] = m_estMinDistSbt[SBT_HOR_Q1] >> shift;
   }
 
+#if JVET_AJ0260_SBT_CORNER_MODE
+  if( CU::targetSbtAllowed( SBT_QUAD, sbtAllowed ) )
+  {
+    m_estMinDistSbt[ SBT_Q0 ] = m_estMinDistSbt[ SBT_Q1 ] = m_estMinDistSbt[ SBT_Q2 ] = m_estMinDistSbt[ SBT_Q3 ] = 0;
+
+    for( int j = 0; j < numPartY / 2; j++ )
+    {
+      for( int i = 0; i < numPartX / 2; i++ )
+      {
+        m_estMinDistSbt[ SBT_Q0 ] += dist[ j ][ i ];
+        m_estMinDistSbt[ SBT_Q1 ] += dist[ j ][ i + ( numPartX >> 1 ) ];
+        m_estMinDistSbt[ SBT_Q2 ] += dist[ j + ( numPartY >> 1 ) ][ i ];
+        m_estMinDistSbt[ SBT_Q3 ] += dist[ j + ( numPartY >> 1 ) ][ i + ( numPartX >> 1 ) ];
+      }
+    }
+    m_estMinDistSbt[ SBT_Q0 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q0 ] ) + ( m_estMinDistSbt[ SBT_Q0 ] >> shift );
+    m_estMinDistSbt[ SBT_Q1 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q1 ] ) + ( m_estMinDistSbt[ SBT_Q1 ] >> shift );
+    m_estMinDistSbt[ SBT_Q2 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q2 ] ) + ( m_estMinDistSbt[ SBT_Q2 ] >> shift );
+    m_estMinDistSbt[ SBT_Q3 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q3 ] ) + ( m_estMinDistSbt[ SBT_Q3 ] >> shift );
+  }
+
+  if( CU::targetSbtAllowed( SBT_QUARTER, sbtAllowed ) )
+  {
+    m_estMinDistSbt[ SBT_QT0 ] = m_estMinDistSbt[ SBT_QT1 ] = m_estMinDistSbt[ SBT_QT2 ] = m_estMinDistSbt[ SBT_QT3 ] = 0;
+
+    for( int j = 0; j < numPartY / 4; j++ )
+    {
+      for( int i = 0; i < numPartX / 4; i++ )
+      {
+        m_estMinDistSbt[ SBT_QT0 ] += dist[ j ][ i ];
+        m_estMinDistSbt[ SBT_QT1 ] += dist[ j ][ i + ( 3 * numPartX >> 2 ) ];
+        m_estMinDistSbt[ SBT_QT2 ] += dist[ j + ( 3 * numPartY >> 2 ) ][ i ];
+        m_estMinDistSbt[ SBT_QT3 ] += dist[ j + ( 3 * numPartY >> 2 ) ][ i + ( 3 * numPartX >> 2 ) ];
+      }
+    }
+    m_estMinDistSbt[ SBT_QT0 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT0 ] ) + ( m_estMinDistSbt[ SBT_QT0 ] >> shift );
+    m_estMinDistSbt[ SBT_QT1 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT1 ] ) + ( m_estMinDistSbt[ SBT_QT1 ] >> shift );
+    m_estMinDistSbt[ SBT_QT2 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT2 ] ) + ( m_estMinDistSbt[ SBT_QT2 ] >> shift );
+    m_estMinDistSbt[ SBT_QT3 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT3 ] ) + ( m_estMinDistSbt[ SBT_QT3 ] >> shift );
+  }
+#endif
+
   //SBT fast algorithm 5: try N SBT modes with the lowest distortion
   Distortion temp[NUMBER_SBT_MODE];
   memcpy( temp, m_estMinDistSbt, sizeof( Distortion ) * NUMBER_SBT_MODE );
@@ -13049,13 +13098,29 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
   }
 
   startIdx += numRDO;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  numRDO = ( ( CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) + CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed ) ) << 1 ) + ( CU::targetSbtAllowed( SBT_QUAD, sbtAllowed ) << 2 );
+  numRDO = std::min( numRDO, SBT_NUM_RDO );
+#else
   numRDO = CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) + CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed );
   numRDO = std::min( ( numRDO << 1 ), SBT_NUM_RDO );
+#endif
+
   for( int i = startIdx; i < startIdx + numRDO; i++ )
   {
     Distortion minDist = std::numeric_limits<uint64_t>::max();
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+    for( int n = SBT_VER_Q0; n < NUMBER_SBT_MODE; n++ )
+    {
+      if( n >= SBT_QT0 && n <= SBT_QT3 )
+      {
+        continue;
+      }
+#else
     for( int n = SBT_VER_Q0; n <= SBT_HOR_Q1; n++ )
     {
+#endif
       if( temp[n] < minDist )
       {
         minDist = temp[n];
@@ -13064,6 +13129,26 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     }
     temp[m_sbtRdoOrder[i]] = std::numeric_limits<uint64_t>::max();
   }
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  startIdx += numRDO;
+  numRDO = CU::targetSbtAllowed( SBT_QUARTER, sbtAllowed );
+  numRDO = std::min( ( numRDO << 2 ), SBT_NUM_RDO );
+
+  for( int i = startIdx; i < startIdx + numRDO; i++ )
+  {
+    Distortion minDist = std::numeric_limits<uint64_t>::max();
+    for( int n = SBT_QT0; n <= SBT_QT3; n++ )
+    {
+      if( temp[ n ] < minDist )
+      {
+        minDist = temp[ n ];
+        m_sbtRdoOrder[ i ] = n;
+      }
+    }
+    temp[ m_sbtRdoOrder[ i ] ] = std::numeric_limits<uint64_t>::max();
+  }
+#endif
 }
 
 uint8_t InterSearch::skipSbtByRDCost( int width, int height, int mtDepth, uint8_t sbtIdx, uint8_t sbtPos, double bestCost, Distortion distSbtOff, double costSbtOff, bool rootCbfSbtOff )
