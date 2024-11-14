@@ -279,6 +279,10 @@ namespace PU
 #if JVET_AB0155_SGPM
   bool isSgpm(const PredictionUnit &pu, const ChannelType &chType = CHANNEL_TYPE_LUMA);
   bool isDMChromaSgpm(const PredictionUnit &pu);
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool isRegressionSgpm(const PredictionUnit &pu);
+  bool isRegressionSgpmAllow(const PredictionUnit &pu);
+#endif
 #endif
 #if JVET_AB0155_SGPM
   uint32_t getIntraDirLuma(const PredictionUnit &pu, const int partIdx = 0);

@@ -3862,6 +3862,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   m_pcIntraSearch->m_skipTimdLfnstMtsPass = false;
   m_modeCtrl->resetLfnstCost();
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  m_pcIntraSearch->m_skipSgpmLfnstMtsPass = false;
+#endif
 #if JVET_AH0076_OBIC
   m_pcIntraSearch->m_skipObicLfnstMtsPass = false;
   m_pcIntraSearch->m_skipDimdLfnstMtsPass = false;

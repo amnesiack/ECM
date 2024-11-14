@@ -550,9 +550,17 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
     {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
       CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
+#if JVET_AJ0112_REGRESSION_SGPM
+      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
       intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
 #else
       intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
 #endif
     }
 #endif
@@ -885,9 +893,17 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
     {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
       CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
+#if JVET_AJ0112_REGRESSION_SGPM
+      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
       intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
 #else
       intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
 #endif
     }
 #endif
@@ -1362,9 +1378,17 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
         CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
+#if JVET_AJ0112_REGRESSION_SGPM
+        predMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
         predMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+        predMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
 #else
         predMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
 #endif
       }
 #endif
@@ -3105,9 +3129,17 @@ int TrQuant::getLfnstIdx(const TransformUnit &tu, ComponentID compID)
   {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
     CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
+#if JVET_AJ0112_REGRESSION_SGPM
+    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
     intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
 #else
     intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
 #endif
   }
 #endif

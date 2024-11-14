@@ -476,6 +476,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_AB0067_MIP_DIMD_LFNST
   mipDimdMode       = other.mipDimdMode;
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  sgpmDimdMode = other.sgpmDimdMode;
+#endif
 #if JVET_V0130_INTRA_TMP
   tmpFlag           = other.tmpFlag;
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST 
@@ -785,6 +788,9 @@ void CodingUnit::initData()
   mipFlag           = false;
 #if JVET_AB0067_MIP_DIMD_LFNST
   mipDimdMode       = 0;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  sgpmDimdMode = 0;
 #endif
 #if JVET_V0130_INTRA_TMP
   tmpFlag = false;

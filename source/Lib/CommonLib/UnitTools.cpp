@@ -5104,6 +5104,16 @@ bool PU::isDMChromaSgpm(const PredictionUnit &pu)
 {
   return false;
 }
+#if JVET_AJ0112_REGRESSION_SGPM
+bool PU::isRegressionSgpm(const PredictionUnit &pu)
+{
+  return (pu.cu->sgpm && isRegressionSgpmAllow(pu) && pu.cu->sgpmIdx < RSGPM_CAND_NUM);
+}
+bool PU::isRegressionSgpmAllow(const PredictionUnit &pu)
+{
+  return (pu.lwidth() > 4 && pu.lheight() > 4);
+}
+#endif
 #endif
 
 #if JVET_AH0076_OBIC
@@ -33602,9 +33612,17 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
   if( PU::isSgpm( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
   {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
+#if JVET_AJ0112_REGRESSION_SGPM
+    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
     intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
 #else
     intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
 #endif
   }
 #endif
@@ -33760,9 +33778,17 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
         if (neighborPu->cu->sgpm)
         {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-          neighborMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[neighborPu->cu->sgpmSplitDir]][0]];
+#if JVET_AJ0112_REGRESSION_SGPM
+          neighborMode = PU::isRegressionSgpm(*neighborPu) ? neighborPu->cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[neighborPu->cu->sgpmSplitDir]][0]];
 #else
-          neighborMode = g_geoAngle2IntraAng[g_geoParams[neighborPu->cu->sgpmSplitDir][0]];;
+          neighborMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[neighborPu->cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+          neighborMode = PU::isRegressionSgpm(*neighborPu) ? neighborPu->cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[neighborPu->cu->sgpmSplitDir][0]];
+#else
+          neighborMode = g_geoAngle2IntraAng[g_geoParams[neighborPu->cu->sgpmSplitDir][0]];
+#endif
 #endif
         }
 #if JVET_AD0085_TMRL_EXTENSION
