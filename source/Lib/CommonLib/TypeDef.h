@@ -377,6 +377,7 @@
 #define JVET_AI0183_MVP_EXTENSION                         1 // JVET-AI0183 MVP extension
 #define JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION         1 // JVET-AJ0085 subblock merge mode extension
 #define JVET_AJ0097_BDOF_LDB                              1 // JVET-AJ0097 BDOF for low-delay pictures
+#define JVET_AJ0158_SUBBLOCK_INTER_EXTENSION              1 // JVET-AJ0158 Sub-block Inter mode improvement
 #define JVET_AJ0126_INTER_AMVP_ENHANCEMENT                1 // JVET-AJ0126: Enhanced inter AMVP (inter TM part is controlled by EnableTMTools)
 #define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
 // Inter template matching tools
