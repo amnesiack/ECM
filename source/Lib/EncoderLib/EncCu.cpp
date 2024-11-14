@@ -5176,10 +5176,20 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
   uint32_t               affMmvdLUT[AF_MMVD_NUM];
 #endif
   const SPS &sps = *tempCS->sps;
-
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+  CodingUnit tempCu(tempCS->area);
+  tempCu.cs = tempCS;
+  tempCu.slice = tempCS->slice;
+  tempCu.tileIdx = tempCS->pps->getTileIdx(tempCS->area.lumaPos());
+  bool affineMrgAvailSize = CU::isAffineAllowed(tempCu);
+#endif
 #if MERGE_ENC_OPT
   const bool affineMrgAvail = (sps.getUseAffine() || sps.getSbTMVPEnabledFlag()) && slice.getPicHeader()->getMaxNumAffineMergeCand()
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    && affineMrgAvailSize;
+#else
     && !(bestCS->area.lumaSize().width < 8 || bestCS->area.lumaSize().height < 8);
+#endif
 
   AffineMergeCtx affineMergeCtx;
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS

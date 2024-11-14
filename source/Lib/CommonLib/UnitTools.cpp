@@ -35620,4 +35620,81 @@ void getTemporalBv(const PredictionUnit &pu, std::vector<MotionInfo>& temporalMi
   addOneTypeTempCandidates(pu, temporalMiCandList, temporalPos);
 }
 #endif
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+bool CU::hasAffineNb(const CodingUnit& cu)
+{
+  int affineNb = 0;
+  Position pos[7] = {
+    cu.lumaPos().offset(-1, 0),
+    cu.lumaPos().offset(0, -1),
+    cu.lumaPos().offset(-1, -1),
+    cu.lumaPos().offset(cu.lwidth() - 1, -1),
+    cu.lumaPos().offset(cu.lwidth(), -1),
+    cu.lumaPos().offset(-1, cu.lheight() - 1),
+    cu.lumaPos().offset(-1, cu.lheight())
+  };
+  for (int i = 0; i < 7; i++)
+  {
+    const CodingUnit* cuNb = cu.cs->getCURestricted(pos[i], cu, CH_L);
+    affineNb += (cuNb && (cuNb->affine || (cuNb->geoFlag && (cuNb->firstPU->affineGPM[0] || cuNb->firstPU->affineGPM[1]) && !cu.slice->getCheckLDB()))) ? 1 : 0;
+    if (affineNb)
+    {
+      return true;
+    }
+  }
 
+  int offsetX = 0;
+  int offsetY = 0;
+  int offsetX0 = 0; int offsetX1 = 0; int offsetX2 = cu.lwidth() >> 1;
+  int offsetY0 = 0; int offsetY1 = 0; int offsetY2 = cu.lheight() >> 1;
+
+  const int numNACandidate = 5;
+  const int idxMap[5] = { 0, 1, 2, 3, 4 };
+  int iDistanceIndex = 0;
+  const int iNADistanceHor = cu.lwidth() * (iDistanceIndex + 1);
+  const int iNADistanceVer = cu.lheight() * (iDistanceIndex + 1);
+
+  for (int iNASPIdx = 0; iNASPIdx < numNACandidate; iNASPIdx++)
+  {
+    switch (idxMap[iNASPIdx])
+    {
+    case 0:offsetX = offsetX0 = -iNADistanceHor - 1;               offsetY = offsetY0 = cu.lheight() + iNADistanceVer - 1; break;
+    case 1:offsetX = offsetX1 = cu.lwidth() + iNADistanceHor - 1; offsetY = offsetY1 = -iNADistanceVer - 1;                break;
+    case 2:offsetX = offsetX2;                                     offsetY = offsetY1;                                      break;
+    case 3:offsetX = offsetX0;                                     offsetY = offsetY2;                                      break;
+    case 4:offsetX = offsetX0;                                     offsetY = offsetY1;                                      break;
+    case 5:offsetX = -1;                                           offsetY = offsetY0;                                      break;
+    case 6:offsetX = offsetX1;                                     offsetY = -1;                                            break;
+    case 7:offsetX = offsetX0 >> 1;                                offsetY = offsetY0;                                      break;
+    case 8:offsetX = offsetX1;                                     offsetY = offsetY1 >> 1;                                 break;
+    default: printf("error!"); exit(0); break;
+    }
+    const CodingUnit* cuNb = cu.cs->getCURestricted(cu.lumaPos().offset(offsetX, offsetY), cu, CH_L);
+    affineNb += (cuNb && (cuNb->affine || (cuNb->geoFlag && (cuNb->firstPU->affineGPM[0] || cuNb->firstPU->affineGPM[1]) && !cu.slice->getCheckLDB()))) ? 1 : 0;
+    if (affineNb)
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+bool CU::isAffineAllowed(const CodingUnit& cu)
+{
+  if ((cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 && (cu.lumaSize().width * cu.lumaSize().height >= 128)) || 
+    (cu.lumaSize().width * cu.lumaSize().height >= 32 && CU::hasAffineNb(cu)))
+  {
+    return true;
+  }
+  return false;
+}
+
+bool CU::affineCtxInc(const CodingUnit& cu)
+{
+  if (!(cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 && (cu.lumaSize().width * cu.lumaSize().height >= 128)) && !cu.slice->getCheckLDB())
+  {
+    return true;
+  }
+  return false;
+}
+#endif

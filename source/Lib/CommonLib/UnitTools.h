@@ -64,6 +64,12 @@ namespace CS
 // CU tools
 namespace CU
 {
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+  bool hasAffineNb(const CodingUnit& cu);
+  bool isAffineAllowed(const CodingUnit& cu);
+  bool affineCtxInc(const CodingUnit& cu);
+#endif
+
 #if JVET_AG0276_NLIC
   bool isSecLicParaNeeded             (const CodingUnit &cu);
   bool isPredRefined                  (const CodingUnit &cu);

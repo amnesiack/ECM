@@ -4834,11 +4834,24 @@ void CABACReader::subblock_merge_flag( CodingUnit& cu )
 {
   cu.affine = false;
 
-  if ( !cu.cs->slice->isIntra() && (cu.slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 )
+  if ( !cu.cs->slice->isIntra() && (cu.slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && 
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    CU::isAffineAllowed(cu)
+#else
+    cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 
+#endif
+    )
   {
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE( STATS__CABAC_BITS__AFFINE_FLAG, cu.lumaSize());
 
     unsigned ctxId = DeriveCtx::CtxAffineFlag( cu );
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    if(CU::affineCtxInc(cu))
+    {
+      ctxId += 3;
+    }
+#endif
+
     cu.affine = m_BinDecoder.decodeBin( Ctx::SubblockMergeFlag( ctxId ) );
     DTRACE( g_trace_ctx, D_SYNTAX, "subblock_merge_flag() subblock_merge_flag=%d ctx=%d pos=(%d,%d)\n", cu.affine ? 1 : 0, ctxId, cu.Y().x, cu.Y().y );
   }
@@ -7357,9 +7370,21 @@ void CABACReader::mvp_flag( PredictionUnit& pu, RefPicList eRefList )
 #if JVET_AG0135_AFFINE_CIIP
 void CABACReader::ciipAffineFlag(PredictionUnit& pu)
 {
-  if (!pu.cu->slice->isIntra() && pu.cs->sps->getUseCiipAffine() && (pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && pu.cu->lumaSize().width >= 8 && pu.cu->lumaSize().height >= 8)
+  if (!pu.cu->slice->isIntra() && pu.cs->sps->getUseCiipAffine() && (pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && 
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    CU::isAffineAllowed(*pu.cu)
+#else
+    pu.cu->lumaSize().width >= 8 && pu.cu->lumaSize().height >= 8
+#endif
+    )
   {
     unsigned ctxId = DeriveCtx::CtxCiipAffineFlag(*pu.cu);
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    if (CU::affineCtxInc(*pu.cu))
+    {
+      ctxId += 3;
+    }
+#endif
     pu.ciipAffine = m_BinDecoder.decodeBin(Ctx::CiipAffineFlag(ctxId));
   }
   else

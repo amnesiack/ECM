@@ -4978,8 +4978,10 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
   int blockWidth = AFFINE_MIN_BLOCK_SIZE;
   int blockHeight = AFFINE_MIN_BLOCK_SIZE;
 
+#if !JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
   CHECK(blockWidth  > (width >> iScaleX ), "Sub Block width  > Block width");
   CHECK(blockHeight > (height >> iScaleY), "Sub Block height > Block height");
+#endif
 #if !AFFINE_RM_CONSTRAINTS_AND_OPT
   const int MVBUFFER_SIZE = MAX_CU_SIZE / MIN_PU_SIZE;
 #endif
