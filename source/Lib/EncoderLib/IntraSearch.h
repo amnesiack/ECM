@@ -253,6 +253,10 @@ private:
     Mv       sgpmBv0;
     Mv       sgpmBv1;
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+    bool sgpmIsRegression;
+    AffineBlendingModel sgpmBlendModel;
+#endif
 #endif
 #if JVET_AB0155_SGPM
 #if JVET_V0130_INTRA_TMP
@@ -271,6 +275,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
   , sgpmBv0(0, 0), sgpmBv1(0, 0)
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  , sgpmIsRegression(false)
+  , sgpmBlendModel(AffineBlendingModel(5,1,31))
+#endif
 {}
     ModeInfo(const bool mipf, const bool miptf, const int mrid, const uint8_t ispm, const uint32_t mode,
              const bool tmpf = 0
@@ -287,6 +295,10 @@ private:
 	  , const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0, const int si = 0 
 #if JVET_AG0152_SGPM_ITMP_IBC
     , const Mv sbv0 = Mv(0, 0), const Mv sbv1 = Mv(0, 0)
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      , const bool sir = false
+      , const AffineBlendingModel sbm = AffineBlendingModel(5, 1, 31)
 #endif
 )
 #else
@@ -320,6 +332,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
       , sgpmBv0(sbv0)
       , sgpmBv1(sbv1)
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      , sgpmIsRegression(sir)
+      , sgpmBlendModel(sbm)
 #endif
     {
     }
@@ -355,6 +371,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
       sgpmBv0 = other.sgpmBv0;
       sgpmBv1 = other.sgpmBv1;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      sgpmIsRegression = other.sgpmIsRegression;
+      sgpmBlendModel = other.sgpmBlendModel;
 #endif
       return *this;
     }
@@ -737,6 +757,9 @@ protected:
 public:
 #if INTRA_TRANS_ENC_OPT
   bool            m_skipTimdLfnstMtsPass;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool            m_skipSgpmLfnstMtsPass;
 #endif
 #if JVET_AJ0061_TIMD_MERGE
   bool            m_skipTimdMrgLfnstMtsPass;

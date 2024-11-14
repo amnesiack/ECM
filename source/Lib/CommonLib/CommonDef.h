@@ -884,7 +884,13 @@ static const int LM_SYMBOL_NUM = (1 + NUM_LMC_MODE);
 
 static const int MAX_NUM_MIP_MODE =                                32; ///< maximum number of MIP pred. modes
 #if JVET_AB0155_SGPM
+#if JVET_AJ0112_REGRESSION_SGPM
+static const int RSGPM_CAND_NUM = 4;
+static const int SGPM_CAND_NUM = 16;
+static const int SGPM_NUM = RSGPM_CAND_NUM + SGPM_CAND_NUM;
+#else
 static const int SGPM_NUM = 16;
+#endif
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE + SGPM_NUM);   ///< maximum number of RD comparison in fast-UDI estimation loop
 #else
 

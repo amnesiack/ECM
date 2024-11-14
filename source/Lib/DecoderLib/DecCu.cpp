@@ -417,8 +417,11 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           static_vector<SgpmInfo, SGPM_NUM> sgpmInfoList;
           static_vector<double, SGPM_NUM>   sgpmCostList;
           int                         sgpmIdx = currCU.sgpmIdx;
-
+#if JVET_AJ0112_REGRESSION_SGPM
+          if (currCU.lwidth() * currCU.lheight() <= 1024 && currCU.cs->sps->getUseTimd() && !PU::isRegressionSgpm(*pu))
+#else
           if (currCU.lwidth() * currCU.lheight() <= 1024 && currCU.cs->sps->getUseTimd() )
+#endif
           {
             m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU, false, true);
           }
@@ -432,6 +435,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #if JVET_AG0152_SGPM_ITMP_IBC
           currCU.sgpmBv0 = sgpmInfoList[sgpmIdx].sgpmBv0;
           currCU.sgpmBv1 = sgpmInfoList[sgpmIdx].sgpmBv1;
+#if JVET_AJ0112_REGRESSION_SGPM
+          currCU.blendModel = sgpmInfoList[sgpmIdx].blendModel;
+#endif
           pu->intraDir[0] = currCU.sgpmMode0 >= SGPM_BV_START_IDX ? 0 : currCU.sgpmMode0;
           pu->intraDir1[0] = currCU.sgpmMode1 >= SGPM_BV_START_IDX ? 0 : currCU.sgpmMode1;
 #else
@@ -1346,6 +1352,19 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
         m_pcIntraPred->geneChromaFusionPred(compID, piPred, pu
 #if JVET_AH0136_CHROMA_REORDERING
           , m_pcInterPred
+#endif
+        );
+      }
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      if (compID == COMPONENT_Y && pu.cu->sgpm && PU::isRegressionSgpm(pu))
+      {
+#if JVET_AI0050_INTER_MTSS
+        int secondDimdIntraDir = 0;
+#endif
+        m_pcIntraPred->IntraPrediction::deriveIpmForTransform(piPred, *pu.cu
+#if JVET_AI0050_INTER_MTSS
+          , secondDimdIntraDir
 #endif
         );
       }

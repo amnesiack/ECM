@@ -445,7 +445,11 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
   }
 
   // the number of total temporal buffers can be adjusted by changing the number here
+#if JVET_AJ0112_REGRESSION_SGPM
+  m_sgpmBuffer.resize(NUM_PRIMARY_MOST_PROBABLE_MODES + SGPM_NUM_BVS + 1);
+#else
   m_sgpmBuffer.resize(1);
+#endif
 
   for (auto &buffer: m_sgpmBuffer)
   {
@@ -2669,18 +2673,21 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 
 #if JVET_AB0155_SGPM
   
-  if(PU::isSgpm(pu, channelType))
+  if (PU::isSgpm(pu, channelType))
   {
-    int            width  = piPred.width;
+    int            width = piPred.width;
     int            height = piPred.height;
     const UnitArea localUnitArea(pu.chromaFormat, Area(0, 0, width, height));
     PelBuf predFusion = m_tempBuffer[1].getBuf(localUnitArea.Y());
     IntraPredParam m_ipaParam2 = m_ipaParam;
     CompArea compArea = (compID == COMPONENT_Y) ? pu.Y()
-                                               : (compID == COMPONENT_Cb) ? pu.Cb() : pu.Cr();
+      : (compID == COMPONENT_Cb) ? pu.Cb() : pu.Cr();
+#if JVET_AJ0112_REGRESSION_SGPM
+    initIntraPatternChType(*pu.cu, pu.Y(), true, 0, false);
+#endif
 #if JVET_AG0152_SGPM_ITMP_IBC
     bool isBvPredicted = 0;
-    if (pu.cu->sgpmMode1 >= SGPM_BV_START_IDX && pu.cu->ispMode == 0 )
+    if (pu.cu->sgpmMode1 >= SGPM_BV_START_IDX && pu.cu->ispMode == 0)
     {
       isBvPredicted = 1;
       Mv bv = pu.cu->sgpmBv1;
@@ -2693,61 +2700,79 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     if (!isBvPredicted)
     {
 #endif
-    initIntraPatternChType(*pu.cu, compArea, false, 1); 
-    const uint32_t uiDirMode2 = PU::getFinalIntraMode(pu, channelType, 1);
-    const CPelBuf &srcBuf2 = CPelBuf(getPredictorPtr(compID), srcStride, srcHStride);
-    switch (uiDirMode2)
-    {
+      initIntraPatternChType(*pu.cu, compArea, false, 1);
+      const uint32_t uiDirMode2 = PU::getFinalIntraMode(pu, channelType, 1);
+      const CPelBuf &srcBuf2 = CPelBuf(getPredictorPtr(compID), srcStride, srcHStride);
+      switch (uiDirMode2)
+      {
 #if JVET_AC0105_DIRECTIONAL_PLANAR
-    case (PLANAR_IDX): xPredIntraPlanar(srcBuf2, predFusion, 0); break;
+      case (PLANAR_IDX): xPredIntraPlanar(srcBuf2, predFusion, 0); break;
 #else
-    case (PLANAR_IDX): xPredIntraPlanar(srcBuf2, predFusion); break;
+      case (PLANAR_IDX): xPredIntraPlanar(srcBuf2, predFusion); break;
 #endif
-    case (DC_IDX): xPredIntraDc(srcBuf2, predFusion, channelType, false); break;
+      case (DC_IDX): xPredIntraDc(srcBuf2, predFusion, channelType, false); break;
 #if JVET_AB0157_INTRA_FUSION
-    default:
-       int weightMode = 4;
-      xPredIntraAng(
+      default:
+        int weightMode = 4;
+        xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+          pu,
+#endif
+          srcBuf2, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, weightMode); break;
+#else
+      default: xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
         pu,
 #endif
-        srcBuf2, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS, weightMode); break;
-#else
-    default: xPredIntraAng(
-#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
-      pu,
+        srcBuf2, predFusion, channelType, clpRng, bExtIntraDir); break;
 #endif
-      srcBuf2, predFusion, channelType, clpRng, bExtIntraDir); break;
-#endif
-    }
+      }
 
-    #if JVET_X0148_TIMD_PDPC
+#if JVET_X0148_TIMD_PDPC
 #if CIIP_PDPC
-    if ((m_ipaParam.applyPDPC || pu.ciipPDPC) && (uiDirMode2 == PLANAR_IDX || uiDirMode2 == DC_IDX))
+      if ((m_ipaParam.applyPDPC || pu.ciipPDPC) && (uiDirMode2 == PLANAR_IDX || uiDirMode2 == DC_IDX))
 #else
-    if (m_ipaParam.applyPDPC && (uiDirMode2 == PLANAR_IDX || uiDirMode2 == DC_IDX))
+      if (m_ipaParam.applyPDPC && (uiDirMode2 == PLANAR_IDX || uiDirMode2 == DC_IDX))
 #endif
-    {
-      xIntraPredPlanarDcPdpc(srcBuf2, m_tempBuffer[1].getBuf(localUnitArea.Y()).buf,
-                             m_tempBuffer[1].getBuf(localUnitArea.Y()).stride, iWidth, iHeight
+      {
+        xIntraPredPlanarDcPdpc(srcBuf2, m_tempBuffer[1].getBuf(localUnitArea.Y()).buf,
+          m_tempBuffer[1].getBuf(localUnitArea.Y()).stride, iWidth, iHeight
 #if CIIP_PDPC       
-           ,pu.ciipPDPC
+          , pu.ciipPDPC
 #endif   
-      );
-    }
+        );
+      }
 #endif
 #if JVET_AG0152_SGPM_ITMP_IBC
     }
 #endif
-    
-    m_ipaParam           = m_ipaParam2;
-    
+
+    m_ipaParam = m_ipaParam2;
+
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-    int     splitDir   = g_sgpmSplitDir[pu.cu->sgpmSplitDir];
+    int     splitDir = g_sgpmSplitDir[pu.cu->sgpmSplitDir];
 #else
-    int     splitDir   = pu.cu->sgpmSplitDir;
+    int     splitDir = pu.cu->sgpmSplitDir;
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+    if (PU::isRegressionSgpm(pu))
+    {
+      PelUnitBuf pred = PelUnitBuf(pu.chromaFormat, piPred);
+      PelUnitBuf predTemp = PelUnitBuf(pu.chromaFormat, predFusion);
+      m_blendBuf.resize(pu.lwidth() * pu.lheight());
+      int16_t* blendBuf = m_blendBuf.data();
+      WeightBuf bufWeight = WeightBuf(blendBuf, pu.lumaSize());
+      const int geoBlendingLog2WeightBase = 5;
+      m_if.m_weightAffineBlk(pu, bufWeight, geoBlendingLog2WeightBase, pu.cu->blendModel);
+      m_if.weightedBlendBlk(pu, pu.lumaSize().width, pu.lumaSize().height, COMPONENT_Y, pred, pred, predTemp, bufWeight, geoBlendingLog2WeightBase, false);
+    }
+    else
+    {
+      m_if.m_weightedSgpm(pu, width, height, compID, splitDir, piPred, piPred, predFusion);
+    }
+#else
     m_if.m_weightedSgpm(pu, width, height, compID, splitDir, piPred, piPred, predFusion);
+#endif
   }
 #endif
 
@@ -8698,6 +8723,11 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
   bool       sadPartsNeeded[NUM_LUMA_MODE + SGPM_NUM_BVS][GEO_NUM_PARTITION_MODE] = {};
 #endif
   bool       ipmNeeded[NUM_LUMA_MODE + SGPM_NUM_BVS] = {};
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool       ipmNeededforRsgpm[NUM_LUMA_MODE + SGPM_NUM_BVS] = {};
+  int        ipmIdxInList[NUM_LUMA_MODE];
+  memset(ipmIdxInList, 0, NUM_LUMA_MODE * sizeof(int));
+#endif
 
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
   int numBVs = (int)m_sgpmMvBasedMergeCandidates.size();
@@ -8760,6 +8790,12 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
   {
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+    if (!pu.cs->pcv->isEncoder && PU::isRegressionSgpm(pu))
+    {
+      break;
+    }
+#endif
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
 #else
     if (!g_sgpmSplitDir[splitDir])
@@ -8813,17 +8849,60 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
     }
   }
 
+#if JVET_AJ0112_REGRESSION_SGPM
+  const int numRegularMode = NUM_PRIMARY_MOST_PROBABLE_MODES;
+  uint8_t mpmList[numRegularMode];
+  if (PU::isRegressionSgpmAllow(pu) && (pu.cs->pcv->isEncoder || PU::isRegressionSgpm(pu)))
+  {
+    int numCand = 0;
+    mpmList[numCand++] = PLANAR_IDX;
+    numCand += getSpatialIpm(pu, mpmList + 1, numRegularMode - 1
+#if JVET_AC0094_REF_SAMPLES_OPT
+      , true
+#endif
+    );
+    fillMPMList(pu, mpmList, numRegularMode, numCand, false);
+    for (int modeIdx = 0; modeIdx < numRegularMode; modeIdx++)
+    {
+      ipmNeededforRsgpm[mpmList[modeIdx]] = true;
+      ipmIdxInList[mpmList[modeIdx]] = modeIdx + 1;
+    }
+#if JVET_AG0152_SGPM_ITMP_IBC
+    for (int modeIdx = 0; modeIdx < numItmpIbc; modeIdx++)
+    {
+      ipmNeededforRsgpm[SGPM_BV_START_IDX + modeIdx] = true;
+    }
+#endif
+  }
+#endif
+
   for (int ipmIdx = 0; ipmIdx < NUM_LUMA_MODE; ipmIdx++)
   {
+#if JVET_AJ0112_REGRESSION_SGPM
+    if (ipmNeeded[ipmIdx] || ipmNeededforRsgpm[ipmIdx])
+#else
     if (ipmNeeded[ipmIdx])
+#endif
     {
       int iMode = MAP67TO131(ipmIdx);
       initPredTimdIntraParams(pu, area, iMode, true);
+#if JVET_AJ0112_REGRESSION_SGPM
+      Pel *tempPred = m_sgpmBuffer[ipmIdxInList[ipmIdx]].getBuf(localUnitArea.Y()).buf;
+#else
       Pel *tempPred = m_sgpmBuffer[0].getBuf(localUnitArea.Y()).buf;
+#endif
       predTimdIntraAng(COMPONENT_Y, pu, iMode, tempPred, uiPredStride, uiRealW, uiRealH, eTempType,
                        (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth, (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
 
+#if JVET_AJ0112_REGRESSION_SGPM
+      if (!ipmNeeded[ipmIdx])
+      {
+        continue;
+      }
+      PelBuf predBuf = m_sgpmBuffer[ipmIdxInList[ipmIdx]].getBuf(localUnitArea.Y());
+#else
       PelBuf predBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+#endif
       PelBuf recBuf  = cs.picture->getRecoBuf(area);
       PelBuf adBuf   = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
 
@@ -8856,27 +8935,55 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
   for (int i = 0; i < numItmpIbc; i++)
   { 
     int ipmIdx = SGPM_BV_START_IDX + i;
+#if JVET_AJ0112_REGRESSION_SGPM
+    if (ipmNeeded[ipmIdx] || ipmNeededforRsgpm[ipmIdx])
+#else
     if (ipmNeeded[ipmIdx])
+#endif
     {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AJ0112_REGRESSION_SGPM
+      PelUnitBuf tempPUTopBufWithIdx(pu.chromaFormat, PelBuf(m_sgpmBuffer[NUM_PRIMARY_MOST_PROBABLE_MODES + 1 + i].getBuf(localUnitArea.Y()).buf + iTempWidth, uiPredStride, uiRealW - iTempWidth, iTempHeight));
+      PelUnitBuf tempPULeftBufWithIdx(pu.chromaFormat, PelBuf(m_sgpmBuffer[NUM_PRIMARY_MOST_PROBABLE_MODES + 1 + i].getBuf(localUnitArea.Y()).buf + iTempHeight * uiPredStride, uiPredStride, iTempWidth, uiRealH - iTempHeight));
+#endif
       Mv tempMv(BVCostVec[i].first);
       Mv mvTop(0, -iTempHeight);
       mvTop.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
       mvTop += tempMv;
+#if JVET_AJ0112_REGRESSION_SGPM
+      m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvTop, tempPUTopBufWithIdx, true, true);
+#else
       m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvTop, tempPUTopBuf, true, true);
+#endif
 
       Mv mvLeft(-iTempWidth, 0);
       mvLeft.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
       mvLeft += tempMv;
+#if JVET_AJ0112_REGRESSION_SGPM
+      m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvLeft, tempPULeftBufWithIdx, true, true);
+#else
       m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvLeft, tempPULeftBuf, true,true);
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+      Pel* tempPred = m_sgpmBuffer[NUM_PRIMARY_MOST_PROBABLE_MODES + 1 + i].getBuf(localUnitArea.Y()).buf;
 #else
       Pel* tempPred = m_sgpmBuffer[0].getBuf(localUnitArea.Y()).buf;
+#endif
       Pel* piOrg = cs.picture->getRecoBuf(area).buf;
       int  iOrgStride = cs.picture->getRecoBuf(area).stride;
       piOrg += (iRefY - iCurY) * iOrgStride + (iRefX - iCurX);
       predTimdIbcItmp(COMPONENT_Y, pu, BVCostVec[i].first, tempPred, uiPredStride, uiRealW, uiRealH, eTempType, iTempWidth, iTempHeight, piOrg, iOrgStride);
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      if (!ipmNeeded[ipmIdx])
+      {
+        continue;
+      }
+      PelBuf predBuf = m_sgpmBuffer[NUM_PRIMARY_MOST_PROBABLE_MODES + 1 + i].getBuf(localUnitArea.Y());
+#else
       PelBuf predBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+#endif
       PelBuf recBuf = cs.picture->getRecoBuf(area);
       PelBuf adBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
 
@@ -8908,12 +9015,85 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 #endif
   // check every possible combination
   uint32_t cntComb = 0;
+#if JVET_AJ0112_REGRESSION_SGPM
+  static_vector<SgpmInfo, SGPM_CAND_NUM> tmpModeList;
+  static_vector<double, SGPM_CAND_NUM> tmpCostList;
+  const int bcwBlendingLog2WeightBase = 5;  // BCW is 3, GEO is 5
+  int min = 1;
+  int max = (1 << bcwBlendingLog2WeightBase) - 1;
+  AffineBlendingModel blendModel;
+  blendModel = AffineBlendingModel(bcwBlendingLog2WeightBase, min, max); // only positive weights
+  bool skipRsgpm = (!PU::isRegressionSgpmAllow(pu) || (!pu.cs->pcv->isEncoder && !PU::isRegressionSgpm(pu)));
+  if (!skipRsgpm)
+  {
+    for (int mode0Idx = 0; mode0Idx < numRegularMode + numItmpIbc - 1; mode0Idx++)
+    {
+      for (int mode1Idx = mode0Idx + 1; mode1Idx < numRegularMode + numItmpIbc; mode1Idx++)
+      {
+        if (mode0Idx == mode1Idx)
+        {
+          continue;
+        }
+
+        int ipm0Idx = 0;
+        int ipm1Idx = 0;
+        Mv sgpmBv0 = Mv(0, 0);
+        Mv sgpmBv1 = Mv(0, 0);
+        PelBuf tempPred0;
+        PelBuf tempPred1;
+
+        if (mode0Idx < numRegularMode)
+        {
+          ipm0Idx = mpmList[mode0Idx];
+          tempPred0 = m_sgpmBuffer[mode0Idx + 1].getBuf(localUnitArea.Y());
+        }
+        else
+        {
+          ipm0Idx = SGPM_BV_START_IDX + mode0Idx - numRegularMode;
+          sgpmBv0 = BVCostVec[ipm0Idx - SGPM_BV_START_IDX].first;
+          tempPred0 = m_sgpmBuffer[mode0Idx + 1].getBuf(localUnitArea.Y());
+        }
+        if (mode1Idx < numRegularMode)
+        {
+          ipm1Idx = mpmList[mode1Idx];
+          tempPred1 = m_sgpmBuffer[mode1Idx + 1].getBuf(localUnitArea.Y());
+        }
+        else
+        {
+          ipm1Idx = SGPM_BV_START_IDX + mode1Idx - numRegularMode;
+          sgpmBv1 = BVCostVec[ipm1Idx - SGPM_BV_START_IDX].first;
+          tempPred1 = m_sgpmBuffer[mode1Idx + 1].getBuf(localUnitArea.Y());
+        }
+
+        PelBuf recBuf = cs.picture->getRecoBuf(area);
+        PelBuf adBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+        // derive weights
+        blendModel = AffineBlendingModel(bcwBlendingLog2WeightBase, min, max); // only positive weights
+        double cost = (double)deriveSgpmBlending(pu, tempPred0, tempPred1, recBuf, adBuf, blendModel);
+
+        cntComb++;
+
+        if ((cntComb > RSGPM_CAND_NUM && cost < candCostList[RSGPM_CAND_NUM - 1]) || cntComb <= RSGPM_CAND_NUM)
+        {
+          updateCandList(SgpmInfo(0, ipm0Idx, ipm1Idx, sgpmBv0, sgpmBv1, true, blendModel), cost, candModeList, candCostList, RSGPM_CAND_NUM);
+        }
+      }
+    }
+    cntComb = 0;
+  }
+#endif
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
   for (int splitDir = 0; splitDir < SGPM_TOTAL_NUM_PARTITIONS; splitDir++)
 #else
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
 #endif
   {
+#if JVET_AJ0112_REGRESSION_SGPM
+    if (!pu.cs->pcv->isEncoder && PU::isRegressionSgpm(pu))
+    {
+      break;
+    }
+#endif
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
 #else
     if (!g_sgpmSplitDir[splitDir])
@@ -8956,6 +9136,22 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 
         cntComb++;
 
+#if JVET_AJ0112_REGRESSION_SGPM
+        if (!PU::isRegressionSgpmAllow(pu))
+        {
+          if ((cntComb > SGPM_NUM && cost < candCostList[SGPM_NUM - 1]) || cntComb <= SGPM_NUM)
+          {
+            updateCandList(SgpmInfo(splitDir, ipm0Idx, ipm1Idx, sgpmBv0, sgpmBv1, false, blendModel), cost, candModeList, candCostList, SGPM_NUM);
+          }
+        }
+        else
+        {
+          if ((cntComb > SGPM_CAND_NUM && cost < tmpCostList[SGPM_CAND_NUM - 1]) || cntComb <= SGPM_CAND_NUM)
+          {
+            updateCandList(SgpmInfo(splitDir, ipm0Idx, ipm1Idx, sgpmBv0, sgpmBv1, false, blendModel), cost, tmpModeList, tmpCostList, SGPM_CAND_NUM);
+          }
+        }
+#else
         if ((cntComb > SGPM_NUM && cost < candCostList[SGPM_NUM - 1]) || cntComb <= SGPM_NUM)
         {
 #if JVET_AG0152_SGPM_ITMP_IBC 
@@ -8964,10 +9160,189 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
           updateCandList(SgpmInfo(splitDir, ipm0Idx, ipm1Idx), cost, candModeList, candCostList, SGPM_NUM);
 #endif
         }
+#endif
       }
     }
   }
+
+#if JVET_AJ0112_REGRESSION_SGPM
+  if (PU::isRegressionSgpmAllow(pu))
+  {
+    SgpmInfo sgpmInfo = SgpmInfo();
+    if (!pu.cs->pcv->isEncoder && !PU::isRegressionSgpm(pu))
+    {
+      for (int i = 0; i < RSGPM_CAND_NUM; i++)
+      {
+        candModeList.push_back(sgpmInfo);
+        candCostList.push_back(0);
+      }
+    }
+    if (pu.cs->pcv->isEncoder || !PU::isRegressionSgpm(pu))
+    {
+      for (int i = 0; i < SGPM_CAND_NUM; i++)
+      {
+        candModeList.push_back(tmpModeList[i]);
+        candCostList.push_back(tmpCostList[i]);
+      }
+    }
+  }
+#endif
 }
+#if JVET_AJ0112_REGRESSION_SGPM
+int IntraPrediction::deriveSgpmBlending(PredictionUnit& pu, PelBuf &predBuf0, PelBuf &predBuf1, PelBuf &recBuf, PelBuf &adBuf, AffineBlendingModel &blendModel)
+{
+  int width = pu.lumaSize().width;
+  int height = pu.lumaSize().height;
+  const int channelBitDepth = pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA);
+
+  Pel(*A)[CCCM_REF_SAMPLES_MAX] = m_a;
+  static Pel Y[BCW_MAX_REF_SAMPLES];
+
+  int sampleNum = 0;
+  const int iTempWidth = SGPM_TEMPLATE_SIZE, iTempHeight = SGPM_TEMPLATE_SIZE;
+
+  // top template
+  Pel *piPred0 = predBuf0.buf + iTempWidth;
+  Pel *piPred1 = predBuf1.buf + iTempWidth;
+  Pel *piRec = recBuf.buf - iTempHeight * recBuf.stride;
+
+  for (int y = 0; y < iTempHeight; y++)
+  {
+    for (int x = 0; x < width; x++)
+    {
+      int posX = x;
+      int posY = y - iTempHeight;
+      A[0][sampleNum] = ((piPred1[x + y * predBuf1.stride] - piPred0[x + y * predBuf0.stride]) * posX);
+      A[1][sampleNum] = ((piPred1[x + y * predBuf1.stride] - piPred0[x + y * predBuf0.stride]) * posY);
+      A[2][sampleNum] = (piPred1[x + y * predBuf1.stride] - piPred0[x + y * predBuf0.stride]);
+      Y[sampleNum++] = (piRec[x + y * recBuf.stride] - piPred0[x + y * predBuf0.stride]);
+    }
+  }
+
+  // left template
+  piPred0 = predBuf0.buf + iTempHeight * predBuf0.stride;
+  piPred1 = predBuf1.buf + iTempHeight * predBuf1.stride;
+  piRec = recBuf.buf - iTempWidth;
+
+  for (int y = 0; y < height; y++)
+  {
+    for (int x = 0; x < iTempWidth; x++)
+    {
+      int posX = x - iTempWidth;
+      int posY = y;
+      A[0][sampleNum] = ((piPred1[x + y * predBuf1.stride] - piPred0[x + y * predBuf0.stride]) * posX);
+      A[1][sampleNum] = ((piPred1[x + y * predBuf1.stride] - piPred0[x + y * predBuf0.stride]) * posY);
+      A[2][sampleNum] = (piPred1[x + y * predBuf1.stride] - piPred0[x + y * predBuf0.stride]);
+      Y[sampleNum++] = (piRec[x + y * recBuf.stride] - piPred0[x + y * predBuf0.stride]);
+    }
+  }
+  CccmModel       bcwModel(3, channelBitDepth);
+  CccmCovariance  bcwSolver;
+
+  if (!sampleNum) // should never happen
+  {
+    bcwModel.clearModel();
+  }
+  else
+  {
+#if JVET_AB0174_CCCM_DIV_FREE
+    bcwSolver.solve1(A, Y, sampleNum, 0, bcwModel);
+#else
+    bcwSolver.solve2(A, Y, Y, sampleNum, bcwModel, bcwModel);
+#endif
+  }
+
+  const int bcwBlendingLog2WeightBase = 5;
+
+  uint64_t  maxParam = blendModel.params[0] > blendModel.params[1] ? blendModel.params[0] : blendModel.params[1];
+  maxParam = blendModel.params[2] > maxParam ? blendModel.params[2] : maxParam;
+  int shiftA = floorLog2Uint64(maxParam) - 31;
+  shiftA = shiftA < 0 ? 0 : shiftA;
+
+  int offsetA = shiftA ? 1 << (shiftA - 1) : 0;
+  blendModel.params[0] = (int)((bcwModel.params[0] + offsetA) >> shiftA);
+  blendModel.params[1] = (int)((bcwModel.params[1] + offsetA) >> shiftA);
+  blendModel.params[2] = (int)((bcwModel.params[2] + offsetA) >> shiftA);
+
+  blendModel.shift = CCCM_DECIM_BITS - shiftA - bcwBlendingLog2WeightBase;
+  blendModel.offset = blendModel.shift ? (1 << (blendModel.shift - 1)) : 0;
+  if (blendModel.shift < 0)
+  {
+    printf("deriveRegressionSgpmBlending() failed.\n");
+    exit(0);
+  }
+
+  blendModel.valid = true;
+
+  const int shiftBlend = bcwBlendingLog2WeightBase;
+  const int iOne = 1 << shiftBlend;
+  const int offBlend = 1 << (shiftBlend - 1);
+
+  // check validity :
+  int cornerWeight[4];
+  cornerWeight[0] = blendModel.compute(0, 0);
+  cornerWeight[1] = blendModel.compute(width - 1, 0);
+  cornerWeight[2] = blendModel.compute(0, height - 1);
+  cornerWeight[3] = blendModel.compute(width - 1, height - 1);
+  int minWeight = cornerWeight[0];
+  int maxWeight = cornerWeight[0];
+  for (int i = 0; i < 4; i++)
+  {
+    minWeight = std::min(minWeight, cornerWeight[i]);
+    maxWeight = std::max(maxWeight, cornerWeight[i]);
+  }
+  bool unvalid = abs(minWeight - maxWeight) <= 4;
+  if (unvalid)
+  {
+    blendModel.params[0] = (int)(0);
+    blendModel.params[1] = (int)(0);
+    blendModel.params[2] = (int)(16);
+    blendModel.shift = 0;
+    blendModel.offset = 0;
+  }
+
+  // calculate SAD
+  // top template
+  piPred0 = predBuf0.buf + iTempWidth;
+  piPred1 = predBuf1.buf + iTempWidth;
+  piRec = recBuf.buf - iTempHeight * recBuf.stride;
+  Pel *piFinal = adBuf.buf + iTempWidth;
+
+  int sad = 0;
+
+  for (int y = 0; y < iTempHeight; y++)
+  {
+    for (int x = 0; x < width; x++)
+    {
+      int posX = x;
+      int posY = y - iTempHeight;
+      int iWeight = blendModel.compute(posX, posY);
+      piFinal[x + y * adBuf.stride] = ((iOne - iWeight) * piPred0[x + y * predBuf0.stride] + iWeight * piPred1[x + y * predBuf1.stride] + offBlend) >> shiftBlend;
+      sad += abs(piFinal[x + y * adBuf.stride] - piRec[x + y * recBuf.stride]);
+    }
+  }
+
+  // left template
+  piPred0 = predBuf0.buf + iTempHeight * predBuf0.stride;
+  piPred1 = predBuf1.buf + iTempHeight * predBuf1.stride;
+  piRec = recBuf.buf - iTempWidth;
+  piFinal = adBuf.buf + iTempHeight * adBuf.stride;
+
+  for (int y = 0; y < height; y++)
+  {
+    for (int x = 0; x < iTempWidth; x++)
+    {
+      int posX = x - iTempWidth;
+      int posY = y;
+      int iWeight = blendModel.compute(posX, posY);
+      piFinal[x + y * adBuf.stride] = ((iOne - iWeight) * piPred0[x + y * predBuf0.stride] + iWeight * piPred1[x + y * predBuf1.stride] + offBlend) >> shiftBlend;
+      sad += abs(piFinal[x + y * adBuf.stride] - piRec[x + y * recBuf.stride]);
+    }
+  }
+
+  return sad;
+}
+#endif
 #endif
 
 #if JVET_AD0085_MPM_SORTING

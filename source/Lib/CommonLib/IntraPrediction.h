@@ -314,6 +314,9 @@ public:
 #endif
 
 protected:
+#if JVET_AJ0112_REGRESSION_SGPM
+  std::vector <int16_t> m_blendBuf;
+#endif
 #if JVET_AC0094_REF_SAMPLES_OPT
   Pel m_refBuffer[MAX_NUM_COMPONENT][NUM_PRED_BUF][((MAX_CU_SIZE << 3) + 1 + MAX_REF_LINE_IDX) * 2];
 #else
@@ -967,6 +970,9 @@ public:
   void deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
                              static_vector<SgpmInfo, SGPM_NUM> &candModeList,
                              static_vector<double, SGPM_NUM> &  candCostList);
+#if JVET_AJ0112_REGRESSION_SGPM
+  int deriveSgpmBlending(PredictionUnit& pu, PelBuf &predBuf0, PelBuf &predBuf1, PelBuf &recBuf, PelBuf &adBuf, AffineBlendingModel &blendModel);
+#endif
 #endif
 #if JVET_AD0085_MPM_SORTING
   void deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx);

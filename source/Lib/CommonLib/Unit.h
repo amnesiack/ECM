@@ -426,6 +426,9 @@ struct CodingUnit : public UnitArea
   Mv             sgpmBv0;
   Mv             sgpmBv1;
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  AffineBlendingModel sgpmBlendModel;
+#endif
   bool           sgpm;
   int            sgpmIdx;
   int            sgpmSplitDir;
@@ -466,6 +469,9 @@ struct CodingUnit : public UnitArea
   bool           mipFlag;
 #if JVET_AB0067_MIP_DIMD_LFNST
   int            mipDimdMode;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  int            sgpmDimdMode;
 #endif
 #if JVET_V0130_INTRA_TMP
   bool		    	 tmpFlag;
@@ -1155,8 +1161,15 @@ struct SgpmInfo
   int sgpmMode1;
   Mv   sgpmBv0;
   Mv   sgpmBv1;
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool isRegression;
+  AffineBlendingModel blendModel;
+  SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(0, 0), sgpmBv1(0, 0), isRegression(false), blendModel(AffineBlendingModel(5, 1, 31)) {}
+  SgpmInfo(const int sd, const int sm0, const int sm1, const Mv sbv0, const Mv sbv1, bool isR, AffineBlendingModel bM) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1), isRegression(isR), blendModel(bM){}
+#else
   SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(0, 0), sgpmBv1(0, 0) {}
   SgpmInfo(const int sd, const int sm0, const int sm1, const Mv sbv0, const Mv sbv1) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1) {}
+#endif
 
   SgpmInfo& operator=(const SgpmInfo& other)
   {
@@ -1165,6 +1178,10 @@ struct SgpmInfo
     sgpmMode1 = other.sgpmMode1;
     sgpmBv0 = other.sgpmBv0;
     sgpmBv1 = other.sgpmBv1;
+#if JVET_AJ0112_REGRESSION_SGPM
+    isRegression = other.isRegression;
+    blendModel = other.blendModel;
+#endif
     return *this;
   }
 };
