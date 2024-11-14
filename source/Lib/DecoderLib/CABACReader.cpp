@@ -3721,6 +3721,78 @@ void CABACReader::sbt_mode( CodingUnit& cu )
   uint8_t sbtVerQuadAllow = CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed );
   uint8_t sbtHorQuadAllow = CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed );
 
+#if JVET_AJ0260_SBT_CORNER_MODE
+  const uint8_t sbtQuadModeAllowed = CU::targetSbtAllowed( SBT_QUAD, sbtAllowed );
+  const uint8_t sbtQuarterModeAllowed = CU::targetSbtAllowed( SBT_QUARTER, sbtAllowed );
+
+  auto sbtQuadMode = [&]( const bool isLast, int& modeIdx )
+  {
+    if( sbtQuadModeAllowed )
+    {
+      modeIdx++;
+
+      CHECK( !sbtVerHalfAllow && !sbtHorHalfAllow, "Wrong SBT QUAD setting");
+
+      // SBT QUAD restriction
+      CHECK( cuWidth < SBT_QUAD_MIN_BLOCK_SIZE, "Width must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+      CHECK( cuHeight < SBT_QUAD_MIN_BLOCK_SIZE, "Height must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+
+      bool sbtQuad = isLast ? true : m_BinDecoder.decodeBin( Ctx::SbtQuadFlag( 2 ) );
+
+      if( sbtQuad )
+      {
+        cu.setSbtIdx( SBT_QUAD );
+        //pos
+        uint8_t horIdx = m_BinDecoder.decodeBin( Ctx::SbtPosFlag( 1 ) );
+        uint8_t verIdx = m_BinDecoder.decodeBin( Ctx::SbtPosFlag( 2 ) );
+        cu.setSbtPos( ( verIdx << 1 ) + horIdx );
+        DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbtInfo=%d\n", cu.lx(), cu.ly(), ( int ) cu.sbtInfo );
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  auto sbtQuarterMode = [&]( const bool isLast, int& modeIdx )
+  {
+    if( sbtQuarterModeAllowed )
+    {
+      modeIdx++;
+
+      // SBT QUARTER restriction
+      CHECK( cuWidth < SBT_QUAD_MIN_BLOCK_SIZE, "Width must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+      CHECK( cuHeight < SBT_QUAD_MIN_BLOCK_SIZE, "Height must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+
+      bool bSbtQuarter = isLast ? true : m_BinDecoder.decodeBin( Ctx::SbtQuadFlag( 3 ) );
+
+      if( bSbtQuarter )
+      {
+        cu.setSbtIdx( SBT_QUARTER );
+        //pos
+        uint8_t horIdx = m_BinDecoder.decodeBin( Ctx::SbtPosFlag( 3 ) );
+        uint8_t verIdx = m_BinDecoder.decodeBin( Ctx::SbtPosFlag( 4 ) );
+        cu.setSbtPos( ( verIdx << 1 ) + horIdx );
+        DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbtInfo=%d\n", cu.lx(), cu.ly(), ( int ) cu.sbtInfo );
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  auto sbtRectMode = [&]( const bool isLast, int& modeIdx )
+  {
+    modeIdx++;
+
+    const bool sbtRect = isLast ? true : m_BinDecoder.decodeBin( Ctx::SbtQuadFlag( 1 ) );
+
+    if( !sbtRect )
+    {
+      return false;
+    }
+#endif
+
   //bin - type
   bool sbtQuadFlag = false;
   if( ( sbtHorHalfAllow || sbtVerHalfAllow ) && ( sbtHorQuadAllow || sbtVerQuadAllow ) )
@@ -3750,6 +3822,29 @@ void CABACReader::sbt_mode( CodingUnit& cu )
   cu.setSbtPos( sbtPosFlag ? SBT_POS1 : SBT_POS0 );
 
   DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbt_info=%d\n", cu.lx(), cu.ly(), (int)cu.sbtInfo );
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  return true;
+
+  };
+
+  int numSbtModesM1 = 1 - ( ( sbtVerHalfAllow + sbtHorHalfAllow + sbtVerQuadAllow + sbtHorQuadAllow ) ? 1 : 0 ) + ( sbtQuadModeAllowed ? 1 : 0 ) + ( sbtQuarterModeAllowed ? 1 : 0 );
+
+  int modeIdx = 0;
+
+  if( sbtRectMode( modeIdx == numSbtModesM1, modeIdx ) )
+  {
+    return;
+  }
+  else if( sbtQuadMode( modeIdx == numSbtModesM1, modeIdx ) )
+  {
+    return;
+  }
+  else if( sbtQuarterMode( modeIdx == numSbtModesM1, modeIdx ) )
+  {
+    return;
+  }
+#endif
 }
 
 

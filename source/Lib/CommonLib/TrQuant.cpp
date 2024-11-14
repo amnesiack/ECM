@@ -1296,6 +1296,40 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
     uint8_t sbtIdx = tu.cu->getSbtIdx();
     uint8_t sbtPos = tu.cu->getSbtPos();
 
+#if JVET_AJ0260_SBT_CORNER_MODE
+    if( sbtIdx == SBT_QUAD || sbtIdx == SBT_QUARTER )
+    {
+      if( tu.lwidth() > MTS_INTER_MAX_CU_SIZE || tu.lheight() > MTS_INTER_MAX_CU_SIZE )
+      {
+        trTypeHor = trTypeVer = DCT2;
+      }
+      else if( sbtPos == 0 )
+      {
+        trTypeHor = DCT8;
+        trTypeVer = DCT8;
+      }
+      else if( sbtPos == 1 )
+      {
+        trTypeHor = DST7;
+        trTypeVer = DCT8;
+      }
+      else if( sbtPos == 2 )
+      {
+        trTypeHor = DCT8;
+        trTypeVer = DST7;
+      }
+      else if( sbtPos == 3 )
+      {
+        trTypeHor = DST7;
+        trTypeVer = DST7;
+      }
+      else
+      {
+        CHECK( true, "Wrong SBT QUAD position" );
+      }
+    }   
+    else
+#endif
     if( sbtIdx == SBT_VER_HALF || sbtIdx == SBT_VER_QUAD )
     {
       assert( tu.lwidth() <= MTS_INTER_MAX_CU_SIZE );

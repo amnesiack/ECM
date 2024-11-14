@@ -589,6 +589,9 @@ struct CodingUnit : public UnitArea
   const bool        isConsInter() const { return modeType == MODE_TYPE_INTER; }
   const bool        isConsIntra() const { return modeType == MODE_TYPE_INTRA; }
 #endif
+#if JVET_AJ0260_SBT_CORNER_MODE
+  int                getSbtTuIdx() const;
+#endif
 };
 
 // ---------------------------------------------------------------------------

@@ -74,6 +74,16 @@ enum PartSplit
   SBT_VER_QUAD_POS1_SPLIT,
   SBT_HOR_QUAD_POS0_SPLIT,
   SBT_HOR_QUAD_POS1_SPLIT,
+#if JVET_AJ0260_SBT_CORNER_MODE
+  SBT_QUAD_POSTL_SPLIT,
+  SBT_QUAD_POSTR_SPLIT,
+  SBT_QUAD_POSBL_SPLIT,
+  SBT_QUAD_POSBR_SPLIT,
+  SBT_QUARTER_POSTL_SPLIT,
+  SBT_QUARTER_POSTR_SPLIT,
+  SBT_QUARTER_POSBL_SPLIT,
+  SBT_QUARTER_POSBR_SPLIT,
+#endif
   NUM_PART_SPLIT,
   CU_MT_SPLIT             = 1000, ///< dummy element to indicate the MT (multi-type-tree) split
   CU_BT_SPLIT             = 1001, ///< dummy element to indicate the BT split

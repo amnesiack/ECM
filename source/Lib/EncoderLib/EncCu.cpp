@@ -25352,7 +25352,11 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
           if (tempCS->cost < currBestCost)
           {
             currBestSbt = cu->sbtInfo;
+#if JVET_AJ0260_SBT_CORNER_MODE
+            currBestTrs = tempCS->tus[cu->getSbtTuIdx()]->mtsIdx[COMPONENT_Y];
+#else
             currBestTrs = tempCS->tus[cu->sbtInfo ? cu->getSbtPos() : 0]->mtsIdx[COMPONENT_Y];
+#endif
             assert(currBestTrs == 0 || currBestTrs == 1);
             currBestCost = tempCS->cost;
           }

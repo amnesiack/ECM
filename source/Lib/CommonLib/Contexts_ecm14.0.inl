@@ -5189,6 +5189,33 @@ const CtxSet ContextSetCfg::SbtFlag = ContextSetCfg::addCtxSet({
 
 const CtxSet ContextSetCfg::SbtQuadFlag = ContextSetCfg::addCtxSet({
 // ctx 1453 1453
+#if JVET_AJ0260_SBT_CORNER_MODE
+// 0 - half/quarter flag
+// 1 - rectangular
+// 2 - quad
+// 3 - quarter
+
+ {  35,  35,  35,  35 },
+ {  35,  35,  35,  35 },
+ {  35,  35,  35,  35 },
+ {  50,  50,  50,  50 },
+ {  10,  10,  10,  10 },
+ {  10,  10,  10,  10 },
+ {   8,   8,   8,   8 },
+ {  10,  10,  10,  10 },
+ {   4,   4,   4,   4 },
+ {  11,  11,  11,  11 },
+ {  18,  18,  18,  18 },
+ {   4,   4,   4,   4 },
+ { 130, 130, 130, 130 },
+ { 102, 102, 102, 102 },
+ { 119, 119, 119, 119 },
+ { 100, 100, 100, 100 },
+ { 119, 119, 119, 119 },
+ { 119, 119, 119, 119 },
+ { 102, 102, 102, 102 },
+ { 100, 100, 100, 100 },
+#else
  {  35 },
  {  35 },
  {  35 },
@@ -5209,6 +5236,7 @@ const CtxSet ContextSetCfg::SbtQuadFlag = ContextSetCfg::addCtxSet({
  { 119 },
  { 102 },
  { 100 },
+#endif
 });
 
 const CtxSet ContextSetCfg::SbtHorFlag = ContextSetCfg::addCtxSet({
@@ -5237,6 +5265,32 @@ const CtxSet ContextSetCfg::SbtHorFlag = ContextSetCfg::addCtxSet({
 
 const CtxSet ContextSetCfg::SbtPosFlag = ContextSetCfg::addCtxSet({
 // ctx 1457 1457
+#if JVET_AJ0260_SBT_CORNER_MODE
+// 0 - rectangular mode (anchor)
+// 1,2 - quad
+// 3,4 - quarter
+
+ {  28,  28,  28,  28,  28 },
+ {  20,  20,  20,  20,  20 },
+ {  35,  35,  35,  35,  35 },
+ {  20,  20,  20,  20,  20 },
+ {  13,  13,  13,  13,  13 },
+ {  13,  13,  13,  13,  13 },
+ {   8,   8,   8,   8,   8 },
+ {  13,  13,  13,  13,  13 },
+ {  11,  11,  11,  11,  11 },
+ {   4,   4,   4,   4,   4 },
+ {  18,  18,  18,  18,  18 },
+ {  11,  11,  11,  11,  11 },
+ {  84,  84,  84,  84,  84 },
+ { 163, 163, 163, 163, 163 },
+ {  83,  83,  83,  83,  83 },
+ { 122, 122, 122, 122, 122 },
+ { 119, 119, 119, 119, 119 },
+ { 119, 119, 119, 119, 119 },
+ {  83,  83,  83,  83,  83 },
+ { 103, 103, 103, 103, 103 },
+#else
  {  28 },
  {  20 },
  {  35 },
@@ -5257,6 +5311,7 @@ const CtxSet ContextSetCfg::SbtPosFlag = ContextSetCfg::addCtxSet({
  { 119 },
  {  83 },
  { 103 },
+#endif
 });
 
 const CtxSet ContextSetCfg::ChromaQpAdjFlag = ContextSetCfg::addCtxSet({

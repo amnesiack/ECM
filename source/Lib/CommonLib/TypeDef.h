@@ -52,6 +52,7 @@
 #include <cstdint>
 
 
+
 #define BASE_ENCODER                                      1
 #define BASE_NORMATIVE                                    1
 #define TOOLS                                             1
@@ -444,11 +445,12 @@
 #define JVET_AE0125_SHIFT_QUANTIZATION_CENTER             1 // JVET-AE0125: Shifting quantization center
 #define JVET_AE0102_LFNST_CTX                             1 // JVET-AE0102: Context modelling for transform coefficients for LFNST/NSPT
 #define JVET_AG0061_INTER_LFNST_NSPT                      1 // JVET-AG0061: 3.3 Utilizing LFNST/NSPT for inter coding
-#define JVET_AG0100_TRANSFORM_COEFFICIENT_CODING          1 // JVET_AG0100: 3.2b Transform coefficient coding
-#define JVET_AG0143_INTER_INTRA                           1 // JVET_AG0143: 3.1c CABAC inter/intra model switch
-#define JVET_AH0103_LOW_DELAY_LFNST_NSPT                  1 // JVET_AH0103: Low-delay configurations for LFNST/NSPT
-#define JVET_AI0050_INTER_MTSS                            1 // JVET_AI0050: Multiple LFNST/NSPT kernel set selection for GPM coded block
-#define JVET_AI0050_SBT_LFNST                             1 // JVET_AI0050: Enable LFNST/NSPT for SBT coded block
+#define JVET_AG0100_TRANSFORM_COEFFICIENT_CODING          1 // JVET-AG0100: 3.2b Transform coefficient coding
+#define JVET_AG0143_INTER_INTRA                           1 // JVET-AG0143: 3.1c CABAC inter/intra model switch
+#define JVET_AH0103_LOW_DELAY_LFNST_NSPT                  1 // JVET-AH0103: Low-delay configurations for LFNST/NSPT
+#define JVET_AI0050_INTER_MTSS                            1 // JVET-AI0050: Multiple LFNST/NSPT kernel set selection for GPM coded block
+#define JVET_AI0050_SBT_LFNST                             1 // JVET-AI0050: Enable LFNST/NSPT for SBT coded block
+#define JVET_AJ0260_SBT_CORNER_MODE                       1 // JVET-AJ0260: Corner mode for SBT
 
 // Entropy Coding
 #define EC_HIGH_PRECISION                                 1 // CABAC high precision
@@ -1004,6 +1006,10 @@ enum SbtIdx
   SBT_HOR_HALF = 2,
   SBT_VER_QUAD = 3,
   SBT_HOR_QUAD = 4,
+#if JVET_AJ0260_SBT_CORNER_MODE
+  SBT_QUAD,
+  SBT_QUARTER,
+#endif
   NUMBER_SBT_IDX,
   SBT_OFF_MTS, //note: must be after all SBT modes, only used in fast algorithm to discern the best mode is inter EMT
 };
@@ -1025,6 +1031,16 @@ enum SbtMode
   SBT_VER_Q1 = 5,
   SBT_HOR_Q0 = 6,
   SBT_HOR_Q1 = 7,
+#if JVET_AJ0260_SBT_CORNER_MODE
+  SBT_Q0,
+  SBT_Q1,
+  SBT_Q2,
+  SBT_Q3,
+  SBT_QT0,
+  SBT_QT1,
+  SBT_QT2,
+  SBT_QT3,
+#endif
   NUMBER_SBT_MODE
 };
 

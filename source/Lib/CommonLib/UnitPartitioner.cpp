@@ -339,6 +339,16 @@ void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructur
   case SBT_VER_QUAD_POS1_SPLIT:
   case SBT_HOR_QUAD_POS0_SPLIT:
   case SBT_HOR_QUAD_POS1_SPLIT:
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD_POSTL_SPLIT:
+  case SBT_QUAD_POSTR_SPLIT:
+  case SBT_QUAD_POSBL_SPLIT:
+  case SBT_QUAD_POSBR_SPLIT:
+  case SBT_QUARTER_POSTL_SPLIT:
+  case SBT_QUARTER_POSTR_SPLIT:
+  case SBT_QUARTER_POSBL_SPLIT:
+  case SBT_QUARTER_POSBR_SPLIT:
+#endif
     m_partStack.push_back( PartLevel( split, PartitionerImpl::getSbtTuTiling( currArea(), cs, split ) ) );
     break;
   default:
@@ -356,7 +366,12 @@ void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructur
   {
     currTrDepth++;
   }
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( split >= SBT_VER_HALF_POS0_SPLIT && split < NUM_PART_SPLIT )
+#else
   else if( split >= SBT_VER_HALF_POS0_SPLIT && split <= SBT_HOR_QUAD_POS1_SPLIT )
+#endif
   {
     currTrDepth++;
   }
@@ -732,6 +747,16 @@ bool QTBTPartitioner::canSplit( const PartSplit split, const CodingStructure &cs
   case SBT_VER_QUAD_POS1_SPLIT:
   case SBT_HOR_QUAD_POS0_SPLIT:
   case SBT_HOR_QUAD_POS1_SPLIT:
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD_POSTL_SPLIT:
+  case SBT_QUAD_POSTR_SPLIT:
+  case SBT_QUAD_POSBL_SPLIT:
+  case SBT_QUAD_POSBR_SPLIT:
+  case SBT_QUARTER_POSTL_SPLIT:
+  case SBT_QUARTER_POSTR_SPLIT:
+  case SBT_QUARTER_POSBL_SPLIT:
+  case SBT_QUARTER_POSBR_SPLIT:
+#endif
     return currTrDepth == 0;
     break;
   case CU_QUAD_SPLIT:
@@ -866,7 +891,12 @@ void QTBTPartitioner::exitCurrSplit()
     CHECK( currTrDepth == 0, "TR depth is '0', although a TU split was performed" );
     currTrDepth--;
   }
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( currSplit >= SBT_VER_HALF_POS0_SPLIT && currSplit < NUM_PART_SPLIT )
+#else
   else if( currSplit >= SBT_VER_HALF_POS0_SPLIT && currSplit <= SBT_HOR_QUAD_POS1_SPLIT )
+#endif
   {
     CHECK( currTrDepth == 0, "TR depth is '0', although a TU split was performed" );
     currTrDepth--;
@@ -1365,6 +1395,71 @@ Partitioning PartitionerImpl::getSbtTuTiling( const UnitArea& cuArea, const Codi
   Partitioning ret;
   int numTiles = 2;
   int widthFactor, heightFactor, xOffsetFactor, yOffsetFactor; // y = (x * factor) >> 2;
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  CHECK( splitType < SBT_VER_HALF_POS0_SPLIT || splitType >= NUM_PART_SPLIT, "Wrong SBT split" );
+
+  if( splitType >= SBT_QUAD_POSTL_SPLIT && splitType <= SBT_QUAD_POSBR_SPLIT )
+  {
+    // SBT QUAD restriction
+    CHECK( cuArea.lwidth() < SBT_QUAD_MIN_BLOCK_SIZE, "Width must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+    CHECK( cuArea.lheight() < SBT_QUAD_MIN_BLOCK_SIZE, "Height must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+
+    numTiles = 4;
+    ret.resize( numTiles, cuArea );
+    for( int i = 0; i < numTiles; i++ )
+    {
+      widthFactor = heightFactor = 2;
+      xOffsetFactor = ( i % 2 ) * 2;
+      yOffsetFactor = ( i / 2 ) * 2;
+
+      UnitArea& tile = ret[ i ];
+      for( CompArea& comp : tile.blocks )
+      {
+        if( !comp.valid() )
+        {
+          continue;
+        }
+
+        comp.x += ( comp.width * xOffsetFactor ) >> 2;
+        comp.y += ( comp.height * yOffsetFactor ) >> 2;
+        comp.width = ( comp.width * widthFactor ) >> 2;
+        comp.height = ( comp.height * heightFactor ) >> 2;
+      }
+    }
+    return ret;
+  }
+  else if( splitType >= SBT_QUARTER_POSTL_SPLIT && splitType <= SBT_QUARTER_POSBR_SPLIT )
+  {
+    // SBT QUARTER restriction
+    CHECK( cuArea.lwidth() < SBT_QUARTER_MIN_BLOCK_SIZE, "Width must be SBT_QUARTER_MIN_BLOCK_SIZE or larger for SBT QUARTER" );
+    CHECK( cuArea.lheight() < SBT_QUARTER_MIN_BLOCK_SIZE, "Height must be SBT_QUARTER_MIN_BLOCK_SIZE or larger for SBT QUARTER" );
+
+    numTiles = 16;
+    ret.resize( numTiles, cuArea );
+    for( int i = 0; i < numTiles; i++ )
+    {
+      const int x = i % 4;
+      const int y = i / 4;
+
+      UnitArea& tile = ret[ i ];
+      for( CompArea& comp : tile.blocks )
+      {
+        if( !comp.valid() )
+        {
+          continue;
+        }
+
+        comp.x += ( comp.width * x ) >> 2;
+        comp.y += ( comp.height * y ) >> 2;
+        comp.width = comp.width  >> 2;
+        comp.height = comp.height >> 2;
+      }
+    }
+    return ret;
+  }
+#endif
+
   assert( splitType >= SBT_VER_HALF_POS0_SPLIT && splitType <= SBT_HOR_QUAD_POS1_SPLIT );
 
   ret.resize( numTiles, cuArea );

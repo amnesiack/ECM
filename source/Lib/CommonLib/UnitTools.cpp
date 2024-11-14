@@ -32226,6 +32226,10 @@ uint8_t CU::getSbtMode( uint8_t sbtIdx, uint8_t sbtPos )
   case SBT_HOR_HALF: sbtMode = sbtPos + SBT_HOR_H0;  break;
   case SBT_VER_QUAD: sbtMode = sbtPos + SBT_VER_Q0;  break;
   case SBT_HOR_QUAD: sbtMode = sbtPos + SBT_HOR_Q0;  break;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD:     sbtMode = sbtPos + SBT_Q0;  break;
+  case SBT_QUARTER:  sbtMode = sbtPos + SBT_QT0;  break;
+#endif
   default:           assert( 0 );
   }
 
@@ -32251,6 +32255,16 @@ uint8_t CU::getSbtIdxFromSbtMode( uint8_t sbtMode )
   {
     return SBT_HOR_QUAD;
   }
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( sbtMode <= SBT_Q3 )
+  {
+    return SBT_QUAD;
+  }
+  else if( sbtMode <= SBT_QT3 )
+  {
+    return SBT_QUARTER;
+  }
+#endif
   else
   {
     assert( 0 );
@@ -32276,6 +32290,16 @@ uint8_t CU::getSbtPosFromSbtMode( uint8_t sbtMode )
   {
     return sbtMode - SBT_HOR_Q0;
   }
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( sbtMode <= SBT_Q3 )
+  {
+    return sbtMode - SBT_Q0;
+  }
+  else if( sbtMode <= SBT_QT3 )
+  {
+    return sbtMode - SBT_QT0;
+  }
+#endif
   else
   {
     assert( 0 );
@@ -32292,6 +32316,10 @@ uint8_t CU::targetSbtAllowed( uint8_t sbtIdx, uint8_t sbtAllowed )
   case SBT_HOR_HALF: val = ( ( sbtAllowed >> SBT_HOR_HALF ) & 0x1 ); break;
   case SBT_VER_QUAD: val = ( ( sbtAllowed >> SBT_VER_QUAD ) & 0x1 ); break;
   case SBT_HOR_QUAD: val = ( ( sbtAllowed >> SBT_HOR_QUAD ) & 0x1 ); break;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD:     val = ( ( sbtAllowed >> SBT_QUAD )     & 0x1 ); break;
+  case SBT_QUARTER:  val = ( ( sbtAllowed >> SBT_QUARTER )  & 0x1 ); break;
+#endif
   default:           CHECK( 1, "unknown SBT type" );
   }
   return val;
@@ -32303,15 +32331,29 @@ uint8_t CU::numSbtModeRdo( uint8_t sbtAllowed )
   uint8_t sum = 0;
   num = targetSbtAllowed( SBT_VER_HALF, sbtAllowed ) + targetSbtAllowed( SBT_HOR_HALF, sbtAllowed );
   sum += std::min( SBT_NUM_RDO, ( num << 1 ) );
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  num = ( ( targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) + targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed ) ) << 1 ) + ( CU::targetSbtAllowed( SBT_QUAD, sbtAllowed ) << 2 );
+  sum += std::min<uint8_t>( SBT_NUM_RDO, num );
+
+  num = targetSbtAllowed( SBT_QUARTER, sbtAllowed );
+  sum += std::min( SBT_NUM_RDO, ( num << 2 ) );
+#else
   num = targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) + targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed );
   sum += std::min( SBT_NUM_RDO, ( num << 1 ) );
+#endif
+
   return sum;
 }
 
 bool CU::isSbtMode( const uint8_t sbtInfo )
 {
   uint8_t sbtIdx = getSbtIdx( sbtInfo );
+#if JVET_AJ0260_SBT_CORNER_MODE
+  return sbtIdx >= SBT_VER_HALF && sbtIdx < NUMBER_SBT_IDX;
+#else
   return sbtIdx >= SBT_VER_HALF && sbtIdx <= SBT_HOR_QUAD;
+#endif
 }
 #if JVET_AI0050_SBT_LFNST
 void CU::getSBTPosAndSize(const CodingUnit &cu, Position& pos, Size& size, uint8_t sbtMode)
@@ -32326,6 +32368,16 @@ void CU::getSBTPosAndSize(const CodingUnit &cu, Position& pos, Size& size, uint8
   case SBT_VER_Q1: pos = Position((3 * cu.lwidth()) >> 2, 0);  size = Size(cu.lwidth() >> 2, cu.lheight());  break;
   case SBT_HOR_Q0: pos = Position(0, 0);  size = Size(cu.lwidth(), cu.lheight() >> 2);  break;
   case SBT_HOR_Q1: pos = Position(0, (3 * cu.lheight()) >> 2);  size = Size(cu.lwidth(), cu.lheight() >> 2);  break;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_Q0:  pos = Position( 0, 0 );  size = Size( cu.lwidth() >> 1, cu.lheight() >> 1 );  break;
+  case SBT_Q1:  pos = Position( cu.lwidth() >> 1, 0 );  size = Size( cu.lwidth() >> 1, cu.lheight() >> 1 );  break;
+  case SBT_Q2:  pos = Position( 0, cu.lheight() >> 1 );  size = Size( cu.lwidth() >> 1, cu.lheight() >> 1 );  break;
+  case SBT_Q3:  pos = Position( cu.lwidth() >> 1, cu.lheight() >> 1 );  size = Size( cu.lwidth() >> 1, cu.lheight() >> 1 );  break;
+  case SBT_QT0: pos = Position( 0, 0 );  size = Size( cu.lwidth() >> 2, cu.lheight() >> 2 );  break;
+  case SBT_QT1: pos = Position( 3 * cu.lwidth() >> 2, 0 );  size = Size( cu.lwidth() >> 2, cu.lheight() >> 2 );  break;
+  case SBT_QT2: pos = Position( 0, 3 * cu.lheight() >> 2 );  size = Size( cu.lwidth() >> 2, cu.lheight() >> 2 );  break;
+  case SBT_QT3: pos = Position( 3 * cu.lwidth() >> 2, 3 * cu.lheight() >> 2 );  size = Size( cu.lwidth() >> 2, cu.lheight() >> 2 );  break;
+#endif
   default:           assert(0);
   }
 }
@@ -32338,10 +32390,23 @@ bool CU::isSameSbtSize( const uint8_t sbtInfo1, const uint8_t sbtInfo2 )
   {
     return sbtIdx2 == SBT_HOR_HALF || sbtIdx2 == SBT_VER_HALF;
   }
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( sbtIdx1 == SBT_VER_QUAD || sbtIdx1 == SBT_HOR_QUAD || sbtIdx1 == SBT_QUAD )
+  {
+    const bool isSame = sbtIdx2 == SBT_VER_QUAD || sbtIdx2 == SBT_HOR_QUAD || sbtIdx2 == SBT_QUAD;
+
+    return isSame;
+  }
+  else if( sbtIdx1 == SBT_QUARTER )
+  {
+    return sbtIdx2 == SBT_QUARTER;
+  }
+#else
   else if( sbtIdx1 == SBT_HOR_QUAD || sbtIdx1 == SBT_VER_QUAD )
   {
     return sbtIdx2 == SBT_HOR_QUAD || sbtIdx2 == SBT_VER_QUAD;
   }
+#endif
   else
   {
     return false;
