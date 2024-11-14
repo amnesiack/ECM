@@ -8721,7 +8721,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
   uint32_t iteration;
   uint32_t iterationBegin = 0;
   iteration = 2;
-
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  bool affineCiipFallBack = false;
+#endif
   for (uint32_t uiNoResidualPass = iterationBegin; uiNoResidualPass < iteration; ++uiNoResidualPass) // 0: no skip 1 : skip
   {
     for( uint32_t uiMrgHADIdx = 0; uiMrgHADIdx < uiNumMrgSATDCand; uiMrgHADIdx++ )
@@ -8765,6 +8767,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
        rdModeList[uiMrgHADIdx].isCIIP = false;
        rdModeList[uiMrgHADIdx].isCiipAffine = false;
        rdModeList[uiMrgHADIdx].isAffine = true;
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+       affineCiipFallBack = true;
+#endif
      }
 #endif
       if (((uiNoResidualPass != 0) && candHasNoResidual[uiMrgHADIdx])
@@ -9503,8 +9508,21 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AG0135_AFFINE_CIIP
           if (pu.ciipAffine && rdModeList[uiMrgHADIdx].isAffBMMrg == false && m_doEncAffineBDOF[uiMergeCand] == true)
           {
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+            tempCS->getPredBuf().copyFrom(acMergeAffineBuffer[uiMergeCand], true);
+#else
             tempCS->getPredBuf().copyFrom(acMergeAffineBuffer[uiMergeCand]);
+#endif
             PU::setAffineBdofRefinedMotion(pu, m_mvBufEncAffineBDOF[uiMergeCand]);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+            pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
+            auto bufferedMrgType = pu.mergeType;
+            pu.mergeType = MRG_TYPE_SUBPU_ATMVP;
+            m_pcInterSearch->setAffineBdofChroma(true);
+            m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, false, true);
+            m_pcInterSearch->setAffineBdofChroma(false);
+            pu.mergeType = bufferedMrgType;
+#endif
           }
           else
           {
@@ -9801,8 +9819,21 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
           else if (rdModeList[uiMrgHADIdx].isAffBMMrg == true && m_doEncAffineBmBDOF[(uiMergeCand << 1) + rdModeList[uiMrgHADIdx].affBMDir - 1] == true)
           {
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+          tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx], true);
+#else
             tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx]);
+#endif
             PU::setAffineBdofRefinedMotion(pu, m_mvBufEncAffineBmBDOF[(uiMergeCand << 1) + rdModeList[uiMrgHADIdx].affBMDir - 1]);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+            pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
+            auto bufferedMrgType = pu.mergeType;
+            pu.mergeType = MRG_TYPE_SUBPU_ATMVP;
+            m_pcInterSearch->setAffineBdofChroma(true);
+            m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, false, true);
+            m_pcInterSearch->setAffineBdofChroma(false);
+            pu.mergeType = bufferedMrgType;
+#endif
           }
 #if JVET_AG0276_LIC_FLAG_SIGNALING
           else if (rdModeList[uiMrgHADIdx].isAffine == true && rdModeList[uiMrgHADIdx].isAffBMMrg == false && ((!pu.affineOppositeLic && m_doEncAffineBDOF[uiMergeCand] == true) || (pu.affineOppositeLic && m_doEncAffineBDOFOppositeLic[uiMergeCand] == true)))
@@ -9811,7 +9842,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
           {
 #if JVET_AG0135_AFFINE_CIIP
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+            tempCS->getPredBuf().copyFrom(acMergeAffineBuffer[uiMergeCand], true);
+#else
             tempCS->getPredBuf().copyFrom(acMergeAffineBuffer[uiMergeCand]);
+#endif
 #else
             tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx]);
 #endif
@@ -9826,6 +9861,15 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
             }
 #else
             PU::setAffineBdofRefinedMotion(pu, m_mvBufEncAffineBDOF[uiMergeCand]);
+#endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+            pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
+            auto bufferedMrgType = pu.mergeType;
+            pu.mergeType = MRG_TYPE_SUBPU_ATMVP;
+            m_pcInterSearch->setAffineBdofChroma(true);
+            m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, false, true);
+            m_pcInterSearch->setAffineBdofChroma(false);
+            pu.mergeType = bufferedMrgType;
 #endif
           }
 #endif
@@ -9843,10 +9887,38 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #else
               tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx]);
 #endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+              m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, false, true);
+#endif
             }
             else
 #endif
-            m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, true, true);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+            {
+              if (!affineCiipFallBack)
+              {
+                if (pu.interDir == 1 || pu.interDir == 2)
+                {
+                  tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx], true);
+                  m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, false, true);
+                }
+                else
+                {
+                  m_pcInterSearch->setDeriveOobMask(true);
+                  tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx], true);
+                  m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, true, true);
+                  m_pcInterSearch->setDeriveOobMask(false);
+                }
+              }
+              else
+              {
+                m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, true, true);
+                affineCiipFallBack = false;
+              }
+            }
+#else
+              m_pcInterSearch->motionCompensation(pu, REF_PIC_LIST_X, true, true);
+#endif
 #else
 #if JVET_AD0213_LIC_IMP
             if (pu.cu->LICFlag)
@@ -9871,6 +9943,31 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
                   {
                     m_pcInterSearch->setLicParam(list, comp, pu.cu->licScale[list][comp], pu.cu->licOffset[list][comp]);
                   }
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+                  if (!pu.affineOppositeLic && !pu.affBMMergeFlag)
+                  {
+                    pu.cu->licScale[list][0] = affineMergeCtx.licScaleBuf[uiMergeCand][list][0];
+                    pu.cu->licOffset[list][0] = affineMergeCtx.licOffsetBuf[uiMergeCand][list][0];
+                  }
+                  else if (pu.affineOppositeLic)
+                  {
+                    pu.cu->licScale[list][0] = affineMergeCtxOppositeLic.licScaleBuf[uiMergeCand][list][0];
+                    pu.cu->licOffset[list][0] = affineMergeCtxOppositeLic.licOffsetBuf[uiMergeCand][list][0];
+                  }
+                  else
+                  {
+                    if (pu.affBMDir == 1)
+                    {
+                      pu.cu->licScale[list][0] = affineBMMergeL0.licScaleBuf[uiMergeCand][list][0];
+                      pu.cu->licOffset[list][0] = affineBMMergeL0.licOffsetBuf[uiMergeCand][list][0];
+                    }
+                    else
+                    {
+                      pu.cu->licScale[list][0] = affineBMMergeL1.licScaleBuf[uiMergeCand][list][0];
+                      pu.cu->licOffset[list][0] = affineBMMergeL1.licOffsetBuf[uiMergeCand][list][0];
+                    }
+                  }
+#endif
                 }
               }
             }
@@ -17656,7 +17753,13 @@ void EncCu::xCheckSATDCostMmvdMerge(CodingStructure *&tempCS, CodingUnit &cu, Pr
   }
 }
 #if JVET_AG0276_LIC_FLAG_SIGNALING
-void EncCu::xCheckSATDCostAffineMergeOppositeLic(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtx, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
+void EncCu::xCheckSATDCostAffineMergeOppositeLic(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  , AffineMergeCtx& affineMergeCtx
+#else
+  , AffineMergeCtx affineMergeCtx
+#endif
+  , MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
   , unsigned& uiNumMrgSATDCand, static_vector<ModeInfo, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  &rdModeList, static_vector<double, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM> &candCostList, DistParam distParam, const TempCtx &ctxStart
 )
 {
@@ -17749,6 +17852,17 @@ void EncCu::xCheckSATDCostAffineMergeOppositeLic(CodingStructure *&tempCS, Codin
     else
     {
       m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X, true, false);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+      if (pu.cu->licFlag)
+      {
+        for (int i = 0; i < NUM_REF_PIC_LIST_01; i++)
+        {
+          m_pcInterSearch->setLicParam(i, COMPONENT_Y, pu.cu->licScale[i][0], pu.cu->licOffset[i][0]);
+          affineMergeCtx.licScaleBuf[uiAffMergeCand][i][0] = pu.cu->licScale[i][0];
+          affineMergeCtx.licOffsetBuf[uiAffMergeCand][i][0] = pu.cu->licOffset[i][0];
+        }
+      }
+#endif
     }
     pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
     m_doEncAffineBDOFOppositeLic[uiAffMergeCand] = false;
@@ -17801,7 +17915,13 @@ void EncCu::xCheckSATDCostAffineMergeOppositeLic(CodingStructure *&tempCS, Codin
 }
 #endif
 #if JVET_AG0135_AFFINE_CIIP
-void EncCu::xCheckSATDCostAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtx, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer, PelUnitBuf  acMergeAffineBuffer[AFFINE_MRG_MAX_NUM_CANDS]
+void EncCu::xCheckSATDCostAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  , AffineMergeCtx& affineMergeCtx
+#else
+  , AffineMergeCtx affineMergeCtx
+#endif
+  , MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer, PelUnitBuf  acMergeAffineBuffer[AFFINE_MRG_MAX_NUM_CANDS]
   , unsigned& uiNumMrgSATDCand, static_vector<ModeInfo, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  &rdModeList, static_vector<double, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM> &candCostList, DistParam distParam, const TempCtx &ctxStart)
 #else
 void EncCu::xCheckSATDCostAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtx, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
@@ -17916,11 +18036,26 @@ void EncCu::xCheckSATDCostAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, 
       {
         PU::spanMotionInfo(pu);
       }
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+      m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X, true, false);
+#else
       m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X);
+#endif
     }
     else
     {
       m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X, true, false);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+      if (pu.cu->licFlag)
+      {
+        for (int i = 0; i < NUM_REF_PIC_LIST_01; i++)
+        {
+          m_pcInterSearch->setLicParam(i, COMPONENT_Y, pu.cu->licScale[i][0], pu.cu->licOffset[i][0]);
+          affineMergeCtx.licScaleBuf[uiAffMergeCand][i][0] = pu.cu->licScale[i][0];
+          affineMergeCtx.licOffsetBuf[uiAffMergeCand][i][0] = pu.cu->licOffset[i][0];
+        }
+      }
+#endif
     }
     pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
     m_doEncAffineBDOF[uiAffMergeCand] = m_pcInterSearch->getDoAffineSubPuBdof();
@@ -17980,7 +18115,13 @@ void EncCu::xCheckSATDCostAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, 
   cu.affine = false;
 }
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
-void EncCu::xCheckSATDCostBMAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtx, RefPicList reflist, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
+void EncCu::xCheckSATDCostBMAffineMerge(CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  , AffineMergeCtx& affineMergeCtx
+#else
+  , AffineMergeCtx affineMergeCtx
+#endif
+  , RefPicList reflist, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
   , unsigned& uiNumMrgSATDCand, static_vector<ModeInfo, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  &rdModeList, static_vector<double, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM> &candCostList, DistParam distParam, const TempCtx &ctxStart
 )
 {
@@ -18058,11 +18199,26 @@ void EncCu::xCheckSATDCostBMAffineMerge(CodingStructure *&tempCS, CodingUnit &cu
       m_pcInterSearch->setDoAffineSubPuBdof(false);
       m_pcInterSearch->setBdofSubPuMvBuf(m_mvBufEncAffineBmBDOF[(uiAffMergeCand << 1) + pu.affBMDir - 1]);
       PU::spanMotionInfo(pu);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+      m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X, true, false);
+#else
       m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X);
+#endif
     }
     else
     {
       m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X, true, false);
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+      if (pu.cu->licFlag)
+      {
+        for (int i = 0; i < NUM_REF_PIC_LIST_01; i++)
+        {
+          m_pcInterSearch->setLicParam(i, COMPONENT_Y, pu.cu->licScale[i][0], pu.cu->licOffset[i][0]);
+          affineMergeCtx.licScaleBuf[uiAffMergeCand][i][0] = pu.cu->licScale[i][0];
+          affineMergeCtx.licOffsetBuf[uiAffMergeCand][i][0] = pu.cu->licOffset[i][0];
+        }
+      }
+#endif
     }
     pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
     m_doEncAffineBmBDOF[(uiAffMergeCand << 1) + pu.affBMDir - 1] = m_pcInterSearch->getDoAffineSubPuBdof();
