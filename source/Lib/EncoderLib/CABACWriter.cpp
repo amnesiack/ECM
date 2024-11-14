@@ -4430,9 +4430,21 @@ void CABACWriter::amvpSbTmvpMvdCoding(const PredictionUnit &pu)
 void CABACWriter::subblock_merge_flag( const CodingUnit& cu )
 {
 
-  if ( !cu.cs->slice->isIntra() && (cu.slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 )
+  if ( !cu.cs->slice->isIntra() && (cu.slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && 
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    CU::isAffineAllowed(cu)
+#else
+    cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 
+#endif
+    )
   {
     unsigned ctxId = DeriveCtx::CtxAffineFlag( cu );
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    if (CU::affineCtxInc(cu))
+    {
+      ctxId += 3;
+    }
+#endif
     m_BinEncoder.encodeBin( cu.affine, Ctx::SubblockMergeFlag( ctxId ) );
     DTRACE( g_trace_ctx, D_SYNTAX, "subblock_merge_flag() subblock_merge_flag=%d ctx=%d pos=(%d,%d)\n", cu.affine ? 1 : 0, ctxId, cu.Y().x, cu.Y().y );
   }
@@ -7364,9 +7376,21 @@ void CABACWriter::mvp_flag( const PredictionUnit& pu, RefPicList eRefList )
 #if JVET_AG0135_AFFINE_CIIP
 void CABACWriter::ciipAffineFlag(const PredictionUnit& pu)
 {
-  if (!pu.cu->slice->isIntra() && pu.cs->sps->getUseCiipAffine() && (pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && pu.cu->lumaSize().width >= 8 && pu.cu->lumaSize().height >= 8)
+  if (!pu.cu->slice->isIntra() && pu.cs->sps->getUseCiipAffine() && (pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand() > 0) && 
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    CU::isAffineAllowed(*pu.cu)
+#else
+    pu.cu->lumaSize().width >= 8 && pu.cu->lumaSize().height >= 8
+#endif
+    )
   {
     unsigned ctxId = DeriveCtx::CtxCiipAffineFlag(*pu.cu);
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+    if (CU::affineCtxInc(*pu.cu))
+    {
+      ctxId += 3;
+    }
+#endif
     m_BinEncoder.encodeBin(pu.ciipAffine, Ctx::CiipAffineFlag(ctxId));
   }
 }

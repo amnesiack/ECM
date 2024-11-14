@@ -376,6 +376,32 @@ const CtxSet ContextSetCfg::GeoBlendFlag = ContextSetCfg::addCtxSet
 #endif
 
 #if JVET_AG0135_AFFINE_CIIP
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+const CtxSet ContextSetCfg::CiipAffineFlag = ContextSetCfg::addCtxSet
+({
+// ctx 57 59
+  {  12,   6,  15,  15,  15,  15 },
+  {  19,   5,   6,   6,   6,   6 },
+  {  35,  35,  35,  35,  35,  35 },
+  {  12,  14,  15,  15,  15,  15 },
+  {   5,   1,   1,   1,   1,   1 },
+  {   6,   3,   5,   5,   5,   5 },
+  {   8,   8,   8,   8,   8,   8 },
+  {   5,   1,   1,   1,   1,   1 },
+  {   4,   4,  11,  11,  11,  11 },
+  {   4,   4,  11,  11,  11,  11 },
+  {  18,  18,  18,  18,  18,  18 },
+  {   4,   4,   4,   4,   4,   4 },
+  { 105, 118, 116, 116, 116, 116 },
+  { 211, 118, 116, 116, 116, 116 },
+  { 107, 119, 103, 103, 103, 103 },
+  { 107, 122, 148, 148, 148, 148 },
+  { 119, 119, 119, 119, 119, 119 },
+  { 119, 119, 119, 119, 119, 119 },
+  { 107, 118, 116, 116, 116, 116 },
+  { 116, 119, 118, 118, 118, 118 },
+});
+#else
 const CtxSet ContextSetCfg::CiipAffineFlag = ContextSetCfg::addCtxSet
 ({
 // ctx 57 59
@@ -400,6 +426,7 @@ const CtxSet ContextSetCfg::CiipAffineFlag = ContextSetCfg::addCtxSet
   { 107, 118, 116 },
   { 116, 119, 118 },
 });
+#endif
 #endif
 
 const CtxSet ContextSetCfg::MergeIdx = ContextSetCfg::addCtxSet({
@@ -1556,7 +1583,31 @@ const CtxSet ContextSetCfg::RefPicLC = ContextSetCfg::addCtxSet({
  { 117, 117, 234 },
  { 148, 117, 251 },
 });
-
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+const CtxSet ContextSetCfg::SubblockMergeFlag = ContextSetCfg::addCtxSet({
+// ctx 202 204
+ {  25,  34,  21,  21,  21,  21 },
+ {  40,  34,  36,  36,  36,  36 },
+ {  35,  35,  35,  35,  35,  35 },
+ {  25,  20,  37,  37,  37,  37 },
+ {   6,   5,   4,   4,   4,   4 },
+ {   6,   5,   5,   5,   5,   5 },
+ {   8,   8,   8,   8,   8,   8 },
+ {   6,   5,   5,   5,   5,   5 },
+ {   4,   4,  18,  18,  18,  18 },
+ {  11,   4,  18,  18,  18,  18 },
+ {  18,  18,  18,  18,  18,  18 },
+ {   4,   4,  18,  18,  18,  18 },
+ { 131, 116, 117, 117, 117, 117 },
+ { 131, 132, 118, 118, 118, 118 },
+ { 117, 117, 119, 119, 119, 119 },
+ { 117, 132, 117, 117, 117, 117 },
+ { 119, 119, 119, 119, 119, 119 },
+ { 119, 119, 119, 119, 119, 119 },
+ { 131, 117, 118, 118, 118, 118 },
+ { 131, 117, 118, 118, 118, 118 },
+});
+#else
 const CtxSet ContextSetCfg::SubblockMergeFlag = ContextSetCfg::addCtxSet({
 // ctx 202 204
  {  25,  34,  21 },
@@ -1580,6 +1631,7 @@ const CtxSet ContextSetCfg::SubblockMergeFlag = ContextSetCfg::addCtxSet({
  { 131, 117, 118 },
  { 131, 117, 118 },
 });
+#endif
 
 const CtxSet ContextSetCfg::BMMergeFlag = ContextSetCfg::addCtxSet({
 // ctx 205 208
