@@ -117,8 +117,10 @@ IntraSearch::IntraSearch()
   m_dimdPredBuf = nullptr;
   m_obicPredBuf = nullptr;
 #endif
+#if !JVET_AJ0237_INTERNAL_12BIT
   m_truncBinBits = nullptr;
   m_escapeNumBins = nullptr;
+#endif
   m_minErrorIndexMap = nullptr;
   for (unsigned i = 0; i < (MAXPLTSIZE + 1); i++)
   {
@@ -327,6 +329,7 @@ void IntraSearch::destroy()
   m_obicPredBuf = nullptr;
 #endif
   m_isInitialized = false;
+#if !JVET_AJ0237_INTERNAL_12BIT
   if (m_truncBinBits != nullptr)
   {
     for (unsigned i = 0; i < m_symbolSize; i++)
@@ -342,6 +345,7 @@ void IntraSearch::destroy()
     delete[] m_escapeNumBins;
     m_escapeNumBins = nullptr;
   }
+#endif
   if (m_indexError[0] != nullptr)
   {
     for (unsigned i = 0; i < (MAXPLTSIZE + 1); i++)
@@ -613,6 +617,7 @@ void IntraSearch::init( EncCfg*        pcEncCfg,
   m_isInitialized = true;
   if (pcEncCfg->getPLTMode())
   {
+#if !JVET_AJ0237_INTERNAL_12BIT
     m_symbolSize = (1 << bitDepthY); // pixel values are within [0, SymbolSize-1] with size SymbolSize
     if (m_truncBinBits == nullptr)
     {
@@ -627,6 +632,7 @@ void IntraSearch::init( EncCfg*        pcEncCfg,
       m_escapeNumBins = new uint16_t[m_symbolSize];
     }
     initTBCTable(bitDepthY);
+#endif
     if (m_indexError[0] == nullptr)
     {
       for (unsigned i = 0; i < (MAXPLTSIZE + 1); i++)
@@ -9376,7 +9382,11 @@ void IntraSearch::preCalcPLTIndexRD(CodingStructure& cs, Partitioner& partitione
       {
         if (lossless)
         {
+#if JVET_AJ0237_INTERNAL_12BIT
+          rate += getEpExGolombNumBins(curPel[comp], 5);
+#else
           rate += m_escapeNumBins[curPel[comp]];
+#endif
         }
         else
         {
@@ -9389,7 +9399,11 @@ void IntraSearch::preCalcPLTIndexRD(CodingStructure& cs, Partitioner& partitione
           {
             error += tmpErr * tmpErr;
           }
+#if JVET_AJ0237_INTERNAL_12BIT
+          rate += getEpExGolombNumBins(paPixelValue[comp], 5);
+#else
           rate += m_escapeNumBins[paPixelValue[comp]];   // encode quantized escape color
+#endif
         }
       }
       double rdCost = (double)error + m_pcRdCost->getLambda()*(double)rate;
@@ -9696,7 +9710,11 @@ double IntraSearch::rateDistOptPLT(
       rdCost = MAX_DOUBLE;
       return rdCost;
     }
+#if JVET_AJ0237_INTERNAL_12BIT
+    rdCost += m_pcRdCost->getLambda() * (getTruncBinBits((runIndex > refIndex) ? runIndex - 1 : runIndex, (scanPos == 0) ? (indexMaxValue + 1) : indexMaxValue) << SCALE_BITS);
+#else
     rdCost += m_pcRdCost->getLambda()*(m_truncBinBits[(runIndex > refIndex) ? runIndex - 1 : runIndex][(scanPos == 0) ? (indexMaxValue + 1) : indexMaxValue] << SCALE_BITS);
+#endif
   }
   rdCost += m_indexError[runIndex][m_scanOrder[scanPos].idx] * (1 << SCALE_BITS);
   if (scanPos > 0)
@@ -9765,6 +9783,7 @@ uint32_t IntraSearch::getTruncBinBits(uint32_t symbol, uint32_t maxSymbol)
   return idxCodeBit;
 }
 
+#if !JVET_AJ0237_INTERNAL_12BIT
 void IntraSearch::initTBCTable(int bitDepth)
 {
   for (uint32_t i = 0; i < m_symbolSize; i++)
@@ -9784,6 +9803,7 @@ void IntraSearch::initTBCTable(int bitDepth)
     m_escapeNumBins[i] = getEpExGolombNumBins(i, 5);
   }
 }
+#endif
 
 void IntraSearch::calcPixelPred(CodingStructure& cs, Partitioner& partitioner, uint32_t yPos, uint32_t xPos, ComponentID compBegin, uint32_t numComp)
 {
@@ -9937,7 +9957,11 @@ void IntraSearch::derivePLTLossy(CodingStructure& cs, Partitioner& partitioner, 
 
   TransformUnit &tu = *cs.getTU(partitioner.chType);
   QpParam cQP(tu, compBegin);
+#if JVET_AJ0237_INTERNAL_12BIT
+  int qp = cQP.Qp(true) - 6 * (channelBitDepth_L - 8);
+#else
   int qp = cQP.Qp(true) - 12;
+#endif
   qp = (qp < 0) ? 0 : ((qp > 56) ? 56 : qp);
   int errorLimit = g_paletteQuant[qp];
   if (lossless)

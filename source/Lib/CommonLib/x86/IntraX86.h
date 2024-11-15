@@ -2723,7 +2723,11 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
   const int addShift = 1 << 13;
 
   const __m128i offset = _mm_set1_epi32( addShift );
+#if JVET_AJ0237_INTERNAL_12BIT
+  const __m128i max = _mm_set1_epi32((1 << clpRng.bd) - 1);
+#else
   const __m128i max = _mm_set1_epi32( 1023 );
+#endif
   const __m128i zeros = _mm_setzero_si128();
   __m128i vmat[ 4 ], vcoef[ 4 ], vsrc;
 
@@ -2862,6 +2866,27 @@ int64_t calcAeipGroupSumSIMD(const Pel* src1, const Pel* src2, const int numSamp
   __m256i vzero = _mm256_setzero_si256();
   __m256i vsum32 = vzero;
   const int samplesBySIMD = (numSamples >> 4) << 4;
+#if JVET_AJ0237_INTERNAL_12BIT
+  int64_t sum = 0;
+  const int simdSampleBatchCnt = (samplesBySIMD >> 4) >> 2;
+  for (int batchIdx = 0; batchIdx < simdSampleBatchCnt; batchIdx++)
+  {
+    vsum32 = vzero;
+    for (; i < ((batchIdx + 1) * 64); i += 16)
+    {
+      __m256i vsrc1 = _mm256_lddqu_si256((__m256i*)(&src1[i]));
+      __m256i vsrc2 = _mm256_lddqu_si256((__m256i*)(&src2[i]));
+      __m256i vsumtemp = _mm256_madd_epi16(vsrc1, vsrc2);
+      vsum32 = _mm256_add_epi32(vsum32, vsumtemp);
+    }
+    vsum32 = _mm256_hadd_epi32(vsum32, vsum32);
+    vsum32 = _mm256_hadd_epi32(vsum32, vsum32);
+    sum += (_mm_cvtsi128_si32(_mm256_castsi256_si128(vsum32)) + _mm_cvtsi128_si32(_mm256_castsi256_si128(_mm256_permute2x128_si256(vsum32, vsum32, 0x11))));
+  }
+  if (i < samplesBySIMD)
+  {
+    vsum32 = vzero;
+#endif
   for (; i < samplesBySIMD; i += 16)
   {
     __m256i vsrc1 = _mm256_lddqu_si256((__m256i*)(&src1[i]));
@@ -2871,11 +2896,37 @@ int64_t calcAeipGroupSumSIMD(const Pel* src1, const Pel* src2, const int numSamp
   }
   vsum32 = _mm256_hadd_epi32(vsum32, vsum32);
   vsum32 = _mm256_hadd_epi32(vsum32, vsum32);
+#if JVET_AJ0237_INTERNAL_12BIT
+  sum += (_mm_cvtsi128_si32(_mm256_castsi256_si128(vsum32)) + _mm_cvtsi128_si32(_mm256_castsi256_si128(_mm256_permute2x128_si256(vsum32, vsum32, 0x11))));
+  }
+#else
   int64_t sum = (_mm_cvtsi128_si32(_mm256_castsi256_si128(vsum32)) + _mm_cvtsi128_si32(_mm256_castsi256_si128(_mm256_permute2x128_si256(vsum32, vsum32, 0x11))));
+#endif
 #else
   __m128i vzero = _mm_setzero_si128();
   __m128i vsum32 = vzero;
   const int samplesBySIMD = (numSamples >> 4) << 4;
+#if JVET_AJ0237_INTERNAL_12BIT
+  int64_t sum = 0;
+  const int simdSampleBatchCnt = (samplesBySIMD >> 4) >> 2;
+  for (int batchIdx = 0; batchIdx < simdSampleBatchCnt; batchIdx++)
+  {
+    vsum32 = vzero;
+    for (; i < ((batchIdx + 1) * 64); i += 8)
+    {
+      __m128i vsrc1 = _mm_loadu_si128((__m128i*)(&src1[i]));
+      __m128i vsrc2 = _mm_loadu_si128((__m128i*)(&src2[i]));
+      __m128i vsumtemp = _mm_madd_epi16(vsrc1, vsrc2);
+      vsum32 = _mm_add_epi32(vsum32, vsumtemp);
+    }
+    vsum32 = _mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0x4e));
+    vsum32 = _mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0xb1));
+    sum += _mm_cvtsi128_si32(vsum32);
+  }
+  if (i < samplesBySIMD)
+  {
+    vsum32 = vzero;
+#endif
   for (; i < samplesBySIMD; i += 8)
   {
     __m128i vsrc1 = _mm_loadu_si128((__m128i*)(&src1[i]));
@@ -2885,7 +2936,12 @@ int64_t calcAeipGroupSumSIMD(const Pel* src1, const Pel* src2, const int numSamp
   }
   vsum32 = _mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0x4e));   // 01001110
   vsum32 = _mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0xb1));   // 10110001
+#if JVET_AJ0237_INTERNAL_12BIT
+  sum += _mm_cvtsi128_si32(vsum32);
+  }
+#else
   int64_t sum = _mm_cvtsi128_si32(vsum32);
+#endif
 #endif
   for (; i < numSamples; i++)
   {

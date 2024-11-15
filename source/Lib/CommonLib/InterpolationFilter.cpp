@@ -1596,9 +1596,17 @@ void InterpolationFilter::filterCopy( const ClpRng& clpRng, const Pel *src, int 
     if (biMCForDMVR)
     {
       int shift10BitOut, offset;
+#if JVET_AJ0237_INTERNAL_12BIT
+      if ((clpRng.bd - IF_INTERNAL_PREC_BILINEAR(clpRng.bd)) > 0)
+#else
       if ((clpRng.bd - IF_INTERNAL_PREC_BILINEAR) > 0)
+#endif
       {
+#if JVET_AJ0237_INTERNAL_12BIT
+        shift10BitOut = (clpRng.bd - IF_INTERNAL_PREC_BILINEAR(clpRng.bd));
+#else
         shift10BitOut = (clpRng.bd - IF_INTERNAL_PREC_BILINEAR);
+#endif
         offset = (1 << (shift10BitOut - 1));
         for (row = 0; row < height; row++)
         {
@@ -1612,7 +1620,11 @@ void InterpolationFilter::filterCopy( const ClpRng& clpRng, const Pel *src, int 
       }
       else
       {
+#if JVET_AJ0237_INTERNAL_12BIT
+        shift10BitOut = (IF_INTERNAL_PREC_BILINEAR(clpRng.bd) - clpRng.bd);
+#else
         shift10BitOut = (IF_INTERNAL_PREC_BILINEAR - clpRng.bd);
+#endif
         for (row = 0; row < height; row++)
         {
           for (col = 0; col < width; col++)
@@ -1649,9 +1661,17 @@ void InterpolationFilter::filterCopy( const ClpRng& clpRng, const Pel *src, int 
     if (biMCForDMVR)
     {
       int shift10BitOut, offset;
+#if JVET_AJ0237_INTERNAL_12BIT
+      if ((clpRng.bd - IF_INTERNAL_PREC_BILINEAR(clpRng.bd)) > 0)
+#else
       if ((clpRng.bd - IF_INTERNAL_PREC_BILINEAR) > 0)
+#endif
       {
+#if JVET_AJ0237_INTERNAL_12BIT
+        shift10BitOut = (clpRng.bd - IF_INTERNAL_PREC_BILINEAR(clpRng.bd));
+#else
         shift10BitOut = (clpRng.bd - IF_INTERNAL_PREC_BILINEAR);
+#endif
         offset = (1 << (shift10BitOut - 1));
         for (row = 0; row < height; row++)
         {
@@ -1665,7 +1685,11 @@ void InterpolationFilter::filterCopy( const ClpRng& clpRng, const Pel *src, int 
       }
       else
       {
+#if JVET_AJ0237_INTERNAL_12BIT
+        shift10BitOut = (IF_INTERNAL_PREC_BILINEAR(clpRng.bd) - clpRng.bd);
+#else
         shift10BitOut = (IF_INTERNAL_PREC_BILINEAR - clpRng.bd);
+#endif
         for (row = 0; row < height; row++)
         {
           for (col = 0; col < width; col++)
@@ -1865,7 +1889,11 @@ void InterpolationFilter::filter(const ClpRng& clpRng, Pel const *src, int srcSt
   {
     if( isFirst )
     {
+#if JVET_AJ0237_INTERNAL_12BIT
+      shift = IF_FILTER_PREC_BILINEAR - (IF_INTERNAL_PREC_BILINEAR(clpRng.bd) - clpRng.bd);
+#else
       shift = IF_FILTER_PREC_BILINEAR - (IF_INTERNAL_PREC_BILINEAR - clpRng.bd);
+#endif
       offset = 1 << (shift - 1);
     }
     else
