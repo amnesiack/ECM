@@ -1275,7 +1275,11 @@ std::vector<int> TrQuant::selectICTCandidates( const TransformUnit &tu, CompStor
 void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &trTypeHor, int &trTypeVer)
 {
   const bool isExplicitMTS = (CU::isIntra(*tu.cu) ? tu.cs->sps->getUseIntraMTS() : tu.cs->sps->getUseInterMTS() && CU::isInter(*tu.cu)) && isLuma(compID);
+#if JVET_AJ0257_IMPLICIT_MTS_LUT
+  const bool isImplicitMTS = CU::isIntra(*tu.cu) && tu.cs->sps->getUseImplicitMTS() && isLuma(compID) && !tu.cu->lfnstIdx && !tu.cu->mipFlag && !tu.cu->eipFlag && !tu.cu->tmpFlag && !tu.cu->sgpm;
+#else
   const bool isImplicitMTS = CU::isIntra(*tu.cu) && tu.cs->sps->getUseImplicitMTS() && isLuma(compID) && tu.cu->lfnstIdx == 0 && tu.cu->mipFlag == 0;
+#endif
   const bool isISP = CU::isIntra(*tu.cu) && tu.cu->ispMode && isLuma(compID);
   const bool isSBT = CU::isInter(*tu.cu) && tu.cu->sbtInfo && isLuma(compID);
 
@@ -1310,6 +1314,70 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
   {
     int  width = tu.blocks[compID].width;
     int  height = tu.blocks[compID].height;
+  
+#if JVET_AJ0257_IMPLICIT_MTS_LUT    
+    const CompArea& area = tu.blocks[compID];
+    int predMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
+
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (predMode == PNN_IDX)
+    {
+      return;
+    }
+#endif
+
+    if (isISP || width < 4 || height < 4  || tu.cu->dimd || tu.cu->timd)
+    {
+      bool widthDstOk = width >= 4 && width <= 16;
+      bool heightDstOk = height >= 4 && height <= 16;
+
+      if (widthDstOk)
+      {
+        trTypeHor = DST7;
+      }
+      if (heightDstOk)
+      {
+        trTypeVer = DST7;
+      }     
+      return;
+    }
+
+#if JVET_AD0085_TMRL_EXTENSION
+    if (tu.cu->tmrlFlag)
+    {
+      predMode = MAP131TO67(predMode);
+    }
+#endif
+
+    predMode = PU::getWideAngle(tu, (uint32_t)predMode, compID);
+    CHECK(predMode < -(NUM_EXT_LUMA_MODE >> 1) || predMode >= NUM_LUMA_MODE + (NUM_EXT_LUMA_MODE >> 1), "luma mode out of range");
+
+#if JVET_AC0105_DIRECTIONAL_PLANAR
+    if (predMode == PLANAR_IDX)
+    {
+      if (tu.cu->plIdx == 2)
+      {
+        predMode = HOR_IDX;
+      }
+      else if (tu.cu->plIdx == 1)
+      {
+        predMode = VER_IDX;
+      }
+    }
+#endif
+    int modeImplicit = predMode < 0 ? predMode + NUM_LUMA_MODE : predMode >= NUM_LUMA_MODE ? predMode - NUM_LUMA_MODE + 2 : predMode;
+    int modeIdx = modeImplicit > DIA_IDX ? (NUM_LUMA_MODE + 1 - modeImplicit) : modeImplicit;
+    bool isTrTransposed = modeImplicit > DIA_IDX ? true :  false;      
+    uint8_t nSzIdxW = std::min(3, (floorLog2(width) - 2));
+    uint8_t nSzIdxH = std::min(3, (floorLog2(height) - 2));
+    uint8_t nSzIdx = isTrTransposed ? (nSzIdxH * 4 + nSzIdxW) : (nSzIdxW * 4 + nSzIdxH);
+    int nTrType = g_aucImplicitToTrSet[nSzIdx][modeIdx];
+      
+    trTypeHor = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 1 : 0];      
+    trTypeVer = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 0 : 1];
+
+    return;    
+#else
     bool widthDstOk = width >= 4 && width <= 16;
     bool heightDstOk = height >= 4 && height <= 16;
 
@@ -1322,6 +1390,7 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       trTypeVer = DST7;
     }
     return;
+#endif
   }
 
 
