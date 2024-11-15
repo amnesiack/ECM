@@ -1746,6 +1746,9 @@ private:
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   bool              m_ccalfPrecisionFlag;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool              m_nnipMode;
+#endif
   bool              m_bTemporalIdNestingFlag; // temporal_id_nesting_flag
 
   bool              m_scalingListEnabledFlag;
@@ -2254,6 +2257,10 @@ public:
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   bool                    getCCALFPrecisionFlag() const                                                   { return m_ccalfPrecisionFlag; }
   void                    setCCALFPrecisionFlag( bool b )                                                 { m_ccalfPrecisionFlag = b; }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool                    getNnipMode() const { return m_nnipMode; }
+  void                    setNnipMode(const bool nnipMode) { m_nnipMode = nnipMode; }
 #endif
   bool                    getALFEnabledFlag() const                                                       { return m_alfEnabledFlag; }
   void                    setALFEnabledFlag( bool b )                                                     { m_alfEnabledFlag = b; }
@@ -3928,6 +3935,9 @@ private:
   bool                       m_intraRegionNoSplitTest;
 #endif
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool m_pnnMode;
+#endif
 public:
                               Slice();
   virtual                     ~Slice();
@@ -4525,6 +4535,10 @@ public:
   int                         getLumaPelMin()                               const { return  m_lumaPelMin; }
   void                        setAdaptiveClipQuant(bool b)                        { m_adaptiveClipQuant = b; };
   bool                        getAdaptiveClipQuant()                        const { return m_adaptiveClipQuant; };
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED 
+  bool getPnnMode() const { return m_pnnMode; }
+  void setPnnMode(const bool pnnMode) { m_pnnMode = pnnMode; }
 #endif
 
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE

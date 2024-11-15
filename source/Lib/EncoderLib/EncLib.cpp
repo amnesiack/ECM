@@ -2212,6 +2212,9 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setUseLmcs                            ( m_lmcsEnabled );
   sps.setUseMRL                ( m_MRL );
   sps.setUseMIP                ( m_MIP );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  sps.setNnipMode(m_nnip);
+#endif
   CHECK(m_log2MinCUSize > std::min(6, floorLog2(sps.getMaxCUWidth())), "log2_min_luma_coding_block_size_minus2 shall be in the range of 0 to min (4, log2_ctu_size - 2)");
   CHECK(m_uiMaxMTTHierarchyDepth > 2 * (floorLog2(sps.getCTUSize()) - sps.getLog2MinCodingBlockSize()), "sps_max_mtt_hierarchy_depth_inter_slice shall be in the range 0 to 2*(ctbLog2SizeY - log2MinCUSize)");
   CHECK(m_uiMaxMTTHierarchyDepthI > 2 * (floorLog2(sps.getCTUSize()) - sps.getLog2MinCodingBlockSize()), "sps_max_mtt_hierarchy_depth_intra_slice_luma shall be in the range 0 to 2*(ctbLog2SizeY - log2MinCUSize)");

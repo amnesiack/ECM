@@ -865,6 +865,10 @@ static const int VER_BVD_CTX_OFFSET      = 6;
 #if JVET_AD0140_MVD_PREDICTION
 static const int MVD_CODING_GOLOMB_ORDER = 1;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+static const int PNN_IDX = 220;
+static const int NUM_INDICES_REP = 2;
+#endif
 
 #if JVET_W0119_LFNST_EXTENSION
 static const int NUM_LFNST_INTRA_MODES   = NUM_LUMA_MODE + NUM_EXT_LUMA_MODE;

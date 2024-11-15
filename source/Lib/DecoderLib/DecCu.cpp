@@ -118,6 +118,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
     m_pcInterPred->resetVPDUforIBC(cs.pcv->chrFormat, ctuSize, ctuSize, ctuArea.Y().x, ctuArea.Y().y);
   }
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_pcIntraPred->resetCuData();
+#endif
 
 #if JVET_AE0159_FIBC || JVET_AE0059_INTER_CCCM || JVET_AE0078_IBC_LIC_EXTENSION || JVET_AF0073_INTER_CCP_MERGE
   m_pcInterPred->setIntraPrediction( m_pcIntraPred );
@@ -550,7 +553,7 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           currCU.firstPU->intraDir[1] = chromaCandModes[currCU.firstPU->candId];
         }
 #else
-#if JVET_W0123_TIMD_FUSION
+#if JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
         if (currCU.timd)
         {
           PredictionUnit *pu = currCU.firstPU;
@@ -887,7 +890,19 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
   else
 #endif
   {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    bool isUnused = isLuma(compID) && ((tu.cu)->tmpFlag || (tu.cu)->eipFlag);
+    if (uiChFinalMode == PNN_IDX)
+    {
+      isUnused = !IntraPredictionNN::isUpsamplingNeeded(area);
+    }
+    if (!isUnused)
+    {
+#endif
     m_pcIntraPred->initIntraPatternChType(*tu.cu, area);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    }
+#endif
   }
 #if PRINT_DEBUG_INFO
   if(!pu.cs->pcv->isEncoder && compID == COMPONENT_Cb)

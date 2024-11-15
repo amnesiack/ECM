@@ -1984,6 +1984,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
     ("TemporalFilterFutureRefs",                      m_gopBasedTemporalFilterFutureRefs,        TF_DEFAULT_REFS, "Number of future references for temporal prefilter")
     ("FirstValidFrame",                               m_firstValidFrame,                                       0, "First valid frame")
     ("LastValidFrame",                                m_lastValidFrame,                                  MAX_INT, "Last valid frame")
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    ("IntraNN",                                       m_intraNN,                                            true, "Neural Network Intra Prediction: 1 activated, 0 deactivated")
+#endif
     ("TemporalFilterStrengthFrame*",                  m_gopBasedTemporalFilterStrengths, std::map<int, double>(), "Strength for every * frame in GOP based temporal filter, where * is an integer."
                                                                                                                   " E.g. --TemporalFilterStrengthFrame8 0.95 will enable GOP based temporal filter at every 8th frame with strength 0.95");
   // clang-format on
@@ -5901,6 +5904,9 @@ void EncAppCfg::xPrintParameter()
   //intra
 #if JVET_AH0209_PDP
   msg( VERBOSE, "PDP:%d ", m_pdp );
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  msg(VERBOSE, "IntraNN:%d ", m_intraNN);
 #endif
 #if ENABLE_DIMD
   msg( VERBOSE, "DIMD:%d ", m_dimd );

@@ -148,6 +148,9 @@ Slice::Slice()
 , m_intraRegionRootImplicitBtDepth( -1 )
 , m_intraRegionNoSplitTest        ( false )
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+, m_pnnMode(false)
+#endif
 {
   for(uint32_t i=0; i<NUM_REF_PIC_LIST_01; i++)
   {

@@ -204,6 +204,9 @@ private:
 #endif
   int             m_numCandAMTForFullRD;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  std::array<std::array<uint32_t, NUM_INDICES_REP>, MAX_NUM_COMPONENT> m_indicesRepresentationPnn;
+#endif
   XUCache         m_unitCache;
 
   CodingStructure ****m_pSplitCS;
@@ -774,6 +777,9 @@ public:
   bool            m_skipObicLfnstMtsPass;
   bool            m_skipDimdLfnstMtsPass;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool            m_skipNnLfnstMtsPass;
+#endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   bool            m_skipCCCMSATD;
   int             m_isCccmNoSubModeEnabledInRdo[MMLM_T_IDX + 1];
@@ -798,6 +804,10 @@ public:
   PelStorage      m_ddCcpFusionStorage[2];
   PelUnitBuf      m_ddCcpFusionStorageTemp[2];
 #endif  
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool            m_isDimdPredictionSaved;
+  bool            m_isObicPredictionSaved;
+#endif
   IntraSearch();
   ~IntraSearch();
 
@@ -832,6 +842,10 @@ public:
   double findInterCUCost          ( CodingUnit &cu );
 #endif
 public:
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void resetIndicesRepresentationPnnMemories();
+  void resetAreDimdObicPredictionsSaved() { m_isDimdPredictionSaved = false; m_isObicPredictionSaved = false; }
+#endif
   bool estIntraPredLumaQT(CodingUnit &cu, Partitioner& pm, const double bestCostSoFar = MAX_DOUBLE, bool mtsCheckRangeFlag = false, int mtsFirstCheckId = 0, int mtsLastCheckId = 0, bool moreProbMTSIdxFirst = false, CodingStructure* bestCS = NULL
 #if JVET_AG0136_INTRA_TMP_LIC
     , InterPrediction* pcInterPred = nullptr

@@ -156,6 +156,9 @@ public:
   void        extend_ref_line           (const CodingUnit&              cu );
   void        intra_luma_pred_modes     ( const CodingUnit&             cu );
   void        intra_luma_pred_mode      ( const PredictionUnit&         pu );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void cu_pnn_flag(const CodingUnit& cu);
+#endif
 #if ENABLE_DIMD
   void        cu_dimd_flag              ( const CodingUnit&             cu );
 #endif

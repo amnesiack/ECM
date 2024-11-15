@@ -1975,7 +1975,11 @@ void DecLib::xActivateParameterSets( const InputNALUnit nalu )
     pSlice->m_ccSaoControl[COMPONENT_Cr] = m_cSAO.getCcSaoControlIdc(COMPONENT_Cr);
 #endif
     m_cLoopFilter.create(maxDepth);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    m_cIntraPred.init(sps->getChromaFormatIdc(), sps->getBitDepth(CHANNEL_TYPE_LUMA), sps->getNnipMode());
+#else
     m_cIntraPred.init( sps->getChromaFormatIdc(), sps->getBitDepth( CHANNEL_TYPE_LUMA ) );
+#endif
 #if INTER_LIC || (TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM) || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
 #if JVET_Z0153_IBC_EXT_REF
 #if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
@@ -2847,6 +2851,9 @@ bool DecLib::xDecodeSlice(InputNALUnit &nalu, int &iSkipFrame, int iPOCLastDispl
   m_pcPic->temporalId  = nalu.m_temporalId;
   m_pcPic->layerId     = nalu.m_nuhLayerId;
   m_pcPic->subLayerNonReferencePictureDueToSTSA = false;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  pcSlice->setPnnMode(sps->getNnipMode());
+#endif
 
 #if JVET_S0050_GCI
   if (pcSlice->getSPS()->getProfileTierLevel()->getConstraintInfo()->getNoApsConstraintFlag())

@@ -344,6 +344,9 @@ namespace PU
 #if JVET_AH0136_CHROMA_REORDERING
   bool checkIsChromaBvCandidateValidChromaTm(const PredictionUnit &pu, const Mv mv, const int tmpSize, int filterIdx = 0, bool isRefTemplate = false, bool isRefAbove = false);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  uint32_t getCoLocatedIdxRepresentationPnn(const PredictionUnit& pu);
+#endif
   int      getWideAngle                   ( const TransformUnit &tu, const uint32_t dirMode, const ComponentID compID );
 #if MULTI_PASS_DMVR || JVET_W0097_GPM_MMVD_TM
   uint32_t getBDMVRMvdThreshold       (const PredictionUnit &pu);
@@ -1558,5 +1561,8 @@ void buildHistogramAdaptive(const Pel *pReco, int iStride, uint32_t uiHeight, ui
 #endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 void calcGradForOBMC(const PredictionUnit pu, const Pel* pReco, const int iStride, const int totalUnits, const int templateSize, const int blkSize, int* modeBuf, const int isAbove, const bool isExistFirst, const bool isExistLast);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+bool isAllowedMultiple(const SizeType width, const SizeType height);
 #endif
 #endif

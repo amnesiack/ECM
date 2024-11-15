@@ -51,6 +51,9 @@
 #if JVET_AB0155_SGPM
 #include "CommonLib/InterpolationFilter.h"
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED  
+#include "IntraPredictionNN.h"
+#endif
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
 #include "CommonLib/InterPrediction.h"
 class InterPrediction;
@@ -478,11 +481,17 @@ private:
 #if JVET_AG0136_INTRA_TMP_LIC
   std::array<std::array<std::array<int, 7>, MTMP_NUM>, 4> m_memLicParams;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED  
+  IntraPredictionNN m_intraPredNN;
+#endif
 
 
 
 protected:
   ChromaFormat  m_currChromaFormat;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  int8_t m_evalIdx;
+#endif
 
   int m_topRefLength;
   int m_leftRefLength;
@@ -604,7 +613,12 @@ protected:
   bool isRefTemplateAvailable(CodingUnit& cu, CompArea& area);
 #endif
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void xPredIntraPnn(const CPelBuf& recoBuf, PelBuf& pDst, const CPelBuf& srcBuf, CodingUnit& cu, const ComponentID compID);
+  void xFillReferenceSamples      ( const CPelBuf &recoBuf,      Pel* refBufUnfiltered, const CompArea &area, const CodingUnit &cu, const bool forceDeac0 = false, const bool forceDeac1 = false );
+#else
   void xFillReferenceSamples      ( const CPelBuf &recoBuf,      Pel* refBufUnfiltered, const CompArea &area, const CodingUnit &cu );
+#endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
   void xFillReferenceSamplesOBMC( const CPelBuf &recoBuf, Pel* refBufUnfiltered, const CompArea &area, const CodingUnit &cu );
 #endif
@@ -665,6 +679,9 @@ public:
   std::array<int, 7>& getMemLicParams(const int licIdc, const int idx) { return m_memLicParams[licIdc][idx]; }
 #endif
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void setEvalIdx(const int8_t evalIdx) { m_evalIdx = evalIdx; }
+#endif
 #if JVET_AE0078_IBC_LIC_EXTENSION
 protected:
 #endif
@@ -676,7 +693,13 @@ public:
   IntraPrediction();
   virtual ~IntraPrediction();
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void init                       (ChromaFormat chromaFormatIDC, const unsigned bitDepthY, const int nnipMode);
+  void resetCuData                () { m_intraPredNN.resetCuData(); }
+  bool getIsContextCollectionNeeded(const CompArea& area) { return m_intraPredNN.isContextCollectionNeeded(area); }
+#else
   void init                       (ChromaFormat chromaFormatIDC, const unsigned bitDepthY);
+#endif
 
 #if JVET_AA0057_CCCM || JVET_AC0119_LM_CHROMA_FUSION || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   Pel    xCccmGetLumaVal(const PredictionUnit& pu, const CPelBuf pi, const int x, const int y
@@ -1126,6 +1149,9 @@ public:
     const int partIdx = 0
 #if JVET_AB0157_INTRA_FUSION
     , bool applyFusion = true
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    , const bool forceDeac0 = false, const bool forceDeac1 = false
 #endif
     );   // use forceRefFilterFlag to get both filtered and unfiltered buffers
 #else   // SGPM

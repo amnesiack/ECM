@@ -1169,6 +1169,9 @@ protected:
   CfgVPSParameters m_cfgVPSParameters;
   Level::Name m_levelPtl[MAX_NUM_OLSS];
   int         m_olsPtlIdx[MAX_NUM_OLSS];
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool m_intraNN;
+#endif
 
 #if EXTENSION_360_VIDEO
   TExt360AppEncCfg m_ext360;

@@ -1237,6 +1237,9 @@ unsigned CtxTmpFusionFlag( const CodingUnit& cu );
 #if JVET_V0130_INTRA_TMP
 unsigned CtxTmpFlag(const CodingUnit& cu);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+uint16_t CtxPnnLuminanceFlag(const CodingUnit& cu);
+#endif
 unsigned CtxPltCopyFlag( const unsigned prevRunType, const unsigned dist );
 #if ENABLE_DIMD
 unsigned CtxDIMDFlag(const CodingUnit& cu);
