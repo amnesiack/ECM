@@ -3517,6 +3517,22 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   bool timdModeCheckWA          = true;
   bool timdModeSecondaryCheckWA = true;
 #endif
+#if JVET_AJ0146_TIMDSAD
+  int timdModeSad = 0;
+  int timdModeSecondarySad = 0;
+  bool timdIsBlendedSad = false;
+#if JVET_AC0094_REF_SAMPLES_OPT
+  bool timdModeCheckWASad          = true;
+  bool timdModeSecondaryCheckWASad = true;
+#endif
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  int timdModeNonAngSad = 0;
+  int timdFusionWeightSad[TIMD_FUSION_NUM] = { 0 };
+  int8_t timdLocDepSad[TIMD_FUSION_NUM] = { 0 };
+#else
+  int  timdFusionWeightSad[2] = { 0 };
+#endif
+#endif
 #endif
 #if JVET_AB0155_SGPM
   int timdHorMode = 0;
@@ -4086,6 +4102,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #endif
 #if JVET_W0123_TIMD_FUSION
           cu.timd = false;
+#if JVET_AJ0146_TIMDSAD
+          cu.timdSad = false;
+#endif
           if (isLuma(partitioner.chType) && cu.slice->getSPS()->getUseTimd())
           {
             if (cu.lwidth() * cu.lheight() > 1024 && cu.slice->getSliceType() == I_SLICE)
@@ -4095,9 +4114,22 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
             if (!timdDerived)
             {
               const CompArea &area = cu.Y();
-
+#if JVET_AJ0146_TIMDSAD
+              m_pcIntraSearch->m_timdModeCostList.clear();
+#endif
 #if JVET_AB0155_SGPM
-              cu.timdMode = m_pcIntraSearch->deriveTimdMode(bestCS->picture->getRecoBuf(area), area, cu, true, true);
+              cu.timdMode = m_pcIntraSearch->deriveTimdMode(bestCS->picture->getRecoBuf(area), area, cu, true, true
+#if JVET_AJ0146_TIMDSAD
+                , CU::allowTimdSad(cu) 
+#endif
+              );
+#if JVET_AJ0146_TIMDSAD
+              if (CU::allowTimdSad(cu))
+              {
+                std::sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());
+                cu.timdModeSad = m_pcIntraSearch->deriveTimdModeSad(bestCS->picture->getRecoBuf(area), area, cu );
+              }
+#endif
 #else
               cu.timdMode = m_pcIntraSearch->deriveTimdMode(bestCS->picture->getRecoBuf(area), area, cu);
 #endif
@@ -4119,6 +4151,26 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #else
               timdFusionWeight[0] = cu.timdFusionWeight[0];
               timdFusionWeight[1] = cu.timdFusionWeight[1];
+#endif
+#if JVET_AJ0146_TIMDSAD
+              timdModeSad = cu.timdModeSad;
+              timdModeSecondarySad = cu.timdModeSecondarySad;
+              timdIsBlendedSad     = cu.timdIsBlendedSad;
+#if JVET_AC0094_REF_SAMPLES_OPT
+              timdModeCheckWASad          = cu.timdModeCheckWASad;
+              timdModeSecondaryCheckWASad = cu.timdModeSecondaryCheckWASad;
+#endif
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+              timdModeNonAngSad = cu.timdModeNonAngSad;
+              for( int i = 0; i < TIMD_FUSION_NUM; i++ )
+              {
+                timdFusionWeightSad[i] = cu.timdFusionWeightSad[i];
+                timdLocDepSad[i] = cu.timdLocDepSad[i];
+              }
+#else
+              timdFusionWeightSad[0] = cu.timdFusionWeightSad[0];
+              timdFusionWeightSad[1] = cu.timdFusionWeightSad[1];
+#endif
 #endif
 #if JVET_AB0155_SGPM
               timdHorMode = cu.timdHor;
@@ -4145,7 +4197,26 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
               cu.timdFusionWeight[0] = timdFusionWeight[0];
               cu.timdFusionWeight[1] = timdFusionWeight[1];
 #endif
-
+#if JVET_AJ0146_TIMDSAD
+              cu.timdModeSad = timdModeSad;
+#if JVET_AC0094_REF_SAMPLES_OPT
+              cu.timdModeCheckWASad          = timdModeCheckWASad;
+              cu.timdModeSecondaryCheckWASad = timdModeSecondaryCheckWASad;
+#endif
+              cu.timdModeSecondarySad = timdModeSecondarySad;
+              cu.timdIsBlendedSad     = timdIsBlendedSad;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+              cu.timdModeNonAngSad = timdModeNonAngSad;
+              for( int i = 0; i < TIMD_FUSION_NUM; i++ )
+              {
+                cu.timdFusionWeightSad[i] = timdFusionWeightSad[i];
+                cu.timdLocDepSad[i] = timdLocDepSad[i];
+              }
+#else
+              cu.timdFusionWeightSad[0] = timdFusionWeightSad[0];
+              cu.timdFusionWeightSad[1] = timdFusionWeightSad[1];
+#endif
+#endif
 #if JVET_AB0155_SGPM
               cu.timdHor = timdHorMode;
               cu.timdVer = timdVerMode;
@@ -25839,8 +25910,30 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
       {
         PredictionUnit *pu = cu.firstPU;
         const CompArea &area = cu.Y();
+#if JVET_AJ0146_TIMDSAD
+        m_pcIntraSearch->m_timdModeCostList.clear();
+        cu.timdMode = m_pcIntraSearch->deriveTimdMode(bestCS->picture->getRecoBuf(area), area, cu, true, true, CU::allowTimdSad(cu)
+        );
+        if (CU::allowTimdSad(cu) && cu.timdSad)
+        {
+          std::sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());
+          cu.timdModeSad = m_pcIntraSearch->deriveTimdModeSad(bestCS->picture->getRecoBuf(area), area, cu );
+          pu->intraDir[0] = cu.timdModeSad;
+        }
+        else
+        {
+          pu->intraDir[0] = cu.timdMode;
+        }
+#else
         cu.timdMode = m_pcIntraSearch->deriveTimdMode(cu.cs->picture->getRecoBuf(area), area, cu);
         pu->intraDir[0] = cu.timdMode;
+#endif
+#if JVET_AJ0061_TIMD_MERGE && JVET_AJ0146_TIMDSAD
+        if (!cu.timdMrg && !cu.lfnstIdx)
+        {
+          m_pcTrQuant->getTrTypes(*cu.firstTU, COMPONENT_Y, cu.timdmTrType[NUM_TIMD_MERGE_MODES][0], cu.timdmTrType[NUM_TIMD_MERGE_MODES][1]);
+        }
+#endif
       }
       if (CU::allowTmrl(cu) && cu.tmrlFlag)
       {

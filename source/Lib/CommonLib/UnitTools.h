@@ -186,6 +186,9 @@ namespace CU
 #endif
   bool    getRprScaling               ( const SPS* sps, const PPS* curPPS, Picture* refPic, int& xScale, int& yScale );
   void    checkConformanceILRP        (Slice *slice);
+#if JVET_AJ0146_TIMDSAD
+  bool allowTimdSad(const CodingUnit& cu);
+#endif
 #if JVET_AB0157_TMRL
   bool allowTmrl(const CodingUnit& cu);
 #endif

@@ -745,6 +745,11 @@ static const int SGPM_IDX =                                       200;   ///< in
 #endif
 #if JVET_W0123_TIMD_FUSION
 static const int TIMD_IDX =                                       199; ///< index for intra TIMD mode
+#if JVET_AJ0146_TIMDSAD
+static const int TIMDSAD_IDX =                                    241; ///< index for intra TIMD SAD mode
+static const int TIMD_NUM_MODES_SORTED = 						               15;
+static const int TIMDDIFF_MAX_TEMP_SIZE =                           8;
+#endif
 static const int DIMD_MAX_TEMP_SIZE =                               4;
 static const int EXT_HOR_IDX =                                     34;
 static const int EXT_DIA_IDX =                                     66;

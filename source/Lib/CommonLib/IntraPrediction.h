@@ -729,6 +729,9 @@ public:
   void init                       (ChromaFormat chromaFormatIDC, const unsigned bitDepthY);
 #endif
 
+#if JVET_AJ0146_TIMDSAD
+  static_vector<std::pair<uint64_t,int>, NUM_LUMA_MODE> m_timdModeCostList;
+#endif
 #if JVET_AA0057_CCCM || JVET_AC0119_LM_CHROMA_FUSION || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   Pel    xCccmGetLumaVal(const PredictionUnit& pu, const CPelBuf pi, const int x, const int y
 #if JVET_AD0202_CCCM_MDF
@@ -996,8 +999,15 @@ public:
   void generateDimdBlending       ( PelBuf &piPred, const PredictionUnit &pu, PelBuf &piBlock0, PelBuf &piBlock1, PelBuf &piBlock2, PelBuf &piBlock3, PelBuf &plnBlock );
 #endif
 #endif
+#if JVET_AJ0146_TIMDSAD
+  int deriveTimdModeSad(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu);
+#endif
 #if JVET_AB0155_SGPM
-  int deriveTimdMode              ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool bFull = true, bool bHorVer = false );
+  int deriveTimdMode              ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool bFull = true, bool bHorVer = false 
+#if JVET_AJ0146_TIMDSAD
+    , bool createList = false
+#endif
+  );
 #else
   int deriveTimdMode              ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu );
 #endif

@@ -411,6 +411,24 @@ struct CodingUnit : public UnitArea
 #else
   int8_t         timdFusionWeight[2];
 #endif
+#if JVET_AJ0146_TIMDSAD
+  bool           timdSad;
+  int            timdModeSad;
+#if JVET_AC0094_REF_SAMPLES_OPT
+  bool           timdModeCheckWASad;
+  bool           timdModeSecondaryCheckWASad;
+#endif
+  int            timdModeSecondarySad;
+  bool           timdIsBlendedSad;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  int            timdModeNonAngSad;
+  int8_t         timdFusionWeightSad[TIMD_FUSION_NUM];
+  int8_t         timdLocDepSad[TIMD_FUSION_NUM];
+#else
+  int8_t         timdFusionWeightSad[2];
+#endif
+#endif
+
 #if JVET_AJ0061_TIMD_MERGE
   int           timdMrg;
   int           timdMrgList[NUM_TIMD_MERGE_MODES][TIMD_FUSION_NUM];

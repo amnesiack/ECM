@@ -2353,6 +2353,9 @@ void CABACReader::extend_ref_line(CodingUnit& cu)
 #if ENABLE_DIMD
     || cu.dimd
 #endif
+#if JVET_AJ0146_TIMDSAD
+    || (cu.timd && cu.timdSad)
+#endif
 #if JVET_AB0155_SGPM
     || cu.sgpm
 #endif
@@ -2891,6 +2894,16 @@ void CABACReader::cu_timd_flag( CodingUnit& cu )
   unsigned ctxId = DeriveCtx::CtxTimdFlag( cu );
   cu.timd = m_BinDecoder.decodeBin( Ctx::TimdFlag(ctxId) );
   DTRACE(g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timd);
+#if JVET_AJ0146_TIMDSAD
+  if (cu.timd && CU::allowTimdSad(cu))
+  {
+    cu.timdSad = m_BinDecoder.decodeBin( Ctx::TimdFlagSad() );
+  }
+  else
+  {
+    cu.timdSad = false;
+  }
+#endif
 #if JVET_AJ0061_TIMD_MERGE
   cu_timd_merge_flag(cu);
 #endif
@@ -2904,6 +2917,12 @@ void CABACReader::cu_timd_merge_flag( CodingUnit& cu)
   {
     return;
   }
+#if JVET_AJ0146_TIMDSAD
+  if (cu.timdSad)
+  {
+    return;
+  }
+#endif  
   if (!PU::canTimdMerge(*cu.firstPU))
   {
     return;
@@ -9642,6 +9661,9 @@ void CABACReader::isp_mode( CodingUnit& cu )
   if( !CU::isIntra( cu ) || !isLuma( cu.chType ) || cu.firstPU->multiRefIdx || !cu.cs->sps->getUseISP() || cu.bdpcmMode || !CU::canUseISP( cu, getFirstComponentOfChannel( cu.chType ) ) || cu.colorTransform 
 #if ENABLE_DIMD && JVET_V0087_DIMD_NO_ISP && !JVET_AJ0249_NEURAL_NETWORK_BASED
       || cu.dimd
+#endif
+#if JVET_AJ0146_TIMDSAD
+    || (cu.timd && cu.timdSad)
 #endif
 #if JVET_AB0155_SGPM
       || cu.sgpm

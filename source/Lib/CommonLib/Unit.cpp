@@ -411,6 +411,27 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   timdFusionWeight[0] = other.timdFusionWeight[0];
   timdFusionWeight[1] = other.timdFusionWeight[1];
 #endif
+#if JVET_AJ0146_TIMDSAD
+  timdSad              = other.timdSad;
+  timdModeSad          = other.timdModeSad;
+  timdModeSecondarySad = other.timdModeSecondarySad;
+#if JVET_AC0094_REF_SAMPLES_OPT
+  timdModeCheckWASad          = other.timdModeCheckWASad;
+  timdModeSecondaryCheckWASad = other.timdModeSecondaryCheckWASad;
+#endif
+  timdIsBlendedSad     = other.timdIsBlendedSad;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  timdModeNonAngSad    = other.timdModeNonAngSad  ;
+  for( int i = 0; i < TIMD_FUSION_NUM; i++ )
+  {
+    timdFusionWeightSad[i] = other.timdFusionWeightSad[i];
+    timdLocDepSad[i]       = other.timdLocDepSad[i];
+  }
+#else
+  timdFusionWeightSad[0] = other.timdFusionWeightSad[0];
+  timdFusionWeightSad[1] = other.timdFusionWeightSad[1];
+#endif
+#endif
 #if JVET_AJ0061_TIMD_MERGE
   timdMrg = other.timdMrg;
   for (int i = 0; i <= NUM_TIMD_MERGE_MODES; i++)
@@ -743,6 +764,30 @@ void CodingUnit::initData()
 #else
   timdFusionWeight[0] = -1;
   timdFusionWeight[1] = -1;
+#endif
+#if JVET_AJ0146_TIMDSAD
+  timdSad                     = false;
+#if JVET_AC0094_REF_SAMPLES_OPT 
+  timdModeSad                 = INVALID_TIMD_IDX;
+  timdModeSecondarySad        = INVALID_TIMD_IDX;
+  timdModeCheckWASad          = true;
+  timdModeSecondaryCheckWASad = true;
+#else
+  timdModeSad                 = -1;
+  timdModeSecondarySad        = -1;
+#endif
+  timdIsBlendedSad     = false;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  timdModeNonAngSad    = INVALID_TIMD_IDX;
+  for( int i = 0; i < TIMD_FUSION_NUM; i++ )
+  {
+    timdFusionWeightSad[i] = -1;
+    timdLocDepSad[i]       = 0;
+  }
+#else
+  timdFusionWeightSad[0] = -1;
+  timdFusionWeightSad[1] = -1;
+#endif
 #endif
 #if JVET_AJ0061_TIMD_MERGE
   timdMrg = 0;
