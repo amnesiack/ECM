@@ -75,6 +75,7 @@ struct OutputNALUnit : public NALUnit
   OutputBitstream m_Bitstream;
 };
 
+void checkWriteError(std::ostream& out);
 void writeNaluWithHeader(std::ostream& out, OutputNALUnit& nalu);
 void writeNaluContent(std::ostream& out, OutputNALUnit& nalu);
 

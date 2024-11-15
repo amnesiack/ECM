@@ -135,7 +135,7 @@ bool tryDecodePicture( Picture* pcEncPic, const int expectedPoc, const std::stri
          *  - two back-to-back start_code_prefixes
          *  - start_code_prefix immediately followed by EOF
          */
-        msg( ERROR, "Warning: Attempt to decode an empty NAL unit\n");
+        THROW("Attempt to decode an empty NAL unit\n");
       }
       else
       {
@@ -3887,7 +3887,7 @@ bool DecLib::isNewPicture(std::ifstream *bitstreamFile, class InputByteStream *b
     byteStreamNALUnit(*bytestream, nalu.getBitstream().getFifo(), stats);
     if (nalu.getBitstream().getFifo().empty())
     {
-      msg( ERROR, "Warning: Attempt to decode an empty NAL unit\n");
+      THROW("Attempt to decode an empty NAL unit\n");
     }
     else
     {
@@ -3944,6 +3944,7 @@ bool DecLib::isNewPicture(std::ifstream *bitstreamFile, class InputByteStream *b
       case NAL_UNIT_UNSPECIFIED_30:
       case NAL_UNIT_UNSPECIFIED_31:
       default:
+        CHECK(bitstreamFile->eof(), "eof bitstream");
         break;
       }
     }
@@ -3996,7 +3997,7 @@ bool DecLib::isNewAccessUnit( bool newPicture, std::ifstream *bitstreamFile, cla
     byteStreamNALUnit(*bytestream, nalu.getBitstream().getFifo(), stats);
     if (nalu.getBitstream().getFifo().empty())
     {
-      msg( ERROR, "Warning: Attempt to decode an empty NAL unit\n");
+      THROW("Attempt to decode an empty NAL unit\n");
     }
     else
     {
