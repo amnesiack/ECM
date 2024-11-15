@@ -481,10 +481,17 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
   // the number of total temporal buffers can be adjusted by changing the number here
   m_intraPredBuffer.resize(1);
 
+#if JVET_AJ0146_TIMDSAD
+  for (auto &buffer: m_intraPredBuffer)
+  {
+    buffer.create(CHROMA_400, Area(0, 0, MAX_CU_SIZE + TIMDDIFF_MAX_TEMP_SIZE, MAX_CU_SIZE + TIMDDIFF_MAX_TEMP_SIZE));
+  }
+#else
   for (auto &buffer: m_intraPredBuffer)
   {
     buffer.create(CHROMA_400, Area(0, 0, MAX_CU_SIZE + DIMD_MAX_TEMP_SIZE, MAX_CU_SIZE + DIMD_MAX_TEMP_SIZE));
   }
+#endif
 
   memset(tempRefAbove, 0, ((MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX) * sizeof(Pel));
   memset(tempRefLeft, 0, ((MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX) * sizeof(Pel));
@@ -1565,7 +1572,12 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #if !JVET_AB0155_SGPM
       int weightMode = ((pu.cu->timd && pu.cu->timdIsBlended) || !applyFusion) ? 4 : 3;
 #else
+#if JVET_AJ0146_TIMDSAD
+      bool timdIsBlended = pu.cu->timdSad ?  pu.cu->timdIsBlendedSad : pu.cu->timdIsBlended;
+      int weightMode = ((pu.cu->timd && timdIsBlended) || !applyFusion || (PU::isSgpm(pu, CHANNEL_TYPE_LUMA))) ? 4 : 3;
+#else
       int weightMode = ((pu.cu->timd && pu.cu->timdIsBlended) || !applyFusion || (PU::isSgpm(pu, CHANNEL_TYPE_LUMA))) ? 4 : 3;
+#endif
 #if JVET_AJ0061_TIMD_MERGE
       if (pu.cu->timd && pu.cu->timdMrg && isLuma(compID))
       {
@@ -2284,9 +2296,17 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
 #if JVET_W0123_TIMD_FUSION
 #if JVET_AJ0061_TIMD_MERGE
-  if (((pu.cu->timd && !pu.cu->timdMrg && pu.cu->timdIsBlended) || (pu.cu->timdMrg && pu.cu->timdMrgIsBlended[pu.cu->timdMrg - 1])) && isLuma(compID))
+  if (((pu.cu->timd && !pu.cu->timdMrg && pu.cu->timdIsBlended) || (pu.cu->timdMrg && pu.cu->timdMrgIsBlended[pu.cu->timdMrg - 1])) && isLuma(compID)
+#if JVET_AJ0146_TIMDSAD
+       && !pu.cu->timdSad 
+#endif
+    )
 #else
-  if (pu.cu->timd && pu.cu->timdIsBlended && isLuma(compID))
+  if (pu.cu->timd && pu.cu->timdIsBlended && isLuma(compID)
+#if JVET_AJ0146_TIMDSAD
+       && !pu.cu->timdSad 
+#endif
+   )
 #endif
   {
     int width = piPred.width;
@@ -2695,6 +2715,340 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
 #endif
   }
+#if JVET_AJ0146_TIMDSAD
+  if (pu.cu->timdSad &&  pu.cu->timd && pu.cu->timdIsBlendedSad && isLuma(compID))
+  {
+    int width = piPred.width;
+    int height = piPred.height;
+    const UnitArea localUnitArea( pu.chromaFormat, Area( 0, 0, width, height ) );
+    CPelBuf srcBuf3rd;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+    PelBuf nonAngBuffer = m_tempBuffer[0].getBuf( localUnitArea.Y() );
+    if( pu.cu->timdFusionWeightSad[2] > 0 )
+    {
+      PredictionUnit pu3 = pu;
+      pu3.intraDir[0] = pu.cu->timdModeNonAngSad;
+      int tmpTimdMode = pu3.cu->timdModeSad;
+      pu3.cu->timdModeSad = INVALID_TIMD_IDX;
+      initPredIntraParams(pu3, pu.Y(), *(pu.cs->sps));
+      srcBuf3rd = CPelBuf(getPredictorPtr(compID), srcStride, srcHStride);
+      pu3.cu->timdModeSad = tmpTimdMode;
+      switch (pu.cu->timdModeNonAngSad)
+      {
+#if JVET_AC0105_DIRECTIONAL_PLANAR
+      case (PLANAR_IDX): xPredIntraPlanar(srcBuf3rd, nonAngBuffer, 0); break;
+#else
+      case (PLANAR_IDX): xPredIntraPlanar(srcBuf3rd, nonAngBuffer); break;
+#endif
+      case(DC_IDX):     xPredIntraDc(srcBuf3rd, nonAngBuffer, channelType, false); break;
+      default: CHECK( true, "Wrong timdModeNonAng" ); break;
+      }
+#if JVET_X0148_TIMD_PDPC
+#if CIIP_PDPC
+      if( (m_ipaParam.applyPDPC || pu.ciipPDPC) && ( pu.cu->timdModeNonAngSad == PLANAR_IDX ||  pu.cu->timdModeNonAngSad == DC_IDX) )
+      {
+        xIntraPredPlanarDcPdpc( srcBuf3rd, m_tempBuffer[0].getBuf( localUnitArea.Y() ).buf, m_tempBuffer[0].getBuf( localUnitArea.Y() ).stride, iWidth, iHeight, pu.ciipPDPC );
+      }
+#else
+      if( m_ipaParam.applyPDPC  && ( pu.cu->timdModeNonAngSad == PLANAR_IDX ||  pu.cu->timdModeNonAngSad == DC_IDX) )
+      {
+        xIntraPredPlanarDcPdpc(srcBuf3rd, m_tempBuffer[0].getBuf(localUnitArea.Y()).buf, m_tempBuffer[1].getBuf(localUnitArea.Y()).stride, iWidth, iHeight);
+      }
+#endif
+#endif    
+    }
+#endif
+
+    PelBuf predFusion = m_tempBuffer[1].getBuf( localUnitArea.Y() );
+
+    const bool applyPdpc = m_ipaParam.applyPDPC;
+    PredictionUnit pu2 = pu;
+#if JVET_AC0094_REF_SAMPLES_OPT
+    pu2.intraDir[0]  = pu.cu->timdModeSecondarySad;
+    int tmpTimdMode  = pu2.cu->timdModeSad;
+    pu2.cu->timdModeSad = INVALID_TIMD_IDX;
+#else
+    pu2.intraDir[0] = pu.cu->timdModeSecondarySad;
+#endif
+    initPredIntraParams(pu2, pu.Y(), *(pu.cs->sps));
+#if JVET_AC0094_REF_SAMPLES_OPT
+    pu2.cu->timdModeSad = tmpTimdMode;
+#endif
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+    srcBuf3rd = CPelBuf(getPredictorPtr(compID), srcStride, srcHStride);
+#else
+    srcBuf3rd = srcBuf;
+#endif
+    switch (pu.cu->timdModeSecondarySad)
+    {
+#if JVET_AC0105_DIRECTIONAL_PLANAR
+    case (PLANAR_IDX): xPredIntraPlanar(srcBuf3rd, predFusion, 0); break;
+#else
+    case (PLANAR_IDX): xPredIntraPlanar(srcBuf3rd, predFusion); break;
+#endif
+    case(DC_IDX):     xPredIntraDc(srcBuf3rd, predFusion, channelType, false); break;
+#if JVET_AB0157_INTRA_FUSION
+    default:          xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+      pu,
+#endif
+      srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS, 0); break;
+#else
+    default:          xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+      pu,
+#endif
+      srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir); break;
+#endif
+    }
+
+#if JVET_X0148_TIMD_PDPC
+#if CIIP_PDPC
+    if( (m_ipaParam.applyPDPC || pu.ciipPDPC) && (pu.cu->timdModeSecondarySad == PLANAR_IDX || pu.cu->timdModeSecondarySad == DC_IDX) )
+    {
+      xIntraPredPlanarDcPdpc( srcBuf3rd, m_tempBuffer[1].getBuf( localUnitArea.Y() ).buf, m_tempBuffer[1].getBuf( localUnitArea.Y() ).stride, iWidth, iHeight, pu.ciipPDPC );
+    }
+#else
+    if (m_ipaParam.applyPDPC && (pu.cu->timdModeSecondarySad == PLANAR_IDX || pu.cu->timdModeSecondarySad == DC_IDX))
+    {
+      xIntraPredPlanarDcPdpc(srcBuf3rd, m_tempBuffer[1].getBuf(localUnitArea.Y()).buf, m_tempBuffer[1].getBuf(localUnitArea.Y()).stride, iWidth, iHeight);
+    }
+#endif
+#endif
+    m_ipaParam.applyPDPC = applyPdpc;
+
+    // do blending
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+#if INTRA_TRANS_ENC_OPT
+    Pel *pelPred = piPred.buf;
+    Pel *pelPredFusion = predFusion.buf;
+    int  w0 = pu.cu->timdFusionWeightSad[0], w1 = pu.cu->timdFusionWeightSad[1];
+    m_timdBlending(pelPred, piPred.stride, pelPredFusion, predFusion.stride, w0, w1, width, height);
+#else
+    const int log2WeightSum = 6;
+    Pel *pelPred = piPred.buf;
+    Pel *pelPredFusion = predFusion.buf;
+    int  w0 = pu.cu->timdFusionWeightSad[0], w1 = pu.cu->timdFusionWeightSad[1];
+
+    for( int y = 0; y < height; y++ )
+    {
+      for( int x = 0; x < width; x++ )
+      {
+        int blend = pelPred[x] * w0;
+        blend += pelPredFusion[x] * w1;
+        pelPred[x] = (Pel)(blend >> log2WeightSum);
+    }
+
+      pelPred += piPred.stride;
+      pelPredFusion += predFusion.stride;
+  }
+#endif
+#else
+    Pel *pelPred = piPred.buf;
+    Pel *pelPredFusion = predFusion.buf;
+    Pel *pelPredNonAng = pu.cu->timdFusionWeightSad[2] > 0 ? nonAngBuffer.buf : nullptr;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+    PelBuf predAngNonLocDep = m_tempBuffer[4].getBuf( localUnitArea.Y() );
+    PelBuf predAngVer       = m_tempBuffer[2].getBuf( localUnitArea.Y() );
+    PelBuf predAngHor       = m_tempBuffer[3].getBuf( localUnitArea.Y() );
+
+    Pel* pelVer = predAngVer.buf;
+    int strideVer = predAngVer.stride;
+    Pel* pelHor = predAngHor.buf;
+    int strideHor = predAngHor.stride;
+    Pel *pelNonLocDep = predAngNonLocDep.buf;
+    int strideNonLocDep = predAngNonLocDep.stride;
+
+    bool useLocDepBlending = false;
+    int weightVer = 0, weightHor = 0, weightNonLocDep = 0;
+    for (int i = 0; i < TIMD_FUSION_NUM; i++)
+    {
+      if (pu.cu->timdLocDepSad[i] == 1)
+      {
+        weightVer += pu.cu->timdFusionWeightSad[i];
+      }
+      else if (pu.cu->timdLocDepSad[i] == 2)
+      {
+        weightHor += pu.cu->timdFusionWeightSad[i];
+      }
+      else
+      {
+        weightNonLocDep += pu.cu->timdFusionWeightSad[i];
+      }
+    }
+    if(weightHor || weightVer)
+    {
+      useLocDepBlending = true;
+    }
+
+    if(!useLocDepBlending)
+    {
+      pelNonLocDep = piPred.buf;
+      strideNonLocDep = piPred.stride;
+    }
+
+    for (int locDep = 0; locDep < 3; locDep++) 
+    {
+      int totWeight = (locDep == 0 ? weightNonLocDep : (locDep == 1 ? weightVer : weightHor));
+      if (totWeight == 0)
+      {
+        continue;
+      }
+
+      int weights[TIMD_FUSION_NUM] = {0};
+      for (int i = 0; i < TIMD_FUSION_NUM ; i++)
+      {
+        weights[i] = (pu.cu->timdLocDepSad[i] == locDep) ? pu.cu->timdFusionWeightSad[i] : 0;
+      }
+
+      int num2blend = 0;
+      int blendIndexes[3] = {0};
+      for (int i = 0; i < TIMD_FUSION_NUM; i++)
+      {
+        if (weights[i] != 0)
+        {
+          blendIndexes[num2blend] = i;
+          num2blend++;
+        }
+      }
+
+      if( (num2blend == 1 ) || (num2blend <=3 && (totWeight == (1 << (floorLog2(totWeight))) ) ) )
+      {
+        int index = blendIndexes[0]; 
+        if(locDep == 0)
+        {
+          pelNonLocDep = (index == 0 ? pelPred : (index == 2 ? pelPredNonAng : pelPredFusion));
+          strideNonLocDep = (index == 0 ? piPred.stride : (index == 2 ? nonAngBuffer.stride : predFusion.stride));
+        }
+        else if(locDep == 1)
+        {
+          pelVer = (index == 0 ? pelPred : (index == 2 ? pelPredNonAng : pelPredFusion));
+          strideVer = (index == 0 ? piPred.stride : (index == 2 ? nonAngBuffer.stride : predFusion.stride));
+        }
+        else
+        {
+          pelHor = (index == 0 ? pelPred : (index == 2 ? pelPredNonAng : pelPredFusion));
+          strideHor = (index == 0 ? piPred.stride : (index == 2 ? nonAngBuffer.stride : predFusion.stride));
+        }
+        Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+        int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+
+        int factor = 64 / totWeight;
+
+        if( num2blend == 2 )
+        {
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : (index1 == 2 ?  pelPredNonAng : pelPredFusion));
+          int stride1 = (index1 == 0 ? piPred.stride : (index1 == 2 ? nonAngBuffer.stride : predFusion.stride));
+
+          int w0 = (weights[index]*factor);
+          int w1 = 64 - w0;
+          m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
+        }
+        else if ( num2blend == 3 )
+        {
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : (index1 == 2 ?  pelPredNonAng: pelPredFusion));
+          int stride1 = (index1 == 0 ? piPred.stride : (index1 == 2 ? nonAngBuffer.stride : predFusion.stride));
+
+          int index2 = blendIndexes[2];
+          Pel* p2 = (index2 == 0 ? piPred.buf : (index2 == 2 ?  pelPredNonAng : pelPredFusion));
+          int stride2 = (index2 == 0 ? piPred.stride : (index2 == 2 ? nonAngBuffer.stride : predFusion.stride));
+
+          int w0 = (weights[index]*factor);
+          int w1 = (weights[index1]*factor);
+          int w2 = 64  - w0 - w1;
+          m_dimdBlending(pCur, strideCur, p1, stride1, p2, stride2, w0, w1, w2, width, height);
+        }
+      }
+      else
+      {
+        Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+        int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+
+        Pel *pelPredAng0 = piPred.buf;
+        Pel *pelPredAng1 = predFusion.buf;
+        Pel *pelNonAngBuf = nonAngBuffer.buf;
+        int stride0 = piPred.stride;
+        int stride1 = predFusion.stride;
+        int stridePlanar = nonAngBuffer.stride;
+        for( int y = 0; y < height; y++ )
+        {
+          for( int x = 0; x < width; x++ )
+          {
+            int blend = pelPredAng0[x] * weights[0];
+            blend += pelPredAng1[x] * weights[1];
+            blend += pelNonAngBuf[x] * weights[2];
+            pCur[x] = (Pel)(blend / totWeight);
+          }
+          pCur += strideCur;
+          pelPredAng0 += stride0;
+          pelPredAng1 += stride1;
+          pelNonAngBuf += stridePlanar;
+        }
+      }
+    }
+
+    if (useLocDepBlending)
+    {
+      int mode = ((weightHor > 0 && weightVer > 0) ? 0 : (weightVer > 0 ? 1 : 2));
+      Pel *pelDst = piPred.buf;
+      int strideDst = piPred.stride;
+      int range = width * height > 127 ? 8: 10;
+
+      xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep,strideNonLocDep, width, height ,mode, weightVer, weightHor, weightNonLocDep, range);
+    }
+#else
+    int  w0 = pu.cu->timdFusionWeightSad[0], w1 = pu.cu->timdFusionWeightSad[1]; int w2 = pu.cu->timdFusionWeightSad[2];
+#if INTRA_TRANS_ENC_OPT
+    if(w2)
+    {
+      m_dimdBlending(pelPred, piPred.stride, pelPredFusion, predFusion.stride, pelPredNonAng, nonAngBuffer.stride, w0, w1, w2, width, height);
+    }
+    else
+    {
+      m_timdBlending(pelPred, piPred.stride, pelPredFusion, predFusion.stride, w0, w1, width, height);
+    }
+#else
+    const int log2WeightSum = 6;
+    if(w2)
+    {
+      Pel *pelPredAng = pelPredFusion;
+      for (int y = 0; y < height; y++)
+      {
+        for (int x = 0; x < width; x++)
+        {
+          int blend = pelPred[x] * w0;
+          blend    += pelPredNonAng[x] * w1;
+          blend    += pelPredAng[x] * w2;
+          pelPred[x] = (Pel)(blend >> log2WeightSum);
+        }
+
+        pelPred    += piPred.stride;
+        pelPlanar  += nonAngBuffer.stride;
+        pelPredAng += predFusion.stride;
+      }
+    }
+    else
+    {
+      for (int y = 0; y < height; y++)
+      {
+        for (int x = 0; x < width; x++)
+        {
+          int blend = pelPred[x] * w0;
+          blend += pelPredFusion[x] * w1;
+          pelPred[x] = (Pel)(blend >> log2WeightSum);
+        }
+
+        pelPred += piPred.stride;
+        pelPredFusion += predFusion.stride;
+      }
+    }
+#endif
+#endif
+#endif
+  }
+#endif
 #endif
 
 #if JVET_AB0155_SGPM
@@ -3817,7 +4171,14 @@ void IntraPrediction::initPredIntraParams(const PredictionUnit & pu, const CompA
 #if JVET_W0123_TIMD_FUSION
 #if JVET_AC0094_REF_SAMPLES_OPT
 #if JVET_AD0085_TMRL_EXTENSION
+#if JVET_AJ0146_TIMDSAD
+  int timdMode = pu.cu->timdSad ? pu.cu->timdModeSad : pu.cu->timdMode;
+  bool timdModeCheckWA = pu.cu->timdSad ? pu.cu->timdModeCheckWASad : pu.cu->timdModeCheckWA;
+  bool timdModeSecondaryCheckWA = pu.cu->timdSad ? pu.cu->timdModeSecondaryCheckWASad : pu.cu->timdModeSecondaryCheckWA;
+  bool checkWideAngle = !bExtIntraDir ? true : (timdMode != INVALID_TIMD_IDX ? timdModeCheckWA : timdModeSecondaryCheckWA);
+#else
   bool checkWideAngle = !bExtIntraDir ? true : (pu.cu->timdMode != INVALID_TIMD_IDX ? pu.cu->timdModeCheckWA : pu.cu->timdModeSecondaryCheckWA);
+#endif
 #if JVET_AJ0061_TIMD_MERGE
   if (pu.cu->timd && pu.cu->timdMrg)
   {
@@ -4009,11 +4370,47 @@ void IntraPrediction::initPredIntraParams(const PredictionUnit & pu, const CompA
 #if JVET_AB0157_INTRA_FUSION
 #if JVET_AG0128_REF_LINE_OPT_TIMD_FUSION
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AJ0146_TIMDSAD
+  bool timdIsBlended = pu.cu->timdSad ? pu.cu->timdIsBlendedSad : pu.cu->timdIsBlended;
+  if(pu.cu->timd && timdIsBlended  && !pu.cu->timdMrg)
+#else
   if (pu.cu->timd && pu.cu->timdIsBlended && !pu.cu->timdMrg)
+#endif
+#else
+#if JVET_AJ0146_TIMDSAD
+  bool timdIsBlended = pu.cu->timdSad ? pu.cu->timdIsBlendedSad : pu.cu->timdIsBlended;
+  if(pu.cu->timd && timdIsBlended)
 #else
   if (pu.cu->timd && pu.cu->timdIsBlended)
 #endif
+#endif
   {
+#if JVET_AJ0146_TIMDSAD
+    if (pu.cu->timdSad)
+    {
+      if (pu.cu->timdModeSad != INVALID_TIMD_IDX)
+      {
+        m_ipaParam.fetchRef2nd = false;
+        m_ipaParam.applyFusion = false;
+        if (!useISP)
+        {
+#if JVET_AC0094_REF_SAMPLES_OPT
+          int predMode2 = pu.cu->timdModeSecondaryCheckWASad ? getWideAngleExt(blockSize.width, blockSize.height, pu.cu->timdModeSecondarySad) :
+            getTimdWideAngleExt(blockSize.width, blockSize.height, pu.cu->timdModeSecondarySad);
+#else
+          int predMode2 = getWideAngleExt(blockSize.width, blockSize.height, dirMode);
+#endif
+          if ( (pu.cu->timdModeSad > DC_IDX && pu.cu->timdModeSecondarySad > DC_IDX && !(abs(predMode - predMode2) > (puSize.width * puSize.height > 128? 8 : 4) || (predMode - EXT_HOR_IDX) * (predMode2 - EXT_HOR_IDX) < 0 || (predMode - EXT_VER_IDX) * (predMode2 - EXT_VER_IDX) < 0) )
+            || ( (pu.cu->timdModeSad == pu.cu->timdModeSecondarySad) && (pu.cu->timdModeSad > DC_IDX) ) )
+          {
+            m_ipaParam.fetchRef2nd = true;
+            m_ipaParam.applyFusion = true;
+          }
+        }
+      }
+    }
+    else
+#endif
     if (pu.cu->timdMode != INVALID_TIMD_IDX)
     {
       m_ipaParam.fetchRef2nd = false;
@@ -5929,6 +6326,9 @@ void IntraPrediction::initIntraPatternChType(const CodingUnit &cu, const CompAre
   if( m_ipaParam.refFilterFlag || forceRefFilterFlag 
 #if JVET_AG0092_ENHANCED_TIMD_FUSION 
    || cu.timd
+#endif  
+#if JVET_AJ0146_TIMDSAD
+   || cu.timdSad 
 #endif
   )
   {
@@ -7805,7 +8205,11 @@ void IntraPrediction::predTimdIntraAng( const ComponentID compId, const Predicti
 
 void IntraPrediction::xPredTimdIntraPlanar( const CPelBuf &pSrc, Pel* rpDst, int iDstStride, int width, int height, TemplateType eTempType, int iTemplateWidth, int iTemplateHeight )
 {
+#if JVET_AJ0146_TIMDSAD
+  static int leftColumn[MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE+1] = {0}, topRow[MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE+1] ={0}, bottomRow[MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE] = {0}, rightColumn[MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE]={0};
+#else
   static int leftColumn[MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE+1] = {0}, topRow[MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE+1] ={0}, bottomRow[MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE] = {0}, rightColumn[MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE]={0};
+#endif
   if(eTempType == LEFT_ABOVE_NEIGHBOR)
   {
     //predict above template
@@ -8172,8 +8576,13 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
   }
 
   // swap width/height if we are doing a horizontal mode:
+#if JVET_AJ0146_TIMDSAD
+  static Pel tempArray[(MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE)*(MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE)];  ///< buffer size may not be big enough
+  const int dstStride = bIsModeVer ? iDstStride : (MAX_CU_SIZE+TIMDDIFF_MAX_TEMP_SIZE);
+#else
   static Pel tempArray[(MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE)*(MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE)];  ///< buffer size may not be big enough
   const int dstStride = bIsModeVer ? iDstStride : (MAX_CU_SIZE+DIMD_MAX_TEMP_SIZE);
+#endif
   Pel *pDst = bIsModeVer ? pTrueDst : tempArray;
   if (!bIsModeVer)
   {
@@ -8571,6 +8980,16 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
 
   memset( neighborFlags, 0, totalUnits );
 
+#if JVET_AJ0146_TIMDSAD
+  neighborFlags[totalLeftUnits + leftTempUnitNum] = isAboveLeftAvailable( cu, chType, posLT.offset(-iTemplateWidth, -iTemplateHeight) );
+  numIntraNeighbor += neighborFlags[totalLeftUnits + leftTempUnitNum] ? 1 : 0;
+  numIntraNeighbor += isLeftAvailable      ( cu, chType, posLT.offset(-iTemplateWidth,-leftTempUnitNum*unitHeight), leftTempUnitNum,        unitHeight, (neighborFlags + totalLeftUnits  + leftTempUnitNum - 1) );
+  numIntraNeighbor += isAboveAvailable     ( cu, chType, posLT.offset(-aboveTempUnitNum*unitWidth, -iTemplateHeight), aboveTempUnitNum,     unitWidth,  (neighborFlags + totalLeftUnits + 1 + leftTempUnitNum) );
+  numIntraNeighbor += isAboveAvailable     ( cu, chType, posLT.offset(0, -iTemplateHeight), numAboveUnits,      unitWidth,  (neighborFlags + totalLeftUnits + 1 + leftTempUnitNum + aboveTempUnitNum) );
+  numIntraNeighbor += isAboveRightAvailable( cu, chType, posRT.offset(0, -iTemplateHeight), numAboveRightUnits, unitWidth,  (neighborFlags + totalLeftUnits + 1 + leftTempUnitNum + aboveTempUnitNum + numAboveUnits) );
+  numIntraNeighbor += isLeftAvailable      ( cu, chType, posLT.offset(-iTemplateWidth, 0), numLeftUnits,       unitHeight, (neighborFlags + totalLeftUnits - 1) );
+  numIntraNeighbor += isBelowLeftAvailable ( cu, chType, posLB.offset(-iTemplateWidth, 0), numLeftBelowUnits,  unitHeight, (neighborFlags + totalLeftUnits - 1 - numLeftUnits) );
+#else
   neighborFlags[totalLeftUnits] = isAboveLeftAvailable( cu, chType, posLT.offset(-iTemplateWidth, -iTemplateHeight) );
   neighborFlags[totalLeftUnits + leftTempUnitNum] = neighborFlags[totalLeftUnits];
   neighborFlags[totalLeftUnits + leftTempUnitNum + aboveTempUnitNum] = neighborFlags[totalLeftUnits];
@@ -8581,6 +9000,7 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
   numIntraNeighbor += isAboveRightAvailable( cu, chType, posRT.offset(0, -iTemplateHeight), numAboveRightUnits, unitWidth,  (neighborFlags + totalLeftUnits + 1 + leftTempUnitNum + aboveTempUnitNum + numAboveUnits) );
   numIntraNeighbor += isLeftAvailable      ( cu, chType, posLT.offset(-iTemplateWidth, 0), numLeftUnits,       unitHeight, (neighborFlags + totalLeftUnits - 1) );
   numIntraNeighbor += isBelowLeftAvailable ( cu, chType, posLB.offset(-iTemplateWidth, 0), numLeftBelowUnits,  unitHeight, (neighborFlags + totalLeftUnits - 1 - numLeftUnits) );
+#endif
 
   // ----- Step 2: fill reference samples (depending on neighborhood) -----
 
@@ -8621,22 +9041,43 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
     // Fill top-left sample(s) if available
     ptrSrc = srcBuf - (1 + iTemplateHeight) * srcStride - (1 + iTemplateWidth);
     ptrDst = refBufUnfiltered;
+#if JVET_AJ0146_TIMDSAD
+    if (neighborFlags[totalLeftUnits + leftTempUnitNum])
+#else
     if (neighborFlags[totalLeftUnits])
+#endif
     {
-      for( int i = 0; i <= iTemplateWidth; i++ )
+#if JVET_AJ0146_TIMDSAD
+      for (int i = 0; i <= iTemplateWidth - aboveTempUnitNum*unitWidth; i++)
+#else
+      for (int i = 0; i <= iTemplateWidth; i++)
+#endif
       {
         ptrDst[i] = ptrSrc[i];
       }
-      for( int i = 0; i <= iTemplateHeight; i++ )
+#if JVET_AJ0146_TIMDSAD
+      for (int i = 0; i <= iTemplateHeight - leftTempUnitNum*unitHeight; i++)
+#else
+      for (int i = 0; i <= iTemplateHeight; i++)
+#endif
       {
         ptrDst[i + predStride] = ptrSrc[i * srcStride];
       }
     }
 
     // Fill left & below-left samples if available (downwards)
+#if JVET_AJ0146_TIMDSAD
+    ptrSrc += (1 + iTemplateHeight - leftTempUnitNum*unitHeight) * srcStride;
+    ptrDst += (1 + iTemplateHeight - leftTempUnitNum*unitHeight) + predStride;
+#else
     ptrSrc += (1 + iTemplateHeight) * srcStride;
     ptrDst += (1 + iTemplateHeight) + predStride;
+#endif
+#if JVET_AJ0146_TIMDSAD
+    for (int unitIdx = totalLeftUnits + leftTempUnitNum - 1; unitIdx > 0; unitIdx--)
+#else
     for (int unitIdx = totalLeftUnits - 1; unitIdx > 0; unitIdx--)
+#endif
     {
       if (neighborFlags[unitIdx])
       {
@@ -8659,9 +9100,18 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
     }
 
     // Fill above & above-right samples if available (left-to-right)
+#if JVET_AJ0146_TIMDSAD
+    ptrSrc = srcBuf - srcStride * (1 + iTemplateHeight) - aboveTempUnitNum*unitWidth;
+    ptrDst = refBufUnfiltered + 1 + iTemplateWidth - aboveTempUnitNum*unitWidth;
+#else
     ptrSrc = srcBuf - srcStride * (1 + iTemplateHeight);
     ptrDst = refBufUnfiltered + 1 + iTemplateWidth;
+#endif
+#if JVET_AJ0146_TIMDSAD
+    for (int unitIdx = totalLeftUnits + 1 + leftTempUnitNum; unitIdx < totalUnits - 1; unitIdx++)
+#else
     for (int unitIdx = totalLeftUnits + 1 + leftTempUnitNum + aboveTempUnitNum; unitIdx < totalUnits - 1; unitIdx++)
+#endif
     {
       if (neighborFlags[unitIdx])
       {
@@ -8697,17 +9147,37 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
       // first available sample
       int firstAvailRow = -1;
       int firstAvailCol = 0;
+#if JVET_AJ0146_TIMDSAD
+      if (firstAvailUnit < totalLeftUnits + leftTempUnitNum)
+#else
       if (firstAvailUnit < totalLeftUnits)
+#endif
       {
+#if JVET_AJ0146_TIMDSAD
+        firstAvailRow = (totalLeftUnits + leftTempUnitNum - firstAvailUnit) * unitHeight + iTemplateHeight - leftTempUnitNum*unitHeight;
+#else
         firstAvailRow = (totalLeftUnits - firstAvailUnit) * unitHeight + iTemplateHeight;
+#endif
       }
+#if JVET_AJ0146_TIMDSAD
+      else if (firstAvailUnit == totalLeftUnits + leftTempUnitNum)
+#else
       else if (firstAvailUnit == totalLeftUnits)
+#endif
       {
+#if JVET_AJ0146_TIMDSAD
+        firstAvailRow = iTemplateHeight - leftTempUnitNum*unitHeight;
+#else
         firstAvailRow = iTemplateHeight;
+#endif
       }
       else
       {
+#if JVET_AJ0146_TIMDSAD
+        firstAvailCol = (firstAvailUnit - totalLeftUnits - leftTempUnitNum - 1) * unitWidth + 1 + iTemplateWidth - aboveTempUnitNum * unitWidth;
+#else
         firstAvailCol = (firstAvailUnit - (totalLeftUnits + leftTempUnitNum + aboveTempUnitNum) - 1) * unitWidth + 1 + iTemplateWidth;
+#endif
       }
       const Pel firstAvailSample = ptrDst[firstAvailRow < 0 ? firstAvailCol : firstAvailRow + predStride];
 
@@ -8739,6 +9209,20 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
         // last available sample
         int lastAvailRow = -1;
         int lastAvailCol = 0;
+#if JVET_AJ0146_TIMDSAD
+        if (lastAvailUnit < totalLeftUnits + leftTempUnitNum)
+        {
+          lastAvailRow = (totalLeftUnits + leftTempUnitNum - lastAvailUnit - 1) * unitHeight + iTemplateHeight - leftTempUnitNum * unitHeight + 1;
+        }
+        else if (lastAvailUnit == totalLeftUnits + leftTempUnitNum)
+        {
+          lastAvailCol = iTemplateWidth - aboveTempUnitNum * unitWidth;
+        }
+        else
+        {
+          lastAvailCol = (lastAvailUnit - totalLeftUnits - leftTempUnitNum) * unitWidth + iTemplateWidth - aboveTempUnitNum * unitWidth;
+        }
+#else
         if (lastAvailUnit < totalLeftUnits)
         {
           lastAvailRow = (totalLeftUnits - lastAvailUnit - 1) * unitHeight + iTemplateHeight + 1;
@@ -8751,9 +9235,38 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
         {
           lastAvailCol = (lastAvailUnit - (totalLeftUnits + leftTempUnitNum + aboveTempUnitNum)) * unitWidth + iTemplateWidth;
         }
+#endif
         const Pel lastAvailSample = ptrDst[lastAvailRow < 0 ? lastAvailCol : lastAvailRow + predStride];
 
         // fill current unit with last available sample
+#if JVET_AJ0146_TIMDSAD
+        if (currUnit < totalLeftUnits + leftTempUnitNum)
+        {
+          for (int i = lastAvailRow - 1; i >= lastAvailRow - unitHeight; i--)
+          {
+            ptrDst[i + predStride] = lastAvailSample;
+          }
+        }
+        else if (currUnit == totalLeftUnits + leftTempUnitNum)
+        {
+          for (int i = 0; i < iTemplateHeight - leftTempUnitNum * unitHeight + 1; i++)
+          {
+            ptrDst[i + predStride] = lastAvailSample;
+          }
+          for (int j = 0; j < iTemplateWidth - aboveTempUnitNum * unitWidth + 1; j++)
+          {
+            ptrDst[j] = lastAvailSample;
+          }
+        }
+        else
+        {
+          int numSamplesInUnit = (currUnit == totalUnits - 1) ? (((predSize - iTemplateWidth) % unitWidth == 0) ? unitWidth : (predSize - iTemplateWidth) % unitWidth) : unitWidth;
+          for (int j = lastAvailCol + 1; j <= lastAvailCol + numSamplesInUnit; j++)
+          {
+            ptrDst[j] = lastAvailSample;
+          }
+        }
+#else
         if (currUnit < totalLeftUnits)
         {
           for (int i = lastAvailRow - 1; i >= lastAvailRow - unitHeight; i--)
@@ -8780,6 +9293,7 @@ void IntraPrediction::xFillTimdReferenceSamples(const CPelBuf &recoBuf, Pel* ref
             ptrDst[j] = lastAvailSample;
           }
         }
+#endif
       }
       lastAvailUnit = currUnit;
       currUnit++;
@@ -10080,6 +10594,40 @@ void IntraPrediction::genTimdMrgList(
         }
       }
     }
+#if JVET_AJ0146_TIMDSAD
+    else if (cuNeighbours[i]->timdSad)
+    {
+        bool isThere = false;
+        for (int idx = 0; idx < timdMrgList.size(); idx++)
+        {
+          if (timdMrgList[idx].timdMode[0] == cuNeighbours[i]->timdModeSad && timdMrgList[idx].timdMode[1] == cuNeighbours[i]->timdModeSecondarySad)
+          {
+            isThere = true;
+            break;
+          }
+        }
+        if (!isThere && cuNeighbours[i]->timdModeSad != INVALID_TIMD_IDX)
+        {
+          TimdMergeInfo m = TimdMergeInfo();
+          m.timdMode[0] = cuNeighbours[i]->timdModeSad;
+          m.timdMode[1] = cuNeighbours[i]->timdModeSecondarySad;
+          m.timdMode[2] = cuNeighbours[i]->timdModeNonAngSad;
+          m.timdFusionWeight[0] = cuNeighbours[i]->timdFusionWeightSad[0];
+          m.timdFusionWeight[1] = cuNeighbours[i]->timdFusionWeightSad[1];
+          m.timdFusionWeight[2] = cuNeighbours[i]->timdFusionWeightSad[2];
+          m.timdModeCheckWA[0] = true;
+          m.timdModeCheckWA[1] = true;
+          m.timdModeCheckWA[2] = true;
+          m.timdLocDep[0] = cuNeighbours[i]->timdLocDepSad[0];
+          m.timdLocDep[1] = cuNeighbours[i]->timdLocDepSad[1];
+          m.timdLocDep[2] = cuNeighbours[i]->timdLocDepSad[2];
+          m.timdIsBlended = cuNeighbours[i]->timdIsBlendedSad;
+          m.timdmTrType[0] = !CS::isDualITree(*cu.cs) ? TransType::DCT2 : cuNeighbours[i]->timdmTrType[NUM_TIMD_MERGE_MODES][0];
+          m.timdmTrType[1] = !CS::isDualITree(*cu.cs) ? TransType::DCT2 : cuNeighbours[i]->timdmTrType[NUM_TIMD_MERGE_MODES][1];
+          timdMrgList.push_back(m);
+      }
+    }
+#endif
     else
     {
       bool isThere = false;
@@ -10754,7 +11302,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
 #endif
   
 #if JVET_AB0155_SGPM
-int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool bFull, bool bHorVer)
+int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool bFull, bool bHorVer
+#if JVET_AJ0146_TIMDSAD
+  , bool createList
+#endif
+)
 {
   int      channelBitDepth = cu.slice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
   SizeType uiWidth         = cu.lwidth();
@@ -10783,7 +11335,9 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
   const UnitArea localUnitArea(pu.chromaFormat, Area(0, 0, uiRealW, uiRealH));
   uint32_t       uiPredStride = m_intraPredBuffer[0].getBuf(localUnitArea.Y()).stride;
   Pel *piPred = m_intraPredBuffer[0].getBuf(localUnitArea.Y()).buf;
-
+#if JVET_AJ0146_TIMDSAD
+  bool isModeAdded[NUM_LUMA_MODE] = { 0 };
+#endif
   if (eTempType != NO_NEIGHBOR)
   {
     const CodingStructure &cs = *cu.cs;
@@ -11230,6 +11784,16 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
       if (bFull && updateFull)
       {
         uiCost = tmpCost0 + tmpCost1;
+#if JVET_AJ0146_TIMDSAD
+        if (createList)
+        {
+          if (!isModeAdded[mpmExtraList[i]])
+          {
+            m_timdModeCostList.push_back(std::pair(uiCost, mpmExtraList[i]));
+            isModeAdded[mpmExtraList[i]] = true;
+          }
+        }
+#endif
         if (uiCost < uiBestCost)
         {
           uiSecondaryCost = uiBestCost;
@@ -11341,72 +11905,69 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
       }
       previous = deltaSize - d;
     }
-
+    for (int i = newMinMode + 1; i < newMaxMode; i += 5)
     {
-      for (int i = newMinMode + 1; i < newMaxMode; i += 5)
+      // Mode is a regular mode (already tested)
+      if (i >= minModeOrig && i <= maxModeOrig)
       {
-        // Mode is a regular mode (already tested)
-        if (i >= minModeOrig && i <= maxModeOrig)
-        {
-          i = maxModeOrig - 1;
-          continue;
-        }
-        uint64_t uiCost = 0;
-        uint64_t tmpCost0 = 0;
-        uint64_t tmpCost1 = 0;
-        int      iMode  = i;
-        iMode           = getTimdRegularAngleExt(uiWidth, uiHeight, iMode);
-        initPredTimdIntraParams(pu, area, iMode, false, false);
-        iMode = getTimdWideAngleExt(uiWidth, uiHeight, iMode);
-        predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
-                         (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
-                         (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+        i = maxModeOrig - 1;
+        continue;
+      }
+      uint64_t uiCost = 0;
+      uint64_t tmpCost0 = 0;
+      uint64_t tmpCost1 = 0;
+      int      iMode  = i;
+      iMode           = getTimdRegularAngleExt(uiWidth, uiHeight, iMode);
+      initPredTimdIntraParams(pu, area, iMode, false, false);
+      iMode = getTimdWideAngleExt(uiWidth, uiHeight, iMode);
+      predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+                        (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+                        (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
 
-        if (eTempType == LEFT_ABOVE_NEIGHBOR)
-        {
-          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
-          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
-        }
-        else if (eTempType == ABOVE_NEIGHBOR)
-        {
-          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
-        }
-        else if (eTempType == LEFT_NEIGHBOR)
-        {
-          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
-        }
-        else
-        {
-          assert(0);
-        }
+      if (eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+        tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+      }
+      else if (eTempType == ABOVE_NEIGHBOR)
+      {
+        tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+      }
+      else if (eTempType == LEFT_NEIGHBOR)
+      {
+        tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+      }
+      else
+      {
+        assert(0);
+      }
 
-        uiCost = tmpCost0 + tmpCost1;
-        if (uiCost < uiBestCost)
-        {
-          uiSecondaryCost = uiBestCost;
-          iSecondaryMode  = iBestMode;
-          uiBestCost      = uiCost;
-          iBestMode             = iMode;
-          bSecondaryModeCheckWA = bBestModeCheckWA;
-          bBestModeCheckWA      = false;
+      uiCost = tmpCost0 + tmpCost1;
+      if (uiCost < uiBestCost)
+      {
+        uiSecondaryCost = uiBestCost;
+        iSecondaryMode  = iBestMode;
+        uiBestCost      = uiCost;
+        iBestMode             = iMode;
+        bSecondaryModeCheckWA = bBestModeCheckWA;
+        bBestModeCheckWA      = false;
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
-          cu.timdLocDep[1] = cu.timdLocDep[0];
-          cu.timdLocDep[0] = (eTempType != LEFT_ABOVE_NEIGHBOR) ? ((eTempType == LEFT_NEIGHBOR) ? 2 : 1) : (tmpCost0 >> log2A < (tmpCost1 >> (log2L + 1))) ? 1 : (tmpCost1 >> log2L < (tmpCost0 >> (log2A + 1))) ? 2 : 0;
+        cu.timdLocDep[1] = cu.timdLocDep[0];
+        cu.timdLocDep[0] = (eTempType != LEFT_ABOVE_NEIGHBOR) ? ((eTempType == LEFT_NEIGHBOR) ? 2 : 1) : (tmpCost0 >> log2A < (tmpCost1 >> (log2L + 1))) ? 1 : (tmpCost1 >> log2L < (tmpCost0 >> (log2A + 1))) ? 2 : 0;
 #endif
-        }
-        else if (uiCost < uiSecondaryCost)
-        {
-          uiSecondaryCost = uiCost;
-          iSecondaryMode        = iMode;
-          bSecondaryModeCheckWA = false;
+      }
+      else if (uiCost < uiSecondaryCost)
+      {
+        uiSecondaryCost = uiCost;
+        iSecondaryMode        = iMode;
+        bSecondaryModeCheckWA = false;
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
-          cu.timdLocDep[1] = (eTempType != LEFT_ABOVE_NEIGHBOR) ? ((eTempType == LEFT_NEIGHBOR) ? 2 : 1) : (tmpCost0 >> log2A < (tmpCost1 >> (log2L + 1))) ? 1 : (tmpCost1 >> log2L < (tmpCost0 >> (log2A + 1))) ? 2 : 0;
+        cu.timdLocDep[1] = (eTempType != LEFT_ABOVE_NEIGHBOR) ? ((eTempType == LEFT_NEIGHBOR) ? 2 : 1) : (tmpCost0 >> log2A < (tmpCost1 >> (log2L + 1))) ? 1 : (tmpCost1 >> log2L < (tmpCost0 >> (log2A + 1))) ? 2 : 0;
 #endif
-        }
-        if (uiSecondaryCost <= maxCost)
-        {
-          break;
-        }
+      }
+      if (uiSecondaryCost <= maxCost)
+      {
+        break;
       }
     }
 #endif
@@ -11474,9 +12035,8 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
           }
           else
           {
-            assert(0);
-          }
-          
+            CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+          }      
           uiCost = tmpCost0 + tmpCost1;
           if (uiCost < uiBestCost)
           {
@@ -11554,9 +12114,8 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
           }
           else
           {
-            assert(0);
-          }
-          
+            CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+          }          
           uiCost = tmpCost0 + tmpCost1;
           if (uiCost < uiSecondaryCost)
           {
@@ -11640,9 +12199,9 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
         uint64_t s1 = (MAX_UINT64 - uiSecondaryCost < uiBestCost) ? MAX_UINT64 : (uiBestCost + uiSecondaryCost);
         int      x  = floorLog2Uint64(s1);
         CHECK(x < 0, "floor log2 value should be no negative");
-        int norm_s1 = int(s1 << 4 >> x) & 15;
-        int v       = g_gradDivTable[norm_s1] | 8;
-        x += (norm_s1 != 0);
+        int normS1 = int(s1 << 4 >> x) & 15;
+        int v       = g_gradDivTable[normS1] | 8;
+        x += (normS1 != 0);
         int shift  = x + 3;
         int add    = (1 << (shift - 1));
         int iRatio = int((s0 * v * sum_weight + add) >> shift);
@@ -12119,9 +12678,9 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
     uint64_t s1 = (MAX_UINT64 - uiSecondaryCost < uiBestCost) ? MAX_UINT64 : (uiBestCost + uiSecondaryCost);
     int x = floorLog2Uint64(s1);
     CHECK(x < 0, "floor log2 value should be no negative");
-    int norm_s1 = int(s1 << 4 >> x) & 15;
-    int v = g_gradDivTable[norm_s1] | 8;
-    x += (norm_s1 != 0);
+    int normS1 = int(s1 << 4 >> x) & 15;
+    int v = g_gradDivTable[normS1] | 8;
+    x += (normS1 != 0);
     int shift = x + 3;
     int add = (1 << (shift - 1));
     int iRatio = int((s0 * v * sum_weight + add) >> shift);
@@ -12153,6 +12712,956 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
     cu.timdMode = PLANAR_IDX;
     cu.timdIsBlended = false;
 
+    return PLANAR_IDX;
+  }
+}
+#endif
+#if JVET_AJ0146_TIMDSAD
+int IntraPrediction::deriveTimdModeSad(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu)
+{
+  int      channelBitDepth = cu.slice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
+  SizeType uiWidth         = cu.lwidth();
+  SizeType uiHeight        = cu.lheight();
+
+  int      iCurX = cu.lx();
+  int      iCurY = cu.ly();
+  int      iRefX = -1, iRefY = -1;
+  uint32_t uiRefWidth = 0, uiRefHeight = 0;
+
+  int iTempWidth = 4, iTempHeight = 4;
+  if (uiWidth <= 8)
+  {
+    iTempWidth = 2;
+  }
+  if (uiHeight <= 8)
+  {
+    iTempHeight = 2;
+  }
+
+  iTempWidth  *= 2;
+  iTempHeight *= 2;
+
+  //clip templates:
+  iTempWidth = std::min(std::max(iCurX,2), iTempWidth);
+  iTempHeight = std::min(std::max(iCurY,2), iTempHeight);
+  const CodingStructure &cs = *cu.cs;
+
+  int maxTempHeight = std::min(iTempHeight, TIMDDIFF_MAX_TEMP_SIZE);
+
+  for (iTempHeight = maxTempHeight; iTempHeight > 4; iTempHeight -=4)
+  {
+    const Position refPosL = cu.Y().offset(0, -iTempHeight);
+    const Position refPosR = cu.Y().offset(uiWidth - 1, -iTempHeight);
+    if ( !cs.isDecomp(refPosL, CH_L) )
+    {
+      continue;
+    }
+    if (cs.getCURestricted(refPosL, cu, CH_L) == NULL)
+    {
+      continue;
+    }
+    if ( !cs.isDecomp(refPosR, CH_L) )
+    {
+      continue;
+    }
+    if (cs.getCURestricted(refPosR, cu, CH_L) == NULL)
+    {
+      continue;
+    }
+    break;
+  }
+  int maxTempWidth = std::min(iTempWidth, TIMDDIFF_MAX_TEMP_SIZE);
+  for (iTempWidth = maxTempWidth; iTempWidth > 4; iTempWidth -=4)
+  {
+    const Position refPosT = cu.Y().offset(-iTempWidth, 0);
+    const Position refPosB = cu.Y().offset(-iTempWidth, uiHeight - 1);
+    if ( !cs.isDecomp(refPosT, CH_L) )
+    {
+      continue;
+    }
+    if (cs.getCURestricted(refPosT, cu, CH_L) == NULL)
+    {
+      continue;
+    }
+    if ( !cs.isDecomp(refPosB, CH_L) )
+    {
+      continue;
+    }
+    if (cs.getCURestricted(refPosB, cu, CH_L) == NULL)
+    {
+      continue;
+    }
+    break;
+  }
+
+  TemplateType eTempType = CU::deriveTimdRefType(iCurX, iCurY, uiWidth, uiHeight, iTempWidth, iTempHeight, iRefX,
+    iRefY, uiRefWidth, uiRefHeight);
+  auto &        pu        = *cu.firstPU;
+  uint32_t      uiRealW   = uiRefWidth + (eTempType == LEFT_NEIGHBOR ? iTempWidth : 0);
+  uint32_t      uiRealH   = uiRefHeight + (eTempType == ABOVE_NEIGHBOR ? iTempHeight : 0);
+  const UnitArea localUnitArea(pu.chromaFormat, Area(0, 0, uiRealW, uiRealH));
+  uint32_t       uiPredStride = m_intraPredBuffer[0].getBuf(localUnitArea.Y()).stride;
+  Pel *piPred = m_intraPredBuffer[0].getBuf(localUnitArea.Y()).buf;
+
+  if (eTempType != NO_NEIGHBOR)
+  {
+    const CodingStructure& cs = *cu.cs;
+    m_ipaParam.multiRefIndex = iTempWidth;
+    Pel* piOrg = cs.picture->getRecoBuf(area).buf;
+    int  iOrgStride = cs.picture->getRecoBuf(area).stride;
+    piOrg += (iRefY - iCurY) * iOrgStride + (iRefX - iCurX);
+    DistParam distParamSad[2];   // above, left
+    distParamSad[0].applyWeight = false;
+    distParamSad[1].applyWeight = false;
+    distParamSad[0].useMR = true;
+    distParamSad[1].useMR = true;
+
+    if (eTempType == LEFT_ABOVE_NEIGHBOR)
+    {
+      m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg + iTempWidth, piPred + iTempWidth, iOrgStride,
+        uiPredStride, channelBitDepth, COMPONENT_Y, uiWidth, iTempHeight, 0, 1, false
+      );
+      m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg + iTempHeight * iOrgStride,
+        piPred + iTempHeight * uiPredStride, iOrgStride, uiPredStride, channelBitDepth,
+        COMPONENT_Y, iTempWidth, uiHeight, 0, 1, false
+      );
+    }
+    else if (eTempType == LEFT_NEIGHBOR)
+    {
+      m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+        COMPONENT_Y, iTempWidth, uiHeight, 0, 1, false
+      );
+    }
+    else if (eTempType == ABOVE_NEIGHBOR)
+    {
+      m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+        COMPONENT_Y, uiWidth, iTempHeight, 0, 1, false
+      );
+    }
+    initTimdIntraPatternLuma(cu, area, eTempType != ABOVE_NEIGHBOR ? iTempWidth : 0,
+      eTempType != LEFT_NEIGHBOR ? iTempHeight : 0, uiRefWidth, uiRefHeight);
+
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    uint32_t uiIntraDirNeighbor[5] = { 0 }, modeIdx = 0;
+
+    bool     includedMode[EXT_VDIA_IDX + 1];
+    memset(includedMode, false, (EXT_VDIA_IDX + 1) * sizeof(bool));
+#endif
+    auto& pu = *cu.firstPU;
+    uint32_t uiRealW = uiRefWidth + (eTempType == LEFT_NEIGHBOR ? iTempWidth : 0);
+    uint32_t uiRealH = uiRefHeight + (eTempType == ABOVE_NEIGHBOR ? iTempHeight : 0);
+    uint64_t maxCost = (uint64_t)(iTempWidth * cu.lheight() + iTempHeight * cu.lwidth());
+
+    uint64_t uiBestCost = MAX_UINT64;
+    int      iBestMode = PLANAR_IDX;
+    uint64_t uiSecondaryCost = MAX_UINT64;
+    int      iSecondaryMode = PLANAR_IDX;
+
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+    uint64_t uiNonAngCost = MAX_UINT64;
+    int      iNonAngMode = PLANAR_IDX;
+#endif
+#if JVET_AC0094_REF_SAMPLES_OPT
+    bool bBestModeCheckWA = true;
+    bool bSecondaryModeCheckWA = true;
+#endif
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    const Position posLTx = pu.Y().topLeft();
+#endif
+    const Position posRTx = pu.Y().topRight();
+    const Position posLBx = pu.Y().bottomLeft();
+#if JVET_AC0094_REF_SAMPLES_OPT
+    bool increaseMaxClose = true;
+    bool decreaseMinClose = true;
+    bool increaseMaxFar = true;
+    bool decreaseMinFar = true;
+#endif
+
+
+    // left
+    const PredictionUnit* puLeftx = pu.cs->getPURestricted(posLBx.offset(-1, 0), pu, pu.chType);
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    if (puLeftx && CU::isIntra(*puLeftx->cu))
+    {
+      uiIntraDirNeighbor[modeIdx] = PU::getIntraDirLuma(*puLeftx);
+      if (!puLeftx->cu->timd
+#if JVET_AD0085_TMRL_EXTENSION
+        && !puLeftx->cu->tmrlFlag
+#endif
+        )
+      {
+        uiIntraDirNeighbor[modeIdx] = MAP67TO131(uiIntraDirNeighbor[modeIdx]);
+      }
+      if (!includedMode[uiIntraDirNeighbor[modeIdx]])
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+#endif
+    // above
+    const PredictionUnit* puAbovex = pu.cs->getPURestricted(posRTx.offset(0, -1), pu, pu.chType);
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    if (puAbovex && CU::isIntra(*puAbovex->cu) && CU::isSameCtu(*pu.cu, *puAbovex->cu))
+    {
+      uiIntraDirNeighbor[modeIdx] = PU::getIntraDirLuma(*puAbovex);
+      if (!puAbovex->cu->timd
+#if JVET_AD0085_TMRL_EXTENSION
+        && !puAbovex->cu->tmrlFlag
+#endif
+        )
+      {
+        uiIntraDirNeighbor[modeIdx] = MAP67TO131(uiIntraDirNeighbor[modeIdx]);
+      }
+      if (!includedMode[uiIntraDirNeighbor[modeIdx]])
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+#endif
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    // below left
+    const PredictionUnit* puLeftBottomx = cs.getPURestricted(posLBx.offset(-1, 1), pu, pu.chType);
+    if (puLeftBottomx && CU::isIntra(*puLeftBottomx->cu))
+    {
+      uiIntraDirNeighbor[modeIdx] = PU::getIntraDirLuma(*puLeftBottomx);
+      if (!puLeftBottomx->cu->timd
+#if JVET_AD0085_TMRL_EXTENSION
+        && !puLeftBottomx->cu->tmrlFlag
+#endif
+        )
+      {
+        uiIntraDirNeighbor[modeIdx] = MAP67TO131(uiIntraDirNeighbor[modeIdx]);
+      }
+      if (!includedMode[uiIntraDirNeighbor[modeIdx]])
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+#endif
+#if JVET_AC0094_REF_SAMPLES_OPT
+    if (!puLeftx)
+    {
+      decreaseMinClose = false;
+    }
+    const PredictionUnit* puLeftBottomFarx = cs.getPURestricted(posLBx.offset(-1, uiHeight), pu, pu.chType);
+    if (!puLeftBottomFarx)
+    {
+      decreaseMinFar = false;
+    }
+#endif
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    // above right
+    const PredictionUnit* puAboveRightx = cs.getPURestricted(posRTx.offset(1, -1), pu, pu.chType);
+    if (puAboveRightx && CU::isIntra(*puAboveRightx->cu))
+    {
+      uiIntraDirNeighbor[modeIdx] = PU::getIntraDirLuma(*puAboveRightx);
+      if (!puAboveRightx->cu->timd
+#if JVET_AD0085_TMRL_EXTENSION
+        && !puAboveRightx->cu->tmrlFlag
+#endif
+        )
+      {
+        uiIntraDirNeighbor[modeIdx] = MAP67TO131(uiIntraDirNeighbor[modeIdx]);
+      }
+      if (!includedMode[uiIntraDirNeighbor[modeIdx]])
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+#endif
+#if JVET_AC0094_REF_SAMPLES_OPT
+    if (!puAbovex)
+    {
+      increaseMaxClose = false;
+    }
+    const PredictionUnit* puAboveRightFarx = cs.getPURestricted(posRTx.offset(uiWidth, -1), pu, pu.chType);
+    if (!puAboveRightFarx)
+    {
+      increaseMaxFar = false;
+    }
+#endif
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+    // above left
+    const PredictionUnit* puAboveLeftx = cs.getPURestricted(posLTx.offset(-1, -1), pu, pu.chType);
+    if (puAboveLeftx && CU::isIntra(*puAboveLeftx->cu))
+    {
+      uiIntraDirNeighbor[modeIdx] = PU::getIntraDirLuma(*puAboveLeftx);
+      if (!puAboveLeftx->cu->timd
+#if JVET_AD0085_TMRL_EXTENSION
+        && !puAboveLeftx->cu->tmrlFlag
+#endif
+        )
+      {
+        uiIntraDirNeighbor[modeIdx] = MAP67TO131(uiIntraDirNeighbor[modeIdx]);
+      }
+      if (!includedMode[uiIntraDirNeighbor[modeIdx]])
+      {
+        includedMode[uiIntraDirNeighbor[modeIdx]] = true;
+        modeIdx++;
+      }
+    }
+#endif
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+    cu.timdLocDepSad[0] = 0;
+    cu.timdLocDepSad[1] = 0;
+    cu.timdLocDepSad[TIMD_FUSION_NUM - 1] = 0;
+    {
+      for (int iMode = 0; iMode <= 1; iMode++)
+      {
+        uint64_t uiCost = 0;
+        uint64_t tmpCost0 = 0;
+        uint64_t tmpCost1 = 0;
+        initPredTimdIntraParams(pu, area, iMode);
+        predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+          (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+          (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+
+        if (eTempType == LEFT_ABOVE_NEIGHBOR)
+        {
+          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else if (eTempType == ABOVE_NEIGHBOR)
+        {
+          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+        }
+        else if (eTempType == LEFT_NEIGHBOR)
+        {
+          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else
+        {
+          CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+        }
+
+        uiCost = tmpCost0 + tmpCost1;
+
+        if (uiCost < uiBestCost)
+        {
+          uiSecondaryCost = uiBestCost;
+          iSecondaryMode = iBestMode;
+          uiBestCost = uiCost;
+          iBestMode = iMode;
+          uiNonAngCost = uiCost;
+          iNonAngMode = iMode;
+        }
+        else if (uiCost < uiSecondaryCost)
+        {
+          uiSecondaryCost = uiCost;
+          iSecondaryMode = iMode;
+        }
+      }
+    }
+#else
+    bool bNoAngular = false;
+    if (modeIdx >= 2)
+    {
+      bNoAngular = true;
+      for (uint32_t i = 0; i < modeIdx; i++)
+      {
+        if (uiIntraDirNeighbor[i] > DC_IDX)
+        {
+          bNoAngular = false;
+          break;
+        }
+      }
+    }
+
+    if (bNoAngular)
+
+    {
+      for (int iMode = 0; iMode <= 1; iMode++)
+      {
+        uint64_t uiCost = 0;
+        initPredTimdIntraParams(pu, area, iMode);
+        predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+          (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+          (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+        if (eTempType == LEFT_ABOVE_NEIGHBOR)
+        {
+          uiCost += distParamSad[0].distFunc(distParamSad[0]);
+          uiCost += distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else if (eTempType == LEFT_NEIGHBOR)
+        {
+          uiCost = distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else if (eTempType == ABOVE_NEIGHBOR)
+        {
+          uiCost += distParamSad[0].distFunc(distParamSad[0]);
+        }
+        else
+        {
+          CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+        } 
+        if (uiCost < uiBestCost)
+        {
+          uiBestCost = uiCost;
+          iBestMode = iMode;
+        }
+        if (uiBestCost <= maxCost)
+        {
+          break;
+        }
+      }
+      cu.timdModeSad = iBestMode;
+#if JVET_AC0094_REF_SAMPLES_OPT
+      cu.timdModeCheckWASad = true;
+#endif
+      cu.timdIsBlendedSad = false;
+
+      return iBestMode;
+    }
+#endif
+    int maxModeNum = (int) m_timdModeCostList.size();
+    int vectorSize = maxModeNum;
+    if (maxModeNum > TIMD_NUM_MODES_SORTED)
+    {
+      maxModeNum = TIMD_NUM_MODES_SORTED;
+    }
+    int numCand = TIMD_NUM_MODES_SORTED + 10;
+    unsigned mpmExtraList[NUM_MOST_PROBABLE_MODES + 3];
+    bool modeUsed[NUM_LUMA_MODE] = {0};
+    int modeCnt = 0;
+    for (int  i=0; i<vectorSize; i++)
+    {
+      int iMode = m_timdModeCostList.at(i).second;
+      if (modeCnt == maxModeNum)
+      {
+        break;
+      }
+      if ( MAP67TO131(iMode) == cu.timdMode || (cu.timdIsBlended &&  MAP67TO131(iMode) == cu.timdModeSecondary ) )
+      {
+        continue;
+      }
+      else if (iMode <= DC_IDX)
+      {
+        continue;
+      }
+      else
+      {
+        mpmExtraList[modeCnt++] = iMode;
+        modeUsed[iMode] = true;
+      }
+    }
+    maxModeNum = modeCnt;
+
+    for (int i = 0; i < DIMD_FUSION_NUM; i++)
+    {
+      if (maxModeNum == numCand)
+      {
+        break;
+      }
+      int iMode = (i == 0 ? cu.dimdMode : cu.dimdBlendMode[i - 1]);
+      if (iMode < 0 || iMode >= NUM_LUMA_MODE)
+      {
+        continue;
+      }
+      if (iMode <= DC_IDX)
+      {
+        continue;
+      }
+      if ( MAP67TO131(iMode) == cu.timdMode || (cu.timdIsBlended &&  MAP67TO131(iMode) == cu.timdModeSecondary ) )
+      {
+        modeUsed[iMode] = true;
+      }
+      if (!modeUsed[iMode])
+      {
+        mpmExtraList[maxModeNum++] = iMode;
+        modeUsed[iMode] = true;
+      }
+    }
+    int modeCandList[2] = {  HOR_IDX, VER_IDX };
+    for (int i = 0; i < 2; i++)
+    {
+      if (maxModeNum == numCand)
+      {
+        break;
+      }
+      int iMode = modeCandList[i];
+      if ( MAP67TO131(iMode) == cu.timdMode || (cu.timdIsBlended &&  MAP67TO131(iMode) == cu.timdModeSecondary ) )
+      {
+        modeUsed[iMode] = true;
+      }
+      if (!modeUsed[iMode])
+      {
+        mpmExtraList[maxModeNum++] = iMode;
+        modeUsed[iMode] = true;
+      }
+    }
+    const int numRefine = 12;
+    int refinedList[numRefine] =     { MAP131TO67(cu.timdMode) + 1, MAP131TO67(cu.timdMode) - 1, MAP131TO67(cu.timdModeSecondary) + 1, MAP131TO67(cu.timdModeSecondary) - 1, 
+      cu.dimdMode + 1, cu.dimdMode - 1, (cu.dimdBlending ? cu.dimdBlendMode[0] + 1 : cu.dimdMode + 2), (cu.dimdBlending ? cu.dimdBlendMode[0] -  1 : cu.dimdMode - 2),
+      MAP131TO67(cu.timdMode) + 2, MAP131TO67(cu.timdMode) - 2, MAP131TO67(cu.timdModeSecondary) + 2, MAP131TO67(cu.timdModeSecondary) - 2};
+    for (int i = 0; i < numRefine; i++)
+    {
+      if (maxModeNum == numCand)
+      {
+        break;
+      }
+      int iMode = refinedList[i];
+      if (iMode < 0 || iMode >= NUM_LUMA_MODE)
+      {
+        continue;
+      }
+      if (iMode <= DC_IDX)
+      {
+        continue;
+      }
+      if ( MAP67TO131(iMode) == cu.timdMode || (cu.timdIsBlended &&  MAP67TO131(iMode) == cu.timdModeSecondary ) )
+      {
+        modeUsed[iMode] = true;
+      }
+      if (!modeUsed[iMode])
+      {
+        mpmExtraList[maxModeNum++] = iMode;
+        modeUsed[iMode] = true;
+      }
+    }
+
+    for (int i = 0; i < maxModeNum; i++)
+    {
+      uint64_t uiCost    = 0;
+      int      iMode     = mpmExtraList[i];
+      uint64_t tmpCost0  = 0;
+      uint64_t tmpCost1  = 0;
+      if (iMode > DC_IDX)
+      {
+        iMode = MAP67TO131(iMode);
+      }
+      else
+      {
+#if !JVET_AG0092_ENHANCED_TIMD_FUSION
+        if (!bFull && bHorVer)
+#endif
+        {
+          continue;
+        }
+      }
+      initPredTimdIntraParams(pu, area, iMode);
+      predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+        (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth, (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+      if (eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+        tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+
+      }
+      else if (eTempType == ABOVE_NEIGHBOR)
+      {
+        tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+      }
+      else if (eTempType == LEFT_NEIGHBOR)
+      {
+        tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+      }
+      else
+      {
+        CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+      } 
+      uiCost = tmpCost0 + tmpCost1;
+      if (uiCost < uiBestCost)
+      {
+        uiSecondaryCost = uiBestCost;
+        iSecondaryMode  = iBestMode;
+        uiBestCost      = uiCost;
+        iBestMode       = iMode;
+      }
+      else if (uiCost < uiSecondaryCost)
+      {
+        uiSecondaryCost = uiCost;
+        iSecondaryMode  = iMode;
+      }
+      if (uiSecondaryCost <= maxCost)
+      {
+        break;
+      }
+    }
+#if JVET_AC0094_REF_SAMPLES_OPT
+    // Check modes removed due to WAIP
+    int modeShiftExt[] = { 0, 11, 19, 23, 27, 29 };
+    int deltaSize      = abs(floorLog2(uiWidth) - floorLog2(uiHeight));
+
+    // Compute max allowed mode and min allowed mode to not exceed ref
+    int maxModeOrig =
+      uiWidth >= uiHeight ? EXT_VDIA_IDX + modeShiftExt[deltaSize] : EXT_VDIA_IDX - modeShiftExt[deltaSize];
+    int minModeOrig = uiWidth >= uiHeight ? DC_IDX + 1 + modeShiftExt[deltaSize] : DC_IDX + 1 - modeShiftExt[deltaSize];
+
+    int newMinMode = minModeOrig;
+    int newMaxMode = maxModeOrig;
+
+    if (uiWidth >= uiHeight)
+    {
+      if (increaseMaxFar)
+      {
+        newMaxMode += modeShiftExt[std::min(deltaSize + 2, 5)] - modeShiftExt[deltaSize];
+      }
+      else if (increaseMaxClose)
+      {
+        newMaxMode += modeShiftExt[std::min(deltaSize + 1, 5)] - modeShiftExt[deltaSize];
+      }
+    }
+    if (uiWidth <= uiHeight)
+    {
+      if (decreaseMinFar)
+      {
+        newMinMode -= modeShiftExt[std::min(deltaSize + 2, 5)] - modeShiftExt[deltaSize];
+      }
+      else if (decreaseMinClose)
+      {
+        newMinMode -= modeShiftExt[std::min(deltaSize + 1, 5)] - modeShiftExt[deltaSize];
+      }
+    }
+    int previous = deltaSize;
+    int extRef   = (decreaseMinFar || increaseMaxFar) ? 2 : (decreaseMinClose || increaseMaxClose) ? 1 : 0;
+    for (int d = 1; d <= extRef; d++)
+    {
+      if (uiWidth > uiHeight)
+      {
+        newMinMode -= abs(modeShiftExt[abs(previous)] - modeShiftExt[std::min(abs(deltaSize - d), 5)]);
+      }
+      if (uiWidth < uiHeight)
+      {
+        newMaxMode += abs(modeShiftExt[abs(previous)] - modeShiftExt[std::min(abs(deltaSize - d), 5)]);
+      }
+      previous = deltaSize - d;
+    }
+    for (int i = newMinMode + 1; i < newMaxMode; i += 5)
+    {
+      // Mode is a regular mode (already tested)
+      if (i >= minModeOrig && i <= maxModeOrig)
+      {
+        i = maxModeOrig - 1;
+        continue;
+      }
+      uint64_t uiCost = 0;
+      uint64_t tmpCost0 = 0;
+      uint64_t tmpCost1 = 0;
+      int      iMode  = i;
+      iMode           = getTimdRegularAngleExt(uiWidth, uiHeight, iMode);
+      initPredTimdIntraParams(pu, area, iMode, false, false);
+      iMode = getTimdWideAngleExt(uiWidth, uiHeight, iMode);
+      predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+        (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+        (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+
+      if (eTempType == LEFT_ABOVE_NEIGHBOR)
+      {
+        tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+        tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+      }
+      else if (eTempType == ABOVE_NEIGHBOR)
+      {
+        tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+      }
+      else if (eTempType == LEFT_NEIGHBOR)
+      {
+        tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+      }
+      else
+      {
+        CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+      }
+
+      uiCost = tmpCost0 + tmpCost1;
+      if (uiCost < uiBestCost)
+      {
+
+        uiSecondaryCost = uiBestCost;
+        iSecondaryMode  = iBestMode;
+        uiBestCost      = uiCost;
+        iBestMode             = iMode;
+        bSecondaryModeCheckWA = bBestModeCheckWA;
+        bBestModeCheckWA      = false;
+      }
+      else if (uiCost < uiSecondaryCost)
+      {
+
+        uiSecondaryCost = uiCost;
+        iSecondaryMode        = iMode;
+
+        bSecondaryModeCheckWA = false;
+      }
+      if (uiSecondaryCost <= maxCost)
+      {
+        break;
+      }
+    }
+#endif
+    int midMode = iBestMode;
+#if JVET_AC0094_REF_SAMPLES_OPT
+    bool checkWideAngle = bBestModeCheckWA;
+    if ((midMode > DC_IDX && uiBestCost > maxCost && checkWideAngle) || (uiBestCost > maxCost && !checkWideAngle))
+#else
+    if (midMode > DC_IDX && uiBestCost > maxCost)
+#endif
+    {
+      for (int i = -1; i <= 1; i += 2)
+      {
+        int iMode = midMode + i;
+#if JVET_AC0094_REF_SAMPLES_OPT
+        if (checkWideAngle && (iMode <= DC_IDX || iMode > EXT_VDIA_IDX))
+        {
+          continue;
+        }
+        if (!checkWideAngle)
+        {
+          if (iMode >= minModeOrig && iMode <= maxModeOrig)
+          {
+            continue;
+          }
+          iMode = getTimdRegularAngleExt(uiWidth, uiHeight, iMode);
+        }
+#else
+        if (iMode <= DC_IDX || iMode > EXT_VDIA_IDX)
+        {
+          continue;
+        }
+#endif
+        initPredTimdIntraParams(pu, area, iMode
+#if JVET_AC0094_REF_SAMPLES_OPT
+          , false, checkWideAngle
+#endif
+        );
+#if JVET_AC0094_REF_SAMPLES_OPT
+        if (!checkWideAngle)
+        {
+          iMode = getTimdWideAngleExt(uiWidth, uiHeight, iMode);
+        }
+#endif
+        predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+          (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+          (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+        uint64_t uiCost = 0;
+        uint64_t tmpCost0 = 0;
+        uint64_t tmpCost1 = 0;
+        if (eTempType == LEFT_ABOVE_NEIGHBOR)
+        {
+          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+
+
+        }
+        else if (eTempType == ABOVE_NEIGHBOR)
+        {
+          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+        }
+        else if (eTempType == LEFT_NEIGHBOR)
+        {
+          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else
+        {
+          CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+        }
+
+        uiCost = tmpCost0 + tmpCost1;
+        if (uiCost < uiBestCost)
+        {
+          uiBestCost = uiCost;
+          iBestMode  = iMode;
+        }
+        if (uiBestCost <= maxCost)
+        {
+          break;
+        }
+      }
+    }
+
+    midMode = iSecondaryMode;
+#if JVET_AC0094_REF_SAMPLES_OPT
+    checkWideAngle = bSecondaryModeCheckWA;
+    if ((midMode > DC_IDX && uiBestCost > maxCost && checkWideAngle) || (uiBestCost > maxCost && !checkWideAngle))
+#else
+    if (midMode > DC_IDX && uiSecondaryCost > maxCost)
+#endif
+    {
+      for (int i = -1; i <= 1; i += 2)
+      {
+        int iMode = midMode + i;
+#if JVET_AC0094_REF_SAMPLES_OPT
+        if (checkWideAngle && (iMode <= DC_IDX || iMode > EXT_VDIA_IDX))
+#else
+        if (iMode <= DC_IDX || iMode > EXT_VDIA_IDX)
+#endif
+        {
+          continue;
+        }
+#if JVET_AC0094_REF_SAMPLES_OPT
+        if (!checkWideAngle)
+        {
+          if (iMode >= minModeOrig && iMode <= maxModeOrig)
+          {
+            continue;
+          }
+          iMode = getTimdRegularAngleExt(uiWidth, uiHeight, iMode);
+        }
+#endif
+        initPredTimdIntraParams(pu, area, iMode
+#if JVET_AC0094_REF_SAMPLES_OPT
+          , false, checkWideAngle
+#endif
+        );
+#if JVET_AC0094_REF_SAMPLES_OPT
+        if (!checkWideAngle)
+        {
+          iMode = getTimdWideAngleExt(uiWidth, uiHeight, iMode);
+        }
+#endif
+        predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+          (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+          (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+        uint64_t uiCost = 0;
+        uint64_t tmpCost0 = 0;
+        uint64_t tmpCost1 = 0;
+        if (eTempType == LEFT_ABOVE_NEIGHBOR)
+        {
+          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else if (eTempType == ABOVE_NEIGHBOR)
+        {
+          tmpCost0 = distParamSad[0].distFunc(distParamSad[0]);
+        }
+        else if (eTempType == LEFT_NEIGHBOR)
+        {
+          tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
+        }
+        else
+        {
+          CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+        }
+
+        uiCost = tmpCost0 + tmpCost1;
+        if (uiCost < uiSecondaryCost)
+        {
+          uiSecondaryCost = uiCost;
+          iSecondaryMode  = iMode;
+        }
+        if (uiSecondaryCost <= maxCost)
+        {
+          break;
+        }
+      }
+    }
+
+#if JVET_AC0094_REF_SAMPLES_OPT
+    if (!bBestModeCheckWA)
+    {
+      iBestMode = getTimdRegularAngleExt(uiWidth, uiHeight, iBestMode);
+    }
+    if (!bSecondaryModeCheckWA)
+    {
+      iSecondaryMode = getTimdRegularAngleExt(uiWidth, uiHeight, iSecondaryMode);
+    }
+#endif
+    // if( uiSecondaryCost < 2 * uiBestCost ), 2 * uiBestCost can overflow uint64_t
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+    if( !( (uiSecondaryCost < uiBestCost || (uiSecondaryCost - uiBestCost < uiBestCost)) ) && (iBestMode > DC_IDX) )
+    {
+      uiSecondaryCost = uiBestCost;
+      iSecondaryMode  = iBestMode;
+#if JVET_AC0094_REF_SAMPLES_OPT
+      bSecondaryModeCheckWA = bBestModeCheckWA;
+#endif
+    }
+#endif
+
+    // if( uiSecondaryCost < 2 * uiBestCost ), 2 * uiBestCost can overflow uint64_t
+    if (uiSecondaryCost < uiBestCost || (uiSecondaryCost - uiBestCost < uiBestCost))
+    {
+      cu.timdModeSad          = iBestMode;
+      cu.timdIsBlendedSad     = true;
+      cu.timdModeSecondarySad = iSecondaryMode;
+#if JVET_AC0094_REF_SAMPLES_OPT
+      cu.timdModeCheckWASad          = bBestModeCheckWA;
+      cu.timdModeSecondaryCheckWASad = bSecondaryModeCheckWA;
+#endif
+
+      const int blend_sum_weight = 6;
+      int       sum_weight       = 1 << blend_sum_weight;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+      if ( ((iBestMode != iNonAngMode) && (iSecondaryMode != iNonAngMode)) && ( (uiNonAngCost < uiBestCost) || (uiNonAngCost - uiBestCost < (uiBestCost>>1)) ) )
+      {
+        cu.timdModeNonAngSad = iNonAngMode;
+
+        double dCost[3] = {0};
+        dCost[0] = (double) uiBestCost;
+        dCost[1] = (double) uiSecondaryCost;
+        dCost[2] = (double) uiNonAngCost;
+        double sum = dCost[0] + dCost[1] + dCost[2];
+        double dRatio[2] = {0.0};
+        int    iRatio[2] = {0};
+        for(int i = 0; i<2 ; i++)
+        {
+          dRatio[i] = (sum - dCost[i]) / (2 * sum);
+          iRatio[i] = static_cast<int>(dRatio[i] * sum_weight + 0.5);     
+        }
+
+        cu.timdFusionWeightSad[0] = iRatio[0];
+        cu.timdFusionWeightSad[1] = iRatio[1];
+        cu.timdFusionWeightSad[2] = sum_weight - iRatio[0] - iRatio[1];
+      }
+      else
+      {
+#endif
+
+#if JVET_X0149_TIMD_DIMD_LUT
+        int      g_gradDivTable[16] = { 0, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 1, 1, 0 };
+        uint64_t s0                 = uiSecondaryCost;
+        // uiBestCost + uiSecondaryCost can overlow uint64_t
+        uint64_t s1 = (MAX_UINT64 - uiSecondaryCost < uiBestCost) ? MAX_UINT64 : (uiBestCost + uiSecondaryCost);
+        int      x  = floorLog2Uint64(s1);
+        CHECK(x < 0, "floor log2 value should be no negative");
+        int normS1 = int(s1 << 4 >> x) & 15;
+        int v       = g_gradDivTable[normS1] | 8;
+        x += (normS1 != 0);
+        int shift  = x + 3;
+        int add    = (1 << (shift - 1));
+        int iRatio = int((s0 * v * sum_weight + add) >> shift);
+
+        if (iRatio > sum_weight)
+        {
+          iRatio = sum_weight;
+        }
+
+        CHECK(iRatio > sum_weight, "Wrong DIMD ratio");
+#else
+        double dRatio = 0.0;
+        dRatio        = (double) uiSecondaryCost / (double) (uiBestCost + uiSecondaryCost);
+        int iRatio    = static_cast<int>(dRatio * sum_weight + 0.5);
+#endif
+        cu.timdFusionWeightSad[0] = iRatio;
+        cu.timdFusionWeightSad[1] = sum_weight - iRatio;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+        cu.timdFusionWeightSad[TIMD_FUSION_NUM - 1] = 0;
+      }
+#endif
+    }
+    else
+    {
+#if JVET_AC0094_REF_SAMPLES_OPT
+      cu.timdModeCheckWASad          = bBestModeCheckWA;
+      cu.timdModeSecondaryCheckWASad = true;
+#endif
+      cu.timdModeSad      = iBestMode;
+      cu.timdIsBlendedSad = false;
+    }
+    return iBestMode;
+  }
+  else
+  {
+#if JVET_AC0094_REF_SAMPLES_OPT
+    cu.timdModeCheckWASad          = true;
+    cu.timdModeSecondaryCheckWASad = true;
+#endif
+
+    cu.timdModeSad      = PLANAR_IDX;
+    cu.timdIsBlendedSad = false;
     return PLANAR_IDX;
   }
 }

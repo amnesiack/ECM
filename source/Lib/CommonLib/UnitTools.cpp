@@ -33722,6 +33722,28 @@ bool storeContexts( const Slice* slice, const int ctuXPosInCtus, const int ctuYP
 }
 #endif
 
+#if JVET_AJ0146_TIMDSAD
+bool CU::allowTimdSad(const CodingUnit& cu)
+{
+  bool allowTimdSad = cu.slice->getSPS()->getUseTimd();;
+  if (!cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType) || cu.bdpcmMode)
+  {
+    allowTimdSad = false;
+  }
+  if (cu.lwidth() * cu.lheight() > 1024 && cu.slice->getSliceType() == I_SLICE)
+  {
+    allowTimdSad = false;
+  }
+
+  int minSize = std::min(cu.lwidth(), cu.lheight());
+  if (minSize == 4 && cu.slice->getSliceType() == I_SLICE)
+  {
+    allowTimdSad = false;
+  }
+
+  return allowTimdSad;
+}
+#endif
 #if JVET_AB0157_TMRL
 bool CU::allowTmrl(const CodingUnit& cu)
 {

@@ -672,6 +672,14 @@ private:
 #if JVET_AJ0061_TIMD_MERGE
   Pel* m_timdPredBuf[NumTimdMode];
 #endif
+#if JVET_AJ0146_TIMDSAD 
+  Pel* m_timdSadPredBuf;
+#if !JVET_AJ0061_TIMD_MERGE
+  Pel* m_timdPredBuf;
+#endif
+  double m_dSavedRDCostTimdSad;
+  double m_dSavedHadTimdSad;
+#endif
 #if JVET_AH0076_OBIC
   Pel* m_dimdPredBuf;
   Pel* m_obicPredBuf;
@@ -939,6 +947,9 @@ protected:
 #endif
 #if JVET_AC0105_DIRECTIONAL_PLANAR
     , const double* dirPlanarCostList
+#endif
+#if JVET_AJ0146_TIMDSAD
+    , int addOne
 #endif
   );
   void   derivePLTLossy  (      CodingStructure& cs, Partitioner& partitioner, ComponentID compBegin, uint32_t numComp);

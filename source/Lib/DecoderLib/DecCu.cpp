@@ -375,9 +375,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #if JVET_W0123_TIMD_FUSION
         else if (currCU.timd)
         {
-#if JVET_AJ0061_TIMD_MERGE
           PredictionUnit *pu = currCU.firstPU;
           const CompArea &area = currCU.Y();
+#if JVET_AJ0061_TIMD_MERGE
           if (currCU.timdMrg)
           {
             m_pcIntraPred->deriveTimdMergeModes(currCU.cs->picture->getRecoBuf(area), area, currCU);
@@ -390,8 +390,24 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #if SECONDARY_MPM
           IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
 #endif
+#if JVET_AJ0146_TIMDSAD
+          if (currCU.timdSad)
+          {
+            m_pcIntraPred->m_timdModeCostList.clear();          
+            currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU
+              , true, false, true );
+            std::sort(m_pcIntraPred->m_timdModeCostList.begin(),m_pcIntraPred->m_timdModeCostList.end());
+            currCU.timdModeSad = m_pcIntraPred->deriveTimdModeSad(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          }
+          else
+          {
+            currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          }
+          pu->intraDir[0] = currCU.timdSad ? currCU.timdModeSad : currCU.timdMode;
+#else
           currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
           pu->intraDir[0] = currCU.timdMode;
+#endif
           }
           if (!currCU.timdMrg && !currCU.lfnstIdx)
           {
@@ -403,8 +419,24 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #if SECONDARY_MPM
           IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
 #endif
+#if JVET_AJ0146_TIMDSAD
+          if (currCU.timdSad)
+          {
+            m_pcIntraPred->m_timdModeCostList.clear();          
+            currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU
+              , true, false, true );
+            std::sort(m_pcIntraPred->m_timdModeCostList.begin(),m_pcIntraPred->m_timdModeCostList.end());
+            currCU.timdModeSad = m_pcIntraPred->deriveTimdModeSad(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          }
+          else
+          {
+            currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          }
+          pu->intraDir[0] = currCU.timdSad ? currCU.timdModeSad : currCU.timdMode;
+#else
           currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
           pu->intraDir[0] = currCU.timdMode;
+#endif
 #endif
         }
 #endif
@@ -650,7 +682,7 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
       cs.updateReconMotIPM( currCU ); // decompressCtu : need
 #endif
 
-      DTRACE_BLOCK_REC( cs.picture->getRecoBuf( currCU ), currCU, currCU.predMode );
+      DTRACE_BLOCK_REC(cs.picture->getRecoBuf(currCU), currCU, currCU.predMode );
       if (CU::isInter(currCU))
       {
         DTRACE_MOT_FIELD(g_trace_ctx, *currCU.firstPU);

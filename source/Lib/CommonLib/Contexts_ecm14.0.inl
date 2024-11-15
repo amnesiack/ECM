@@ -5437,7 +5437,31 @@ const CtxSet ContextSetCfg::TimdMrgFlag = ContextSetCfg::addCtxSet
   { 119, 119, },
   });
 #endif
-
+#if JVET_AJ0146_TIMDSAD
+const CtxSet ContextSetCfg::TimdFlagSad = ContextSetCfg::addCtxSet
+({
+    {  41 },
+    {  34 },
+    {  18 },
+    {  41 },
+    {   6 },
+    {   7 },
+    {   6 },
+    {   6 },
+    {   4 },
+    {   4 },
+    {   4 },
+    {   4 },
+    { 107 },
+    { 135 },
+    { 100 },
+    { 154 },
+    { 139 },
+    { 117 },
+    { 107 },
+    { 135 },
+    });
+#endif
 const CtxSet ContextSetCfg::SgpmFlag = ContextSetCfg::addCtxSet({
 // ctx 1465 1467
  {  26,  26,  26 },

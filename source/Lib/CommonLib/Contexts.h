@@ -748,6 +748,9 @@ public:
 #if JVET_AJ0061_TIMD_MERGE
   static const CtxSet   TimdMrgFlag;
 #endif
+#if JVET_AJ0146_TIMDSAD
+  static const CtxSet   TimdFlagSad;
+#endif
 #endif
 #if JVET_AB0155_SGPM
   static const CtxSet   SgpmFlag;

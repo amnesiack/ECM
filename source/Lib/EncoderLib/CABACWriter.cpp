@@ -849,7 +849,7 @@ void CABACWriter::coding_tree(const CodingStructure& cs, Partitioner& partitione
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   }
 #endif
-  DTRACE_BLOCK_REC_COND( ( !isEncoding() ), cs.picture->getRecoBuf( cu ), cu, cu.predMode );
+  DTRACE_BLOCK_REC_COND((!isEncoding()), cs.picture->getRecoBuf(cu), cu, cu.predMode );
   if (CU::isInter(cu))
   {
     DTRACE_MOT_FIELD(g_trace_ctx, *cu.firstPU);
@@ -1867,6 +1867,9 @@ void CABACWriter::extend_ref_line(const PredictionUnit& pu)
 #if ENABLE_DIMD
     || cu.dimd
 #endif
+#if JVET_AJ0146_TIMDSAD
+    || (cu.timd && cu.timdSad)
+#endif
 #if JVET_AB0155_SGPM
       || cu.sgpm
 #endif
@@ -1947,6 +1950,9 @@ void CABACWriter::extend_ref_line(const CodingUnit& cu)
   if ( !cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType) || cu.bdpcmMode
 #if ENABLE_DIMD 
     || cu.dimd
+#endif
+#if JVET_AJ0146_TIMDSAD
+    || (cu.timd && cu.timdSad)
 #endif
 #if JVET_AB0155_SGPM
     || cu.sgpm
@@ -2582,6 +2588,12 @@ void CABACWriter::cu_timd_flag( const CodingUnit& cu )
 
   unsigned ctxId = DeriveCtx::CtxTimdFlag(cu);
   m_BinEncoder.encodeBin(cu.timd, Ctx::TimdFlag(ctxId));
+#if JVET_AJ0146_TIMDSAD
+  if (cu.timd && CU::allowTimdSad(cu))
+  {
+    m_BinEncoder.encodeBin(cu.timdSad, Ctx::TimdFlagSad());
+  }
+#endif  
   DTRACE(g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timd);
 #if JVET_AJ0061_TIMD_MERGE
   cu_timd_merge_flag(cu);
@@ -2595,6 +2607,12 @@ void CABACWriter::cu_timd_merge_flag( const CodingUnit& cu )
   {
     return;
   }
+#if JVET_AJ0146_TIMDSAD
+  if (cu.timdSad)
+  {
+    return;
+  }
+#endif  
   if (!PU::canTimdMerge(*cu.firstPU))
   {
     return;
@@ -9541,6 +9559,9 @@ void CABACWriter::isp_mode( const CodingUnit& cu )
   if( !CU::isIntra( cu ) || !isLuma( cu.chType ) || cu.firstPU->multiRefIdx || !cu.cs->sps->getUseISP() || cu.bdpcmMode || !CU::canUseISP( cu, getFirstComponentOfChannel( cu.chType ) ) || cu.colorTransform 
 #if ENABLE_DIMD && JVET_V0087_DIMD_NO_ISP && !JVET_AJ0249_NEURAL_NETWORK_BASED
     || cu.dimd
+#endif
+#if JVET_AJ0146_TIMDSAD
+    || (cu.timd && cu.timdSad)
 #endif
 #if JVET_AB0155_SGPM
       || cu.sgpm
