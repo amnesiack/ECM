@@ -15073,8 +15073,13 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
         if (tmFlag0)
         {
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          m_pcInterSearch->weightedGeoBlkRounded(pu, g_gpmSplitDir[whIdx][splitDir], bldIdx, CHANNEL_TYPE_LUMA, geoCombinations[geoCombIdx], predSrcTemp0, predSrcTemp1);
+          m_pcInterSearch->weightedGeoBlkRounded(pu, g_gpmSplitDir[whIdx][splitDir], bldIdx, CHANNEL_TYPE_CHROMA, geoCombinations[geoCombIdx], predSrcTemp0, predSrcTemp1);
+#else
           m_pcInterSearch->weightedGeoBlkRounded(pu, splitDir, bldIdx, CHANNEL_TYPE_LUMA, geoCombinations[geoCombIdx], predSrcTemp0, predSrcTemp1);
           m_pcInterSearch->weightedGeoBlkRounded(pu, splitDir, bldIdx, CHANNEL_TYPE_CHROMA, geoCombinations[geoCombIdx], predSrcTemp0, predSrcTemp1);
+#endif
 #else
           m_pcInterSearch->weightedGeoBlkRounded(pu, splitDir, CHANNEL_TYPE_LUMA, geoCombinations[candidateIdx], predSrc0, predSrc1);
           m_pcInterSearch->weightedGeoBlkRounded(pu, splitDir, CHANNEL_TYPE_CHROMA, geoCombinations[candidateIdx], predSrc0, predSrc1);
