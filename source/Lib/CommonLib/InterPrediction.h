@@ -178,8 +178,8 @@ public:
 #endif
 #endif
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
-  bool              m_isAffBdofChroma;
-  bool              m_isDeriveOobMask;
+  bool              m_isAffBdofChroma = false;
+  bool              m_isDeriveOobMask = false;
 #endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
 public:
