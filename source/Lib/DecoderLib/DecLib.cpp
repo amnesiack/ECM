@@ -1119,9 +1119,17 @@ void DecLib::finishPicture(int& poc, PicList*& rpcListPic, MsgLevel msgl )
 #if JVET_AA0096_MC_BOUNDARY_PADDING
   m_cFrameMcPadPrediction.init(&m_cRdCost, pcSlice->getSPS()->getChromaFormatIdc(), pcSlice->getSPS()->getMaxCUHeight(),
 #if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+#if JVET_AJ0237_INTERNAL_12BIT
+                               NULL, m_pcPic->getPicWidthInLumaSamples(),m_pcPic->getPicHeightInLumaSamples(), pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
                                NULL, m_pcPic->getPicWidthInLumaSamples(),m_pcPic->getPicHeightInLumaSamples());
+#endif
+#else
+#if JVET_AJ0237_INTERNAL_12BIT
+                               NULL, m_pcPic->getPicWidthInLumaSamples(), pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
 #else
                                NULL, m_pcPic->getPicWidthInLumaSamples());
+#endif
 #endif
   m_cFrameMcPadPrediction.mcFramePad(m_pcPic, *(m_pcPic->slices[0]));
 #endif
@@ -1969,6 +1977,10 @@ void DecLib::xActivateParameterSets( const InputNALUnit nalu )
                    sps->getMaxCUWidth(), sps->getMaxCUHeight(),
                    maxDepth,
                    log2SaoOffsetScaleLuma, log2SaoOffsetScaleChroma );
+#if JVET_AJ0237_INTERNAL_12BIT
+    m_cSAO.m_bilateralFilter.setInternalBitDepth(sps->getBitDepth(CHANNEL_TYPE_LUMA));
+    m_cBilateralFilter.setInternalBitDepth(sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#endif
 #if JVET_W0066_CCSAO
     pSlice->m_ccSaoControl[COMPONENT_Y ] = m_cSAO.getCcSaoControlIdc(COMPONENT_Y);
     pSlice->m_ccSaoControl[COMPONENT_Cb] = m_cSAO.getCcSaoControlIdc(COMPONENT_Cb);
@@ -1979,9 +1991,17 @@ void DecLib::xActivateParameterSets( const InputNALUnit nalu )
 #if INTER_LIC || (TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM) || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
 #if JVET_Z0153_IBC_EXT_REF
 #if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+#if JVET_AJ0237_INTERNAL_12BIT
+    m_cInterPred.init(&m_cRdCost, sps->getChromaFormatIdc(), sps->getMaxCUHeight(), &m_cReshaper, sps->getMaxPicWidthInLumaSamples(),sps->getMaxPicHeightInLumaSamples(), sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
     m_cInterPred.init(&m_cRdCost, sps->getChromaFormatIdc(), sps->getMaxCUHeight(), &m_cReshaper, sps->getMaxPicWidthInLumaSamples(),sps->getMaxPicHeightInLumaSamples());
+#endif
+#else
+#if JVET_AJ0237_INTERNAL_12BIT
+    m_cInterPred.init(&m_cRdCost, sps->getChromaFormatIdc(), sps->getMaxCUHeight(), &m_cReshaper, sps->getMaxPicWidthInLumaSamples(), sps->getBitDepth(CHANNEL_TYPE_LUMA));
 #else
     m_cInterPred.init(&m_cRdCost, sps->getChromaFormatIdc(), sps->getMaxCUHeight(), &m_cReshaper, sps->getMaxPicWidthInLumaSamples());
+#endif
 #endif
 #else
     m_cInterPred.init( &m_cRdCost, sps->getChromaFormatIdc(), sps->getMaxCUHeight(), &m_cReshaper);
@@ -3086,6 +3106,9 @@ bool DecLib::xDecodeSlice(InputNALUnit &nalu, int &iSkipFrame, int iPOCLastDispl
     {
       clipDeltaShift = ADAPTIVE_CLIP_SHIFT_DELTA_VALUE_0;
     }
+#if JVET_AJ0237_INTERNAL_12BIT
+    clipDeltaShift += std::max(0, pcSlice->getSPS()->getBitDepth(toChannelType(COMPONENT_Y)) - 10);
+#endif
     if (pcSlice->getSliceType() != I_SLICE)
     {
       int deltaMax = pcSlice->getLumaPelMax();

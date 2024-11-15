@@ -3531,8 +3531,15 @@ public:
   void                        setColRefIdx( uint32_t refIdx)                             { m_colRefIdx = refIdx;                                                                       }
   uint32_t                    getColRefIdx()                                             { return m_colRefIdx;                                                                         }
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AJ0237_INTERNAL_12BIT
+  void                        setCostForARMC(uint32_t cost, int bitDepth)               { m_costForARMC = (cost << (std::max(0, bitDepth - 10)));                                      }
+#else
   void                        setCostForARMC(uint32_t cost)                             { m_costForARMC = cost;                                                                        }
+#endif
   uint32_t                    getCostForARMC()                                          { return m_costForARMC;                                                                        }
+#if JVET_AJ0237_INTERNAL_12BIT
+  uint32_t                    getCostForARMC(int bitDepth)                              { return m_costForARMC >> (std::max(0, bitDepth - 10));                                        } // for header parsing/writing purpose
+#endif
 #endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   void                        setPicColFromL0Flag2nd(bool val)                          { m_picColFromL0Flag2nd = val;                                                                 }
@@ -4084,6 +4091,9 @@ public:
 #endif
   void                        checkColRefIdx(uint32_t curSliceSegmentIdx, const Picture* pic);
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AJ0237_INTERNAL_12BIT
+  uint32_t                    getCostForARMC(int bitDepth) const                                 { return m_costForARMC >> (std::max(0, bitDepth - 10)); } // for header parsing/writing purpose
+#endif
   uint32_t                    getCostForARMC() const                                 { return m_costForARMC;                                         }
 #endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
@@ -4284,7 +4294,11 @@ public:
   void                        setExtAmvpLevel(int b)                            { m_extAmvpLevel = b;                                    }
 #endif
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AJ0237_INTERNAL_12BIT
+  void                        setCostForARMC(uint32_t cost, int bitDepth)                          { m_costForARMC = (cost << (std::max(0, bitDepth - 10))); }
+#else
   void                        setCostForARMC(uint32_t cost)                          { m_costForARMC = cost;                                         }
+#endif
 #endif
   void                        setBiDirPred( bool b, int refIdx0, int refIdx1 ) { m_biDirPred = b; m_symRefIdx[0] = refIdx0; m_symRefIdx[1] = refIdx1; }
   bool                        getBiDirPred() const { return m_biDirPred; }
