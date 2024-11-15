@@ -3468,7 +3468,18 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     bool decPic = false;
     bool encPic = false;
     // test if we can skip the picture entirely or decode instead of encoding
-    trySkipOrDecodePicture( decPic, encPic, *m_pcCfg, pcPic, m_pcEncLib->getApsMap() );
+    try
+    {
+      trySkipOrDecodePicture(decPic, encPic, *m_pcCfg, pcPic, m_pcEncLib->getApsMap());
+    }
+    catch(const std::exception&)
+    {
+      decPic = false;
+      encPic = false;
+      tryDecodePicture(nullptr, 0, std::string(""));
+    }
+ 
+
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
     if ( decPic && pcPic != nullptr && pcPic->cs->sps->getALFEnabledFlag() )
     {

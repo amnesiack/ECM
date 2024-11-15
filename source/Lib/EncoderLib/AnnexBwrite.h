@@ -42,15 +42,6 @@
 //! \ingroup EncoderLib
 //! \{
 
-void checkWriteError(std::ostream& out)
-{
-  if (out.fail())
-  {
-    printf ("\nError writing bitstream file\n");
-    exit (EXIT_FAILURE);
-  }
-}
-
 #if JVET_R0294_SUBPIC_HASH
 uint32_t writeAnnexBNalUnit(std::ostream& out, const NALUnitEBSP& nalu, bool useLongStartcode)
 {

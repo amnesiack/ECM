@@ -162,6 +162,7 @@ void read(InputNALUnit& nalu)
 {
   InputBitstream &bitstream = nalu.getBitstream();
   vector<uint8_t>& nalUnitBuf=bitstream.getFifo();
+  CHECK(nalUnitBuf.size() == 0, "read nalu header shall not be equal to 0");
   // perform anti-emulation prevention
   convertPayloadToRBSP(nalUnitBuf, &bitstream, (nalUnitBuf[0] & 64) == 0);
   bitstream.resetToStart();
