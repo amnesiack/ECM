@@ -291,6 +291,10 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #endif
 #endif
   lfnstIdx          = other.lfnstIdx;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  indicesRepresentationPnn = other.indicesRepresentationPnn;
+  lfnstSecFlag = other.lfnstSecFlag;
+#endif
   tileIdx           = other.tileIdx;
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = other.plIdx;
@@ -614,6 +618,13 @@ void CodingUnit::initData()
 #endif
 #endif
   lfnstIdx          = 0;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  for (auto it{indicesRepresentationPnn.begin()}; it != indicesRepresentationPnn.end(); it++)
+  {
+    std::fill(it->begin(), it->end(), MAX_INT);
+  }
+  lfnstSecFlag = false;
+#endif
   tileIdx           = 0;
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = 0;
@@ -1167,7 +1178,7 @@ void PredictionUnit::initData()
   decoderDerivedCcpMode = 0;
   ddNonLocalCCPFusion = 0;
 #endif
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   parseLumaMode = false;
   candId = -1;
   parseChromaMode = false;
@@ -1398,7 +1409,7 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   decoderDerivedCcpMode = predData.decoderDerivedCcpMode;
   ddNonLocalCCPFusion = predData.ddNonLocalCCPFusion;
 #endif
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   parseLumaMode = predData.parseLumaMode;
   candId = predData.candId;
   parseChromaMode = predData.parseChromaMode;
@@ -1700,7 +1711,7 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   colIdx = other.colIdx;
 #endif
   mergeIdx    = other.mergeIdx;
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   parseLumaMode = other.parseLumaMode;
   candId = other.candId;
   parseChromaMode = other.parseChromaMode;

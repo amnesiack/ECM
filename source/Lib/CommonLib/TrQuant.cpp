@@ -512,7 +512,24 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
 #endif
     {
       intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (intraMode == PNN_IDX)
+      {
+        intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+      }
+#endif
     }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    else if (intraMode == PNN_IDX)
+    {
+      const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
+      intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0];
+      if (isLuma(compID) && isAllowedMultiple(width, height) && (tu.cu)->lfnstSecFlag)
+      {
+        intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? (tu.cu)->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
+      }
+    }
+#endif
     if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
     {
 #if JVET_AB0067_MIP_DIMD_LFNST
@@ -845,7 +862,24 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
 #endif
     {
       intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (intraMode == PNN_IDX)
+      {
+        intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+      }
+#endif
     }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    else if (intraMode == PNN_IDX)
+    {
+      const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
+      intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0];
+      if (isLuma(compID) && isAllowedMultiple(width, height) && (tu.cu)->lfnstSecFlag)
+      {
+        intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? (tu.cu)->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
+      }
+    }
+#endif
     if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
     {
 #if JVET_AB0067_MIP_DIMD_LFNST
@@ -1400,6 +1434,13 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       }
 #else
       int predMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (predMode == PNN_IDX)
+      {
+        const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
+        predMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0];
+      }
 #endif
 #if JVET_W0123_TIMD_FUSION
       if (tu.cu->timd && compID == COMPONENT_Y)
@@ -3119,7 +3160,24 @@ int TrQuant::getLfnstIdx(const TransformUnit &tu, ComponentID compID)
 #endif
   {
     intraMode = PU::getCoLocatedIntraLumaMode(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (intraMode == PNN_IDX)
+    {
+      intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+    }
+#endif
   }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  else if (intraMode == PNN_IDX)
+  {
+    const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
+    intraMode = tu.cs->getPU(area.pos(), toChannelType(compIdEffective))->cu->indicesRepresentationPnn[compIdEffective][0];
+    if (isLuma(compID) && isAllowedMultiple(area.width, area.height) && (tu.cu)->lfnstSecFlag)
+    {
+      intraMode = tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
+    }
+  }
+#endif
   if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
   {
 #if JVET_AB0067_MIP_DIMD_LFNST

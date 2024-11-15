@@ -3634,6 +3634,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
 
         m_pcSliceEncoder->precompressSlice( pcPic );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED 
+        pcSlice->setPnnMode(m_pcCfg->getNnipMode());
+#endif
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
 
         if(sliceIdx < pcPic->cs->pps->getNumSlicesInPic() - 1)

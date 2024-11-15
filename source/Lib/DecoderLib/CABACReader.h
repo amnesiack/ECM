@@ -159,6 +159,9 @@ public:
 #if JVET_AD0120_LBCCP
   void        ccInsideFilterFlag(PredictionUnit &pu);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void cu_pnn_flag(CodingUnit& cu);
+#endif
 #if ENABLE_DIMD
   void        cu_dimd_flag              (CodingUnit&                   cu);
  #endif

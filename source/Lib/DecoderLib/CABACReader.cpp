@@ -1579,7 +1579,14 @@ void CABACReader::coding_unit(CodingUnit& cu, Partitioner& partitioner, CUCtx& c
 #endif
 
 #if ENABLE_DIMD
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (!cu.slice->getPnnMode())
+  {
+    cu_dimd_flag(cu);
+  }
+#else
   cu_dimd_flag( cu );
+#endif
 #endif
   if (CU::isIntra(cu))
   {
@@ -2444,7 +2451,11 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     return;
   }
 #if JVET_AH0076_OBIC
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (cu.obicFlag && !cu.slice->getPnnMode())
+#else
   if (cu.obicFlag)
+#endif
   {
     return;
   }
@@ -2454,6 +2465,23 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     cu.firstPU->intraDir[0] = cu.bdpcmMode == 2? VER_IDX : HOR_IDX;
     return;
   }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  cu_pnn_flag(cu);
+  if ((cu.firstPU)->intraDir[CHANNEL_TYPE_LUMA] == PNN_IDX)
+  {
+    return;
+  }
+#if ENABLE_DIMD
+  if (cu.slice->getPnnMode())
+  {
+    cu_dimd_flag(cu);
+  }
+  if (cu.dimd)
+  {
+    return;
+  }
+#endif
+#endif
 #if JVET_V0130_INTRA_TMP
   int tmpMaxSize=cu.cs->sps->getIntraTMPMaxSize();
   if (cu.lwidth() <= tmpMaxSize && cu.lheight() <= tmpMaxSize)
@@ -2523,7 +2551,7 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 #endif
 #endif
   isp_mode( cu );
-#if ENABLE_DIMD
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.dimd)
   {
     return;
@@ -2555,12 +2583,15 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 
   PredictionUnit *pu = cu.firstPU;
 
+#if !JVET_AJ0249_NEURAL_NETWORK_BASED
 #if !SECONDARY_MPM
   unsigned int mpmPred[NUM_MOST_PROBABLE_MODES];  // mpm_idx / rem_intra_luma_pred_mode
+#endif
 #endif
 
   for( int k = 0; k < numBlocks; k++ )
   {
+#if !JVET_AJ0249_NEURAL_NETWORK_BASED
 #if !JVET_AD0085_TMRL_EXTENSION
 #if SECONDARY_MPM
     PU::getIntraMPMs( *pu, mpmPred, nonMpmPred
@@ -2572,7 +2603,8 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     PU::getIntraMPMs(*pu, mpmPred);
 #endif
 #endif
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#endif
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
     pu->parseLumaMode = true;
     pu->mpmFlag = mpmFlag[k];
 #endif
@@ -2624,7 +2656,7 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 #if SECONDARY_MPM
       if( m_BinDecoder.decodeBin( Ctx::IntraLumaSecondMpmFlag() ) )
       {
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
 #if JVET_AD0085_MPM_SORTING
         int idx = 0;
         if (cu.cs->sps->getUseMpmSorting())
@@ -2670,7 +2702,7 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       pu->ipredIdx = ipredMode;
 #endif
 #endif
-#if !SECONDARY_MPM
+#if !SECONDARY_MPM && !JVET_AJ0249_NEURAL_NETWORK_BASED
       //postponed sorting of MPMs (only in remaining branch)
       std::sort( mpmPred, mpmPred + NUM_MOST_PROBABLE_MODES );
 
@@ -2680,7 +2712,9 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       }
 #endif
 
+#if !JVET_AJ0249_NEURAL_NETWORK_BASED
       pu->intraDir[0] = ipredMode;
+#endif
     }
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -2709,6 +2743,24 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     pu = pu->next;
   }
 }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+void CABACReader::cu_pnn_flag(CodingUnit& cu)
+{
+  if (!cu.Y().valid())
+  {
+    return;
+  }
+  if (cu.slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(cu))
+  {
+    const uint16_t ctxId = DeriveCtx::CtxPnnLuminanceFlag(cu);
+    if (m_BinDecoder.decodeBin(Ctx::PnnLuminanceFlag(ctxId)))
+    {
+      (cu.firstPU)->intraDir[CHANNEL_TYPE_LUMA] = PNN_IDX;
+    }
+    DTRACE(g_trace_ctx, D_SYNTAX, "cu_pnn_flag() ctx=%d pos=(%d,%d) pnn=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, (cu.firstPU)->intraDir[CHANNEL_TYPE_LUMA] == PNN_IDX ? 1 : 0);
+  }
+}
+#endif
 #if ENABLE_DIMD
 void CABACReader::cu_dimd_flag(CodingUnit& cu)
 {
@@ -2732,7 +2784,11 @@ void CABACReader::cu_dimd_flag(CodingUnit& cu)
 void CABACReader::cu_obic_flag(CodingUnit& cu )
 {
   cu.obicFlag = false;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (!cu.Y().valid() || !cu.dimd)
+#else
   if (!cu.dimd || !cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType))
+#endif
   {
     return;
   }
@@ -2747,7 +2803,11 @@ void CABACReader::cu_obic_flag(CodingUnit& cu )
 #if JVET_AG0058_EIP
 void CABACReader::cu_eip_flag(CodingUnit& cu)
 {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (!cu.Y().valid() || cu.timd)
+#else
   if (cu.timd || cu.dimd || !cu.Y().valid() || !isLuma(cu.chType))
+#endif
   {
     cu.eipFlag = false;
     return;
@@ -2814,7 +2874,7 @@ void CABACReader::cu_timd_flag( CodingUnit& cu )
     cu.timd = false;
     return;
   }
-#if ENABLE_DIMD
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.dimd)
   {
     cu.timd = false;
@@ -2871,7 +2931,7 @@ void CABACReader::sgpm_flag(CodingUnit &cu)
   }
 
   if( cu.mipFlag
-#if ENABLE_DIMD
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
     || cu.dimd
 #endif
 #if JVET_W0123_TIMD_FUSION
@@ -3517,7 +3577,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
   }
 #endif
 
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   pu.parseChromaMode = true;
 #endif
   unsigned candId = m_BinDecoder.decodeBinsEP(2);
@@ -3535,7 +3595,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
 #endif
   }
 #endif
-#if JVET_AH0136_CHROMA_REORDERING
+#if JVET_AH0136_CHROMA_REORDERING || JVET_AJ0249_NEURAL_NETWORK_BASED
   pu.intraDir[1] = PLANAR_IDX;
   pu.candId = candId;
 #else
@@ -9580,7 +9640,7 @@ void CABACReader::mts_idx( CodingUnit& cu, CUCtx& cuCtx )
 void CABACReader::isp_mode( CodingUnit& cu )
 {
   if( !CU::isIntra( cu ) || !isLuma( cu.chType ) || cu.firstPU->multiRefIdx || !cu.cs->sps->getUseISP() || cu.bdpcmMode || !CU::canUseISP( cu, getFirstComponentOfChannel( cu.chType ) ) || cu.colorTransform 
-#if ENABLE_DIMD && JVET_V0087_DIMD_NO_ISP
+#if ENABLE_DIMD && JVET_V0087_DIMD_NO_ISP && !JVET_AJ0249_NEURAL_NETWORK_BASED
       || cu.dimd
 #endif
 #if JVET_AB0155_SGPM
@@ -9747,6 +9807,16 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
     }
 #endif
     cu.lfnstIdx = idxLFNST;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (isLuma(cu.chType) && cu.lfnstIdx && isAllowedMultiple(cu.lwidth(), cu.lheight()))
+    {
+      const uint32_t intraMode = PU::getFinalIntraMode(*cu.firstPU, cu.chType);
+      if (intraMode == PNN_IDX)
+      {
+        cu.lfnstSecFlag = m_BinDecoder.decodeBin(Ctx::LFNSTIdx(4));
+      }
+    }
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   }
 #endif
@@ -10410,7 +10480,7 @@ void CABACReader::tmp_flag(CodingUnit& cu)
     return;
   }
 
-#if JVET_X0124_TMP_SIGNAL
+#if JVET_X0124_TMP_SIGNAL && !JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.dimd)
   {
     cu.tmpFlag = false;
@@ -10563,7 +10633,7 @@ void CABACReader::tmp_flag(CodingUnit& cu)
 void CABACReader::mip_flag( CodingUnit& cu )
 {
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2(STATS__CABAC_BITS__INTRA_MIP, cu.lumaSize(), COMPONENT_Y);
-#if ENABLE_DIMD
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.dimd)
   {
     cu.mipFlag = false;

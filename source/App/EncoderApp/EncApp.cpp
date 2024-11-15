@@ -1636,6 +1636,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AB0171_ASYMMETRIC_DB_FOR_GDR
   m_cEncLib.setAsymmetricILF(m_asymmetricILF);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_cEncLib.setNnipMode(m_intraNN);
+#endif
 }
 
 void EncApp::xCreateLib( std::list<PelUnitBuf*>& recBufList, const int layerId )

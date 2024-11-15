@@ -4921,6 +4921,30 @@ const CtxSet ContextSetCfg::CcSaoControlIdc = ContextSetCfg::addCtxSet({
  { 196, 148, 115, 213, 244, 116, 228, 244, 116 },
 });
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+const CtxSet ContextSetCfg::LFNSTIdx = ContextSetCfg::addCtxSet({
+ {  51,  35,  43,  42,  42 },
+ {  36,  35,  51,  35,  35 },
+ {  35,  43,  50,  42,  42 },
+ {  51,  35,  43,  42,  42 },
+ {  10,   8,   5,  12,  12 },
+ {  10,   8,   6,  13,  13 },
+ {   8,   9,   5,  10,   5 },
+ {  10,   8,   5,  12,  12 },
+ {   4,  18,  11,   4,   4 },
+ {   4,  18,  11,  11,  11 },
+ {  18,   4,   4,   4,   4 },
+ {   4,  18,  11,   4,   4 },
+ { 105, 119, 118, 152, 152 },
+ { 122, 119, 103,  88,  88 },
+ { 116, 119, 116, 101, 101 },
+ { 116, 119, 115, 117, 117 },
+ { 119, 118, 132, 121, 134 },
+ { 119, 107, 116, 116, 101 },
+ { 194, 122, 116, 118, 118 },
+ { 119, 116, 116,  91,  91 },
+});
+#else
 const CtxSet ContextSetCfg::LFNSTIdx = ContextSetCfg::addCtxSet({
 // ctx 1424 1427
  {  51,  35,  43,  42 },
@@ -4944,6 +4968,7 @@ const CtxSet ContextSetCfg::LFNSTIdx = ContextSetCfg::addCtxSet({
  { 194, 122, 116, 118 },
  { 119, 116, 116,  91 },
 });
+#endif
 
 #if JVET_AG0061_INTER_LFNST_NSPT
 const CtxSet ContextSetCfg::InterLFNSTIdx = ContextSetCfg::addCtxSet({
@@ -6726,6 +6751,31 @@ const CtxSet ContextSetCfg::ChromaTmrlFlag = ContextSetCfg::addCtxSet
   { DWO, },
   { DWO, },
   });
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+const CtxSet ContextSetCfg::PnnLuminanceFlag = ContextSetCfg::addCtxSet
+({
+  {  14,   6 },
+  {  14,  13 },
+  {  43,  35 },
+  {  14,   6 },
+  {   1,   2 },
+  {   1,   2 },
+  {   4,   6 },
+  {   1,   2 },
+  {  18,  18 },
+  {  18,  18 },
+  {   4,  11 },
+  {  18,  18 },
+  { 124, 115 },
+  { 116, 115 },
+  { 120, 116 },
+  { 115, 115 },
+  { 196, 100 },
+  { 119, 130 },
+  { 124, 116 },
+  { 116, 115 }
+});
 #endif
 // CONTEXTS WSA STOP
 #endif

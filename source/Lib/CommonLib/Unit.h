@@ -43,6 +43,9 @@
 #include "Mv.h"
 #include "MotionInfo.h"
 #include "ChromaFormat.h"
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+#include <array>
+#endif
 
 // ---------------------------------------------------------------------------
 // tools
@@ -461,6 +464,10 @@ struct CodingUnit : public UnitArea
 #endif
 #endif
   uint8_t        lfnstIdx;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  std::array<std::array<uint32_t, NUM_INDICES_REP>, MAX_NUM_COMPONENT> indicesRepresentationPnn;
+  bool           lfnstSecFlag;
+#endif
   uint8_t        bcwIdx;
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   AffineBlendingModel blendModel;
@@ -600,7 +607,7 @@ struct CodingUnit : public UnitArea
 
 struct IntraPredictionData
 {
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AH0136_CHROMA_REORDERING
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AH0136_CHROMA_REORDERING || JVET_AJ0249_NEURAL_NETWORK_BASED
   bool      parseLumaMode = false;
   int8_t    candId = -1;
   bool      parseChromaMode = false;

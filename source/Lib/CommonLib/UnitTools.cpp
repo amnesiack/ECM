@@ -1869,6 +1869,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puLeft);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
       if( !includedMode[mpm[numValidMPM]] )
       {
 #if JVET_AC0094_REF_SAMPLES_OPT
@@ -1891,6 +1897,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
       if (puLeft->cu->timd)
       {
         leftIntraDir = MAP131TO67(leftIntraDir);
+      }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (leftIntraDir == PNN_IDX)
+      {
+        leftIntraDir = PLANAR_IDX;
       }
 #endif
 #endif
@@ -1918,6 +1930,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAbove);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
       if (!includedMode[mpm[numValidMPM]])
       {
 #if JVET_AC0094_REF_SAMPLES_OPT
@@ -1940,6 +1958,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
       if (puAbove->cu->timd)
       {
         aboveIntraDir = MAP131TO67(aboveIntraDir);
+      }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (aboveIntraDir == PNN_IDX)
+      {
+        aboveIntraDir = PLANAR_IDX;
       }
 #endif
 #endif
@@ -2013,6 +2037,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puBelowLeft);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
       if( !includedMode[mpm[numValidMPM]] )
       {
 #if JVET_AC0094_REF_SAMPLES_OPT
@@ -2039,6 +2069,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
       mpm[numValidMPM] = puAboveRight->cu->timd ? MAP131TO67(PU::getIntraDirLuma(*puAboveRight)) : PU::getIntraDirLuma(*puAboveRight);
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAboveRight);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
 #endif
       if( !includedMode[mpm[numValidMPM]] )
       {
@@ -2067,6 +2103,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
       mpm[numValidMPM] = puAboveLeft->cu->timd ? MAP131TO67(PU::getIntraDirLuma(*puAboveLeft)) : PU::getIntraDirLuma(*puAboveLeft);
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAboveLeft);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
 #endif
       if( !includedMode[mpm[numValidMPM]] )
       {
@@ -2407,7 +2449,11 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
       if (leftIntraDir == aboveIntraDir)
       {
         numCand = 1;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        if (leftIntraDir > DC_IDX && leftIntraDir < PNN_IDX)
+#else
         if (leftIntraDir > DC_IDX)
+#endif
         {
           mpm[0] = PLANAR_IDX;
           mpm[1] = leftIntraDir;
@@ -2641,6 +2687,12 @@ void PU::getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitD
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puLeft);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puLeft->cu->tmrlFlag)
       {
@@ -2667,6 +2719,12 @@ void PU::getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitD
       mpm[numValidMPM] = puAbove->cu->timd ? MAP131TO67(PU::getIntraDirLuma(*puAbove)) : PU::getIntraDirLuma(*puAbove);
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAbove);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
 #endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puAbove->cu->tmrlFlag)
@@ -2731,6 +2789,12 @@ void PU::getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitD
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puBelowLeft);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puBelowLeft->cu->tmrlFlag)
       {
@@ -2758,6 +2822,12 @@ void PU::getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitD
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAboveRight);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puAboveRight->cu->tmrlFlag)
       {
@@ -2783,6 +2853,12 @@ void PU::getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitD
       mpm[numValidMPM] = puAboveLeft->cu->timd ? MAP131TO67(PU::getIntraDirLuma(*puAboveLeft)) : PU::getIntraDirLuma(*puAboveLeft);
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAboveLeft);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
 #endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puAboveLeft->cu->tmrlFlag)
@@ -2959,6 +3035,12 @@ void PU::getSgpmIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t splitD
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puLeft);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puLeft->cu->tmrlFlag)
       {
@@ -2985,6 +3067,12 @@ void PU::getSgpmIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t splitD
       mpm[numValidMPM] = puAbove->cu->timd ? MAP131TO67(PU::getIntraDirLuma(*puAbove)) : PU::getIntraDirLuma(*puAbove);
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAbove);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
 #endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puAbove->cu->tmrlFlag)
@@ -3058,6 +3146,12 @@ void PU::getSgpmIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t splitD
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puBelowLeft);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puBelowLeft->cu->tmrlFlag)
       {
@@ -3086,6 +3180,12 @@ void PU::getSgpmIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t splitD
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAboveRight);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puAboveRight->cu->tmrlFlag)
       {
@@ -3112,6 +3212,12 @@ void PU::getSgpmIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t splitD
         puAboveLeft->cu->timd ? MAP131TO67(PU::getIntraDirLuma(*puAboveLeft)) : PU::getIntraDirLuma(*puAboveLeft);
 #else
       mpm[numValidMPM] = PU::getIntraDirLuma(*puAboveLeft);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mpm[numValidMPM] == PNN_IDX)
+      {
+        mpm[numValidMPM] = PLANAR_IDX;
+      }
 #endif
 #if JVET_AD0085_TMRL_EXTENSION
       if (puAboveLeft->cu->tmrlFlag)
@@ -5472,7 +5578,15 @@ void PU::getIntraChromaCandModes(const PredictionUnit &pu, unsigned modeList[NUM
 #endif
 
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  uint32_t lumaMode = getCoLocatedIntraLumaMode(pu);
+  if (lumaMode == PNN_IDX)
+  {
+    lumaMode = PU::getCoLocatedIdxRepresentationPnn(pu);
+  }
+#else
   const uint32_t lumaMode = getCoLocatedIntraLumaMode(pu);
+#endif
   for (int i = 0; i < 4; i++)
   {
     if (lumaMode == modeList[i])
@@ -5595,6 +5709,12 @@ uint32_t PU::getFinalIntraMode( const PredictionUnit &pu, const ChannelType &chT
   if( uiIntraMode == DM_CHROMA_IDX && !isLuma( chType ) )
   {
     uiIntraMode = getCoLocatedIntraLumaMode(pu);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (uiIntraMode == PNN_IDX)
+    {
+      uiIntraMode = PU::getCoLocatedIdxRepresentationPnn(pu);
+    }
+#endif
   }
   if( pu.chromaFormat == CHROMA_422 && !isLuma( chType ) && uiIntraMode < NUM_LUMA_MODE ) // map directional, planar and dc
   {
@@ -6172,6 +6292,13 @@ bool PU::checkIsChromaBvCandidateValid(const PredictionUnit &pu
   }
   return true;
 #endif
+}
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+uint32_t PU::getCoLocatedIdxRepresentationPnn(const PredictionUnit& pu)
+{
+  const PredictionUnit& lumaPU = PU::getCoLocatedLumaPU(pu);
+  return (lumaPU.cu)->indicesRepresentationPnn[COMPONENT_Y][0];
 }
 #endif
 
@@ -28930,6 +29057,12 @@ void PU::spanIpmInfoIntra( PredictionUnit &pu)
 #endif
 
   int ipm = PU::getIntraDirLuma(pu);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (ipm == PNN_IDX)
+  {
+    ipm = PLANAR_IDX;
+  }
+#endif
 
   if (pu.cu->timd)
   {
@@ -32641,7 +32774,11 @@ bool CU::bdpcmAllowed( const CodingUnit& cu, const ComponentID compID )
        {
          bdpcmAllowed &= (cu.lwidth() <= transformSkipMaxSize && cu.lheight() <= transformSkipMaxSize);
 #if ENABLE_DIMD
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+         bdpcmAllowed &= (cu.slice->getPnnMode() ? true : !cu.dimd);
+#else
          bdpcmAllowed &= !cu.dimd;
+#endif
 #endif
        }
        else
@@ -33595,7 +33732,7 @@ bool CU::allowTmrl(const CodingUnit& cu)
 #else
     || !cu.cs->sps->getUseMRL()
 #endif
-#if ENABLE_DIMD
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
     || cu.dimd
 #endif
     )
@@ -33908,7 +34045,24 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
 #endif
   {
     intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (intraMode == PNN_IDX)
+    {
+      intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+    }
+#endif
   }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  else if (intraMode == PNN_IDX)
+  {
+    const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
+    intraMode = tu.cs->getPU(area.pos(), toChannelType(compIdEffective))->cu->indicesRepresentationPnn[compIdEffective][0];
+    if (isLuma(compID) && isAllowedMultiple(area.width, area.height) && (tu.cu)->lfnstSecFlag)
+    {
+      intraMode = tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
+    }
+  }
+#endif
   if( PU::isMIP( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
   {
 #if JVET_AB0067_MIP_DIMD_LFNST
@@ -34130,6 +34284,12 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
 #endif
 #endif
         }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        else if (neighborMode == PNN_IDX)
+        {
+          neighborMode = PLANAR_IDX;
+        }
+#endif
 #if JVET_AD0085_TMRL_EXTENSION
         if (extPrecision)
         {
@@ -34995,6 +35155,13 @@ void buildHistogramAdaptive(const Pel *pReco, int iStride, uint32_t uiHeight, ui
     }
   }
   return;
+}
+#endif
+
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+bool isAllowedMultiple(const SizeType width, const SizeType height)
+{
+  return !((height == 4 && width == 4) || (height == 8 && width == 4) || (height == 4 && width == 8));
 }
 #endif
 

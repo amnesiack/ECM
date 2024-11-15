@@ -155,7 +155,7 @@
 #define JVET_X0148_TIMD_PDPC                              1 // JVET-X0148: PDPC handling for TIMD
 #define JVET_AG0092_ENHANCED_TIMD_FUSION                  1 // JVET-AG0092: TIMD fusion with non-angular predictor
 #define JVET_AG0128_REF_LINE_OPT_TIMD_FUSION              1 // JVET-AG0128: TIMD fusion reference line determination
-#define JVET_AJ0061_TIMD_MERGE                            1 // TIMD merge mode 
+#define JVET_AJ0061_TIMD_MERGE                            1 // TIMD merge mode
 
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
@@ -166,6 +166,8 @@
 #if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
 #define JVET_X0149_TIMD_DIMD_LUT                          1 // JVET-X0149: LUT-based derivation of DIMD and TIMD
 #endif
+
+#define JVET_AJ0249_NEURAL_NETWORK_BASED                  1 // JVET-AJ0249: Neural network-based intra prediction with DIMD mode derivation
 
 #define JVET_Y0116_EXTENDED_MRL_LIST                      1 // JVET-Y0116: Extended MRL Candidate List
 #define JVET_Z0050_DIMD_CHROMA_FUSION                     1 // JVET-Z0050: DIMD chroma mode and fusion of chroma intra prediction modes

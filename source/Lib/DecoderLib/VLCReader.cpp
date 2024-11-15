@@ -2765,6 +2765,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AH0209_PDP
   READ_FLAG( uiCode, "sps_pdp_enabled_flag" );                      pcSPS->setUsePDP( uiCode != 0 );
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  READ_FLAG(uiCode, "sps_nnip_enabled_flag");
+  pcSPS->setNnipMode(static_cast<bool>(uiCode));
+#endif
 #if ENABLE_DIMD
   READ_FLAG(uiCode, "sps_dimd_enabled_flag");                           pcSPS->setUseDimd(uiCode != 0);
 #endif

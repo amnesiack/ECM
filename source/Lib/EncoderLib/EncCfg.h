@@ -1207,6 +1207,9 @@ protected:
 #if JVET_AB0171_ASYMMETRIC_DB_FOR_GDR  
   bool      m_asymmetricILF;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool m_nnip;
+#endif
 
 #if JVET_AH0209_PDP
   bool         m_pdp;
@@ -1222,6 +1225,9 @@ protected:
 
 public:
   EncCfg()
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    : m_intraSmoothingDisabledFlag(false), m_nnip(true)
+#endif
   {
   }
 
@@ -3057,6 +3063,10 @@ public:
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT
   void      setTempCabacInitMode( unsigned n )                        { m_tempCabacInitMode = n; }
   unsigned  getTempCabacInitMode()                              const { return m_tempCabacInitMode; }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void setNnipMode(const bool nnip) { m_nnip = nnip; }
+  bool getNnipMode() const { return m_nnip; }
 #endif
 };
 

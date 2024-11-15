@@ -3352,6 +3352,32 @@ unsigned DeriveCtx::CtxMipFlag( const CodingUnit& cu )
 
   return ctxId;
 }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+uint16_t DeriveCtx::CtxPnnLuminanceFlag(const CodingUnit& cu)
+{
+  const CodingStructure* const cs = cu.cs;
+  uint16_t ctxId = 0;
+  const CodingUnit* const cuLeft = cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CHANNEL_TYPE_LUMA);
+  if (cuLeft)
+  {
+    const uint32_t indexModeLeft = PU::getFinalIntraMode(*cuLeft->firstPU, CHANNEL_TYPE_LUMA);
+    if (indexModeLeft == PNN_IDX)
+    {
+      return 1;
+    }
+  }
+  const CodingUnit* const cuAbove = cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CHANNEL_TYPE_LUMA);
+  if (cuAbove)
+  {
+    const uint32_t indexModeAbove = PU::getFinalIntraMode(*cuAbove->firstPU, CHANNEL_TYPE_LUMA);
+    if (indexModeAbove == PNN_IDX)
+    {
+      ctxId = 1;
+    }
+  }
+  return ctxId;
+}
+#endif
 
 unsigned DeriveCtx::CtxPltCopyFlag( const unsigned prevRunType, const unsigned dist )
 {

@@ -1205,6 +1205,9 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 #if JVET_AA0133_INTER_MTS_OPT
   m_pcInterSearch->setBestCost(maxCostAllowed);
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_pcIntraSearch->resetCuData();
+#endif
 
 #if ENABLE_SPLIT_PARALLELISM
   CHECK( m_dataId != tempCS->picture->scheduler.getDataId(), "Working in the wrong dataId!" );
@@ -3464,6 +3467,11 @@ void EncCu::xCheckRDCostSeparateTreeIntra( CodingStructure *&tempCS, CodingStruc
 
 bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &partitioner, const EncTestMode& encTestMode, bool adaptiveColorTrans)
 {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_pcIntraSearch->resetIndicesRepresentationPnnMemories();
+  m_pcIntraSearch->resetAreDimdObicPredictionsSaved();
+  m_pcIntraSearch->setEvalIdx(-1);
+#endif
   double          bestInterCost             = m_modeCtrl->getBestInterCost();
   double          costSize2Nx2NmtsFirstPass = m_modeCtrl->getMtsSize2Nx2NFirstPassCost();
   bool            skipSecondMtsPass         = m_modeCtrl->getSkipSecondMTSPass();
@@ -3871,6 +3879,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #endif
 #if JVET_AJ0082_MM_EIP
   m_pcIntraSearch->m_skipEipLfnstMtsPass = false;
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_pcIntraSearch->m_skipNnLfnstMtsPass = false;
 #endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   m_pcIntraSearch->m_skipCCCMSATD = false;
@@ -4493,7 +4504,14 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
           m_CABACEstimator->separate_tree_cu_flag( cu, partitioner );
 #endif
 #if ENABLE_DIMD
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+          if (!cu.slice->getPnnMode())
+          {
+            m_CABACEstimator->cu_dimd_flag(cu);
+          }
+#else
           m_CABACEstimator->cu_dimd_flag   ( cu );
+#endif
 #endif
           m_CABACEstimator->adaptive_color_transform(cu);
           m_CABACEstimator->cu_pred_data   ( cu );
@@ -25771,6 +25789,9 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
   {
     CodingUnit& cu = *tempCS->cus.front();
     partitioner.setCUData( cu );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    m_pcIntraSearch->setEvalIdx(-1);
+#endif
 #if MULTI_PASS_DMVR
     for( auto &pu : CU::traversePUs( cu ) )
     {

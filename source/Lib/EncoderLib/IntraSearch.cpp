@@ -49,6 +49,9 @@
 
 #include "CommonLib/dtrace_next.h"
 #include "CommonLib/dtrace_buffer.h"
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+#include "CommonLib/IntraPredictionNN.h"
+#endif
 
 #include <math.h>
 #include <limits>
@@ -369,6 +372,15 @@ IntraSearch::~IntraSearch()
     destroy();
   }
 }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+void IntraSearch::resetIndicesRepresentationPnnMemories()
+{
+  for (auto it{m_indicesRepresentationPnn.begin()}; it != m_indicesRepresentationPnn.end(); it++)
+  {
+    std::fill(it->begin(), it->end(), MAX_INT);
+  }
+}
+#endif
 
 void IntraSearch::init( EncCfg*        pcEncCfg,
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
@@ -398,7 +410,11 @@ void IntraSearch::init( EncCfg*        pcEncCfg,
 
   const ChromaFormat cform = pcEncCfg->getChromaFormatIdc();
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  IntraPrediction::init(cform, pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA), pcEncCfg->getNnipMode());
+#else
   IntraPrediction::init( cform, pcEncCfg->getBitDepth( CHANNEL_TYPE_LUMA ) );
+#endif
   m_tmpStorageLCU.create(UnitArea(cform, Area(0, 0, maxCUWidth, maxCUHeight)));
   m_colorTransResiBuf.create(UnitArea(cform, Area(0, 0, maxCUWidth, maxCUHeight)));
 
@@ -656,6 +672,9 @@ void IntraSearch::init( EncCfg*        pcEncCfg,
 #if JVET_AJ0082_MM_EIP
   m_skipEipLfnstMtsPass = false;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_skipNnLfnstMtsPass = false;
+#endif
 }
 
 
@@ -745,6 +764,16 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   const TempCtx ctxStartTpmIdx     ( m_ctxCache, SubCtx(Ctx::TmpIdx, m_CABACEstimator->getCtx()));
   const TempCtx ctxStartTpmFusionFlag(m_ctxCache, SubCtx(Ctx::TmpFusion, m_CABACEstimator->getCtx()));
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  const bool isNnIn = cu.slice->getPnnMode();
+  const TempCtx ctxStartIntraNnFlag(m_ctxCache, SubCtx(Ctx::PnnLuminanceFlag, m_CABACEstimator->getCtx()));
+#if ENABLE_DIMD
+  const TempCtx ctxStartDimdFlag(m_ctxCache, SubCtx(Ctx::DimdFlag, m_CABACEstimator->getCtx()));
+#if JVET_AH0076_OBIC
+  const TempCtx ctxStartObicFlag(m_ctxCache, SubCtx(Ctx::obicFlag, m_CABACEstimator->getCtx()));
+#endif
+#endif
+#endif
 
 #if JVET_AG0136_INTRA_TMP_LIC
   const TempCtx ctxStartTmpLicFlag   (m_ctxCache, SubCtx(Ctx::TmpLic, m_CABACEstimator->getCtx()));
@@ -790,6 +819,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AD0086_ENHANCED_INTRA_TMP
     m_CABACEstimator->getCtx() = SubCtx(Ctx::TmpIdx, ctxStartTpmIdx);
     m_CABACEstimator->getCtx() = SubCtx(Ctx::TmpFusion, ctxStartTpmFusionFlag);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (isNnIn)
+    {
+      m_CABACEstimator->getCtx() = SubCtx(Ctx::PnnLuminanceFlag, ctxStartIntraNnFlag);
+#if ENABLE_DIMD
+      m_CABACEstimator->getCtx() = SubCtx(Ctx::DimdFlag, ctxStartDimdFlag);
+#if JVET_AH0076_OBIC
+      m_CABACEstimator->getCtx() = SubCtx(Ctx::obicFlag, ctxStartObicFlag);
+#endif
+#endif
+    }
 #endif
 #if JVET_W0123_TIMD_FUSION
     m_CABACEstimator->getCtx() = SubCtx(Ctx::TimdFlag, ctxStartTimdFlag);
@@ -1014,6 +1055,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   double obicAngCost = MAX_DOUBLE, dimdAngCost = MAX_DOUBLE;
   bool setSkipDimdControl = (m_pcEncCfg->getIntraPeriod() == 1) && !cu.lfnstIdx && !cu.mtsFlag;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  double regAngCostSupp = MAX_DOUBLE;
+  const bool setSkipNnControl = m_pcEncCfg->getIntraPeriod() == 1 && !cu.lfnstIdx && !cu.mtsFlag;
+  double nnAngCost = MAX_DOUBLE;
+#endif
   const bool testBDPCM = sps.getBDPCMEnabledFlag() && CU::bdpcmAllowed(cu, ComponentID(partitioner.chType)) && cu.mtsFlag == 0 && cu.lfnstIdx == 0;
   static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> uiHadModeList;
   static_vector<double, FAST_UDI_MAX_RDMODE_NUM> candCostList;
@@ -1085,6 +1131,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AC0105_DIRECTIONAL_PLANAR
     uint8_t bestPlMode = 0;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    bool bestLfnstSecFlag = false;
+#endif
 #if JVET_AB0155_SGPM
     bool bestSgpmMode = false;
     const CompArea &area = pu.Y();
@@ -1095,6 +1144,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif 
 
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    const bool isShapeHandledPnn = isNnIn && IntraPredictionNN::hasPnnPrediction(cu);
+    int idxShift = 0;
+    int idxPnnBackwardCompatibility = -MAX_INT;
+#endif
     if (isSecondColorSpace)
     {
       uiRdModeList.clear();
@@ -1238,6 +1292,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           if( testTpm && m_pcEncCfg->getItmpLicMode())
           {
             numModesForFullRD += 1; // testing lic itmp
+          }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+          if (isNnIn)
+          {
+            numModesForFullRD += 1;
           }
 #endif
           const int numHadCand = (testMip ? 2 : 1) * 3 + testTpm;
@@ -2460,7 +2520,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               double mipHadCost[MAX_NUM_MIP_MODE] = { MAX_DOUBLE };
 
 #if JVET_AB0157_INTRA_FUSION && JVET_AB0155_SGPM
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+              initIntraPatternChType(cu, pu.Y(), false, 0, false, false, true);
+#else
               initIntraPatternChType(cu, pu.Y(), false, 0, false);
+#endif
 #elif JVET_AB0157_INTRA_FUSION
               initIntraPatternChType(cu, pu.Y(), false, false);
 #else
@@ -2693,6 +2757,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 }
                 PelBuf obicSaveBuf(m_obicPredBuf, pu.Y());
                 obicSaveBuf.copyFrom(piPred);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+                m_isObicPredictionSaved = true;
+#endif
                 Distortion sadCost = distParamSad.distFunc(distParamSad);
                 Distortion minSadHadObic = std::min(sadCost * 2, distParamHad.distFunc(distParamHad));
                 m_satdCostOBIC = minSadHadObic;
@@ -2754,6 +2821,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 }
                 PelBuf dimdSaveBuf(m_dimdPredBuf, pu.Y());
                 dimdSaveBuf.copyFrom(piPred);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+                m_isDimdPredictionSaved = true;
+#endif
                 Distortion sadCost = distParamSad.distFunc(distParamSad);
                 Distortion minSadHadDimd = std::min(sadCost * 2, distParamHad.distFunc(distParamHad));
                 m_satdCostDIMD = minSadHadDimd;
@@ -2911,6 +2981,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               }
               PelBuf obicSaveBuf(m_obicPredBuf, pu.Y());
               obicSaveBuf.copyFrom(piPred);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+              m_isObicPredictionSaved = true;
+#endif
             }
             if (dimdSaveFlag)
             {
@@ -2969,6 +3042,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               }
               PelBuf dimdSaveBuf(m_dimdPredBuf, pu.Y());
               dimdSaveBuf.copyFrom(piPred);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+              m_isDimdPredictionSaved = true;
+#endif
             }
           }
           cu.dimd = false;
@@ -2994,10 +3070,16 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 pu.multiRefIdx = 0;
                 cu.mipFlag = false;
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+                cu.sgpm = true;
+#endif
 #if JVET_AB0157_INTRA_FUSION
                 initIntraPatternChType(cu, pu.Y(), true, 0, false);
 #else
                 initIntraPatternChType(cu, pu.Y(), true);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+                cu.sgpm = false;
 #endif
 
                 // get single mode predictions
@@ -3193,6 +3275,35 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   candHadList, numHadCand);
               }
             }
+#endif
+#if JVET_AH0076_OBIC && JVET_AJ0249_NEURAL_NETWORK_BASED
+          if (testObic && isNnIn)
+          {
+            PelBuf obicSaveBuf(m_obicPredBuf, pu.Y());
+            CHECK(!m_isObicPredictionSaved, "A prediction buffer for OBIC is not saved before loading.");
+            piPred.copyFrom(obicSaveBuf);
+            cu.dimd = true;
+            cu.obicFlag = true;
+            cu.tmpFlag = false;
+            cu.mipFlag = false;
+            cu.sgpm = false;
+            pu.multiRefIdx = 0;
+            const uint32_t uiMode = cu.obicMode[0];
+            pu.intraDir[CHANNEL_TYPE_LUMA] = uiMode;
+            CHECK(!m_intraModeReady[uiMode], "`m_intraModeReady[uiMode]` is false.");
+            const Distortion sadCost = distParamSad.distFunc(distParamSad);
+            const Distortion minSadHad = std::min(sadCost * 2, distParamHad.distFunc(distParamHad));
+            loadStartStates();
+            const uint64_t fracModeBits = xFracModeBitsIntra(pu, uiMode, CHANNEL_TYPE_LUMA);
+            const double cost = (double)minSadHad + (double)fracModeBits * sqrtLambdaForFirstPass;
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+            m_bestIntraSADCost = std::min(m_bestIntraSADCost, cost - (double)minSadHad + (double)sadCost);
+#endif
+            updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, OBIC_IDX), cost, uiRdModeList, candCostList, numModesForFullRD);
+            updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, OBIC_IDX), double(minSadHad), uiHadModeList, candHadList, numHadCand);
+            cu.dimd = false;
+            cu.obicFlag = false;
+          }
 #endif
 #if JVET_AG0058_EIP
             if (testEip)
@@ -3409,12 +3520,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
 #if SECONDARY_MPM
               int numCand = m_mpmListSize;
+#if !JVET_AJ0249_NEURAL_NETWORK_BASED
               numCand = (numCand > 2) ? 2 : numCand;
+#endif
 #else
               const int numCand = PU::getIntraMPMs(pu, uiPreds);
 #endif
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+              for (int j = 0; j < (isNnIn ? ((numCand > 1) ? 1 : numCand) : ((numCand > 2) ? 2 : numCand)); j++)
+#else
               for (int j = 0; j < numCand; j++)
+#endif
               {
                 bool     mostProbableModeIncluded = false;
                 ModeInfo mostProbableMode(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiPreds[j]);
@@ -3433,7 +3550,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               if (saveDataForISP)
               {
                 // we add the MPMs to the list that contains only regular intra modes
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+                for (int j = 0; j < ((numCand > 2) ? 2 : numCand); j++)
+#else
                 for (int j = 0; j < numCand; j++)
+#endif
                 {
                   bool     mostProbableModeIncluded = false;
                   ModeInfo mostProbableMode(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiPreds[j]);
@@ -3615,9 +3736,17 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AH0076_OBIC
       cu.obicFlag = false;
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (testObic && !m_skipObicMode && !isNnIn)
+#else
       if (testObic && !m_skipObicMode)
+#endif
+#else
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (testObic && !isNnIn)
 #else
       if (testObic)
+#endif
 #endif
       {
         ModeInfo m = ModeInfo( false, false, 0, NOT_INTRA_SUBPARTITIONS, OBIC_IDX );
@@ -3710,6 +3839,23 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           return false;
         }
       }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (isShapeHandledPnn)
+    {
+      ModeInfo currMode(false, false, 0, NOT_INTRA_SUBPARTITIONS, PNN_IDX);
+      uiRdModeList.insert(uiRdModeList.begin(), currMode);
+      idxShift++;
+      if (cu.lfnstIdx && isAllowedMultiple(width, height))
+      {
+        uiRdModeList.insert(uiRdModeList.begin(), currMode);
+        idxShift++;
+      }
+      if (spsIntraLfnstEnabled)
+      {
+        idxPnnBackwardCompatibility = static_cast<int>(uiRdModeList.size());
+      }
+    }
+#endif
     }
 #if JVET_Y0142_ADAPT_INTRA_MTS
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
@@ -3849,8 +3995,19 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
     }
     int bestLfnstIdx = cu.lfnstIdx;
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    double costRdPnn = MAX_DOUBLE;
+    bool isFirstScanned = true;
+#endif
     for (int mode = isSecondColorSpace ? 0 : -2 * int(testBDPCM); mode < (int)uiRdModeList.size(); mode++)
     {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      const int idxInModeCostStore = mode - idxShift;
+      if (spsIntraLfnstEnabled && isShapeHandledPnn && mode == idxPnnBackwardCompatibility && m_globalBestCostStore > costRdPnn)
+      {
+        m_globalBestCostStore = costRdPnn;
+      }
+#endif
       // set CU/PU to luma prediction mode
       ModeInfo uiOrgMode;
       if (sps.getUseColorTrans() && !m_pcEncCfg->getRGBFormatFlag() && isSecondColorSpace && mode)
@@ -3913,10 +4070,17 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if ENABLE_DIMD && INTRA_TRANS_ENC_OPT
       if ((m_pcEncCfg->getIntraPeriod() == 1) && cu.slice->getSPS()->getUseDimd() && mode >= 0 && !cu.dimdBlending && uiOrgMode.ispMod == 0 && uiOrgMode.mRefId == 0 && uiOrgMode.modeId != TIMD_IDX && uiOrgMode.modeId != DIMD_IDX
 #if JVET_AH0076_OBIC
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        && (isNnIn ? true : uiOrgMode.modeId != OBIC_IDX)
+#else
         && uiOrgMode.modeId != OBIC_IDX
+#endif
 #endif
 #if JVET_AJ0061_TIMD_MERGE
         && uiOrgMode.modeId != TIMDM_IDX
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        && uiOrgMode.modeId != PNN_IDX
 #endif
           )
       {
@@ -3927,7 +4091,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
         if (modeDuplicated)
         {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+          m_modeCostStore[lfnstIdx][idxInModeCostStore] = MAX_DOUBLE / 2.0;
+#else
           m_modeCostStore[lfnstIdx][mode] = MAX_DOUBLE / 2.0;
+#endif
           continue;
         }
       }
@@ -3965,6 +4133,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
         uiOrgMode.modeId = cu.obicMode[0];
         pu.intraDir[CHANNEL_TYPE_LUMA] = uiOrgMode.modeId;
         pu.multiRefIdx = 0;
+      }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (mode >= 0 && uiOrgMode.modeId == PNN_IDX && m_skipNnLfnstMtsPass)
+      {
+        continue;
       }
 #endif
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -4178,6 +4352,24 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_W0123_TIMD_FUSION
       }
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (pu.intraDir[CHANNEL_TYPE_LUMA] == PNN_IDX && cu.lfnstIdx && isAllowedMultiple(width, height))
+      {
+        if (isFirstScanned)
+        {
+          cu.lfnstSecFlag = false;
+          isFirstScanned = false;
+        }
+        else
+        {
+          cu.lfnstSecFlag = true;
+        }
+      }
+      else
+      {
+        cu.lfnstSecFlag = false;
+      }
+#endif
       CHECK(cu.ispMode && cu.mipFlag, "Error: combination of ISP and MIP not supported");
       CHECK(cu.ispMode && pu.multiRefIdx, "Error: combination of ISP and MRL not supported");
       CHECK(cu.ispMode&& cu.colorTransform, "Error: combination of ISP and ACT not supported");
@@ -4302,6 +4494,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AB0155_SGPM
         && !cu.sgpm
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        && uiOrgMode.modeId != PNN_IDX
+#endif
         )
 #else
       if( !cu.ispMode && !cu.mtsFlag && !cu.lfnstIdx && !cu.bdpcmMode && !pu.multiRefIdx && !cu.mipFlag && !cu.tmpFlag && testISP )
@@ -4349,7 +4544,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
 #if JVET_W0123_TIMD_FUSION
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd && !(cu.dimd && !cu.obicFlag) && cu.firstPU->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX)
+#else
       if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd )
+#endif
 #else
       if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 )
 #endif
@@ -4361,8 +4560,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
 #endif
       {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        m_modeCostStore[lfnstIdx][idxInModeCostStore] = tmpValidReturn ? csTemp->cost : (MAX_DOUBLE / 2.0);
+#else
         m_modeCostStore[lfnstIdx][mode] = tmpValidReturn ? csTemp->cost : (MAX_DOUBLE / 2.0); //(MAX_DOUBLE / 2.0) ??
+#endif
       }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (uiOrgMode.modeId == PNN_IDX)
+    {
+      cu.indicesRepresentationPnn[COMPONENT_Y] = m_indicesRepresentationPnn[COMPONENT_Y];
+    }
+#endif
 #if JVET_V0130_INTRA_TMP
       DTRACE( g_trace_ctx, D_INTRA_COST, "IntraCost T [x=%d,y=%d,w=%d,h=%d] %f (%d,%d,%d,%d,%d,%d,%d) \n", cu.blocks[0].x,
               cu.blocks[0].y, ( int ) width, ( int ) height, csTemp->cost, uiOrgMode.modeId, uiOrgMode.ispMod,
@@ -4461,6 +4670,42 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           }
         }
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+        if (setSkipNnControl)
+        {
+          if (cu.firstPU->intraDir[CHANNEL_TYPE_LUMA] == PNN_IDX)
+          {
+            if (csTemp->cost < nnAngCost)
+            {
+              nnAngCost = csTemp->cost;
+            }
+          }
+          else
+          {
+            if (!cu.ispMode)
+            {
+              if (csTemp->cost < regAngCostSupp)
+              {
+                regAngCostSupp = csTemp->cost;
+              }
+            }
+          }
+        }
+        if (spsIntraLfnstEnabled)
+        {
+          if (uiOrgMode.modeId == PNN_IDX)
+          {
+            costRdPnn = csTemp->cost;
+          }
+#if JVET_W0103_INTRA_MTS && JVET_AH0103_LOW_DELAY_LFNST_NSPT
+          if (uiOrgMode.modeId != PNN_IDX && m_globalBestCostStore > csTemp->cost)
+          {
+            m_globalBestCostStore = csTemp->cost;
+            m_globalBestCostValid = true;
+          }
+#endif
+        }
+#endif
         // check r-d cost
         if( csTemp->cost < csBest->cost )
         {
@@ -4511,6 +4756,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
             bestSgpmDimd = curCu->sgpmDimdMode;
           }
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+          bestLfnstSecFlag = cu.lfnstSecFlag;
+#endif
 
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
           if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode )
@@ -4521,7 +4769,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
             m_bestModeCostStore[ lfnstIdx ] = csBest->cost; //cs.cost;
             m_bestModeCostValid[ lfnstIdx ] = true;
           }
-#if JVET_W0103_INTRA_MTS
+#if JVET_W0103_INTRA_MTS && !JVET_AJ0249_NEURAL_NETWORK_BASED
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
           if( spsIntraLfnstEnabled && m_globalBestCostStore > csBest->cost )
 #else
@@ -4635,6 +4883,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       {
         m_skipEipLfnstMtsPass = true;
       }
+    }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (setSkipNnControl && regAngCostSupp != MAX_DOUBLE && nnAngCost != MAX_DOUBLE && regAngCostSupp * 1.5 < nnAngCost)
+    {
+      m_skipNnLfnstMtsPass = true;
     }
 #endif
     cu.ispMode = uiBestPUMode.ispMod;
@@ -4825,6 +5079,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
         CHECK(cu.sgpm, "use of PL");
         CHECK(cu.timd, "use of PL");
       }
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      cu.lfnstSecFlag = bestLfnstSecFlag;
 #endif
 
       if (cu.colorTransform)
@@ -10012,7 +10269,14 @@ void IntraSearch::xEncIntraHeader( CodingStructure &cs, Partitioner &partitioner
 #endif
       }
 #if ENABLE_DIMD
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (!cu.slice->getPnnMode())
+      {
+        m_CABACEstimator->cu_dimd_flag(cu);
+      }
+#else
       m_CABACEstimator->cu_dimd_flag(cu);
+#endif
 #endif
       if (CU::isPLT(cu))
       {
@@ -10374,6 +10638,7 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
   //===== init availability pattern =====
 
   PelBuf sharedPredTS(m_pSharedPredTransformSkip[COMPONENT_Y], area);
+#if !JVET_AJ0249_NEURAL_NETWORK_BASED
   initIntraPatternChType(*tu.cu, area);
 #if JVET_AH0209_PDP
   const int sizeKey = (area.width << 8) + area.height;
@@ -10388,6 +10653,7 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     && !pu.cu->timd && !pu.cu->tmrlFlag && !pu.multiRefIdx
     && g_pdpFilters[uiDirMode][sizeIdx]
     && !(uiDirMode > 1 && (uiDirMode % s != m)));
+#endif
 #endif
   //===== get prediction signal =====
 #if JVET_V0130_INTRA_TMP && JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
@@ -10510,6 +10776,9 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
   }
   else if (PU::isMIP(pu, chType))
   {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    initIntraPatternChType(*tu.cu, area, false, 0, true, false, true);
+#endif
     initIntraMip(pu, area);
 #if JVET_AH0076_OBIC
     predIntraMip(COMPONENT_Y, piPred, pu, true);
@@ -10532,6 +10801,9 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
   else if (pu.cu->dimd && chType == CHANNEL_TYPE_LUMA && pu.cu->ispMode == NOT_INTRA_SUBPARTITIONS)
   {
     const CPelBuf dimdSaveBuf(pu.cu->obicFlag ? m_obicPredBuf : m_dimdPredBuf, pu.Y());
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    CHECK(!(pu.cu->obicFlag ? m_isObicPredictionSaved : m_isDimdPredictionSaved), "A prediction buffer for DIMD/OBIC is not saved before loading.");
+#endif
     piPred.copyFrom(dimdSaveBuf);
   }
 #endif
@@ -10560,6 +10832,32 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     else
 #endif
 #if JVET_AH0209_PDP
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    {
+    const uint16_t uiDirMode = pu.cu->bdpcmMode ? BDPCM_IDX : PU::getFinalIntraMode(pu, CHANNEL_TYPE_LUMA);
+    bool isPDPMode = false;
+    if (uiDirMode == PNN_IDX)
+    {
+      if (getIsContextCollectionNeeded(area) && IntraPredictionNN::isUpsamplingNeeded(area))
+      {
+        initIntraPatternChType(*tu.cu, area);
+      }
+    }
+    else
+    {
+      const int sizeKey = (area.width << 8) + area.height;
+      const int sizeIdx = g_size.find(sizeKey) != g_size.end() ? g_size[sizeKey] : -1;
+      isPDPMode = sizeIdx >= 0 && !pu.cu->ispMode && uiDirMode != BDPCM_IDX && pu.cu->cs->sps->getUsePDP() && !pu.cu->plIdx && !pu.cu->sgpm && !pu.cu->timd && !pu.cu->tmrlFlag && !pu.multiRefIdx;
+      if (isPDPMode)
+      {
+        const int m = sizeIdx > 12 ? 2 : 0;
+        const int s = sizeIdx > 12 ? 4 : 2;
+        isPDPMode &= (g_pdpFilters[uiDirMode][sizeIdx] && !(uiDirMode > 1 && (uiDirMode % s != m)));
+      }
+      initIntraPatternChType(*tu.cu, area, false, 0, true, !isPDPMode, isPDPMode);
+      isPDPMode &= m_refAvailable;
+    }
+#endif
     if (isPDPMode && m_pdpIntraPredReady[uiDirMode] && !pu.cu->dimd)
     {
       CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
@@ -10580,6 +10878,9 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     {
       predIntraAng(COMPONENT_Y, piPred, pu);
     }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    }
+#endif
   }
 
 #else
@@ -10625,6 +10926,12 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
 #endif
   // save prediction
   sharedPredTS.copyFrom(piPred);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (PU::getFinalIntraMode(pu, chType) == PNN_IDX)
+  {
+    m_indicesRepresentationPnn[COMPONENT_Y] = tu.cu->indicesRepresentationPnn[COMPONENT_Y];
+  }
+#endif
 
   const Slice           &slice = *cs.slice;
   //===== get residual signal =====
@@ -10753,6 +11060,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
           initIntraPatternChTypeISP(*tu.cu, area, piReco);
         }
       }
+#if !JVET_AJ0249_NEURAL_NETWORK_BASED
       else
       {
         initIntraPatternChType(*tu.cu, area);
@@ -10770,6 +11078,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
         && !pu.cu->timd && !pu.cu->tmrlFlag && !pu.multiRefIdx
         && g_pdpFilters[uiDirMode][sizeIdx]
         && !(uiDirMode > 1 && (uiDirMode % s != m)));
+#endif
 #endif
       //===== get prediction signal =====
       if(compID != COMPONENT_Y && !tu.cu->bdpcmModeChroma && PU::isLMCMode(uiChFinalMode))
@@ -10904,6 +11213,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
         if( PU::isMIP( pu, chType ) )
 #endif
         {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+          initIntraPatternChType(*tu.cu, area, false, 0, true, false, true);
+#endif
           initIntraMip( pu, area );
 #if JVET_AB0067_MIP_DIMD_LFNST
 #if JVET_AH0076_OBIC
@@ -10930,6 +11242,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
         else if (pu.cu->dimd && compID == COMPONENT_Y && pu.cu->ispMode == NOT_INTRA_SUBPARTITIONS)
         {
           const CPelBuf dimdSaveBuf(pu.cu->obicFlag ? m_obicPredBuf : m_dimdPredBuf, pu.Y());
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+          CHECK(!(pu.cu->obicFlag ? m_isObicPredictionSaved : m_isDimdPredictionSaved), "A prediction buffer for DIMD/OBIC is not saved before loading.");
+#endif
           piPred.copyFrom(dimdSaveBuf);
         }
 #endif
@@ -10968,6 +11283,35 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
             else
 #endif
 #if JVET_AH0209_PDP
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+            {
+            const uint16_t uiDirMode = pu.cu->bdpcmMode ? BDPCM_IDX : PU::getFinalIntraMode(pu, CHANNEL_TYPE_LUMA);
+            bool isPDPMode = false;
+            if (uiDirMode == PNN_IDX)
+            {
+              if (getIsContextCollectionNeeded(area) && IntraPredictionNN::isUpsamplingNeeded(area))
+              {
+                initIntraPatternChType(*tu.cu, area);
+              }
+            }
+            else
+            {
+              const int sizeKey = (area.width << 8) + area.height;
+              const int sizeIdx = g_size.find(sizeKey) != g_size.end() ? g_size[sizeKey] : -1;
+              isPDPMode = sizeIdx >= 0 && !pu.cu->ispMode && uiDirMode != BDPCM_IDX && pu.cu->cs->sps->getUsePDP() && !pu.cu->plIdx && !pu.cu->sgpm && !pu.cu->timd && !pu.cu->tmrlFlag && !pu.multiRefIdx;
+              if (isPDPMode)
+              {
+                const int m = sizeIdx > 12 ? 2 : 0;
+                const int s = sizeIdx > 12 ? 4 : 2;
+                isPDPMode &= (g_pdpFilters[uiDirMode][sizeIdx] && !(uiDirMode > 1 && (uiDirMode % s != m)));
+              }
+              if (!(tu.cu)->ispMode)
+              {
+                initIntraPatternChType(*tu.cu, area, false, 0, true, !isPDPMode, isPDPMode);
+              }
+              isPDPMode &= m_refAvailable;
+            }
+#endif
             if (isPDPMode && m_pdpIntraPredReady[uiDirMode] && !pu.cu->dimd)
             {
               CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
@@ -10987,6 +11331,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
             else
 #endif
             predIntraAng(compID, piPred, pu);
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+            }
+#endif
           }
 #if JVET_Z0050_DIMD_CHROMA_FUSION
           if (compID != COMPONENT_Y && pu.isChromaFusion)
@@ -11002,11 +11349,23 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
       {
         sharedPredTS.copyFrom( piPred );
       }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (uiChFinalMode == PNN_IDX)
+      {
+        m_indicesRepresentationPnn[compID] = tu.cu->indicesRepresentationPnn[compID];
+      }
+#endif
     }
     else
     {
       // load prediction
       piPred.copyFrom( sharedPredTS );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      if (uiChFinalMode == PNN_IDX)
+      {
+        tu.cu->indicesRepresentationPnn[compID] = m_indicesRepresentationPnn[compID];
+      }
+#endif
     }
   }
 
@@ -14457,7 +14816,11 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
 
     if (!orgMode.mipFlg)
     {
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+      addMode = numConv < ((pu.cu)->slice->getPnnMode() ? 4 : 3);
+#else
       addMode = (numConv < 3);
+#endif
       numConv += addMode ? 1:0;
     }
     else
@@ -14583,6 +14946,10 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
 #endif
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (!(pu.cu)->slice->getPnnMode())
+  {
+#endif
   static_vector<uint8_t, 2> sortedDirPlanarModes(2);
   static_vector<double, 2>  sortedDirPlanarCost(2);
 
@@ -14633,6 +15000,9 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
       break;
     }
   }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  }
+#endif
 #endif
 
 #if JVET_AJ0061_TIMD_MERGE

@@ -1779,6 +1779,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_AH0209_PDP
   WRITE_FLAG( pcSPS->getUsePDP() ? 1 : 0,                                             "sps_pdp_enabled_flag");
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  WRITE_FLAG(pcSPS->getNnipMode() ? 1 : 0,                                             "sps_nnip_enabled_flag");
+#endif
 #if ENABLE_DIMD
   WRITE_FLAG( pcSPS->getUseDimd() ? 1 : 0,                                             "sps_dimd_enabled_flag");
 #endif
