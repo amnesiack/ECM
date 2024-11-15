@@ -2750,9 +2750,9 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     m_ipaParam = m_ipaParam2;
 
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-    int     splitDir = g_sgpmSplitDir[pu.cu->sgpmSplitDir];
+    int     splitDir   = g_sgpmSplitDir[pu.cu->sgpmSplitDir];
 #else
-    int     splitDir = pu.cu->sgpmSplitDir;
+    int     splitDir   = pu.cu->sgpmSplitDir;
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
     if (PU::isRegressionSgpm(pu))
