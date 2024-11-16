@@ -177,10 +177,6 @@ public:
   bool              m_skipDoLic;
 #endif
 #endif
-#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
-  bool              m_isAffBdofChroma = false;
-  bool              m_isDeriveOobMask = false;
-#endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
 public:
   AffineAMVPInfo m_affineAmvpInfo[AFFINE_MODEL_NUM][NUM_IMV_MODES][NUM_REF_PIC_LIST_01][MAX_NUM_REF];
@@ -412,6 +408,8 @@ protected:
   bool                 m_subPuMC;
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
   bool                 m_useHighPrecMv;
+  bool                 m_isAffBdofChroma;
+  bool                 m_isDeriveOobMask;
 #endif
   int                  m_ibcBufferWidth;
 #if JVET_Z0153_IBC_EXT_REF

@@ -144,6 +144,8 @@ InterPrediction::InterPrediction()
 , m_subPuMC(false)
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
 , m_useHighPrecMv(false)
+, m_isAffBdofChroma(false)
+, m_isDeriveOobMask(false)
 #endif
 {
 #if JVET_AF0057
