@@ -24881,8 +24881,8 @@ void EncCu::xCalDebCost( CodingStructure &cs, Partitioner &partitioner, bool cal
     {
       m_pcLoopFilter->resetFilterLengths();
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
-      //No Impact on OBMC Buffer
-      m_pcLoopFilter->xDeblockCU( *cu, EDGE_VER, false, m_tempWoOBMCBuffer );
+      //No impact on CIIP buffer
+      m_pcLoopFilter->xDeblockCU( *cu, EDGE_VER, false, m_ciipBuffer[0] );
 #else
       m_pcLoopFilter->xDeblockCU( *cu, EDGE_VER );
 #endif
@@ -24892,8 +24892,8 @@ void EncCu::xCalDebCost( CodingStructure &cs, Partitioner &partitioner, bool cal
     {
       m_pcLoopFilter->resetFilterLengths();
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
-      //No Impact on OBMC Buffer
-      m_pcLoopFilter->xDeblockCU( *cu, EDGE_HOR, false, m_tempWoOBMCBuffer );
+      //No impact on CIIP buffer
+      m_pcLoopFilter->xDeblockCU( *cu, EDGE_HOR, false, m_ciipBuffer[0] );
 #else
       m_pcLoopFilter->xDeblockCU( *cu, EDGE_HOR );
 #endif

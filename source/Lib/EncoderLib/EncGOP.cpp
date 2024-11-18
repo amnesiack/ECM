@@ -3904,8 +3904,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #endif
 
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
-      PelUnitBuf codingInfoBuf = m_pcALF->callCodingInfoBuf( cs );
-      m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, true );
+      const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
+      PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
+      m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
 #else
       m_pcLoopFilter->loopFilterPic( cs );
 #endif
@@ -5183,8 +5184,9 @@ uint64_t EncGOP::preLoopFilterPicAndCalcDist( Picture* pcPic )
 #endif
 
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
-  PelUnitBuf codingInfoBuf = m_pcALF->callCodingInfoBuf( cs );
-  m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, false );
+  const bool storeCodingInfo = false;
+  PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
+  m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
 #else
   m_pcLoopFilter->loopFilterPic( cs );
 #endif
