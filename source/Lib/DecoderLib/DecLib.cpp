@@ -846,8 +846,9 @@ void DecLib::executeLoopFilters()
 #endif
 
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
-  PelUnitBuf codingInfoBuf = m_cALF.callCodingInfoBuf( cs );
-  m_cLoopFilter.loopFilterPic( cs, codingInfoBuf, true );
+  const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
+  PelUnitBuf codingInfoBuf = storeCodingInfo ? m_cALF.callCodingInfoBuf( cs ) : PelUnitBuf();
+  m_cLoopFilter.loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
 #else
   m_cLoopFilter.loopFilterPic( cs );
 #endif
