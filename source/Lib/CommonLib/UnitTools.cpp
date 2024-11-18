@@ -28037,18 +28037,32 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
       centerMi.isIBCmot = false;
       if (mi.isInter && mi.isIBCmot == false)
       {
+        bool tmvpFound = false;
         for (unsigned currRefListId = 0; currRefListId < (slice.isInterB() ? 2 : 1); currRefListId++)
         {
           RefPicList  currRefPicList = RefPicList(currRefListId);
           refIdx = 0;
-          if (getColocatedMVP(pu, currRefPicList, centerPos, cColMv, refIdx, true, pu.colIdx))
+          if(getColocatedMVP(pu, currRefPicList, centerPos, cColMv, refIdx, true, pu.colIdx))
           {
             centerMi.interDir |= (1 << currRefListId);
             centerMi.mv[currRefPicList] = cColMv;
             centerMi.refIdx[currRefPicList] = refIdx;
+            tmvpFound = true;
           }
         }
-        tmvpMotionBuf[bufIdx] = centerMi;
+        if (tmvpFound)
+        {
+          tmvpMotionBuf[bufIdx] = centerMi;
+        }
+        else
+        {
+          centerMi.interDir = colRefList == REF_PIC_LIST_0 ? 1 : 2;
+          centerMi.mv[colRefList] = mvShift;
+          centerMi.mv[1 - colRefList] = Mv(0, 0);
+          centerMi.refIdx[colRefList] = 0;
+          centerMi.refIdx[1 - colRefList] = NOT_VALID;
+          tmvpMotionBuf[bufIdx].isInter = false;
+        }
       }
       else
       {
@@ -28069,6 +28083,7 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
     centerMi.isIBCmot = false;
     if (mi.isInter && mi.isIBCmot == false)
     {
+      bool tmvpFound = false;
       for (unsigned currRefListId = 0; currRefListId < (slice.isInterB() ? 2 : 1); currRefListId++)
       {
         RefPicList  currRefPicList = RefPicList(currRefListId);
@@ -28078,7 +28093,17 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
           centerMi.interDir |= (1 << currRefListId);
           centerMi.mv[currRefPicList] = cColMv;
           centerMi.refIdx[currRefPicList] = refIdx;
+          tmvpFound = true;
         }
+      }
+  
+      if (!tmvpFound)
+      {
+        centerMi.interDir = colRefList == REF_PIC_LIST_0 ? 1 : 2;
+        centerMi.mv[colRefList] = mvShift;
+        centerMi.mv[1 - colRefList] = Mv(0, 0);
+        centerMi.refIdx[colRefList] = 0;
+        centerMi.refIdx[1 - colRefList] = NOT_VALID;
       }
     }
     else
@@ -28122,6 +28147,7 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
             mi.isInter = true;
             mi.sliceIdx = slice.getIndependentSliceIdx();
             mi.isIBCmot = false;
+            bool tmvpFound = false;
             for (unsigned currRefListId = 0; currRefListId < (slice.isInterB() ? 2 : 1); currRefListId++)
             {
               RefPicList currRefPicList = RefPicList(currRefListId);
@@ -28130,10 +28156,20 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
               {
                 mi.refIdx[currRefListId] = refIdx;
                 mi.mv[currRefListId] = cColMv;
+                tmvpFound = true;
               }
             }
-            mi.interDir = (mi.refIdx[0] != -1 ? 1 : 0) + (mi.refIdx[1] != -1 ? 2 : 0);
-            tmvpMotionBuf[bufIdx] = mi;
+  
+            if (tmvpFound)
+            {
+              mi.interDir = (mi.refIdx[0] != -1 ? 1 : 0) + (mi.refIdx[1] != -1 ? 2 : 0);
+              tmvpMotionBuf[bufIdx] = mi;
+            }
+            else
+            {
+              mi = centerMi;
+              tmvpMotionBuf[bufIdx].isInter = false;
+            }
           }
           else
           {
@@ -28166,6 +28202,8 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
           mi.isInter = true;
           mi.sliceIdx = slice.getIndependentSliceIdx();
           mi.isIBCmot = false;
+
+          bool tmvpFound = false;
           for (unsigned currRefListId = 0; currRefListId < (slice.isInterB() ? 2 : 1); currRefListId++)
           {
             RefPicList currRefPicList = RefPicList(currRefListId);
@@ -28174,9 +28212,17 @@ void PU::getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, c
             {
               mi.refIdx[currRefListId] = refIdx;
               mi.mv[currRefListId] = cColMv;
+              tmvpFound = true;
             }
           }
-          mi.interDir = (mi.refIdx[0] != -1 ? 1 : 0) + (mi.refIdx[1] != -1 ? 2 : 0);
+          if (tmvpFound)
+          {
+            mi.interDir = (mi.refIdx[0] != -1 ? 1 : 0) + (mi.refIdx[1] != -1 ? 2 : 0);
+          }
+          else
+          {
+            mi = centerMi;
+          }
         }
         else
         {
