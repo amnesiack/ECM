@@ -10946,11 +10946,14 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         continue;
       }
       int numSamples = cuNeighbours[i]->lumaSize().width * cuNeighbours[i]->lumaSize().height;
+      if (cuNeighbours[i]->timd
 #if JVET_AJ0061_TIMD_MERGE
-      if (cuNeighbours[i]->timd && !cuNeighbours[i]->timdMrg)
-#else
-      if (cuNeighbours[i]->timd)
+          && !cuNeighbours[i]->timdMrg
 #endif
+#if JVET_AJ0146_TIMDSAD
+          && !cuNeighbours[i]->timdSad
+#endif
+          )
       {
         int m = MAP131TO67(cuNeighbours[i]->timdMode);
         histogram[m] += numSamples;
@@ -10966,7 +10969,7 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         }
       }
 #if JVET_AJ0061_TIMD_MERGE
-      else if (cuNeighbours[i]->timd && cuNeighbours[i]->timdMrg)
+      else if (cuNeighbours[i]->timdMrg)
       {
         int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][0]);
         histogram[m] += numSamples;
@@ -10977,6 +10980,23 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
           if (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][2]);
+            histogram[m] += numSamples;
+          }
+        }
+      }
+#endif
+#if JVET_AJ0146_TIMDSAD
+      else if (cuNeighbours[i]->timdSad)
+      {
+        int m = MAP131TO67(cuNeighbours[i]->timdModeSad);
+        histogram[m] += numSamples;
+        if (cuNeighbours[i]->timdIsBlendedSad && cuNeighbours[i]->timdFusionWeightSad[1] > 0)
+        {
+          int m = MAP131TO67(cuNeighbours[i]->timdModeSecondarySad);
+          histogram[m] += numSamples;
+          if (cuNeighbours[i]->timdFusionWeightSad[2] > 0)
+          {
+            int m = MAP131TO67(cuNeighbours[i]->timdModeNonAngSad);
             histogram[m] += numSamples;
           }
         }
