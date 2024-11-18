@@ -573,6 +573,14 @@ void destroyMipFilters()
         if(g_pdpFiltersMip[group][size][0][0])
         {
           delete[] g_pdpFiltersMip[group][size][0][0];
+          int currHeight = g_sizeData[size][4];
+          for (int i = 0; i < currHeight; i++)
+          {
+            if (g_pdpFiltersMip[group][size][i])
+            {
+              delete[] g_pdpFiltersMip[group][size][i];
+            }
+          }
         }
         if(g_pdpFiltersMip[group][size])
         {
