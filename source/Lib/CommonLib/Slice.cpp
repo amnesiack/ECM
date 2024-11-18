@@ -4372,6 +4372,9 @@ SPS::SPS()
 , m_ciipAffine                ( false )
 #endif
 , m_Geo                       ( false )
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+, m_geoShapeAdapt             ( false )
+#endif
 #if INTER_LIC
 , m_licEnabledFlag            ( false )
 #endif
