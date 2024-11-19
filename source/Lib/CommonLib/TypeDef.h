@@ -155,6 +155,7 @@
 #define JVET_X0148_TIMD_PDPC                              1 // JVET-X0148: PDPC handling for TIMD
 #define JVET_AG0092_ENHANCED_TIMD_FUSION                  1 // JVET-AG0092: TIMD fusion with non-angular predictor
 #define JVET_AG0128_REF_LINE_OPT_TIMD_FUSION              1 // JVET-AG0128: TIMD fusion reference line determination
+#define JVET_AJ0079_DISABLE_TIMD_COMBINATION              1 // JVET-AJ0079(2.7b): Disabling timd-isp and timd-mrl combinations in a non-normative way.
 #define JVET_AJ0061_TIMD_MERGE                            1 // TIMD merge mode 
 #define JVET_AJ0146_TIMDSAD                               1 // JVET-AJ0146: Additional TIMD mode with a different cost metric  
 
