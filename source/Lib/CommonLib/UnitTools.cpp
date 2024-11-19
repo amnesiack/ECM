@@ -29178,11 +29178,11 @@ void PU::spanIpmInfoSgpm(PredictionUnit &pu)
       tpmMask = motionIdx <= 0 ? (1 - isFlip) : isFlip;
       if (tpmMask == 0)
       {
-        *ipmSgpm = sgpmMode0;
+        ipmSgpm[x] = sgpmMode0;
       }
       else
       {
-        *ipmSgpm = sgpmMode1;
+        ipmSgpm[x] = sgpmMode1;
       }
     }
     ipmSgpm += ib.stride;
