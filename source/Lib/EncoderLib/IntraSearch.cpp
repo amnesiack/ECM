@@ -3123,7 +3123,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           cu.obicFlag = false;
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
-          if ((m_pcEncCfg->getUseFastLFNST() && !LFNSTLoadFlag) || !m_pcEncCfg->getUseFastLFNST())
+          if ((m_pcEncCfg->getUseFastLFNST() && !LFNSTLoadFlag) || !m_pcEncCfg->getUseFastLFNST() || mtsUsageFlag == 0)
           {
 #endif
 #if JVET_AB0155_SGPM
