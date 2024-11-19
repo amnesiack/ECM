@@ -2640,7 +2640,7 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   bool bJccrWithCr = bIsJCCR && !(tu.jointCbCr >> 1);
 #if JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX
 #if JVET_AJ0237_INTERNAL_12BIT
-  const int signPredShift = SIGN_PRED_RESIDUAL_BITS;
+  int signPredShift = SIGN_PRED_RESIDUAL_BITS;
 #else
   const int signPredShift = 10 + SIGN_PRED_RESIDUAL_BITS  - tu.cs->sps->getBitDepth(toChannelType(COMPONENT_Y));
 #endif
