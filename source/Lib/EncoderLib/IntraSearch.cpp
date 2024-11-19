@@ -4431,7 +4431,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
         {
           pu.intraDir[0] -= m_numSigEip;
         }
-        if ((cu.lfnstIdx || cu.mtsFlag) && cu.eipModel.eipDimdMode == -1)
+        if (cu.eipModel.eipDimdMode == -1)
         {
           const auto modeIdx = cu.eipMmFlag ? (pu.intraDir[0] + m_numSigEip): pu.intraDir[0];
           if(cu.eipMerge)
