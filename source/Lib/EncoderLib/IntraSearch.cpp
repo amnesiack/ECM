@@ -4047,6 +4047,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
       uiRdModeList.push_back( ModeInfo( false, false, 0, NOT_INTRA_SUBPARTITIONS, TIMD_IDX ) );
       numNonISPModes++;
+#if !JVET_AJ0079_DISABLE_TIMD_COMBINATION
       if (lfnstIdx == 0 && !cu.mtsFlag)
       {
 #if JVET_AH0065_RELAX_LINE_BUFFER
@@ -4102,6 +4103,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
         }
       }
+#endif
     }
 #endif
 
@@ -4120,6 +4122,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       }
     }
 #if JVET_W0123_TIMD_FUSION
+#if !JVET_AJ0079_DISABLE_TIMD_COMBINATION
 #if JVET_AJ0061_TIMD_MERGE
     if (isTimdValid && !m_skipTimdMode[Timd] && sps.getUseISP() && CU::canUseISP(width, height, cu.cs->sps->getMaxTbSize()) && lfnstIdx == 0 && !cu.mtsFlag)
 #else
@@ -4129,6 +4132,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       uiRdModeList.push_back( ModeInfo( false, false, 0, HOR_INTRA_SUBPARTITIONS, TIMD_IDX ) );
       uiRdModeList.push_back( ModeInfo( false, false, 0, VER_INTRA_SUBPARTITIONS, TIMD_IDX ) );
     }
+#endif
 #endif
     //===== check modes (using r-d costs) =====
     ModeInfo       uiBestPUMode;
@@ -15626,7 +15630,7 @@ void IntraSearch::xGetNextISPMode(ModeInfo& modeInfo, const ModeInfo* lastMode, 
 #if ENABLE_DIMD && !JVET_V0087_DIMD_NO_ISP
       candidate.modeId != DIMD_IDX &&
 #endif
-#if JVET_W0123_TIMD_FUSION
+#if JVET_W0123_TIMD_FUSION && !JVET_AJ0079_DISABLE_TIMD_COMBINATION
       candidate.modeId != TIMD_IDX &&
 #endif
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -15870,7 +15874,7 @@ bool IntraSearch::xSortISPCandList(double bestCostSoFar, double bestNonISPCost, 
 #if ENABLE_DIMD && !JVET_V0087_DIMD_NO_ISP
       origHadList.at(k).modeId == DIMD_IDX ||
 #endif
-#if JVET_W0123_TIMD_FUSION
+#if JVET_W0123_TIMD_FUSION && !JVET_AJ0079_DISABLE_TIMD_COMBINATION
       origHadList.at(k).modeId == TIMD_IDX ||
 #endif
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -15927,7 +15931,7 @@ void IntraSearch::xSortISPCandListLFNST()
           continue;
         }
 #endif
-#if JVET_W0123_TIMD_FUSION
+#if JVET_W0123_TIMD_FUSION && !JVET_AJ0079_DISABLE_TIMD_COMBINATION
         if( candList[i].modeId == TIMD_IDX )
         {
           continue;
