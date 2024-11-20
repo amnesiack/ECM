@@ -2035,35 +2035,35 @@ uint8_t TrQuant::getNsptKernelCluster(const uint32_t mode, const uint32_t width,
   CHECK(bktIdx < 0 || bktIdx >= NUM_NSPT_BLOCK_TYPES, "bktIdx outside range");
   if (width == 4 && height == 4)
   {
-    return g_nsptIdx_4x4[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx4x4[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 8 && height == 8)
   {
-    return g_nsptIdx_8x8[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx8x8[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 4 && height == 8)
   {
-    return g_nsptIdx_4x8[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx4x8[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 8 && height == 4)
   {
-    return g_nsptIdx_8x4[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx8x4[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 4 && height == 16)
   {
-    return g_nsptIdx_4x16[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx4x16[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 16 && height == 4)
   {
-    return g_nsptIdx_16x4[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx16x4[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 8 && height == 16)
   {
-    return g_nsptIdx_8x16[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx8x16[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 16 && height == 8)
   {
-    return g_nsptIdx_16x8[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx16x8[ mode ][ bktIdx ][ nsptIdx ];
   }
 #if JVET_AE0086_LARGE_NSPT
   else if (width == 4 && height == 32)
