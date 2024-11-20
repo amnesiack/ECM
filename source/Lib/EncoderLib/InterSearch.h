@@ -569,6 +569,9 @@ struct SrchCostBv
       bvLicIdx[idxDst] = bvLicIdx[idxSrc];
       skipLicSrch[idxDst] = skipLicSrch[idxSrc];
 #endif
+#if JVET_AE0159_FIBC
+      bvFilter[idxDst] = bvFilter[idxSrc];
+#endif
     }
   }
 
@@ -649,6 +652,9 @@ struct SrchCostBv
 #if JVET_AE0078_IBC_LIC_EXTENSION
       bvLicIdx[idx] = bvLic;
 #endif
+#if JVET_AE0159_FIBC
+      bvFilter[idx] = false;
+#endif
     };
 
     auto replaceNext = [&](uint32_t idx)
@@ -666,6 +672,9 @@ struct SrchCostBv
 #endif
 #if JVET_AE0078_IBC_LIC_EXTENSION
       bvLicIdx[idx + 1] = bvLicIdx[idx];
+#endif
+#if JVET_AE0159_FIBC
+      bvFilter[idx + 1] = bvFilter[idx];
 #endif
     };
 
