@@ -217,10 +217,10 @@ InterPrediction::InterPrediction()
     m_fillLicTpl[i] = false;
   }
 #endif
-  m_LICMultApprox[0] = 0;
+  m_licMultApprox[0] = 0;
   for (int k = 1; k < 64; k++)
   {
-    m_LICMultApprox[k] = ((1 << 15) + (k >> 1)) / k;
+    m_licMultApprox[k] = ((1 << 15) + (k >> 1)) / k;
   }
 #endif
 
@@ -1787,12 +1787,12 @@ void InterPrediction::xPredInterUni(const PredictionUnit &pu, const RefPicList &
             const int biShift = IF_INTERNAL_PREC - clpRng.bd;
             const Pel biOffset = -IF_INTERNAL_OFFS;
             pcYuvPred.bufs[compID].toLast(clpRng);
-            pcYuvPred.bufs[compID].linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+            pcYuvPred.bufs[compID].linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
             pcYuvPred.bufs[compID].linearTransform(1, -biShift, biOffset, false, clpRng);
           }
           else
           {
-            pcYuvPred.bufs[compID].linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+            pcYuvPred.bufs[compID].linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
           }
         }
         pu.cu->licFlag = true;
@@ -3753,6 +3753,143 @@ void InterPrediction::xPredInterBi(PredictionUnit &pu, PelUnitBuf &pcYuvPred, co
 }
 
 #if JVET_AG0276_NLIC
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+// explicit instantiation
+template void InterPrediction::xDevSecLicPara<true> ( CodingUnit& cu, PelUnitBuf& predBuf, PelUnitBuf& dstBuf );
+template void InterPrediction::xDevSecLicPara<false>( CodingUnit& cu, PelUnitBuf& predBuf, PelUnitBuf& dstBuf );
+
+template <bool isBRcand>
+#endif
+void InterPrediction::xDevSecLicPara( CodingUnit& cu, PelUnitBuf& predBuf, PelUnitBuf& dstBuf )
+{
+  for( int comp = 0; comp < MAX_NUM_COMPONENT; comp++ )
+  {
+    ComponentID compID = ComponentID( comp );
+    Pel* pred = predBuf.get( compID ).buf;
+    int  predStride = predBuf.get( compID ).stride;
+    Pel* rec = dstBuf.get( compID ).buf;
+    int  recStride = dstBuf.get( compID ).stride;
+
+    const int cuWidth = cu.blocks[ compID ].width;
+    const int cuHeight = cu.blocks[ compID ].height;
+
+    const int bitDepth = cu.cs->sps->getBitDepth( toChannelType( compID ) );
+    const int precShift = std::max( 0, bitDepth - 12 );
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+    const int maxNumMinus1 = isBRcand ? ( 30 - 2 * std::min( bitDepth, 12 ) - 1 ) : ( 30 - 2 * std::min( bitDepth, 12 ) );
+#else
+    const int maxNumMinus1 = 30 - 2 * std::min( bitDepth, 12 );
+#endif
+    const int minDimBit = floorLog2( std::min( cuHeight, cuWidth ) );
+    const int minDim = 1 << minDimBit;
+    int       minStepBit = minDim > 8 ? 1 : 0;
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+    while( isBRcand ? ( minDimBit > minStepBit + maxNumMinus1 ) : ( ( ( minDimBit - minStepBit ) << 1 ) > maxNumMinus1 ) )
+#else
+    while( ( ( minDimBit - minStepBit ) << 1 ) > maxNumMinus1 )
+#endif
+    {
+      minStepBit++;
+    } //make sure 2*log2(minDim/tmpStep) + 2*min(bitDepth,12) <= 30
+    const int numSteps = minDim >> minStepBit;
+    const int dimShift = minDimBit - minStepBit;
+
+    //----- get correlation data -----
+    int x = 0, y = 0, xx = 0, xy = 0;
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+    int cntShift = 0;
+    if( isBRcand )
+    {
+      Pel* refBottom = pred + ( cuHeight - 1 ) * predStride;
+      Pel* recBottom = rec + ( cuHeight - 1 ) * recStride;
+      for( int k = 0; k < numSteps; k++ )
+      {
+        int idx = ( k * cuWidth ) >> dimShift;
+        int refVal = refBottom[ idx ];
+        int recVal = recBottom[ idx ];
+        x += refVal;
+        y += recVal;
+        xx += refVal * refVal;
+        xy += refVal * recVal;
+      }
+      cntShift = dimShift;
+
+      Pel* refRight = pred + cuWidth - 1;
+      Pel* recRight = rec + cuWidth - 1;
+      for( int k = 0; k < numSteps; k++ )
+      {
+        int idx = ( k * cuHeight ) >> dimShift;
+        int refVal = refRight[ idx * predStride ];
+        int recVal = recRight[ idx * recStride ];
+        x += refVal;
+        y += recVal;
+        xx += refVal * refVal;
+        xy += refVal * recVal;
+      }
+      cntShift += ( cntShift ? 1 : dimShift );
+    }
+    else
+#endif
+    {
+      for( int h = 0; h < numSteps; h++ )
+      {
+        int vDim = ( ( h * cuHeight ) >> dimShift );
+
+        for( int w = 0; w < numSteps; w++ )
+        {
+          int hDim = ( ( w * cuWidth ) >> dimShift );
+
+          int predVal = pred[ vDim * predStride + hDim ] >> precShift;
+          int recVal = rec[ vDim * recStride + hDim ] >> precShift;
+
+          x += predVal;
+          y += recVal;
+          xx += predVal * predVal;
+          xy += predVal * recVal;
+        }
+      }
+    }
+
+    int  shift = m_licShift;
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+    int& scale = isBRcand ? cu.altLMBRParaUnit.scale[ compID ] : cu.altLMParaUnit.scale[ compID ];
+    int& offset = isBRcand ? cu.altLMBRParaUnit.offset[ compID ] : cu.altLMParaUnit.offset[ compID ];
+    if( !isBRcand )
+    {
+      cntShift = ( dimShift << 1 );
+      CHECK( !cntShift, "cntShift == 0" );
+    }
+#else
+    int& scale = cu.altLMParaUnit.scale[ compID ];
+    int& offset = cu.altLMParaUnit.offset[ compID ];
+    int cntShift = ( dimShift << 1 ); CHECK( !cntShift, "cntShift == 0" );
+#endif
+    const int cropShift = std::max( 0, bitDepth - precShift + cntShift - 15 );
+    const int xzOffset = ( xx >> m_licRegShift );
+    const int sumX = ( x << precShift );
+    const int sumY = ( y << precShift );
+    const int sumXX = ( ( xx + xzOffset ) >> ( cropShift << 1 ) ) << cntShift;
+    const int sumXY = ( ( xy + xzOffset ) >> ( cropShift << 1 ) ) << cntShift;
+    const int sumXsumX = ( x >> cropShift ) * ( x >> cropShift );
+    const int sumXsumY = ( x >> cropShift ) * ( y >> cropShift );
+    int       a1 = sumXY - sumXsumY;
+    int       a2 = sumXX - sumXsumX;
+    int       scaleShiftA2 = getMSB( abs( a2 ) ) - 6;
+    int       scaleShiftA1 = scaleShiftA2 - m_licShiftDiff;
+    scaleShiftA2 = std::max( 0, scaleShiftA2 );
+    scaleShiftA1 = std::max( 0, scaleShiftA1 );
+    const int scaleShiftA = scaleShiftA2 + 15 - shift - scaleShiftA1;
+    a1 = a1 >> scaleShiftA1;
+    a2 = Clip3( 0, 63, a2 >> scaleShiftA2 );
+    scale = int( ( int64_t( a1 ) * int64_t( m_licMultApprox[ a2 ] ) ) >> scaleShiftA );
+    scale = Clip3( 0, 1 << ( shift + 2 ), scale );
+    const int maxOffset = ( 1 << ( bitDepth - 1 ) ) - 1;
+    const int minOffset = -1 - maxOffset;
+    offset = ( sumY - ( ( scale * sumX ) >> shift ) + ( ( 1 << ( cntShift ) ) >> 1 ) ) >> cntShift;
+    offset = Clip3( minOffset, maxOffset, offset );
+  }
+}
+
 void InterPrediction::xPredWoRefinement(PredictionUnit& pu, PelUnitBuf &pcYuvPred, const bool luma, const bool chroma)
 {
   if (xCheckIdenticalMotion(pu))
@@ -4448,7 +4585,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
       if (!pu.cs->sps->getRprEnabledFlag())
       {
 #endif
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
 #if !JVET_AF0190_RPR_TMP_REORDER_LIC
       }
 #endif
@@ -4513,7 +4650,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
         }
 
         dstBuf.toLast(clpRng);
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
         dstBuf.linearTransform(1, -biShift, biOffset, false, clpRng);
         if (bioApplied && compID == COMPONENT_Y)
         {
@@ -4525,14 +4662,14 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
       }
       else
       {
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
       }
     }
     if (!m_isAddHypMC)
     {
       m_scale [m_iRefListIdx][compID] = pu.cu->licScale[m_iRefListIdx][compID];
       m_offset[m_iRefListIdx][compID] = pu.cu->licOffset[m_iRefListIdx][compID];
-      m_shift [m_iRefListIdx][compID] = m_LICShift;
+      m_shift [m_iRefListIdx][compID] = m_licShift;
     }
     return;
   }
@@ -4561,16 +4698,16 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
           const int biShift = IF_INTERNAL_PREC - clpRng.bd;
           const Pel biOffset = -IF_INTERNAL_OFFS;
           dstBuf.toLast(clpRng);
-          dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+          dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
           dstBuf.linearTransform(1, -biShift, biOffset, false, clpRng);
         }
         else
         {
-          dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+          dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
         }
         m_scale [m_iRefListIdx][compID] = pu.cu->licScale[m_iRefListIdx][compID];
         m_offset[m_iRefListIdx][compID] = pu.cu->licOffset[m_iRefListIdx][compID];
-        m_shift [m_iRefListIdx][compID] = m_LICShift;
+        m_shift [m_iRefListIdx][compID] = m_licShift;
         return;
       }
 #endif
@@ -5259,7 +5396,7 @@ void InterPrediction::xPredInterBlk64(const ComponentID& compID, const Predictio
       if (!pu.cs->sps->getRprEnabledFlag())
       {
 #endif
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
 #if !JVET_AF0190_RPR_TMP_REORDER_LIC
       }
 #endif
@@ -5324,7 +5461,7 @@ void InterPrediction::xPredInterBlk64(const ComponentID& compID, const Predictio
         }
 
         dstBuf.toLast(clpRng);
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
         dstBuf.linearTransform(1, -biShift, biOffset, false, clpRng);
         if (bioApplied && compID == COMPONENT_Y)
         {
@@ -5336,14 +5473,14 @@ void InterPrediction::xPredInterBlk64(const ComponentID& compID, const Predictio
       }
       else
       {
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
       }
     }
     if (!m_isAddHypMC)
     {
       m_scale[m_iRefListIdx][compID] = pu.cu->licScale[m_iRefListIdx][compID];
       m_offset[m_iRefListIdx][compID] = pu.cu->licOffset[m_iRefListIdx][compID];
-      m_shift[m_iRefListIdx][compID] = m_LICShift;
+      m_shift[m_iRefListIdx][compID] = m_licShift;
     }
     return;
   }
@@ -5372,16 +5509,16 @@ void InterPrediction::xPredInterBlk64(const ComponentID& compID, const Predictio
         const int biShift = IF_INTERNAL_PREC - clpRng.bd;
         const Pel biOffset = -IF_INTERNAL_OFFS;
         dstBuf.toLast(clpRng);
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
         dstBuf.linearTransform(1, -biShift, biOffset, false, clpRng);
       }
       else
       {
-        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_LICShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
       }
       m_scale[m_iRefListIdx][compID] = pu.cu->licScale[m_iRefListIdx][compID];
       m_offset[m_iRefListIdx][compID] = pu.cu->licOffset[m_iRefListIdx][compID];
-      m_shift[m_iRefListIdx][compID] = m_LICShift;
+      m_shift[m_iRefListIdx][compID] = m_licShift;
       return;
     }
 #endif
@@ -18374,11 +18511,11 @@ void InterPrediction::getBlkAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
         const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
         if (m_bAMLTemplateAvailabe[0])
         {
-          pcBufPredRefTop.Y().linearTransform(pu.cu->licScale[REF_PIC_LIST_0][0], m_LICShift, pu.cu->licOffset[REF_PIC_LIST_0][0], true, clpRng);
+          pcBufPredRefTop.Y().linearTransform(pu.cu->licScale[REF_PIC_LIST_0][0], m_licShift, pu.cu->licOffset[REF_PIC_LIST_0][0], true, clpRng);
         }
         if (m_bAMLTemplateAvailabe[1])
         {
-          pcBufPredRefLeft.Y().linearTransform(pu.cu->licScale[REF_PIC_LIST_0][0], m_LICShift, pu.cu->licOffset[REF_PIC_LIST_0][0], true, clpRng);
+          pcBufPredRefLeft.Y().linearTransform(pu.cu->licScale[REF_PIC_LIST_0][0], m_licShift, pu.cu->licOffset[REF_PIC_LIST_0][0], true, clpRng);
         }
       }
 #endif
@@ -18453,7 +18590,7 @@ void InterPrediction::getBlkAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
             {
               const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
               pcMbBuf.Y().toLast(clpRng);
-              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_LICShift, pu.cu->licOffset[refList][0], true, clpRng);
+              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_licShift, pu.cu->licOffset[refList][0], true, clpRng);
               pcMbBuf.Y().linearTransform(1, -biShift, biOffset, false, clpRng);
             }
 #endif
@@ -18483,7 +18620,7 @@ void InterPrediction::getBlkAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
             if (pu.cu->licInheritPara)
             {
               const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
-              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_LICShift, pu.cu->licOffset[refList][0], true, clpRng);
+              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_licShift, pu.cu->licOffset[refList][0], true, clpRng);
             }
 #endif
           }
@@ -18534,7 +18671,7 @@ void InterPrediction::getBlkAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
             {
               const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
               pcMbBuf.Y().toLast(clpRng);
-              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_LICShift, pu.cu->licOffset[refList][0], true, clpRng);
+              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_licShift, pu.cu->licOffset[refList][0], true, clpRng);
               pcMbBuf.Y().linearTransform(1, -biShift, biOffset, false, clpRng);
             }
 #endif
@@ -18564,7 +18701,7 @@ void InterPrediction::getBlkAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
             if (pu.cu->licInheritPara)
             {
               const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
-              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_LICShift, pu.cu->licOffset[refList][0], true, clpRng);
+              pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_licShift, pu.cu->licOffset[refList][0], true, clpRng);
             }
 #endif
           }
@@ -18771,7 +18908,7 @@ void InterPrediction::getBlkAMLRefTemplateAlt(PredictionUnit &pu, PelUnitBuf &pc
       {
         const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
         pcMbBuf.Y().toLast(clpRng);
-        pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_LICShift, pu.cu->licOffset[refList][0], true, clpRng);
+        pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_licShift, pu.cu->licOffset[refList][0], true, clpRng);
         pcMbBuf.Y().linearTransform(1, -biShift, biOffset, false, clpRng);
       }
 #endif
@@ -18813,7 +18950,7 @@ void InterPrediction::getBlkAMLRefTemplateAlt(PredictionUnit &pu, PelUnitBuf &pc
       {
         const ClpRng& clpRng = pu.cu->slice->clpRng(COMPONENT_Y);
         pcMbBuf.Y().toLast(clpRng);
-        pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_LICShift, pu.cu->licOffset[refList][0], true, clpRng);
+        pcMbBuf.Y().linearTransform(pu.cu->licScale[refList][0], m_licShift, pu.cu->licOffset[refList][0], true, clpRng);
         pcMbBuf.Y().linearTransform(1, -biShift, biOffset, false, clpRng);
       }
 #endif
@@ -20304,10 +20441,10 @@ void InterPrediction::getAffAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
   {
     CHECK(!pu.cu->licFlag, "LIC flag must be set when inherited LIC mode is used");
     pu.cu->licFlag = false;
-    LICshift[0] = m_LICShift;
+    LICshift[0] = m_licShift;
     scale   [0] = pu.cu->licScale [0][0];
     offset  [0] = pu.cu->licOffset[0][0];
-    LICshift[1] = m_LICShift;
+    LICshift[1] = m_licShift;
     scale   [1] = pu.cu->licScale [1][0];
     offset  [1] = pu.cu->licOffset[1][0];
   }
@@ -21137,10 +21274,10 @@ void InterPrediction::getAffAndSbtmvpRefTemplate(PredictionUnit& pu, PelUnitBuf&
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG && JVET_AJ0274_GPM_AFFINE_TM
         if (pu.cu->licInheritPara && pu.cu->geoFlag && pu.cs->sps->getMaxNumGpmAffTmCand() > 0)
         {
-          LICshift[0] = m_LICShift;
+          LICshift[0] = m_licShift;
           scale[0] = pu.cu->licScale[0][0];
           offset[0] = pu.cu->licOffset[0][0];
-          LICshift[1] = m_LICShift;
+          LICshift[1] = m_licShift;
           scale[1] = pu.cu->licScale[1][0];
           offset[1] = pu.cu->licOffset[1][0];
         }
@@ -21337,10 +21474,10 @@ void InterPrediction::getAffAMLRefTemplateAlt(PredictionUnit &pu, PelUnitBuf &pc
   {
     CHECK(!pu.cu->licFlag, "LCI flag must be set when inherited LIC mode is used");
     pu.cu->licFlag = false;
-    licShift[0] = m_LICShift;
+    licShift[0] = m_licShift;
     scale[0] = pu.cu->licScale[0][0];
     offset[0] = pu.cu->licOffset[0][0];
-    licShift[1] = m_LICShift;
+    licShift[1] = m_licShift;
     scale[1] = pu.cu->licScale[1][0];
     offset[1] = pu.cu->licOffset[1][0];
   }
@@ -22742,7 +22879,7 @@ void InterPrediction::getBlkOBMCRefTemplate(PredictionUnit &subblockPu, PelUnitB
             const Pel biOffset = -IF_INTERNAL_OFFS;
             const int biShift = IF_INTERNAL_PREC - clpRng.bd;
             pcMbBuf.bufs[COMPONENT_Y].toLast(clpRng);
-            pcMbBuf.bufs[COMPONENT_Y].linearTransform(subblockPu.cu->licScale[refList][COMPONENT_Y], m_LICShift, subblockPu.cu->licOffset[refList][COMPONENT_Y], true, clpRng);
+            pcMbBuf.bufs[COMPONENT_Y].linearTransform(subblockPu.cu->licScale[refList][COMPONENT_Y], m_licShift, subblockPu.cu->licOffset[refList][COMPONENT_Y], true, clpRng);
             pcMbBuf.bufs[COMPONENT_Y].linearTransform(1, -biShift, biOffset, false, clpRng);
           }
 #endif
@@ -22858,7 +22995,7 @@ void InterPrediction::getBlkOBMCRefTemplate(PredictionUnit &subblockPu, PelUnitB
             const int biShift = IF_INTERNAL_PREC - clpRng.bd;
             PelUnitBuf pcMbBufTranspose = PelUnitBuf(subblockPu.chromaFormat, PelBuf(m_acYuvRefLeftTemplate[refList][0], pcBufPredRefLeftTranspose.Y()));
             pcMbBufTranspose.bufs[COMPONENT_Y].toLast(clpRng);
-            pcMbBufTranspose.bufs[COMPONENT_Y].linearTransform(subblockPu.cu->licScale[refList][COMPONENT_Y], m_LICShift, subblockPu.cu->licOffset[refList][COMPONENT_Y], true, clpRng);
+            pcMbBufTranspose.bufs[COMPONENT_Y].linearTransform(subblockPu.cu->licScale[refList][COMPONENT_Y], m_licShift, subblockPu.cu->licOffset[refList][COMPONENT_Y], true, clpRng);
             pcMbBufTranspose.bufs[COMPONENT_Y].linearTransform(1, -biShift, biOffset, false, clpRng);
           }
 #endif
@@ -24205,7 +24342,7 @@ void InterPrediction::xLicCompAdj(const PredictionUnit& pu, PelUnitBuf& pcYuvPre
           const ClpRng& clpRng = pu.cu->slice->clpRng(ComponentID(compID));
           const int biShift = IF_INTERNAL_PREC - clpRng.bd;
           curSrcPred.bufs[compID].toLast(clpRng);
-          curSrcPred.bufs[compID].linearTransform(pu.cu->licScale[refList][compID], m_LICShift, pu.cu->licOffset[refList][compID], true, clpRng);
+          curSrcPred.bufs[compID].linearTransform(pu.cu->licScale[refList][compID], m_licShift, pu.cu->licOffset[refList][compID], true, clpRng);
           curSrcPred.bufs[compID].linearTransform(1, -biShift, biOffset, false, clpRng);
         }
       }
@@ -24230,7 +24367,7 @@ void InterPrediction::xLicCompAdj(const PredictionUnit& pu, PelUnitBuf& pcYuvPre
           {
             m_scale [refList][compID] = pu.cu->licScale[refList][compID];
             m_offset[refList][compID] = pu.cu->licOffset[refList][compID];
-            m_shift [refList][compID] = m_LICShift;
+            m_shift [refList][compID] = m_licShift;
           }
         }
       }
@@ -24334,7 +24471,7 @@ void InterPrediction::xLicCompAdjBdof(const PredictionUnit& pu, PelUnitBuf& pcYu
       {
         m_scale [refList][compID] = pu.cu->licScale[refList][compID];
         m_offset[refList][compID] = pu.cu->licOffset[refList][compID];
-        m_shift [refList][compID] = m_LICShift;
+        m_shift [refList][compID] = m_licShift;
       }
     }
   }
@@ -24572,7 +24709,7 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
     return;
   }
 #endif
-  shift = m_LICShift;
+  shift = m_licShift;
   if (cntShift == 0)
   {
     scale = (1 << shift);
@@ -24581,7 +24718,7 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
   }
 
   const int cropShift = std::max(0, bitDepth - precShift + cntShift - 15);
-  const int xzOffset = (xx >> m_LICRegShift);
+  const int xzOffset = (xx >> m_licRegShift);
   const int sumX = x << precShift;
   const int sumY = y << precShift;
   const int sumXX = ((xx + xzOffset) >> (cropShift << 1)) << cntShift;
@@ -24591,13 +24728,13 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
   int a1 = sumXY - sumXsumY;
   int a2 = sumXX - sumXsumX;
   int scaleShiftA2 = getMSB(abs(a2)) - 6;
-  int scaleShiftA1 = scaleShiftA2 - m_LICShiftDiff;
+  int scaleShiftA1 = scaleShiftA2 - m_licShiftDiff;
   scaleShiftA2 = std::max(0, scaleShiftA2);
   scaleShiftA1 = std::max(0, scaleShiftA1);
   const int scaleShiftA = scaleShiftA2 + 15 - shift - scaleShiftA1;
   a1 = a1 >> scaleShiftA1;
   a2 = Clip3(0, 63, a2 >> scaleShiftA2);
-  scale = int((int64_t(a1) * int64_t(m_LICMultApprox[a2])) >> scaleShiftA);
+  scale = int((int64_t(a1) * int64_t(m_licMultApprox[a2])) >> scaleShiftA);
   scale = Clip3(0, 1 << (shift + 2), scale);
   const int maxOffset = (1 << (bitDepth - 1)) - 1;
   const int minOffset = -1 - maxOffset;
@@ -25745,7 +25882,7 @@ Distortion InterPrediction::deriveTMMv(const PredictionUnit& pu, bool fillCurTpl
   {
     m_scale [eRefList][COMPONENT_Y] = pu.cu->licScale [eRefList][COMPONENT_Y];
     m_offset[eRefList][COMPONENT_Y] = pu.cu->licOffset[eRefList][COMPONENT_Y];
-    m_shift [eRefList][COMPONENT_Y] = m_LICShift;
+    m_shift [eRefList][COMPONENT_Y] = m_licShift;
   }
 #endif
 

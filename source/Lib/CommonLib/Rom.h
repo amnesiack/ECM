@@ -287,14 +287,14 @@ extern const     int8_t   g_nspt32x4[ NUM_NSPT_CLUSTERS_32x4 ][ 20 ][ 128 ];
 extern const     int8_t   g_nspt8x32[ NUM_NSPT_CLUSTERS_8x32 ][ 24 ][ 256 ];
 extern const     int8_t   g_nspt32x8[ NUM_NSPT_CLUSTERS_32x8 ][ 24 ][ 256 ];
 #endif
-extern const     uint8_t  g_nsptIdx_4x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_4x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_8x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_8x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_4x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_16x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_8x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_16x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx4x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx4x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx4x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx16x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx16x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
 #if JVET_AE0086_LARGE_NSPT
 extern const     uint8_t  g_nsptIdx_4x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
 extern const     uint8_t  g_nsptIdx_32x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];

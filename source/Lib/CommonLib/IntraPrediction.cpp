@@ -493,8 +493,8 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
   }
 #endif
 
-  memset(tempRefAbove, 0, ((MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX) * sizeof(Pel));
-  memset(tempRefLeft, 0, ((MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX) * sizeof(Pel));
+  memset(m_tempRefAbove, 0, ((MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX) * sizeof(Pel));
+  memset(m_tempRefLeft, 0, ((MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX) * sizeof(Pel));
 
 #if JVET_AD0120_LBCCP || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   if (m_pCCFilterTemp == nullptr)
@@ -8514,8 +8514,8 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
   Pel* refMain;
   Pel* refSide;
 #if JVET_AC0094_REF_SAMPLES_OPT
-  Pel * refAbove = tempRefAbove;
-  Pel * refLeft  = tempRefLeft;
+  Pel * refAbove = m_tempRefAbove;
+  Pel * refLeft  = m_tempRefLeft;
 #else
   static Pel  refAbove[2 * MAX_CU_SIZE + 5 + 33 * MAX_REF_LINE_IDX];
   static Pel  refLeft[2 * MAX_CU_SIZE + 5 + 33 * MAX_REF_LINE_IDX];
@@ -31388,8 +31388,8 @@ void IntraPrediction::xPredTmrlIntraAng(const CPelBuf& pSrc, const ClpRng& clpRn
   Pel* refSide;
 
 #if JVET_AC0094_REF_SAMPLES_OPT
-  Pel * refAbove = tempRefAbove;
-  Pel * refLeft  = tempRefLeft;
+  Pel * refAbove = m_tempRefAbove;
+  Pel * refLeft  = m_tempRefLeft;
 #else
   Pel  refAbove[2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
   Pel  refLeft[2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];

@@ -236,8 +236,8 @@ private:
     bool     tmpFusionFlag;
     bool     tmpFlmFlag;
 #if JVET_AG0136_INTRA_TMP_LIC
-    bool tmpLicFlag;
-    uint8_t tmpLicIdc;
+    bool     tmpLicFlag;
+    uint8_t  tmpLicIdc;
 #endif
     int      tmpIsSubPel;
     int      tmpSubPelIdx;
@@ -802,15 +802,15 @@ public:
   int             m_isCccmWithMdfEnabledInRdo[5][MMLM_T_IDX + 1];
 #endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
-  bool m_skipDdCcpListConstruction;
-  bool firstTransformDdccp;
+  bool            m_skipDdCcpListConstruction;
+  bool            firstTransformDdccp;
   PelStorage      m_ddCcpStorage;
   PelUnitBuf      m_ddCcpStorageTemp;
   std::vector<DecoderDerivedCcpCandidate> m_decoderDerivedCcpList;
-  bool m_skipDdCcpMergeFusionList;
-  int m_numCcpMergefusionRdo;
-  double m_ddccpMergeFusionCost[2];
-  int m_ddCcpMergeFusionModeIndex[2];
+  bool            m_skipDdCcpMergeFusionList;
+  int             m_numCcpMergefusionRdo;
+  double          m_ddccpMergeFusionCost[2];
+  int             m_ddCcpMergeFusionModeIndex[2];
   PelStorage      m_ddCcpFusionStorage[2];
   PelUnitBuf      m_ddCcpFusionStorageTemp[2];
 #endif  
