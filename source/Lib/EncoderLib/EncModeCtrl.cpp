@@ -1838,6 +1838,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
     m_nonIntraCUECtx->bestCU && !m_nonIntraCUECtx->bestCU->isSST )
   {
     cuECtx = *m_nonIntraCUECtx;
+    cuECtx.testModes.clear();
     isReusingCu = cuECtx.get<bool>( IS_REUSING_CU );
   }
   else
@@ -2697,8 +2698,15 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
 
   ) )
   {
-    // enforce QT
-    return encTestmode.type == ETM_SPLIT_QT;
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    bool doIntra = encTestmode.type == ETM_INTRA && cs.slice->getSeparateTreeEnabled()
+                   && cs.slice->getIntraRegionNoSplitTest() && !bestCS;
+    if (!doIntra)
+#endif
+    {
+      // enforce QT
+      return encTestmode.type == ETM_SPLIT_QT;
+    }
   }
   else if (encTestmode.type == ETM_SPLIT_QT && cuECtx.maxDepth <= partitioner.currQtDepth)
   {
