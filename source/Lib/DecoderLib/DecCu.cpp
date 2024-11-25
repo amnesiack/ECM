@@ -1586,9 +1586,6 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     }
 #endif
   }
-#if KEEP_PRED_AND_RESI_SIGNALS
-  pReco.reconstruct( piPred, piResi, tu.cu->cs->slice->clpRng( compID ) );
-#else
 #if JVET_AG0145_ADAPTIVE_CLIPPING
   ClpRng clpRng = tu.cu->cs->slice->clpRng(compID);
   if (compID == COMPONENT_Y)
@@ -1605,11 +1602,19 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       clpRng.max = cs.slice->getLumaPelMax();
     }
   }
+#if KEEP_PRED_AND_RESI_SIGNALS
+  pReco.reconstruct(piPred, piResi, clpRng);
+#else
   piPred.reconstruct(piPred, piResi, clpRng);
+  pReco.copyFrom( piPred );
+#endif
+#else
+#if KEEP_PRED_AND_RESI_SIGNALS
+  pReco.reconstruct( piPred, piResi, tu.cu->cs->slice->clpRng( compID ) );
 #else
   piPred.reconstruct( piPred, piResi, tu.cu->cs->slice->clpRng( compID ) );
-#endif
   pReco.copyFrom( piPred );
+#endif
 #endif
 
 #if JVET_AC0071_DBV && JVET_AA0070_RRIBC

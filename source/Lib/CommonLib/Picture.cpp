@@ -312,10 +312,18 @@ void Picture::createTempBuffers( const unsigned _maxCUSize, bool useFilterFrame,
 #endif
     if (!decoder)
     {
+#if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT && !KEEP_PRED_AND_RESI_SIGNALS
       M_BUFS(jId, PIC_TRUE_ORIGINAL).create(chromaFormat, aOld, _maxCUSize);
+#else
+      M_BUFS(jId, PIC_TRUE_ORIGINAL).create(chromaFormat, a, _maxCUSize);
+#endif
       if (useFilterFrame)
       {
+#if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT && !KEEP_PRED_AND_RESI_SIGNALS
         M_BUFS(jId, PIC_FILTERED_ORIGINAL).create(chromaFormat, aOld, _maxCUSize);
+#else
+        M_BUFS(jId, PIC_FILTERED_ORIGINAL).create(chromaFormat, a, _maxCUSize);
+#endif
       }
       if (resChange)
       {
