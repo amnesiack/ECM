@@ -4740,7 +4740,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
 #if JVET_W0123_TIMD_FUSION
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-      if (spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd && !(cu.dimd && !cu.obicFlag) && cu.firstPU->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX)
+      if (spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd && (isNnIn ? !(cu.dimd && !cu.obicFlag) : true) && cu.firstPU->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX)
 #else
       if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd )
 #endif
