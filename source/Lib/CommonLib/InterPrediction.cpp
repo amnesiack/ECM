@@ -7986,12 +7986,18 @@ void InterPrediction::applyBiOptFlow(const PredictionUnit &pu, const CPelUnitBuf
 #if JVET_AD0195_HIGH_PRECISION_BDOF_CORE
         int32_t sumS1 = 0, sumS2 = 0,  sumS3 = 0, sumS5 = 0, sumS6 = 0;
 #if JVET_AG0067_DMVR_EXTENSIONS
-        if (bioDx == 4)
-          g_pelBufOP.calcBIOParamSum4HighPrecision4(m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6, m_dI + bioBlockParamOffset  ,m_Gx + bioBlockParamOffset, m_Gy + bioBlockParamOffset, pu.cu->geoFlag, m_subPuMC);
-        else if (bioDx == 8)
-          g_pelBufOP.calcBIOParamSum4HighPrecision8(m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6, m_dI + bioBlockParamOffset ,m_Gx + bioBlockParamOffset, m_Gy + bioBlockParamOffset, pu.cu->geoFlag, m_subPuMC);
+        if( bioDx == 4 )
+        {
+          g_pelBufOP.calcBIOParamSum4HighPrecision4( m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6, m_dI + bioBlockParamOffset, m_Gx + bioBlockParamOffset, m_Gy + bioBlockParamOffset, pu.cu->geoFlag, m_subPuMC );
+        }
+        else if( bioDx == 8 )
+        {
+          g_pelBufOP.calcBIOParamSum4HighPrecision8( m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6, m_dI + bioBlockParamOffset, m_Gx + bioBlockParamOffset, m_Gy + bioBlockParamOffset, pu.cu->geoFlag, m_subPuMC );
+        }
         else
-          g_pelBufOP.calcBIOParamSum4HighPrecision16(m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6, m_dI + bioBlockParamOffset   ,m_Gx + bioBlockParamOffset, m_Gy + bioBlockParamOffset, pu.cu->geoFlag, m_subPuMC);
+        {
+          g_pelBufOP.calcBIOParamSum4HighPrecision16( m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6, m_dI + bioBlockParamOffset, m_Gx + bioBlockParamOffset, m_Gy + bioBlockParamOffset, pu.cu->geoFlag, m_subPuMC );
+        }
 #else
         g_pelBufOP.calcBIOParamSum4HighPrecision(m_piDotProduct1 + bioBlockParamOffset, m_piDotProduct2 + bioBlockParamOffset, m_piDotProduct3 + bioBlockParamOffset, m_piDotProduct5 + bioBlockParamOffset, m_piDotProduct6 + bioBlockParamOffset, bioDx + 4, bioDy + 4, widthG, &sumS1, &sumS2, &sumS3, &sumS5, &sumS6
 #if JVET_AG0067_DMVR_EXTENSIONS // m_sub
