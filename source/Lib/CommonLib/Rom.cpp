@@ -6412,21 +6412,21 @@ static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX
       {
         switch (idxMap[iDistanceIndex][iNASPIdx])
         {                                                                             // Angle CCW from (1,0), approx.
-        case 0:  offsetX = offsetX2;                                        break;  //  90?
-        case 1:  offsetX = offsetX0;                                        break;  // 180?
-        case 2:  offsetX = offsetX0;                                        break;  // 135?
-        case 3:  offsetX = offsetX0;                                        break;  // 157.5?
-        case 4:  offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 112.5?
-        case 5:  offsetX = offsetX0;                                        break;  // 146.25?
-        case 6:  offsetX = ((offsetX2 + (offsetX0 + offsetX2)) >> 1) >> 1;  break;  // 123.75?
-        case 7:  offsetX = offsetX1;                                        break;  //   0?
-        case 8:  offsetX = -1;                                              break;  // 270?
-        case 9:  offsetX = offsetX1;                                        break;  //  45?
-        case 10: offsetX = offsetX0;                                        break;  // 215?
-        case 11: offsetX = (offsetX2 + offsetX1) >> 1;                      break;  //  67.5?
-        case 12: offsetX = offsetX0;                                        break;  // 197.5?
-        case 13: offsetX = offsetX1;                                        break;  //  22.5?
-        case 14: offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 242.5?
+        case 0:  offsetX = offsetX2;                                        break;  //  90
+        case 1:  offsetX = offsetX0;                                        break;  // 180
+        case 2:  offsetX = offsetX0;                                        break;  // 135
+        case 3:  offsetX = offsetX0;                                        break;  // 157.5
+        case 4:  offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 112.5
+        case 5:  offsetX = offsetX0;                                        break;  // 146.25
+        case 6:  offsetX = ((offsetX2 + (offsetX0 + offsetX2)) >> 1) >> 1;  break;  // 123.75
+        case 7:  offsetX = offsetX1;                                        break;  //   0
+        case 8:  offsetX = -1;                                              break;  // 270
+        case 9:  offsetX = offsetX1;                                        break;  //  45
+        case 10: offsetX = offsetX0;                                        break;  // 215
+        case 11: offsetX = (offsetX2 + offsetX1) >> 1;                      break;  //  67.5
+        case 12: offsetX = offsetX0;                                        break;  // 197.5
+        case 13: offsetX = offsetX1;                                        break;  //  22.5
+        case 14: offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 242.5
         default: printf("error!"); exit(0);                                 break;
         }
         tab[widthLog2MinusMinCU][i++] = offsetX;
@@ -6457,21 +6457,21 @@ static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX
       {
         switch (idxMap[iDistanceIndex][iNASPIdx])
         {                                                                             // Angle CCW from (1,0), approx.
-        case 0:  offsetY = offsetY1;                                        break;  // 90?
-        case 1:  offsetY = offsetY2;                                        break;  // 180?
-        case 2:  offsetY = offsetY1;                                        break;  // 135?
-        case 3:  offsetY = (offsetY1 + offsetY2) >> 1;                      break;  // 157.5?
-        case 4:  offsetY = offsetY1;                                        break;  // 112.5?
-        case 5:  offsetY = ((offsetY2 + (offsetY1 + offsetY2)) >> 1) >> 1;  break;  // 146.25?
-        case 6:  offsetY = offsetY1;                                        break;  // 123.75?
-        case 7:  offsetY = -1;                                              break;  //   0?
-        case 8:  offsetY = offsetY0;                                        break;  // 270?
-        case 9:  offsetY = offsetY1;                                        break;  //  45?
-        case 10: offsetY = offsetY0;                                        break;  // 215?
-        case 11: offsetY = offsetY1;                                        break;  //  67.5?
-        case 12: offsetY = (offsetY2 + offsetY0) >> 1;                      break;  // 197.5?
-        case 13: offsetY = (offsetY1 + offsetY2) >> 1;                      break;  //  22.5?
-        case 14: offsetY = offsetY0;                                        break;  // 242.5?
+        case 0:  offsetY = offsetY1;                                        break;  // 90
+        case 1:  offsetY = offsetY2;                                        break;  // 180
+        case 2:  offsetY = offsetY1;                                        break;  // 135
+        case 3:  offsetY = (offsetY1 + offsetY2) >> 1;                      break;  // 157.5
+        case 4:  offsetY = offsetY1;                                        break;  // 112.5
+        case 5:  offsetY = ((offsetY2 + (offsetY1 + offsetY2)) >> 1) >> 1;  break;  // 146.25
+        case 6:  offsetY = offsetY1;                                        break;  // 123.75
+        case 7:  offsetY = -1;                                              break;  //   0
+        case 8:  offsetY = offsetY0;                                        break;  // 270
+        case 9:  offsetY = offsetY1;                                        break;  //  45
+        case 10: offsetY = offsetY0;                                        break;  // 215
+        case 11: offsetY = offsetY1;                                        break;  //  67.5
+        case 12: offsetY = (offsetY2 + offsetY0) >> 1;                      break;  // 197.5
+        case 13: offsetY = (offsetY1 + offsetY2) >> 1;                      break;  //  22.5
+        case 14: offsetY = offsetY0;                                        break;  // 242.5
         default: printf("error!"); exit(0);                                 break;
         }
         tab[heightLog2MinusMinCU][i++] = offsetY;
