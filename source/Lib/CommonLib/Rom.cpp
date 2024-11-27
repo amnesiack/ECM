@@ -31,9 +31,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** \file     Rom.cpp
-    \brief    global variables & functions
-*/
+ /** \file     Rom.cpp
+     \brief    global variables & functions
+ */
 
 #include "Rom.h"
 #include "UnitTools.h"
@@ -101,7 +101,7 @@ std::unordered_map<int, int> g_size
   { 32896,17 }
 };
 
-const int g_modeGroupSym[PDP_NUM_MODES] = { 0, 1, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34}; //BR
+const int g_modeGroupSym[PDP_NUM_MODES] = { 0, 1, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34 }; //BR
 int16_t*** g_pdpFilters[PDP_NUM_GROUPS][PDP_NUM_SIZES] = { {nullptr} };
 int g_validSize[PDP_NUM_SIZES] = { 0 };
 #if JVET_AI0208_PDP_MIP
@@ -111,24 +111,24 @@ int g_validSizeMip[PDP_NUM_SIZES] = { 0 };
 void createMipFilters()
 {
 
-  auto create_buf = [](int16_t***& f, int w, int h, int len, int aligned=1, int log_row_interleave = 0)
+  auto create_buf = [](int16_t***& f, int w, int h, int len, int aligned = 1, int log_row_interleave = 0)
   {
-    if(!f)
+    if (!f)
     {
       int len_align = aligned > 1 ? (len + aligned - 1) / aligned * aligned : len;
 
       auto mem_size = len_align * h * w;
 
-      int16_t *pMem = new int16_t[mem_size];
+      int16_t* pMem = new int16_t[mem_size];
       ::memset(pMem, 0, sizeof(int16_t) * mem_size);
 
-      int buff_w = w>>log_row_interleave;
+      int buff_w = w >> log_row_interleave;
 
-      f = new int16_t**[h];
-      for( int i = 0; i < h; ++i)
+      f = new int16_t * *[h];
+      for (int i = 0; i < h; ++i)
       {
-        f[i] = new int16_t *[buff_w];
-        for( int j = 0; j < buff_w; ++j)
+        f[i] = new int16_t * [buff_w];
+        for (int j = 0; j < buff_w; ++j)
         {
           f[i][j] = pMem;
           pMem += len_align << log_row_interleave;
@@ -136,43 +136,43 @@ void createMipFilters()
       }
     }
   };
-  auto transpose_matrix_line = []( int16_t *src, int16_t *dst, int w, int h, int ts)
+  auto transpose_matrix_line = [](int16_t* src, int16_t* dst, int w, int h, int ts)
   {
     int stride1 = ts + w * 2;
     int stride2 = ts + h * 2;
 
-    AreaBuf<int16_t> src_corner(src,                stride1, ts,      ts);
-    AreaBuf<int16_t> src_top   (src + ts,           stride1, w * 2, ts);
-    AreaBuf<int16_t> src_left  (src + ts * stride1, ts,      ts,      h * 2);
-    AreaBuf<int16_t> dst_corner(dst,                stride2, ts,      ts);
-    AreaBuf<int16_t> dst_top   (dst + ts,           stride2, h * 2, ts);
-    AreaBuf<int16_t> dst_left  (dst + ts * stride2, ts,      ts,      w * 2);
+    AreaBuf<int16_t> src_corner(src, stride1, ts, ts);
+    AreaBuf<int16_t> src_top(src + ts, stride1, w * 2, ts);
+    AreaBuf<int16_t> src_left(src + ts * stride1, ts, ts, h * 2);
+    AreaBuf<int16_t> dst_corner(dst, stride2, ts, ts);
+    AreaBuf<int16_t> dst_top(dst + ts, stride2, h * 2, ts);
+    AreaBuf<int16_t> dst_left(dst + ts * stride2, ts, ts, w * 2);
 
     dst_corner.copyTranspose(src_corner);
     dst_top.copyTranspose(src_left);
     dst_left.copyTranspose(src_top);
   };
-  auto interleave_matrix_lines = []( AreaBuf<int16_t> &src, AreaBuf<int16_t> &dst, int sublen)
+  auto interleave_matrix_lines = [](AreaBuf<int16_t>& src, AreaBuf<int16_t>& dst, int sublen)
   {
     int ratio = src.height / dst.height;
-    for( auto i = 0; i < dst.height; ++i)
+    for (auto i = 0; i < dst.height; ++i)
     {
-      for( auto j = 0; j < dst.width; j += ratio * sublen)
+      for (auto j = 0; j < dst.width; j += ratio * sublen)
       {
-        int16_t *pSubDst = &dst.at(j, i);
-        AreaBuf<int16_t> subDst( pSubDst, sublen, ratio );
-        int src_subLen = std::min(sublen, int(src.width - j / ratio) );
-        AreaBuf<int16_t> subSrc = src.subBuf( Position(j/ratio, i*ratio), Size(src_subLen, ratio) );
+        int16_t* pSubDst = &dst.at(j, i);
+        AreaBuf<int16_t> subDst(pSubDst, sublen, ratio);
+        int src_subLen = std::min(sublen, int(src.width - j / ratio));
+        AreaBuf<int16_t> subSrc = src.subBuf(Position(j / ratio, i * ratio), Size(src_subLen, ratio));
 
-        subDst.copyFromFill(subSrc, sublen, ratio,  0);
+        subDst.copyFromFill(subSrc, sublen, ratio, 0);
       }
 
     }
   };
   static int16_t read_buffer[266240];
   static int16_t read_bufferT[266240];
-  const int16_t *pData = g_filterDataPdpMip;
-  while ( pData < g_filterDataPdpMip + sizeof(g_filterDataPdpMip)/sizeof(int16_t))
+  const int16_t* pData = g_filterDataPdpMip;
+  while (pData < g_filterDataPdpMip + sizeof(g_filterDataPdpMip) / sizeof(int16_t))
   {
     int tuWidth, tuHeight, groupID;
     tuWidth = *pData++;
@@ -188,27 +188,27 @@ void createMipFilters()
     int16_t***& f = g_pdpFiltersMip[groupID][sizeID];
 
     create_buf(f, dsWidth, dsHeight, len, 8, 2);
-    int16_t***& f_sym = g_pdpFiltersMip[groupID+16][g_size[(tuHeight << 8) + tuWidth]];
+    int16_t***& f_sym = g_pdpFiltersMip[groupID + 16][g_size[(tuHeight << 8) + tuWidth]];
     create_buf(f_sym, dsHeight, dsWidth, len, 8, 2);
-    memcpy(read_buffer, pData, sizeof(int16_t)*len*dsWidth*dsHeight);
-    pData += len*dsWidth*dsHeight;
-    AreaBuf<int16_t> srcBuf(read_buffer, len, dsWidth*dsHeight);
-    AreaBuf<int16_t> dstBuf( f[0][0], (len + 7) / 8 * 8 * 4, dsWidth*dsHeight/4 );
-    interleave_matrix_lines( srcBuf, dstBuf, 8);
+    memcpy(read_buffer, pData, sizeof(int16_t) * len * dsWidth * dsHeight);
+    pData += len * dsWidth * dsHeight;
+    AreaBuf<int16_t> srcBuf(read_buffer, len, dsWidth * dsHeight);
+    AreaBuf<int16_t> dstBuf(f[0][0], (len + 7) / 8 * 8 * 4, dsWidth * dsHeight / 4);
+    interleave_matrix_lines(srcBuf, dstBuf, 8);
 
     int ts_x = g_sizeData[sizeID][5];
     int ts_y = g_sizeData[sizeID][6];
-    CHECK( ts_x != ts_y, "Symmetry not true");
-    for( auto i = 0; i < dsHeight; ++i)
+    CHECK(ts_x != ts_y, "Symmetry not true");
+    for (auto i = 0; i < dsHeight; ++i)
     {
-      for( auto j = 0; j < dsWidth; ++j)
+      for (auto j = 0; j < dsWidth; ++j)
       {
-        transpose_matrix_line(read_buffer + (i * dsWidth + j) * len, read_bufferT + (j * dsHeight + i) * len, dsWidth, dsHeight, ts_x );
+        transpose_matrix_line(read_buffer + (i * dsWidth + j) * len, read_bufferT + (j * dsHeight + i) * len, dsWidth, dsHeight, ts_x);
       }
     }
-    AreaBuf<int16_t> srcBufT(read_bufferT, len, dsWidth*dsHeight);
-    AreaBuf<int16_t> dstBufT( f_sym[0][0], (len + 7) / 8 * 8 * 4, dsWidth*dsHeight/4 );
-    interleave_matrix_lines( srcBufT, dstBufT, 8);
+    AreaBuf<int16_t> srcBufT(read_bufferT, len, dsWidth * dsHeight);
+    AreaBuf<int16_t> dstBufT(f_sym[0][0], (len + 7) / 8 * 8 * 4, dsWidth * dsHeight / 4);
+    interleave_matrix_lines(srcBufT, dstBufT, 8);
   }
 }
 #endif
@@ -233,32 +233,32 @@ void createPdpFilters()
       int16_t***& f = g_pdpFilters[groupID][sizeID];
       int16_t***& fSym = g_pdpFilters[g_modeGroupSym[groupID]][g_size[(dsHeight << 8) + dsWidth]];
 
-      if( !f )
+      if (!f)
       {
-        f = new int16_t**[dsHeight];
+        f = new int16_t * *[dsHeight];
         for (int h = 0; h < dsHeight; ++h)
         {
-          f[h] = new int16_t*[dsWidth];
-          for (int w = 0; w < dsWidth/4; w+=1)
+          f[h] = new int16_t * [dsWidth];
+          for (int w = 0; w < dsWidth / 4; w += 1)
           {
-            auto len4 = (((len+7)/8)*8)*4;
+            auto len4 = (((len + 7) / 8) * 8) * 4;
             f[h][w] = new int16_t[len4];
-            ::memset(f[h][w], 0, sizeof(int16_t)*len4);
+            ::memset(f[h][w], 0, sizeof(int16_t) * len4);
           }
         }
       }
 
-      if( !fSym && groupID > 1 && groupID < 34 )
+      if (!fSym && groupID > 1 && groupID < 34)
       {
-        fSym = new int16_t**[dsWidth];
+        fSym = new int16_t * *[dsWidth];
         for (int h = 0; h < dsWidth; ++h)
         {
-          fSym[h] = new int16_t*[dsHeight];
-          for (int w = 0; w < dsHeight/4; w+=1)
+          fSym[h] = new int16_t * [dsHeight];
+          for (int w = 0; w < dsHeight / 4; w += 1)
           {
-            auto len4 = (((len+7)/8)*8)*4;
+            auto len4 = (((len + 7) / 8) * 8) * 4;
             fSym[h][w] = new int16_t[len4];
-            ::memset(fSym[h][w], 0, sizeof(int16_t)*len4);
+            ::memset(fSym[h][w], 0, sizeof(int16_t) * len4);
           }
         }
       }
@@ -296,59 +296,59 @@ void createPdpFilters()
           {
             if (dsWidth == 4 && dsHeight == 4)
             {
-              val = g_weights4x4[dsMode][y*dsWidth + x][i];
+              val = g_weights4x4[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 4 && dsHeight == 8)
             {
-              val = g_weights4x8[dsMode][y*dsWidth + x][i];
+              val = g_weights4x8[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 8 && dsHeight == 4)
             {
-              val = g_weights8x4[dsMode][y*dsWidth + x][i];
+              val = g_weights8x4[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 8 && dsHeight == 8)
             {
-              val = g_weights8x8[dsMode][y*dsWidth + x][i];
+              val = g_weights8x8[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 4 && dsHeight == 16)
             {
-              val = g_weights4x16[dsMode][y*dsWidth + x][i];
+              val = g_weights4x16[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 16 && dsHeight == 4)
             {
-              val = g_weights16x4[dsMode][y*dsWidth + x][i];
+              val = g_weights16x4[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 8 && dsHeight == 16)
             {
-              val = g_weights8x16[dsMode][y*dsWidth + x][i];
+              val = g_weights8x16[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 16 && dsHeight == 8)
             {
-              val = g_weights16x8[dsMode][y*dsWidth + x][i];
+              val = g_weights16x8[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 16 && dsHeight == 16)
             {
-              val = g_weights16x16[dsMode][y*dsWidth + x][i];
+              val = g_weights16x16[dsMode][y * dsWidth + x][i];
             }
 
-            auto ii = i - (i%8);
-            auto ij = i%8;
-            f[y][x>>2][( ii * 4 + 8 * (x%4)) + ij] = val;
+            auto ii = i - (i % 8);
+            auto ij = i % 8;
+            f[y][x >> 2][(ii * 4 + 8 * (x % 4)) + ij] = val;
 
-            if(fSym && (groupID > 1 && groupID < 34))
+            if (fSym && (groupID > 1 && groupID < 34))
             {
               int templateX = g_sizeData[sizeID][5];
               int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ( (shortLen || dsWidth == 128) ? 1 : 2) + templateX;
+              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
               int stride2 = templateX;
-              int stride1Sym = dsHeight * ( (shortLen || dsHeight == 128) ? 1 : 2) + templateY;
+              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
               int stride2Sym = templateY;
               int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? (( i - lenZone1 ) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? (( i - lenZone1 ) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y%4) * 8 + (iSym % 8);
-              fSym[x][y>>2][iSymInterleave] = val;
+              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
+              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
+              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
+              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
+              fSym[x][y >> 2][iSymInterleave] = val;
             }
           }
         }
@@ -371,59 +371,59 @@ void createPdpFilters()
           {
             if (dsWidth == 4 && dsHeight == 4)
             {
-              val = g_weightsShort4x4[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort4x4[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 4 && dsHeight == 8)
             {
-              val = g_weightsShort4x8[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort4x8[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 8 && dsHeight == 4)
             {
-              val = g_weightsShort8x4[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort8x4[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 8 && dsHeight == 8)
             {
-              val = g_weightsShort8x8[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort8x8[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 4 && dsHeight == 16)
             {
-              val = g_weightsShort4x16[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort4x16[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 16 && dsHeight == 4)
             {
-              val = g_weightsShort16x4[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort16x4[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 8 && dsHeight == 16)
             {
-              val = g_weightsShort8x16[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort8x16[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 16 && dsHeight == 8)
             {
-              val = g_weightsShort16x8[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort16x8[dsMode][y * dsWidth + x][i];
             }
             else if (dsWidth == 16 && dsHeight == 16)
             {
-              val = g_weightsShort16x16[dsMode][y*dsWidth + x][i];
+              val = g_weightsShort16x16[dsMode][y * dsWidth + x][i];
             }
 
-            auto ii = i - (i%8);
-            auto ij = i%8;
-            f[y][x>>2][( ii * 4 + 8 * (x%4)) + ij] = val;
+            auto ii = i - (i % 8);
+            auto ij = i % 8;
+            f[y][x >> 2][(ii * 4 + 8 * (x % 4)) + ij] = val;
 
-            if(fSym && (groupID2 > 1 && groupID2 < 34))
+            if (fSym && (groupID2 > 1 && groupID2 < 34))
             {
               int templateX = g_sizeData[sizeID][5];
               int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ( (shortLen || dsWidth == 128) ? 1 : 2) + templateX;
+              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
               int stride2 = templateX;
-              int stride1Sym = dsHeight * ( (shortLen || dsHeight == 128) ? 1 : 2) + templateY;
+              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
               int stride2Sym = templateY;
               int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? (( i - lenZone1 ) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? (( i - lenZone1 ) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y%4) * 8 + (iSym % 8);
-              fSym[x][y>>2][iSymInterleave] = val;
+              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
+              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
+              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
+              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
+              fSym[x][y >> 2][iSymInterleave] = val;
             }
           }
         }
@@ -443,7 +443,7 @@ void createPdpFilters()
     int len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
     for (int groupID = 0; groupID < 19; groupID++)
     {
-      if( groupID > 1 && groupID % 4 != 2 )
+      if (groupID > 1 && groupID % 4 != 2)
       {
         continue;
       }
@@ -456,7 +456,7 @@ void createPdpFilters()
       {
         for (int x = 0; x < dsWidth; x++)
         {
-          if ((x%sampFacHor != (sampFacHor - 1)) || (y%sampFacVer != (sampFacVer - 1)))
+          if ((x % sampFacHor != (sampFacHor - 1)) || (y % sampFacVer != (sampFacVer - 1)))
           {
             continue;
           }
@@ -467,33 +467,33 @@ void createPdpFilters()
           {
             if (dsWidth == 16 && dsHeight == 32)
             {
-              val = g_weights16x32[dsMode][dy*dsWidth2 + dx][i];
+              val = g_weights16x32[dsMode][dy * dsWidth2 + dx][i];
             }
             else if (dsWidth == 32 && dsHeight == 16)
             {
-              val = g_weights32x16[dsMode][dy*dsWidth2 + dx][i];
+              val = g_weights32x16[dsMode][dy * dsWidth2 + dx][i];
             }
             else if (dsWidth == 32 && dsHeight == 32)
             {
-              val = g_weights32x32[dsMode][dy*dsWidth2 + dx][i];
+              val = g_weights32x32[dsMode][dy * dsWidth2 + dx][i];
             }
 
-            f[y][x>>2][( (i/8) * 32 + 8 * (x%4)) + (i%8)] = val;
+            f[y][x >> 2][((i / 8) * 32 + 8 * (x % 4)) + (i % 8)] = val;
 
-            if(fSym && (groupID > 1 && groupID < 34))
+            if (fSym && (groupID > 1 && groupID < 34))
             {
               int templateX = g_sizeData[sizeID][5];
               int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ( (shortLen || dsWidth == 128) ? 1 : 2) + templateX;
+              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
               int stride2 = templateX;
-              int stride1Sym = dsHeight * ( (shortLen || dsHeight == 128) ? 1 : 2) + templateY;
+              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
               int stride2Sym = templateY;
               int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? (( i - lenZone1 ) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? (( i - lenZone1 ) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y%4) * 8 + (iSym % 8);
-              fSym[x][y>>2][iSymInterleave] = val;
+              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
+              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
+              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
+              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
+              fSym[x][y >> 2][iSymInterleave] = val;
             }
           }
         }
@@ -514,7 +514,7 @@ void createPdpFilters()
       {
         for (int x = 0; x < dsWidth; x++)
         {
-          if ((x%sampFacHor != (sampFacHor - 1)) || (y%sampFacVer != (sampFacVer - 1)))
+          if ((x % sampFacHor != (sampFacHor - 1)) || (y % sampFacVer != (sampFacVer - 1)))
           {
             continue;
           }
@@ -526,33 +526,33 @@ void createPdpFilters()
           {
             if (dsWidth == 16 && dsHeight == 32)
             {
-              val = g_weightsShort16x32[dsMode][dy*dsWidth2 + dx][i];
+              val = g_weightsShort16x32[dsMode][dy * dsWidth2 + dx][i];
             }
             else if (dsWidth == 32 && dsHeight == 16)
             {
-              val = g_weightsShort32x16[dsMode][dy*dsWidth2 + dx][i];
+              val = g_weightsShort32x16[dsMode][dy * dsWidth2 + dx][i];
             }
             else if (dsWidth == 32 && dsHeight == 32)
             {
-              val = g_weightsShort32x32[dsMode][dy*dsWidth2 + dx][i];
+              val = g_weightsShort32x32[dsMode][dy * dsWidth2 + dx][i];
             }
 
-            f[y][x>>2][( (i/8) * 32 + 8 * (x%4)) + (i%8)] = val;
+            f[y][x >> 2][((i / 8) * 32 + 8 * (x % 4)) + (i % 8)] = val;
 
-            if(fSym && (groupID2 > 1 && groupID2 < 34))
+            if (fSym && (groupID2 > 1 && groupID2 < 34))
             {
               int templateX = g_sizeData[sizeID][5];
               int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ( (shortLen || dsWidth == 128) ? 1 : 2) + templateX;
+              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
               int stride2 = templateX;
-              int stride1Sym = dsHeight * ( (shortLen || dsHeight == 128) ? 1 : 2) + templateY;
+              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
               int stride2Sym = templateY;
               int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? (( i - lenZone1 ) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? (( i - lenZone1 ) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y%4) * 8 + (iSym % 8);
-              fSym[x][y>>2][iSymInterleave] = val;
+              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
+              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
+              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
+              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
+              fSym[x][y >> 2][iSymInterleave] = val;
             }
           }
         }
@@ -570,7 +570,7 @@ void destroyMipFilters()
     {
       if (g_pdpFiltersMip[group][size])
       {
-        if(g_pdpFiltersMip[group][size][0][0])
+        if (g_pdpFiltersMip[group][size][0][0])
         {
           delete[] g_pdpFiltersMip[group][size][0][0];
           int currHeight = g_sizeData[size][4];
@@ -582,7 +582,7 @@ void destroyMipFilters()
             }
           }
         }
-        if(g_pdpFiltersMip[group][size])
+        if (g_pdpFiltersMip[group][size])
         {
           delete[] g_pdpFiltersMip[group][size];
         }
@@ -603,7 +603,7 @@ void destroyPdpFilters()
         for (int h = 0; h < currHeight; ++h)
         {
 
-          for (int w = 0; w < currWidth/4; ++w)
+          for (int w = 0; w < currWidth / 4; ++w)
           {
             delete[] g_pdpFilters[group][size][h][w];
           }
@@ -621,7 +621,7 @@ void destroyPdpFilters()
 #endif
 
 #if ENABLE_TRACING
-CDTrace *g_trace_ctx = NULL;
+CDTrace* g_trace_ctx = NULL;
 #endif
 bool g_mctsDecCheckEnabled = false;
 
@@ -636,25 +636,25 @@ MsgLevel g_verbosity = VERBOSE;
 #if JVET_AJ0237_INTERNAL_12BIT
 int16_t* g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
 #else
-int8_t * g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
+int8_t* g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
 #endif
 #else
 #if JVET_AJ0237_INTERNAL_12BIT
 int16_t* g_resiBorderTemplateLFNST[6][6][210];
 #else
-int8_t * g_resiBorderTemplateLFNST[6][6][210];
+int8_t* g_resiBorderTemplateLFNST[6][6][210];
 #endif
 #endif
 #else
-int8_t * g_resiBorderTemplateLFNST[6][6][16];
+int8_t* g_resiBorderTemplateLFNST[6][6][16];
 #endif
 #if JVET_AJ0237_INTERNAL_12BIT
 int16_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
 #else
-int8_t * g_resiBorderTemplate[6][6][NUM_TRANS_TYPE*NUM_TRANS_TYPE];
+int8_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
 #endif
 #else
-const int8_t * g_resiBorderTemplate[6][6][NUM_TRANS_TYPE*NUM_TRANS_TYPE];
+const int8_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
 #endif
 // g_initRomSignPred: Format for each [W][H][Idx] in [0-5][0-5][0-8], 0 => empty, 1 => (W+H-1)*16 template coefficients
 #if !JVET_W0103_INTRA_MTS
@@ -4276,85 +4276,85 @@ public:
     {
       //------------------------------------------------
 
-      case SCAN_DIAG:
+    case SCAN_DIAG:
 
-        if ((m_column == m_blockWidth - 1) || (m_line == 0)) //if we reach the end of a rank, go diagonally down to the next one
+      if ((m_column == m_blockWidth - 1) || (m_line == 0)) //if we reach the end of a rank, go diagonally down to the next one
+      {
+        m_line += m_column + 1;
+        m_column = 0;
+
+        if (m_line >= m_blockHeight) //if that takes us outside the block, adjust so that we are back on the bottom row
         {
-          m_line += m_column + 1;
-          m_column = 0;
+          m_column += m_line - (m_blockHeight - 1);
+          m_line = m_blockHeight - 1;
+        }
+      }
+      else
+      {
+        m_column++;
+        m_line--;
+      }
+      break;
 
-          if (m_line >= m_blockHeight) //if that takes us outside the block, adjust so that we are back on the bottom row
-          {
-            m_column += m_line - (m_blockHeight - 1);
-            m_line = m_blockHeight - 1;
-          }
+    case SCAN_TRAV_HOR:
+      if (m_line % 2 == 0)
+      {
+        if (m_column == (m_blockWidth - 1))
+        {
+          m_line++;
+          m_column = m_blockWidth - 1;
         }
         else
         {
           m_column++;
+        }
+      }
+      else
+      {
+        if (m_column == 0)
+        {
+          m_line++;
+          m_column = 0;
+        }
+        else
+        {
+          m_column--;
+        }
+      }
+      break;
+
+    case SCAN_TRAV_VER:
+      if (m_column % 2 == 0)
+      {
+        if (m_line == (m_blockHeight - 1))
+        {
+          m_column++;
+          m_line = m_blockHeight - 1;
+        }
+        else
+        {
+          m_line++;
+        }
+      }
+      else
+      {
+        if (m_line == 0)
+        {
+          m_column++;
+          m_line = 0;
+        }
+        else
+        {
           m_line--;
         }
-        break;
-
-      case SCAN_TRAV_HOR:
-        if (m_line % 2 == 0)
-        {
-          if (m_column == (m_blockWidth - 1))
-          {
-            m_line++;
-            m_column = m_blockWidth - 1;
-          }
-          else
-          {
-            m_column++;
-          }
-        }
-        else
-        {
-          if (m_column == 0)
-          {
-            m_line++;
-            m_column = 0;
-          }
-          else
-          {
-            m_column--;
-          }
-        }
-        break;
-
-      case SCAN_TRAV_VER:
-        if (m_column % 2 == 0)
-        {
-          if (m_line == (m_blockHeight - 1))
-          {
-            m_column++;
-            m_line = m_blockHeight - 1;
-          }
-          else
-          {
-            m_line++;
-          }
-        }
-        else
-        {
-          if (m_line == 0)
-          {
-            m_column++;
-            m_line = 0;
-          }
-          else
-          {
-            m_line--;
-          }
-        }
-        break;
+      }
+      break;
       //------------------------------------------------
 
-      default:
+    default:
 
-        THROW("ERROR: Unknown scan type \"" << m_scanType << "\"in ScanGenerator::GetNextIndex");
-        break;
+      THROW("ERROR: Unknown scan type \"" << m_scanType << "\"in ScanGenerator::GetNextIndex");
+      break;
     }
 
     return rtn;
@@ -4365,7 +4365,7 @@ const int8_t g_bcwWeightBase = (1 << g_bcwLog2WeightBase);
 #if JVET_AB0079_TM_BCW_MRG
 const int8_t g_bcwWeights[BCW_NUM] = { 1, 3, 4, 5, 7 };
 const int8_t g_bcwMrgWeights[BCW_MRG_NUM] = { 1, 3, 4, 5, 7, 2, 6 };
-      int8_t g_bcwMrgParsingOrder[BCW_MRG_NUM];
+int8_t g_bcwMrgParsingOrder[BCW_MRG_NUM];
 #else
 const int8_t g_bcwWeights[BCW_NUM] = { -2, 3, 4, 5, 10 };
 #endif
@@ -4384,7 +4384,7 @@ int8_t getBcwWeight(uint8_t bcwIdx, uint8_t uhRefFrmList)
 #endif
 }
 
-void resetBcwCodingOrder(bool bRunDecoding, const CodingStructure &cs)
+void resetBcwCodingOrder(bool bRunDecoding, const CodingStructure& cs)
 {
   // Form parsing order: { BCW_DEFAULT, BCW_DEFAULT+1, BCW_DEFAULT-1, BCW_DEFAULT+2, BCW_DEFAULT-2, ... }
   g_bcwParsingOrder[0] = BCW_DEFAULT;
@@ -4510,28 +4510,28 @@ const uint8_t g_aucIpmToTrSet[16][36] =
 #if JVET_AJ0257_IMPLICIT_MTS_LUT
 const uint8_t g_aucImplicitToTrSet[16][35] =
 {
-  { 14,15,14,14,14,14,14,14,14,14,20,20,14,20,14,20,20,20,20,20,20,20,20,20,20,20,14,20,20,20,20,14,14,14,14}, 
-  { 14,15,14,14,14,14,14,14,14,14,14,14,14,20,14,20,20,20,20,20,21,21,14,20,15,14,14,20,14,14,14,14,14,14,14}, 
-  { 14,15,20,15,14,15,14,15,15,15,15,15,15,15,15,15,15,21,15,21,21,21,21,21,15,21,15,15,21,15,14,15,14,21,15}, 
-  { 21,15,21,15,15,21,15,18,12,15,15,15,21,18,21,21,18,21,21,18,12,18,18,12,18,21,18,18,18,21,21,15,15,18,15}, 
-  { 14,14,14,14,14,20,20, 2,14,14,14,14,14,14,14,14,14,14,14,20,15,20,14,14,14,14,15,14,14,14,14,14,14,14,14}, 
-  { 14,14,14,15,14,14,14,14,14,14,14,15,15,15,15,15,15,21,20,21,21,20,15,15,14,15,14,14,14,14,14,14,14,14,14}, 
-  { 14,21,14,15,14,15,14,15,15,15,14,15,14,15,15,21,15,21,21,21,21,21,21,21,21,15,15,21,15,21,14,15,14,20,14}, 
-  { 20,21,15,15,15,15,15,15,21,15,21,15,15,15,21,21,18,21,18,18,18,15,21,21,21,21,21,15,21,15,15,15,21,21,18}, 
-  { 14,20,15,15,15,15,15,15,21,15,21,15,14,14,15,15,14,20,20,18,18,18,14,14,14,14,14,14,15,21,15,14,20,21,14}, 
-  { 14,21,14,12,14,15,14,15,14,15,14,15,14,14,15,15,21,20,21,21,21,20,15,20,14,14,14,20,14,20,14,20,14,14,14}, 
-  { 14,15,14,12,14,15,14,15,14,21,14,21,15,21,14,21,14,21,21,18,21,21,15,21,15,21,14,21,14,14,14,21,14,21,14}, 
-  { 14,12,14,15,14,15,14,15,15,15,15,15,18,21,21,18,21,18,21,18,18,15,15,21, 3,12,21, 0,12, 3,18,12,14, 3,18}, 
-  { 12, 2,20,21,21, 3,20,20,20,21,20, 3,20, 3,21, 2,21,15,21,21,21,20,21,21,21,21,20, 2,14, 2,20,21, 3,21,20}, 
-  { 12,21, 3,20,20,21,14,20,20,21,20, 2,21,21, 3,21, 3,21,21, 0,21,18, 3, 3,21,20,18,20,21,20, 2,14, 2,15,20}, 
-  { 12,21,20,20, 2, 3,20,21, 3, 0,18,21,15,15,21,21, 3,21, 0, 0, 3,21,15, 3, 3, 0,14, 0, 0, 3, 3, 3,21,18,20}, 
-  { 12,18,14,18, 0,15,14, 0, 0,21,15,18,21,18,12, 3,21, 0, 3, 0, 0,18, 0, 3,12, 0, 0, 0, 3, 0,12, 0, 3, 3,18}, 
+  { 14,15,14,14,14,14,14,14,14,14,20,20,14,20,14,20,20,20,20,20,20,20,20,20,20,20,14,20,20,20,20,14,14,14,14},
+  { 14,15,14,14,14,14,14,14,14,14,14,14,14,20,14,20,20,20,20,20,21,21,14,20,15,14,14,20,14,14,14,14,14,14,14},
+  { 14,15,20,15,14,15,14,15,15,15,15,15,15,15,15,15,15,21,15,21,21,21,21,21,15,21,15,15,21,15,14,15,14,21,15},
+  { 21,15,21,15,15,21,15,18,12,15,15,15,21,18,21,21,18,21,21,18,12,18,18,12,18,21,18,18,18,21,21,15,15,18,15},
+  { 14,14,14,14,14,20,20, 2,14,14,14,14,14,14,14,14,14,14,14,20,15,20,14,14,14,14,15,14,14,14,14,14,14,14,14},
+  { 14,14,14,15,14,14,14,14,14,14,14,15,15,15,15,15,15,21,20,21,21,20,15,15,14,15,14,14,14,14,14,14,14,14,14},
+  { 14,21,14,15,14,15,14,15,15,15,14,15,14,15,15,21,15,21,21,21,21,21,21,21,21,15,15,21,15,21,14,15,14,20,14},
+  { 20,21,15,15,15,15,15,15,21,15,21,15,15,15,21,21,18,21,18,18,18,15,21,21,21,21,21,15,21,15,15,15,21,21,18},
+  { 14,20,15,15,15,15,15,15,21,15,21,15,14,14,15,15,14,20,20,18,18,18,14,14,14,14,14,14,15,21,15,14,20,21,14},
+  { 14,21,14,12,14,15,14,15,14,15,14,15,14,14,15,15,21,20,21,21,21,20,15,20,14,14,14,20,14,20,14,20,14,14,14},
+  { 14,15,14,12,14,15,14,15,14,21,14,21,15,21,14,21,14,21,21,18,21,21,15,21,15,21,14,21,14,14,14,21,14,21,14},
+  { 14,12,14,15,14,15,14,15,15,15,15,15,18,21,21,18,21,18,21,18,18,15,15,21, 3,12,21, 0,12, 3,18,12,14, 3,18},
+  { 12, 2,20,21,21, 3,20,20,20,21,20, 3,20, 3,21, 2,21,15,21,21,21,20,21,21,21,21,20, 2,14, 2,20,21, 3,21,20},
+  { 12,21, 3,20,20,21,14,20,20,21,20, 2,21,21, 3,21, 3,21,21, 0,21,18, 3, 3,21,20,18,20,21,20, 2,14, 2,15,20},
+  { 12,21,20,20, 2, 3,20,21, 3, 0,18,21,15,15,21,21, 3,21, 0, 0, 3,21,15, 3, 3, 0,14, 0, 0, 3, 3, 3,21,18,20},
+  { 12,18,14,18, 0,15,14, 0, 0,21,15,18,21,18,12, 3,21, 0, 3, 0, 0,18, 0, 3,12, 0, 0, 0, 3, 0,12, 0, 3, 3,18},
 };
 
 const uint8_t g_aucImplicitTrIdxToTr[36][2] =
 {
     { DCT2, DCT2 }, { DCT2, DCT8 },{ DCT2, DST7 },{ DCT2, DCT5 },{ DCT2, DST4 }, { DCT2, DST1 },
-    { DCT8, DCT2 }, { DCT8, DCT8 },{ DCT8, DST7 },{ DCT8, DCT5 },{ DCT8, DST4 }, { DCT8, DST1 }, 
+    { DCT8, DCT2 }, { DCT8, DCT8 },{ DCT8, DST7 },{ DCT8, DCT5 },{ DCT8, DST4 }, { DCT8, DST1 },
     { DST7, DCT2 }, { DST7, DCT8 },{ DST7, DST7 },{ DST7, DCT5 },{ DST7, DST4 }, { DST7, DST1 },
     { DCT5, DCT2 }, { DCT5, DCT8 },{ DCT5, DST7 },{ DCT5, DCT5 },{ DCT5, DST4 }, { DCT5, DST1 },
     { DST4, DCT2 }, { DST4, DCT8 },{ DST4, DST7 },{ DST4, DCT5 },{ DST4, DST4 }, { DST4, DST1 },
@@ -4718,166 +4718,166 @@ const uint8_t g_aucTrSet[80][6] =
 #else
 const uint8_t g_aucTrSet[80][4] =
 {
-//T0:0,  1,  2,  3,
-{ 17, 18, 23, 24},
-//T1:0,  1,  2,  3,
-{  3,  7, 18, 22},
-//T2:0,  1,  2,  3, 
-{  2, 17, 18, 22},
-//T3:0,  1,  2,  3,  
-{  3, 15, 17, 18},
-//T4:0,  1,  2,  3, 
-{  3, 12, 18, 19},
-//T5:0,  1,  2,  3, 
-{ 12, 18, 19, 23},
-//T6:0,  1,  2,  3,
-{  2, 12, 17, 18},
-//T7:0,  1,  2,  3, 
-{  2, 17, 18, 22},
-//T8:0,  1,  2,  3,  
-{  2, 11, 17, 18},
-//T9:0,  1,  2,  3, 
-{ 12, 18, 19, 23},
-//T10:0,  1, 2,   3, 
-{ 12, 13, 16, 24},
-//T11:0,  1,  2,  3, 
-{  2, 11, 16, 23},
-//T12:0,  1,  2,  3, 
-{  2, 13, 17, 22},
-//T13:0,  1,  2,  3,
-{  2, 11, 17, 21},
-//T14:0,  1,  2,  3, 
-{ 13, 16, 19, 22},
-//T15:0,  1,  2,  3,
-{  7, 12, 13, 18},
-//T16:0,  1,  2,  3, 
-{  1, 11, 12, 16},
-//T17:0,  1,  2,  3,
-{  3, 13, 17, 22},
-//T18:0,  1,  2,  3,  
-{  1,  6, 12, 22},
-//T19:0,  1,  2,  3,  
-{ 12, 13, 15, 16},
-//T20:0,  1,  2,  3,  
-{ 18, 19, 23, 24},
-//T21:0,  1,  2,  3, 
-{  2, 17, 18, 24},
-//T22:0,  1,  2,  3,
-{  3,  4, 17, 22},
-//T23:0,  1,  2,  3, 
-{ 12, 18, 19, 23},
-//T24:0,  1,  2,  3,
-{ 12, 18, 19, 23},
-//T25:0,  1,  2,  3,  
-{  6, 12, 18, 24},
-//T26:0,  1,  2,  3, 
-{  2,  6, 12, 21},
-//T27:0,  1,  2,  3, 
-{  1, 11, 17, 22},
-//T28:0,  1,  2,  3, 
-{  3, 11, 16, 17},
-//T29:0,  1,  2,  3, 
-{  8, 12, 19, 23},
-//T30:0,  1,  2,  3, 
-{  7, 13, 16, 23},
-//T31:0,  1,  2,  3, 
-{  1,  6, 11, 12},
-//T32:0,  1,  2,  3,
-{  1, 11, 17, 21},
-//T33:0,  1,  2,  3,
-{  6, 11, 17, 21},
-//T34:0,  1,  2,  3,
-{  8, 11, 14, 17},
-//T35:0,  1,  2,  3, 
-{  6, 11, 12, 21},
-//T36:0,  1,  2,  3, 
-{  1,  6, 11, 12},
-//T37:0,  1,  2,  3, 
-{  2,  6, 11, 12},
-//T38:0,  1,  2,  3,
-{  1,  6, 11, 21},
-//T39:0,  1,  2,  3,
-{  7, 11, 12, 16},
-//T40:0,  1,  2,  3,
-{  8, 12, 19, 24},
-//T41:0,  1,  2,  3,
-{  1, 13, 18, 22},
-//T42:0,  1,  2,  3,
-{  2,  6, 17, 21},
-//T43:0,  1,  2,  3,
-{ 11, 12, 16, 19},
-//T44:0,  1,  2,  3,
-{  8, 12, 17, 24},
-//T45:0,  1,  2,  3,
-{  6, 12, 19, 21},
-//T46:0,  1,  2,  3,
-{  6, 12, 13, 21},
-//T47:0,  1,  2,  3,
-{  2, 16, 17, 21},
-//T48:0,  1,  2,  3,
-{  6, 17, 19, 23},
-//T49:0,  1,  2,  3,
-{  6, 12, 14, 17},
-//T50:0,  1,  2,  3,
-{  6,  7, 11, 21},
-//T51:0,  1,  2,  3,  
-{  1, 11, 12, 16},
-//T52:0,  1,  2,  3,
-{  1,  6, 11, 12},
-//T53:0,  1,  2,  3,
-{  6, 11, 12, 21},
-//T54:0,  1,  2,  3,
-{  7,  8,  9, 11},
-//T55:0,  1,  2,  3,
-{  6,  7, 11, 12},
-//T56:0,  1,  2,  3,
-{  6,  7, 11, 12},
-//T57:0,  1,  2,  3,
-{  1, 11, 12, 16},
-//T58:0,  1,  2,  3,
-{  6, 11, 17, 21},
-//T59:0,  1,  2,  3,
-{  6,  7, 11, 12},
-//T60:0,  1,  2,  3,
-{ 12, 14, 18, 21},
-//T61:0,  1,  2,  3, 
-{  1, 11, 16, 22},
-//T62:0,  1,  2,  3,
-{  1, 11, 16, 22},
-//T63:0,  1,  2,  3, 
-{  7, 13, 15, 16},
-//T64:0,  1,  2,  3, 
-{  1,  8, 12, 19},
-//T65:0,  1,  2,  3,
-{  6,  7,  9, 12},
-//T66:0,  1,  2,  3,  
-{  2,  6, 12, 13},
-//T67:0,  1,  2,  3,  
-{  1, 12, 16, 21},
-//T68:0,  1,  2,  3, 
-{  7, 11, 16, 19},
-//T69:0,  1,  2,  3, 
-{  7,  8, 11, 12},
-//T70:0,  1,  2,  3,  
-{  6,  7, 11, 12},
-//T71:0,  1,  2,  3,  
-{  6,  7, 11, 12},
-//T72:0,  1,  2,  3,  
-{  1,  6, 11, 12},
-//T73:0,  1,  2,  3, 
-{  6,  7, 11, 16},
-//T74:0,  1,  2,  3,  
-{  6,  7, 11, 12},
-//T75:0,  1,  2,  3,  
-{  6,  7, 11, 12},
-//T76:0,  1,  2,  3, 
-{  6, 11, 12, 21},
-//T77:0,  1,  2,  3,
-{  1,  6, 11, 12},
-//T78:0,  1,  2,  3, 
-{  6,  7, 11, 12},
-//T79:0,  1,  2,  3, 
-{  6,  7, 11, 12},
+  //T0:0,  1,  2,  3,
+  { 17, 18, 23, 24},
+  //T1:0,  1,  2,  3,
+  {  3,  7, 18, 22},
+  //T2:0,  1,  2,  3, 
+  {  2, 17, 18, 22},
+  //T3:0,  1,  2,  3,  
+  {  3, 15, 17, 18},
+  //T4:0,  1,  2,  3, 
+  {  3, 12, 18, 19},
+  //T5:0,  1,  2,  3, 
+  { 12, 18, 19, 23},
+  //T6:0,  1,  2,  3,
+  {  2, 12, 17, 18},
+  //T7:0,  1,  2,  3, 
+  {  2, 17, 18, 22},
+  //T8:0,  1,  2,  3,  
+  {  2, 11, 17, 18},
+  //T9:0,  1,  2,  3, 
+  { 12, 18, 19, 23},
+  //T10:0,  1, 2,   3, 
+  { 12, 13, 16, 24},
+  //T11:0,  1,  2,  3, 
+  {  2, 11, 16, 23},
+  //T12:0,  1,  2,  3, 
+  {  2, 13, 17, 22},
+  //T13:0,  1,  2,  3,
+  {  2, 11, 17, 21},
+  //T14:0,  1,  2,  3, 
+  { 13, 16, 19, 22},
+  //T15:0,  1,  2,  3,
+  {  7, 12, 13, 18},
+  //T16:0,  1,  2,  3, 
+  {  1, 11, 12, 16},
+  //T17:0,  1,  2,  3,
+  {  3, 13, 17, 22},
+  //T18:0,  1,  2,  3,  
+  {  1,  6, 12, 22},
+  //T19:0,  1,  2,  3,  
+  { 12, 13, 15, 16},
+  //T20:0,  1,  2,  3,  
+  { 18, 19, 23, 24},
+  //T21:0,  1,  2,  3, 
+  {  2, 17, 18, 24},
+  //T22:0,  1,  2,  3,
+  {  3,  4, 17, 22},
+  //T23:0,  1,  2,  3, 
+  { 12, 18, 19, 23},
+  //T24:0,  1,  2,  3,
+  { 12, 18, 19, 23},
+  //T25:0,  1,  2,  3,  
+  {  6, 12, 18, 24},
+  //T26:0,  1,  2,  3, 
+  {  2,  6, 12, 21},
+  //T27:0,  1,  2,  3, 
+  {  1, 11, 17, 22},
+  //T28:0,  1,  2,  3, 
+  {  3, 11, 16, 17},
+  //T29:0,  1,  2,  3, 
+  {  8, 12, 19, 23},
+  //T30:0,  1,  2,  3, 
+  {  7, 13, 16, 23},
+  //T31:0,  1,  2,  3, 
+  {  1,  6, 11, 12},
+  //T32:0,  1,  2,  3,
+  {  1, 11, 17, 21},
+  //T33:0,  1,  2,  3,
+  {  6, 11, 17, 21},
+  //T34:0,  1,  2,  3,
+  {  8, 11, 14, 17},
+  //T35:0,  1,  2,  3, 
+  {  6, 11, 12, 21},
+  //T36:0,  1,  2,  3, 
+  {  1,  6, 11, 12},
+  //T37:0,  1,  2,  3, 
+  {  2,  6, 11, 12},
+  //T38:0,  1,  2,  3,
+  {  1,  6, 11, 21},
+  //T39:0,  1,  2,  3,
+  {  7, 11, 12, 16},
+  //T40:0,  1,  2,  3,
+  {  8, 12, 19, 24},
+  //T41:0,  1,  2,  3,
+  {  1, 13, 18, 22},
+  //T42:0,  1,  2,  3,
+  {  2,  6, 17, 21},
+  //T43:0,  1,  2,  3,
+  { 11, 12, 16, 19},
+  //T44:0,  1,  2,  3,
+  {  8, 12, 17, 24},
+  //T45:0,  1,  2,  3,
+  {  6, 12, 19, 21},
+  //T46:0,  1,  2,  3,
+  {  6, 12, 13, 21},
+  //T47:0,  1,  2,  3,
+  {  2, 16, 17, 21},
+  //T48:0,  1,  2,  3,
+  {  6, 17, 19, 23},
+  //T49:0,  1,  2,  3,
+  {  6, 12, 14, 17},
+  //T50:0,  1,  2,  3,
+  {  6,  7, 11, 21},
+  //T51:0,  1,  2,  3,  
+  {  1, 11, 12, 16},
+  //T52:0,  1,  2,  3,
+  {  1,  6, 11, 12},
+  //T53:0,  1,  2,  3,
+  {  6, 11, 12, 21},
+  //T54:0,  1,  2,  3,
+  {  7,  8,  9, 11},
+  //T55:0,  1,  2,  3,
+  {  6,  7, 11, 12},
+  //T56:0,  1,  2,  3,
+  {  6,  7, 11, 12},
+  //T57:0,  1,  2,  3,
+  {  1, 11, 12, 16},
+  //T58:0,  1,  2,  3,
+  {  6, 11, 17, 21},
+  //T59:0,  1,  2,  3,
+  {  6,  7, 11, 12},
+  //T60:0,  1,  2,  3,
+  { 12, 14, 18, 21},
+  //T61:0,  1,  2,  3, 
+  {  1, 11, 16, 22},
+  //T62:0,  1,  2,  3,
+  {  1, 11, 16, 22},
+  //T63:0,  1,  2,  3, 
+  {  7, 13, 15, 16},
+  //T64:0,  1,  2,  3, 
+  {  1,  8, 12, 19},
+  //T65:0,  1,  2,  3,
+  {  6,  7,  9, 12},
+  //T66:0,  1,  2,  3,  
+  {  2,  6, 12, 13},
+  //T67:0,  1,  2,  3,  
+  {  1, 12, 16, 21},
+  //T68:0,  1,  2,  3, 
+  {  7, 11, 16, 19},
+  //T69:0,  1,  2,  3, 
+  {  7,  8, 11, 12},
+  //T70:0,  1,  2,  3,  
+  {  6,  7, 11, 12},
+  //T71:0,  1,  2,  3,  
+  {  6,  7, 11, 12},
+  //T72:0,  1,  2,  3,  
+  {  1,  6, 11, 12},
+  //T73:0,  1,  2,  3, 
+  {  6,  7, 11, 16},
+  //T74:0,  1,  2,  3,  
+  {  6,  7, 11, 12},
+  //T75:0,  1,  2,  3,  
+  {  6,  7, 11, 12},
+  //T76:0,  1,  2,  3, 
+  {  6, 11, 12, 21},
+  //T77:0,  1,  2,  3,
+  {  1,  6, 11, 12},
+  //T78:0,  1,  2,  3, 
+  {  6,  7, 11, 12},
+  //T79:0,  1,  2,  3, 
+  {  6,  7, 11, 12},
 };
 #endif
 #endif
@@ -4887,16 +4887,16 @@ const uint8_t g_aucTrSet[80][4] =
 // Note: Positions here are identical to the definition in the #else branch, just omitting the last position from each array
 const Position g_eipFilter[NUM_EIP_SHAPE][EIP_FILTER_TAP - 1] =
 {
-  { Position(-1,  0), Position(-2,  0), Position(-3,  0), Position( 0, -1), Position(-1, -1), Position(-2, -1), Position(-3, -1), Position( 0, -2), Position(-1, -2), Position(-2, -2), Position(-3, -2), Position( 0, -3), Position(-1, -3), Position(-2, -3) },
-  { Position(-1,  0), Position( 0, -1), Position(-1, -1), Position( 0, -2), Position(-1, -2), Position( 0, -3), Position(-1, -3), Position( 0, -4), Position(-1, -4), Position( 0, -5), Position(-1, -5), Position( 0, -6), Position(-1, -6), Position( 0, -7) },
-  { Position( 0, -1), Position(-1,  0), Position(-1, -1), Position(-2,  0), Position(-2, -1), Position(-3,  0), Position(-3, -1), Position(-4,  0), Position(-4, -1), Position(-5,  0), Position(-5, -1), Position(-6,  0), Position(-6, -1), Position(-7,  0) },
+  { Position(-1,  0), Position(-2,  0), Position(-3,  0), Position(0, -1), Position(-1, -1), Position(-2, -1), Position(-3, -1), Position(0, -2), Position(-1, -2), Position(-2, -2), Position(-3, -2), Position(0, -3), Position(-1, -3), Position(-2, -3) },
+  { Position(-1,  0), Position(0, -1), Position(-1, -1), Position(0, -2), Position(-1, -2), Position(0, -3), Position(-1, -3), Position(0, -4), Position(-1, -4), Position(0, -5), Position(-1, -5), Position(0, -6), Position(-1, -6), Position(0, -7) },
+  { Position(0, -1), Position(-1,  0), Position(-1, -1), Position(-2,  0), Position(-2, -1), Position(-3,  0), Position(-3, -1), Position(-4,  0), Position(-4, -1), Position(-5,  0), Position(-5, -1), Position(-6,  0), Position(-6, -1), Position(-7,  0) },
 };
 #else
 const Position g_eipFilter[NUM_EIP_SHAPE][EIP_FILTER_TAP] =
 {
-  { Position(-1,  0), Position(-2,  0), Position(-3,  0), Position( 0, -1), Position(-1, -1), Position(-2, -1), Position(-3, -1), Position( 0, -2), Position(-1, -2), Position(-2, -2), Position(-3, -2), Position( 0, -3), Position(-1, -3), Position(-2, -3), Position(-3, -3) },
-  { Position(-1,  0), Position( 0, -1), Position(-1, -1), Position( 0, -2), Position(-1, -2), Position( 0, -3), Position(-1, -3), Position( 0, -4), Position(-1, -4), Position( 0, -5), Position(-1, -5), Position( 0, -6), Position(-1, -6), Position( 0, -7), Position(-1, -7) },
-  { Position( 0, -1), Position(-1,  0), Position(-1, -1), Position(-2,  0), Position(-2, -1), Position(-3,  0), Position(-3, -1), Position(-4,  0), Position(-4, -1), Position(-5,  0), Position(-5, -1), Position(-6,  0), Position(-6, -1), Position(-7,  0), Position(-7, -1) },
+  { Position(-1,  0), Position(-2,  0), Position(-3,  0), Position(0, -1), Position(-1, -1), Position(-2, -1), Position(-3, -1), Position(0, -2), Position(-1, -2), Position(-2, -2), Position(-3, -2), Position(0, -3), Position(-1, -3), Position(-2, -3), Position(-3, -3) },
+  { Position(-1,  0), Position(0, -1), Position(-1, -1), Position(0, -2), Position(-1, -2), Position(0, -3), Position(-1, -3), Position(0, -4), Position(-1, -4), Position(0, -5), Position(-1, -5), Position(0, -6), Position(-1, -6), Position(0, -7), Position(-1, -7) },
+  { Position(0, -1), Position(-1,  0), Position(-1, -1), Position(-2,  0), Position(-2, -1), Position(-3,  0), Position(-3, -1), Position(-4,  0), Position(-4, -1), Position(-5,  0), Position(-5, -1), Position(-6,  0), Position(-6, -1), Position(-7,  0), Position(-7, -1) },
 };
 #endif
 #if JVET_AJ0082_MM_EIP
@@ -4921,17 +4921,17 @@ const EIPInfo g_eipInfoLut[4][4][9] =
     { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x32, 9modes
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, 
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, 
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, 
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, 
+    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
   },
 };
 const EIPInfo g_mmEipInfoLut[4][4][9] =
 {
   {
-    { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, 
-    { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, 
+    { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
     { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
     { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
   },
@@ -5038,7 +5038,7 @@ void initROM()
   {
     for (uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++)
     {
-      const uint32_t blockWidth  = sizeInfo.sizeFrom(blockWidthIdx);
+      const uint32_t blockWidth = sizeInfo.sizeFrom(blockWidthIdx);
       const uint32_t blockHeight = sizeInfo.sizeFrom(blockHeightIdx);
       const uint32_t totalValues = blockWidth * blockHeight;
 
@@ -5049,7 +5049,7 @@ void initROM()
       for (uint32_t scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++)
       {
         const CoeffScanType scanType = CoeffScanType(scanTypeIndex);
-        ScanElement *       scan     = nullptr;
+        ScanElement* scan = nullptr;
 
         if (blockWidthIdx < sizeInfo.numWidths() && blockHeightIdx < sizeInfo.numHeights())
         {
@@ -5067,46 +5067,46 @@ void initROM()
 
         for (uint32_t scanPosition = 0; scanPosition < totalValues; scanPosition++)
         {
-          const int rasterPos = fullBlockScan.GetNextIndex( 0, 0 );
-          const int posY      = rasterPos / blockWidth;
-          const int posX      = rasterPos - ( posY * blockWidth );
+          const int rasterPos = fullBlockScan.GetNextIndex(0, 0);
+          const int posY = rasterPos / blockWidth;
+          const int posX = rasterPos - (posY * blockWidth);
 
           scan[scanPosition].idx = rasterPos;
-          scan[scanPosition].x   = posX;
-          scan[scanPosition].y   = posY;
+          scan[scanPosition].x = posX;
+          scan[scanPosition].y = posY;
         }
       }
 
       //--------------------------------------------------------------------------------------------------
 
       //grouped scan orders
-      const uint32_t* log2Sbb        = g_log2SbbSize[floorLog2(blockWidth)][floorLog2(blockHeight)];
-      const uint32_t  log2CGWidth    = log2Sbb[0];
-      const uint32_t  log2CGHeight   = log2Sbb[1];
+      const uint32_t* log2Sbb = g_log2SbbSize[floorLog2(blockWidth)][floorLog2(blockHeight)];
+      const uint32_t  log2CGWidth = log2Sbb[0];
+      const uint32_t  log2CGHeight = log2Sbb[1];
 
-      const uint32_t  groupWidth     = 1 << log2CGWidth;
-      const uint32_t  groupHeight    = 1 << log2CGHeight;
+      const uint32_t  groupWidth = 1 << log2CGWidth;
+      const uint32_t  groupHeight = 1 << log2CGHeight;
       const uint32_t  widthInGroups = std::min<unsigned>(JVET_C0024_ZERO_OUT_TH, blockWidth) >> log2CGWidth;
       const uint32_t  heightInGroups = std::min<unsigned>(JVET_C0024_ZERO_OUT_TH, blockHeight) >> log2CGHeight;
 
-      const uint32_t  groupSize      = groupWidth    * groupHeight;
-      const uint32_t  totalGroups    = widthInGroups * heightInGroups;
+      const uint32_t  groupSize = groupWidth * groupHeight;
+      const uint32_t  totalGroups = widthInGroups * heightInGroups;
 
       for (uint32_t scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++)
       {
         const CoeffScanType scanType = CoeffScanType(scanTypeIndex);
 
-        ScanElement *scan = new ScanElement[totalValues];
+        ScanElement* scan = new ScanElement[totalValues];
 
         g_scanOrder[SCAN_GROUPED_4x4][scanType][blockWidthIdx][blockHeightIdx] = scan;
 
-        if ( blockWidth > JVET_C0024_ZERO_OUT_TH || blockHeight > JVET_C0024_ZERO_OUT_TH )
+        if (blockWidth > JVET_C0024_ZERO_OUT_TH || blockHeight > JVET_C0024_ZERO_OUT_TH)
         {
           for (uint32_t i = 0; i < totalValues; i++)
           {
             scan[i].idx = totalValues - 1;
-            scan[i].x   = blockWidth - 1;
-            scan[i].y   = blockHeight - 1;
+            scan[i].x = blockWidth - 1;
+            scan[i].y = blockHeight - 1;
           }
         }
 
@@ -5114,23 +5114,23 @@ void initROM()
 
         for (uint32_t groupIndex = 0; groupIndex < totalGroups; groupIndex++)
         {
-          const uint32_t groupPositionY  = fullBlockScan.GetCurrentY();
-          const uint32_t groupPositionX  = fullBlockScan.GetCurrentX();
-          const uint32_t groupOffsetX    = groupPositionX * groupWidth;
-          const uint32_t groupOffsetY    = groupPositionY * groupHeight;
-          const uint32_t groupOffsetScan = groupIndex     * groupSize;
+          const uint32_t groupPositionY = fullBlockScan.GetCurrentY();
+          const uint32_t groupPositionX = fullBlockScan.GetCurrentX();
+          const uint32_t groupOffsetX = groupPositionX * groupWidth;
+          const uint32_t groupOffsetY = groupPositionY * groupHeight;
+          const uint32_t groupOffsetScan = groupIndex * groupSize;
 
           ScanGenerator groupScan(groupWidth, groupHeight, blockWidth, scanType);
 
           for (uint32_t scanPosition = 0; scanPosition < groupSize; scanPosition++)
           {
-            const int rasterPos = groupScan.GetNextIndex( groupOffsetX, groupOffsetY );
-            const int posY      = rasterPos / blockWidth;
-            const int posX      = rasterPos - ( posY * blockWidth );
+            const int rasterPos = groupScan.GetNextIndex(groupOffsetX, groupOffsetY);
+            const int posY = rasterPos / blockWidth;
+            const int posX = rasterPos - (posY * blockWidth);
 
             scan[groupOffsetScan + scanPosition].idx = rasterPos;
-            scan[groupOffsetScan + scanPosition].x   = posX;
-            scan[groupOffsetScan + scanPosition].y   = posY;
+            scan[groupOffsetScan + scanPosition].x = posX;
+            scan[groupOffsetScan + scanPosition].y = posY;
           }
 
           fullBlockScan.GetNextIndex(0, 0);
@@ -5142,11 +5142,11 @@ void initROM()
   }
 
   // initialize CoefTopLeftDiagScan8x8 for LFNST
-  for( uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++ )
+  for (uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++)
   {
-    const uint32_t blockWidth = sizeInfo.sizeFrom( blockWidthIdx );
+    const uint32_t blockWidth = sizeInfo.sizeFrom(blockWidthIdx);
 
-    const static uint8_t g_auiXYDiagScan8x8[ 64 ][ 2 ] =
+    const static uint8_t g_auiXYDiagScan8x8[64][2] =
     {
       { 0, 0 }, { 0, 1 }, { 1, 0 }, { 0, 2 }, { 1, 1 }, { 2, 0 }, { 0, 3 }, { 1, 2 },
       { 2, 1 }, { 3, 0 }, { 1, 3 }, { 2, 2 }, { 3, 1 }, { 2, 3 }, { 3, 2 }, { 3, 3 },
@@ -5157,23 +5157,23 @@ void initROM()
       { 4, 4 }, { 4, 5 }, { 5, 4 }, { 4, 6 }, { 5, 5 }, { 6, 4 }, { 4, 7 }, { 5, 6 },
       { 6, 5 }, { 7, 4 }, { 5, 7 }, { 6, 6 }, { 7, 5 }, { 6, 7 }, { 7, 6 }, { 7, 7 }
     };
-    for( int i = 0; i < 64; i++ )
+    for (int i = 0; i < 64; i++)
     {
-      g_coefTopLeftDiagScan8x8[ blockWidthIdx ][ i ].idx = g_auiXYDiagScan8x8[ i ][ 0 ] + g_auiXYDiagScan8x8[ i ][ 1 ] * blockWidth;
-      g_coefTopLeftDiagScan8x8[ blockWidthIdx ][ i ].x   = g_auiXYDiagScan8x8[ i ][ 0 ];
-      g_coefTopLeftDiagScan8x8[ blockWidthIdx ][ i ].y   = g_auiXYDiagScan8x8[ i ][ 1 ];
+      g_coefTopLeftDiagScan8x8[blockWidthIdx][i].idx = g_auiXYDiagScan8x8[i][0] + g_auiXYDiagScan8x8[i][1] * blockWidth;
+      g_coefTopLeftDiagScan8x8[blockWidthIdx][i].x = g_auiXYDiagScan8x8[i][0];
+      g_coefTopLeftDiagScan8x8[blockWidthIdx][i].y = g_auiXYDiagScan8x8[i][1];
     }
 #if JVET_W0119_LFNST_EXTENSION
-    for( int blky = 0; blky <= 1; blky++ )
+    for (int blky = 0; blky <= 1; blky++)
     {
-      for( int blkx = 0; blkx <= 1; blkx++ )
+      for (int blkx = 0; blkx <= 1; blkx++)
       {
-        for( int i = 0; i < 64; i++ )
+        for (int i = 0; i < 64; i++)
         {
           int i4 = blky * 128 + blkx * 64 + i;
-          g_coefTopLeftDiagScan16x16[ blockWidthIdx ][ i4 ].idx = g_auiXYDiagScan8x8[ i ][ 0 ] + g_auiXYDiagScan8x8[ i ][ 1 ] * blockWidth + blkx * 8 + blky * 8 * blockWidth;
-          g_coefTopLeftDiagScan16x16[ blockWidthIdx ][ i4 ].x   = g_auiXYDiagScan8x8[ i ][ 0 ];
-          g_coefTopLeftDiagScan16x16[ blockWidthIdx ][ i4 ].y   = g_auiXYDiagScan8x8[ i ][ 1 ];
+          g_coefTopLeftDiagScan16x16[blockWidthIdx][i4].idx = g_auiXYDiagScan8x8[i][0] + g_auiXYDiagScan8x8[i][1] * blockWidth + blkx * 8 + blky * 8 * blockWidth;
+          g_coefTopLeftDiagScan16x16[blockWidthIdx][i4].x = g_auiXYDiagScan8x8[i][0];
+          g_coefTopLeftDiagScan16x16[blockWidthIdx][i4].y = g_auiXYDiagScan8x8[i][1];
         }
       }
     }
@@ -5194,27 +5194,27 @@ void initROM()
     int quantiserScale = g_quantScales[0][qpRem];
     int quantiserRightShift = QUANT_SHIFT + qpPer;
     double threshQP = ((double)(1 << quantiserRightShift)) / quantiserScale;
-    g_paletteQuant[qp] = (int)(threshQP*0.16 + 0.5);
+    g_paletteQuant[qp] = (int)(threshQP * 0.16 + 0.5);
   }
 
 #if SIGN_PREDICTION && !JVET_W0103_INTRA_MTS
   memset(&g_resiBorderTemplate[0][0][0], 0, sizeof(g_resiBorderTemplate));
-  const int8_t *p_data = g_initRomSignPred;
-  for( int log2Width = 0; log2Width < 6; ++log2Width)
+  const int8_t* p_data = g_initRomSignPred;
+  for (int log2Width = 0; log2Width < 6; ++log2Width)
   {
-    int width = 4<<log2Width;
-    for( int log2Height = 0; log2Height < 6; ++log2Height)
+    int width = 4 << log2Width;
+    for (int log2Height = 0; log2Height < 6; ++log2Height)
     {
-      int height = 4<<log2Height;
+      int height = 4 << log2Height;
       int length = width + height - 1;
-      for( int idx = 0; idx < 9; ++idx)
+      for (int idx = 0; idx < 9; ++idx)
       {
-        if( *p_data != 0 && *p_data != 1)
+        if (*p_data != 0 && *p_data != 1)
         {
           int j = 0;
-          j+=1;
+          j += 1;
         }
-        if(*p_data++ != 0)
+        if (*p_data++ != 0)
         {
           g_resiBorderTemplate[log2Width][log2Height][idx] = p_data;
           p_data += length * 16;
@@ -5224,19 +5224,19 @@ void initROM()
   }
 #endif
 #if JVET_AG0067_DMVR_EXTENSIONS
-  int bdofWidth[]  =   {8,  8,  8,   12,  12,  12,  20,  20,   20};
-  int bdofHeight[] =   {8, 12, 20,    8,  12,  20,   8,  12,   20};
-  int weightOffset[] = {0, 64, 160, 320, 416, 560, 800, 960, 1200};
+  int bdofWidth[] = { 8,  8,  8,   12,  12,  12,  20,  20,   20 };
+  int bdofHeight[] = { 8, 12, 20,    8,  12,  20,   8,  12,   20 };
+  int weightOffset[] = { 0, 64, 160, 320, 416, 560, 800, 960, 1200 };
   for (int i = 0; i < 9; i++)
   {
     int offset = weightOffset[i];
-    int width  = bdofWidth[i];
+    int width = bdofWidth[i];
     int height = bdofHeight[i];
     for (int y = 0; y < height; y++)
     {
       for (int x = 0; x < width; x++)
       {
-        g_bdofWeight[y * width + x + offset] = (x >= (width/2) ? width - x : x + 1) * (y >= (height/2) ? height - y : y + 1);
+        g_bdofWeight[y * width + x + offset] = (x >= (width / 2) ? width - x : x + 1) * (y >= (height / 2) ? height - y : y + 1);
       }
     }
   }
@@ -5253,14 +5253,14 @@ void initROM()
     7,     9,    11,    13,    15,    15,    15,    15,    13,    11,     9,     7,
     6,     8,    10,    11,    13,    13,    13,    13,    11,    10,     8,     6,
     5,     6,     8,     9,    10,    11,    11,    10,     9,     8,     6,     5,
-    4,     5,     6,     7,     8,     8,     8,     8,     7,     6,     5,     4};
-  for (int i= 0; i < 144; i++)
+    4,     5,     6,     7,     8,     8,     8,     8,     7,     6,     5,     4 };
+  for (int i = 0; i < 144; i++)
   {
-    g_bdofWeight[416+i] = weight8x8[i];
+    g_bdofWeight[416 + i] = weight8x8[i];
   }
 #endif
 #endif
- 
+
 #if JVET_Y0141_SIGN_PRED_IMPROVE
   memset(&g_resiBorderTemplate[0][0][0], 0, sizeof(g_resiBorderTemplate));
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
@@ -5271,27 +5271,27 @@ void initROM()
 #endif
 #if TU_256
   c = 256;
-  const double s = sqrt( ( double ) c ) * (64 << COM16_C806_TRANS_PREC);
+  const double s = sqrt((double)c) * (64 << COM16_C806_TRANS_PREC);
   const double PI = 3.14159265358979323846;
 
-  for( int k = 0; k < c; k++ )
+  for (int k = 0; k < c; k++)
   {
-    for( int n = 0; n < c; n++ )
+    for (int n = 0; n < c; n++)
     {
       double w0, v;
 
       // DCT-II
-      w0 = ( k == 0 ) ? sqrt( 0.5 ) : 1.0;
-      v = cos( PI * ( n + 0.5 ) * k / c ) * w0 * sqrt( 2.0 / c );
-      g_trCoreDCT2P256[k][n] = (short)( s * v + ( v > 0 ? 0.5 : -0.5 ) );
+      w0 = (k == 0) ? sqrt(0.5) : 1.0;
+      v = cos(PI * (n + 0.5) * k / c) * w0 * sqrt(2.0 / c);
+      g_trCoreDCT2P256[k][n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
       // DCT-VIII
-      v = cos( PI * ( k + 0.5 ) * ( n + 0.5 ) / ( c + 0.5 ) ) * sqrt( 2.0 / ( c + 0.5 ) );
-      g_trCoreDCT8P256[k][n] = (short)( s * v + ( v > 0 ? 0.5 : -0.5 ) );
+      v = cos(PI * (k + 0.5) * (n + 0.5) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
+      g_trCoreDCT8P256[k][n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
       // DST-VII
-      v = sin( PI * ( k + 0.5 ) * ( n + 1 ) / ( c + 0.5 ) ) * sqrt( 2.0 / ( c + 0.5 ) );
-      g_trCoreDST7P256[k][n] = (short)( s * v + ( v > 0 ? 0.5 : -0.5 ) );
+      v = sin(PI * (k + 0.5) * (n + 1) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
+      g_trCoreDST7P256[k][n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
     }
   }
 #endif
@@ -5306,7 +5306,7 @@ void initROM()
   for (int i = 0; i < 8; i++)
   {
     const double s = sqrt((double)c) * (64 << COM16_C806_TRANS_PREC);
-    TMatrixCoeff *iT = NULL;
+    TMatrixCoeff* iT = NULL;
 
     switch (i)
     {
@@ -5329,26 +5329,26 @@ void initROM()
 
         // DCT-II
         w0 = k == 0 ? sqrt(0.5) : 1;
-        v = cos(PI*(n + 0.5)*k / c) * w0 * sqrt(2.0 / c);
-        iT[DCT2*c*c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = cos(PI * (n + 0.5) * k / c) * w0 * sqrt(2.0 / c);
+        iT[DCT2 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
         // DCT-V
         w0 = (k == 0) ? sqrt(0.5) : 1.0;
         w1 = (n == 0) ? sqrt(0.5) : 1.0;
-        v = cos(PI*n*k / (c - 0.5)) * w0 * w1 * sqrt(2.0 / (c - 0.5));
-        iT[DCT5*c*c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = cos(PI * n * k / (c - 0.5)) * w0 * w1 * sqrt(2.0 / (c - 0.5));
+        iT[DCT5 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
         // DCT-VIII
-        v = cos(PI*(k + 0.5)*(n + 0.5) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
-        iT[DCT8*c*c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = cos(PI * (k + 0.5) * (n + 0.5) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
+        iT[DCT8 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
         // DST-I
-        v = sin(PI*(n + 1)*(k + 1) / (c + 1)) * sqrt(2.0 / (c + 1));
-        iT[DST1*c*c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = sin(PI * (n + 1) * (k + 1) / (c + 1)) * sqrt(2.0 / (c + 1));
+        iT[DST1 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
         // DST-VII
-        v = sin(PI*(k + 0.5)*(n + 1) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
-        iT[DST7*c*c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = sin(PI * (k + 0.5) * (n + 1) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
+        iT[DST7 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
 
         // DST4
         v = sin(PI * (k + 0.5) * (n + 0.5) / c) * sqrt(2.0 / c);
@@ -5361,7 +5361,7 @@ void initROM()
     c <<= 1;
   }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
 #if JVET_AA0133_INTER_MTS_OPT
   TMatrixCoeff KLT4[2][4][4] = {
   {
@@ -5463,7 +5463,7 @@ void initROM()
     }
   }
 #endif
-////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
 #endif
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
   g_rmvfMultApproxTbl[0] = 0;
@@ -5498,7 +5498,7 @@ void initROM()
   for (int neiIdx = 0; neiIdx < IBC_MBVD_NEI_NUM * 2; neiIdx += 2)
   {
     neiShift += IBC_MBVD_OFFSET_DIR;
-    g_ibcMbvdNeiOffsets[neiIdx    ] = -neiShift;
+    g_ibcMbvdNeiOffsets[neiIdx] = -neiShift;
     g_ibcMbvdNeiOffsets[neiIdx + 1] = +neiShift;
   }
 #endif
@@ -5528,9 +5528,9 @@ void destroyROM()
   gp_sizeIdxInfo = nullptr;
 
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-  for( int modeIdx = 0; modeIdx < GEO_TOTAL_NUM_PARTITION_MODE; modeIdx++ )
+  for (int modeIdx = 0; modeIdx < GEO_TOTAL_NUM_PARTITION_MODE; modeIdx++)
 #else
-  for( int modeIdx = 0; modeIdx < GEO_NUM_PARTITION_MODE; modeIdx++ )
+  for (int modeIdx = 0; modeIdx < GEO_NUM_PARTITION_MODE; modeIdx++)
 #endif
   {
     delete[] g_geoParams[modeIdx];
@@ -5539,9 +5539,9 @@ void destroyROM()
   delete[] g_geoParams;
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
 #if JVET_AB0155_SGPM
-  for( int bldIdx = 0; bldIdx < TOTAL_GEO_BLENDING_NUM; bldIdx++ )
+  for (int bldIdx = 0; bldIdx < TOTAL_GEO_BLENDING_NUM; bldIdx++)
 #else
-  for( int bldIdx = 0; bldIdx < GEO_BLENDING_NUM; bldIdx++ )
+  for (int bldIdx = 0; bldIdx < GEO_BLENDING_NUM; bldIdx++)
 #endif
   {
     for (int i = 0; i < GEO_NUM_PRESTORED_MASK; i++)
@@ -5561,11 +5561,11 @@ void destroyROM()
 #endif
   }
 #else
-  for( int i = 0; i < GEO_NUM_PRESTORED_MASK; i++ )
+  for (int i = 0; i < GEO_NUM_PRESTORED_MASK; i++)
   {
-    delete[] g_geoWeights   [i];
+    delete[] g_geoWeights[i];
     delete[] g_geoEncSadMask[i];
-    g_geoWeights   [i] = nullptr;
+    g_geoWeights[i] = nullptr;
     g_geoEncSadMask[i] = nullptr;
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
     delete[] g_geoWeightsTpl[i];
@@ -5578,7 +5578,7 @@ void destroyROM()
   {
     for (int log2Height = 0; log2Height < 6; log2Height++)
     {
-      for (int idx = 0; idx < NUM_TRANS_TYPE*NUM_TRANS_TYPE; idx++)
+      for (int idx = 0; idx < NUM_TRANS_TYPE * NUM_TRANS_TYPE; idx++)
       {
         if (g_resiBorderTemplate[log2Width][log2Height][idx])
         {
@@ -5694,7 +5694,7 @@ int g_ibcMbvdNeiOffsets[IBC_MBVD_NEI_NUM * 2];
 // ====================================================================================================================
 // Misc.
 // ====================================================================================================================
-SizeIndexInfo*           gp_sizeIdxInfo = NULL;
+SizeIndexInfo* gp_sizeIdxInfo = NULL;
 
 const int                 g_ictModes[2][4] = { { 0, 3, 1, 2 }, { 0, -3, -1, -2 } };
 
@@ -5710,7 +5710,7 @@ int8_t                    g_aucPrevLog2[MAX_CU_SIZE + 1];
 int8_t                    g_aucPrevLog2[MAX_CU_SIZE + 1];
 #endif
 
-UnitScale g_miScaling( MIN_CU_LOG2, MIN_CU_LOG2 );
+UnitScale g_miScaling(MIN_CU_LOG2, MIN_CU_LOG2);
 
 
 // ====================================================================================================================
@@ -5718,12 +5718,12 @@ UnitScale g_miScaling( MIN_CU_LOG2, MIN_CU_LOG2 );
 // ====================================================================================================================
 
 // scanning order table
-ScanElement *g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][MAX_CU_SIZE / 2 + 1][MAX_CU_SIZE / 2 + 1];
+ScanElement* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][MAX_CU_SIZE / 2 + 1][MAX_CU_SIZE / 2 + 1];
 #if JVET_W0119_LFNST_EXTENSION
-ScanElement  g_coefTopLeftDiagScan8x8  [ MAX_CU_DEPTH + 1 ][  64 ];
-ScanElement  g_coefTopLeftDiagScan16x16[ MAX_CU_DEPTH + 1 ][ 256 ];
+ScanElement  g_coefTopLeftDiagScan8x8[MAX_CU_DEPTH + 1][64];
+ScanElement  g_coefTopLeftDiagScan16x16[MAX_CU_DEPTH + 1][256];
 #else
-ScanElement  g_coefTopLeftDiagScan8x8[ MAX_CU_SIZE / 2 + 1 ][ 64 ];
+ScanElement  g_coefTopLeftDiagScan8x8[MAX_CU_SIZE / 2 + 1][64];
 #endif
 
 #if TU_256
@@ -5781,7 +5781,7 @@ const uint64_t g_stateTransTab[3] = { UINT64_C(0), UINT64_C(587280912), UINT64_C
 //                       7 : 7 5
 #endif
 
-const char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
+const char* MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 {
   {
     "INTRA1X1_LUMA",
@@ -5843,7 +5843,7 @@ const char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
   },
 };
 
-const char *MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
+const char* MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 {
   {  //1x1
   },
@@ -5913,7 +5913,7 @@ const int g_quantInterDefault8x8[8 * 8] =
   16,16,16,16,16,16,16,16
 };
 
-const uint32_t g_scalingListSize [SCALING_LIST_SIZE_NUM] = { 1, 4, 16, 64, 256, 1024, 4096, 16384 };
+const uint32_t g_scalingListSize[SCALING_LIST_SIZE_NUM] = { 1, 4, 16, 64, 256, 1024, 4096, 16384 };
 const uint32_t g_scalingListSizeX[SCALING_LIST_SIZE_NUM] = { 1, 2,  4,  8,  16,   32,   64,   128 };
 
 const uint32_t g_scalingListId[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
@@ -5929,42 +5929,42 @@ const uint32_t g_scalingListId[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 };
 
 #if CTU_256
-Mv   g_reusedUniMVs        [MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2][33];
+Mv   g_reusedUniMVs[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2][33];
 bool g_isReusedUniMVsFilled[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1];
 #else
 Mv   g_reusedUniMVs[32][32][8][8][2][33];
 bool g_isReusedUniMVsFilled[32][32][8][8];
 #endif
 #if INTER_LIC
-Mv   g_reusedUniMVsLIC        [MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2][33];
+Mv   g_reusedUniMVsLIC[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2][33];
 bool g_isReusedUniMVsFilledLIC[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1];
 #endif
 
 uint16_t g_paletteQuant[57];
-uint8_t g_paletteRunTopLut [5] = { 0, 1, 1, 2, 2 };
+uint8_t g_paletteRunTopLut[5] = { 0, 1, 1, 2, 2 };
 uint8_t g_paletteRunLeftLut[5] = { 0, 1, 2, 3, 4 };
 
 void initGeoTemplate()
 {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-  g_geoParams = new int16_t*[GEO_TOTAL_NUM_PARTITION_MODE];
+  g_geoParams = new int16_t * [GEO_TOTAL_NUM_PARTITION_MODE];
 #else
-  g_geoParams = new int16_t*[GEO_NUM_PARTITION_MODE];
+  g_geoParams = new int16_t * [GEO_NUM_PARTITION_MODE];
 #endif
   int modeIdx = 0;
-  for( int angleIdx = 0; angleIdx < GEO_NUM_ANGLES; angleIdx++ )
+  for (int angleIdx = 0; angleIdx < GEO_NUM_ANGLES; angleIdx++)
   {
-    for( int distanceIdx = 0; distanceIdx < GEO_NUM_DISTANCES; distanceIdx++ )
+    for (int distanceIdx = 0; distanceIdx < GEO_NUM_DISTANCES; distanceIdx++)
     {
-      if( (distanceIdx == 0 && angleIdx >= 16)
+      if ((distanceIdx == 0 && angleIdx >= 16)
 #if !JVET_AJ0107_GPM_SHAPE_ADAPT
         || ((distanceIdx == 2 || distanceIdx == 0) && (g_angle2mask[angleIdx] == 0 || g_angle2mask[angleIdx] == 5))
 #endif
-        || g_angle2mask[angleIdx] == -1 )
+        || g_angle2mask[angleIdx] == -1)
       {
         continue;
       }
-      g_geoParams[modeIdx]    = new int16_t[2];
+      g_geoParams[modeIdx] = new int16_t[2];
       g_geoParams[modeIdx][0] = (int16_t)angleIdx;
       g_geoParams[modeIdx][1] = (int16_t)distanceIdx;
       modeIdx++;
@@ -6084,33 +6084,33 @@ void initGeoTemplate()
 
     int distanceX = angleIdx;
     int distanceY = (distanceX + (GEO_NUM_ANGLES >> 2)) % GEO_NUM_ANGLES;
-    int16_t rho = (g_dis[distanceX] << (GEO_MAX_CU_LOG2+1)) + (g_dis[distanceY] << (GEO_MAX_CU_LOG2 + 1));
-    static const int16_t maskOffset = (2*GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE) >> 1;
+    int16_t rho = (g_dis[distanceX] << (GEO_MAX_CU_LOG2 + 1)) + (g_dis[distanceY] << (GEO_MAX_CU_LOG2 + 1));
+    static const int16_t maskOffset = (2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE) >> 1;
     int index = 0;
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
     int indexGeoWeight = 0;
-    for( int y = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; y < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; y++ )
+    for (int y = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; y < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; y++)
     {
       int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-      for( int x = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; x < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; x++ )
+      for (int x = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; x < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; x++)
       {
         int16_t sx_i = ((x + maskOffset) << 1) + 1;
         int16_t weightIdx = sx_i * g_dis[distanceX] + lookUpY - rho;
         int weightLinearIdx = 32 + weightIdx;
         g_geoWeightsTpl[g_angle2mask[angleIdx]][index++] = weightIdx > 0 ? 1 : 0;
-        if (x >= 0 && x < GEO_WEIGHT_MASK_SIZE && y >=0 && y < GEO_WEIGHT_MASK_SIZE)
+        if (x >= 0 && x < GEO_WEIGHT_MASK_SIZE && y >= 0 && y < GEO_WEIGHT_MASK_SIZE)
         {
-          g_geoWeights   [g_angle2mask[angleIdx]][indexGeoWeight] = Clip3(0, 8, (weightLinearIdx + 4) >> 3);
+          g_geoWeights[g_angle2mask[angleIdx]][indexGeoWeight] = Clip3(0, 8, (weightLinearIdx + 4) >> 3);
           g_geoEncSadMask[g_angle2mask[angleIdx]][indexGeoWeight] = weightIdx > 0 ? 1 : 0;
           ++indexGeoWeight;
         }
       }
     }
 #else
-    for( int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++ )
+    for (int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++)
     {
       int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-      for( int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++ )
+      for (int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++)
       {
         int16_t sx_i = ((x + maskOffset) << 1) + 1;
         int16_t weightIdx = sx_i * g_dis[distanceX] + lookUpY - rho;
@@ -6123,25 +6123,25 @@ void initGeoTemplate()
   }
 #endif
 
-  for( int hIdx = 0; hIdx < GEO_NUM_CU_SIZE; hIdx++ )
+  for (int hIdx = 0; hIdx < GEO_NUM_CU_SIZE; hIdx++)
   {
-    int16_t height = 1 << ( hIdx + GEO_MIN_CU_LOG2);
-    for( int wIdx = 0; wIdx < GEO_NUM_CU_SIZE; wIdx++ )
+    int16_t height = 1 << (hIdx + GEO_MIN_CU_LOG2);
+    for (int wIdx = 0; wIdx < GEO_NUM_CU_SIZE; wIdx++)
     {
       int16_t width = 1 << (wIdx + GEO_MIN_CU_LOG2);
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-      for( int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; splitDir++ )
+      for (int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; splitDir++)
 #else
-      for( int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++ )
+      for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
 #endif
       {
-        int16_t angle         = g_geoParams[splitDir][0];
-        int16_t distance      = g_geoParams[splitDir][1];
-        int16_t offsetX       = (GEO_WEIGHT_MASK_SIZE - width) >> 1;
-        int16_t offsetY       = (GEO_WEIGHT_MASK_SIZE - height) >> 1;
-        if( distance > 0 )
+        int16_t angle = g_geoParams[splitDir][0];
+        int16_t distance = g_geoParams[splitDir][1];
+        int16_t offsetX = (GEO_WEIGHT_MASK_SIZE - width) >> 1;
+        int16_t offsetY = (GEO_WEIGHT_MASK_SIZE - height) >> 1;
+        if (distance > 0)
         {
-          if( angle % 16 == 8 || (angle % 16 != 0 && height >= width) )
+          if (angle % 16 == 8 || (angle % 16 != 0 && height >= width))
           {
             offsetY += angle < 16 ? ((distance * (int32_t)height) >> 3) : -((distance * (int32_t)height) >> 3);
           }
@@ -6168,19 +6168,19 @@ void initGeoTemplate()
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
 #endif
       {
-        int16_t angle    = g_geoParams[splitDir][0];
+        int16_t angle = g_geoParams[splitDir][0];
         int16_t distance = g_geoParams[splitDir][1];
-        int16_t offsetX  = (GEO_WEIGHT_MASK_SIZE - width) >> 1;
-        int16_t offsetY  = (GEO_WEIGHT_MASK_SIZE - height) >> 1;
+        int16_t offsetX = (GEO_WEIGHT_MASK_SIZE - width) >> 1;
+        int16_t offsetY = (GEO_WEIGHT_MASK_SIZE - height) >> 1;
         if (distance > 0)
         {
           if (angle % 16 == 8 || (angle % 16 != 0 && height >= width))
           {
-            offsetY += angle < 16 ? ((distance * (int32_t) height) >> 3) : -((distance * (int32_t) height) >> 3);
+            offsetY += angle < 16 ? ((distance * (int32_t)height) >> 3) : -((distance * (int32_t)height) >> 3);
           }
           else
           {
-            offsetX += angle < 16 ? ((distance * (int32_t) width) >> 3) : -((distance * (int32_t) width) >> 3);
+            offsetX += angle < 16 ? ((distance * (int32_t)width) >> 3) : -((distance * (int32_t)width) >> 3);
           }
         }
         g_weightOffsetEx[splitDir][hIdx][wIdx][0] = offsetX;
@@ -6194,21 +6194,21 @@ void initGeoTemplate()
 
 int16_t** g_geoParams;
 #if JVET_AB0155_SGPM
-int16_t *g_geoWeights[TOTAL_GEO_BLENDING_NUM][GEO_NUM_PRESTORED_MASK];
+int16_t* g_geoWeights[TOTAL_GEO_BLENDING_NUM][GEO_NUM_PRESTORED_MASK];
 int      g_bld2Width[TOTAL_GEO_BLENDING_NUM] = { 1, 2, 4, 8, 16, 32 };
 #elif JVET_AA0058_GPM_ADAPTIVE_BLENDING
-int16_t*  g_geoWeights[GEO_BLENDING_NUM][GEO_NUM_PRESTORED_MASK];
+int16_t* g_geoWeights[GEO_BLENDING_NUM][GEO_NUM_PRESTORED_MASK];
 int       g_bld2Width[GEO_BLENDING_NUM] = { 1, 2, 4, 8, 16 };
 #else
-int16_t*  g_geoWeights   [GEO_NUM_PRESTORED_MASK];
+int16_t* g_geoWeights[GEO_NUM_PRESTORED_MASK];
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
-Pel*      g_geoWeightsTpl[GEO_NUM_PRESTORED_MASK];
+Pel* g_geoWeightsTpl[GEO_NUM_PRESTORED_MASK];
 #endif
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
-Pel*      g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
+Pel* g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
 #else
-int16_t*  g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
+int16_t* g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
 #endif
 #if JVET_AB0155_SGPM
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
@@ -6239,27 +6239,27 @@ int8_t g_gpmSplitDir[GEO_NUM_CU_SHAPES][GEO_NUM_PARTITION_MODE] = {
 {1, 3, 64, 66, 33, 35, 88, 90, 16, 19, 78, 48, 51, 102, 20, 23, 81, 44, 47, 99, 12, 15, 75, 52, 55, 105, 17, 76, 49, 100, 21, 79, 45, 97, 13, 73, 53, 103, 8, 9, 11, 70, 72, 56, 57, 59, 106, 108, 18, 77, 50, 101, 22, 80, 46, 98, 14, 74, 54, 104, 10, 71, 58, 107},
 {1, 3, 64, 66, 33, 35, 88, 90, 20, 23, 81, 44, 47, 99, 24, 27, 84, 40, 43, 96, 16, 19, 78, 48, 51, 102, 21, 79, 45, 97, 25, 82, 41, 94, 17, 76, 49, 100, 12, 13, 15, 73, 75, 52, 53, 55, 103, 105, 22, 80, 46, 98, 26, 83, 42, 95, 18, 77, 50, 101, 14, 74, 54, 104},
 {1, 3, 64, 66, 33, 35, 88, 90, 24, 27, 84, 40, 43, 96, 28, 31, 87, 36, 39, 93, 20, 23, 81, 44, 47, 99, 25, 82, 41, 94, 29, 85, 37, 91, 21, 79, 45, 97, 16, 17, 19, 76, 78, 48, 49, 51, 100, 102, 26, 83, 42, 95, 30, 86, 38, 92, 22, 80, 46, 98, 18, 77, 50, 101},
-{1, 3, 64, 66, 33, 35, 88, 90, 28, 31, 87, 36, 39, 93, 20, 23, 81, 44, 47, 99, 24, 27, 84, 40, 43, 96, 29, 85, 37, 91, 21, 79, 45, 97, 25, 82, 41, 94, 16, 17, 19, 76, 78, 48, 49, 51, 100, 102, 30, 86, 38, 92, 14, 74, 54, 104, 26, 83, 42, 95, 18, 77, 50, 101}};
+{1, 3, 64, 66, 33, 35, 88, 90, 28, 31, 87, 36, 39, 93, 20, 23, 81, 44, 47, 99, 24, 27, 84, 40, 43, 96, 29, 85, 37, 91, 21, 79, 45, 97, 25, 82, 41, 94, 16, 17, 19, 76, 78, 48, 49, 51, 100, 102, 30, 86, 38, 92, 14, 74, 54, 104, 26, 83, 42, 95, 18, 77, 50, 101} };
 // Fixed-shape indices for IBC-GPM and SGPM
-int8_t g_sgpmSplitDir[SGPM_TOTAL_NUM_PARTITIONS] = {1, 3, 12, 14, 16, 18, 20, 22, 33, 35, 44, 46, 48, 50, 52, 54, 64, 66, 74, 77, 80, 88, 90, 98, 101, 104};
-int8_t g_ibcGpmSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM] = {1, 3, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 33, 35, 44, 45, 47, 48, 49, 51, 52, 53, 55, 56, 57, 59, 64, 66, 70, 72, 73, 75, 76, 78, 79, 81, 88, 90, 97, 99, 100, 102, 103, 105, 106, 108}; 
-int8_t g_ibcGpmSplitDirFirstSetRank[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM] = {1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0}; 
+int8_t g_sgpmSplitDir[SGPM_TOTAL_NUM_PARTITIONS] = { 1, 3, 12, 14, 16, 18, 20, 22, 33, 35, 44, 46, 48, 50, 52, 54, 64, 66, 74, 77, 80, 88, 90, 98, 101, 104 };
+int8_t g_ibcGpmSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM] = { 1, 3, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 33, 35, 44, 45, 47, 48, 49, 51, 52, 53, 55, 56, 57, 59, 64, 66, 70, 72, 73, 75, 76, 78, 79, 81, 88, 90, 97, 99, 100, 102, 103, 105, 106, 108 };
+int8_t g_ibcGpmSplitDirFirstSetRank[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM] = { 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0 };
 #endif
 
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-int16_t   g_weightOffset       [GEO_TOTAL_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
+int16_t   g_weightOffset[GEO_TOTAL_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
 int8_t    g_angle2mask[GEO_NUM_ANGLES] = { 0,  1, 2, 3, 4, 5,  6, 7, 8, 7,  6, 5, 4, 3, 2,  1, 0,  1, 2, 3, 4, 5,  6, 7, 8, 7,  6, 5, 4, 3, 2,  1 };
 #else
-int16_t   g_weightOffset       [GEO_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
+int16_t   g_weightOffset[GEO_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
 int8_t    g_angle2mask[GEO_NUM_ANGLES] = { 0, -1, 1, 2, 3, 4, -1, -1, 5, -1, -1, 4, 3, 2, 1, -1, 0, -1, 1, 2, 3, 4, -1, -1, 5, -1, -1, 4, 3, 2, 1, -1 };
 #endif
 int8_t    g_dis[GEO_NUM_ANGLES] = { 8, 8, 8, 8, 4, 4, 2, 1, 0, -1, -2, -4, -4, -8, -8, -8, -8, -8, -8, -8, -4, -4, -2, -1, 0, 1, 2, 4, 4, 8, 8, 8 };
 int8_t    g_angle2mirror[GEO_NUM_ANGLES] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2 };
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-int8_t    g_geoAngle2IntraAng[GEO_NUM_ANGLES] = {50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54, 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54};
+int8_t    g_geoAngle2IntraAng[GEO_NUM_ANGLES] = { 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54, 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54 };
 #else
-int8_t    g_geoAngle2IntraAng[GEO_NUM_ANGLES] = {50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0, 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0};
+int8_t    g_geoAngle2IntraAng[GEO_NUM_ANGLES] = { 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0, 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0 };
 #endif
 #endif
 
@@ -6315,20 +6315,20 @@ const int8_t g_ccSaoCandPosY[MAX_NUM_LUMA_COMP][MAX_CCSAO_CAND_POS_Y] = { {-1, -
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
 const int8_t g_ccSaoEdgePosX[MAX_CCSAO_EDGE_DIR][2] = { { -1,  1 }, {  0,  0 }, { -1,  1 }, {  1, -1 } };
 const int8_t g_ccSaoEdgePosY[MAX_CCSAO_EDGE_DIR][2] = { {  0,  0 }, { -1,  1 }, { -1,  1 }, { -1,  1 } };
-const short  g_ccSaoEdgeThr [MAX_CCSAO_EDGE_IDC][MAX_CCSAO_EDGE_THR]
-                                                    = { {   2,   4,   6,   8,  10,  14,  18,  22,  30,  38,  54,  70,  86, 118, 150, 182},
-                                                        {  -4,   4,  -8,   8, -14,  14, -22,  22, -38,  38, -70,  70,-118, 118,-182, 182}};
-const int8_t g_ccSaoEdgeNum [MAX_CCSAO_EDGE_IDC][2] = { {16, 4}, { 4, 2} };
-const int8_t g_ccSaoBandTab [MAX_CCSAO_BAND_IDC][2] = { {COMPONENT_Y, 1}, {COMPONENT_Y, 2}, {COMPONENT_Y, 3}, {COMPONENT_Y, 4}, {COMPONENT_Y, 5}, {COMPONENT_Y, 6}, {COMPONENT_Y,  7}, {COMPONENT_Y,  8},
+const short  g_ccSaoEdgeThr[MAX_CCSAO_EDGE_IDC][MAX_CCSAO_EDGE_THR]
+= { {   2,   4,   6,   8,  10,  14,  18,  22,  30,  38,  54,  70,  86, 118, 150, 182},
+    {  -4,   4,  -8,   8, -14,  14, -22,  22, -38,  38, -70,  70,-118, 118,-182, 182} };
+const int8_t g_ccSaoEdgeNum[MAX_CCSAO_EDGE_IDC][2] = { {16, 4}, { 4, 2} };
+const int8_t g_ccSaoBandTab[MAX_CCSAO_BAND_IDC][2] = { {COMPONENT_Y, 1}, {COMPONENT_Y, 2}, {COMPONENT_Y, 3}, {COMPONENT_Y, 4}, {COMPONENT_Y, 5}, {COMPONENT_Y, 6}, {COMPONENT_Y,  7}, {COMPONENT_Y,  8},
                                                         {COMPONENT_Y, 9}, {COMPONENT_Y,10}, {COMPONENT_Y,11}, {COMPONENT_Y,12}, {COMPONENT_Y,13}, {COMPONENT_Y,14}, {COMPONENT_Cb, 2}, {COMPONENT_Cr, 2} };
 #else
 const int8_t g_ccSaoEdgeTypeX[CCSAO_EDGE_TYPE][2] = { { -1, 1 }, { 0, 0 }, { -1, 1 }, { 1, -1 } };
 const int8_t g_ccSaoEdgeTypeY[CCSAO_EDGE_TYPE][2] = { { 0, 0 }, { -1, 1 }, { -1, 1 }, { -1, 1 } };
-const short  g_ccSaoQuanValue[CCSAO_QUAN_NUM]     = { 2, 4, 6, 8, 10, 14, 18, 22, 30, 38, 54, 70, 86, 118, 150, 182 };
+const short  g_ccSaoQuanValue[CCSAO_QUAN_NUM] = { 2, 4, 6, 8, 10, 14, 18, 22, 30, 38, 54, 70, 86, 118, 150, 182 };
 #endif
 #endif
 #if JVET_AC0130_NSPT
-const uint8_t g_nsptLut[ 97 ] =
+const uint8_t g_nsptLut[97] =
 {  // 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2
 };
@@ -6365,7 +6365,7 @@ const int8_t g_ibcGpmFirstSetSplitDirToIdx[GEO_NUM_PARTITION_MODE] = {
 0,0,6,7,0,0,0,0,
 0,0,0,0,0,0,0,0
 };
-const int8_t g_ibcGpmFirstSetSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM] = {0, 1, 18, 19, 36, 37, 50, 51};
+const int8_t g_ibcGpmFirstSetSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM] = { 0, 1, 18, 19, 36, 37, 50, 51 };
 const int8_t g_ibcGpmSecondSetSplitDir[GEO_NUM_PARTITION_MODE] = {
 0,0,1,1,0,1,1,1,
 0,1,1,1,0,1,1,1,
@@ -6387,7 +6387,7 @@ uint32_t g_picAmvpSbTmvpEnabledArea = 0;
 #endif
 
 #if JVET_AG0276_LIC_SLOPE_ADJUST
-const int g_licSlopeDeltaSet[LIC_SLOPE_MAX_NUM_DELTA + 1] = {0, 1, -1};
+const int g_licSlopeDeltaSet[LIC_SLOPE_MAX_NUM_DELTA + 1] = { 0, 1, -1 };
 #endif
 
 #if JVET_AJ0061_TIMD_MERGE
@@ -6399,35 +6399,35 @@ static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX
   {
     size_t i = 0;
     const PosType width = 1 << (widthLog2MinusMinCU + MIN_CU_LOG2);
-    int       offsetX           = 0;
+    int       offsetX = 0;
     int offsetX2 = width >> 1;
     const int numNACandidate[7] = { 11, 13, 10, 2, 2, 2, 2 };
     const int idxMap[7][15] = { {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12}, {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14}, {0, 1, 3, 4, 5, 6, 7, 8, 11, 12}, {0, 1}, {0, 1}, {0, 1}, {0, 1} };
-    for (int iDistanceIndex = 0; iDistanceIndex < 7 ; iDistanceIndex++)
+    for (int iDistanceIndex = 0; iDistanceIndex < 7; iDistanceIndex++)
     {
-      const int iNADistanceHor = width  * (iDistanceIndex + 1);
+      const int iNADistanceHor = width * (iDistanceIndex + 1);
       const int offsetX0 = -iNADistanceHor - 1;
       const int offsetX1 = width + iNADistanceHor - 1;
       for (int iNASPIdx = 0; iNASPIdx < numNACandidate[iDistanceIndex]; iNASPIdx++)
       {
         switch (idxMap[iDistanceIndex][iNASPIdx])
         {                                                                             // Angle CCW from (1,0), approx.
-          case 0:  offsetX = offsetX2;                                        break;  //  90°
-          case 1:  offsetX = offsetX0;                                        break;  // 180°
-          case 2:  offsetX = offsetX0;                                        break;  // 135°
-          case 3:  offsetX = offsetX0;                                        break;  // 157.5°
-          case 4:  offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 112.5°
-          case 5:  offsetX = offsetX0;                                        break;  // 146.25°
-          case 6:  offsetX = ((offsetX2 + (offsetX0 + offsetX2)) >> 1) >> 1;  break;  // 123.75°
-          case 7:  offsetX = offsetX1;                                        break;  //   0°
-          case 8:  offsetX = -1;                                              break;  // 270°
-          case 9:  offsetX = offsetX1;                                        break;  //  45°
-          case 10: offsetX = offsetX0;                                        break;  // 215°
-          case 11: offsetX = (offsetX2 + offsetX1) >> 1;                      break;  //  67.5°
-          case 12: offsetX = offsetX0;                                        break;  // 197.5°
-          case 13: offsetX = offsetX1;                                        break;  //  22.5°
-          case 14: offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 242.5°
-          default: printf("error!"); exit(0);                                 break;
+        case 0:  offsetX = offsetX2;                                        break;  //  90?
+        case 1:  offsetX = offsetX0;                                        break;  // 180?
+        case 2:  offsetX = offsetX0;                                        break;  // 135?
+        case 3:  offsetX = offsetX0;                                        break;  // 157.5?
+        case 4:  offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 112.5?
+        case 5:  offsetX = offsetX0;                                        break;  // 146.25?
+        case 6:  offsetX = ((offsetX2 + (offsetX0 + offsetX2)) >> 1) >> 1;  break;  // 123.75?
+        case 7:  offsetX = offsetX1;                                        break;  //   0?
+        case 8:  offsetX = -1;                                              break;  // 270?
+        case 9:  offsetX = offsetX1;                                        break;  //  45?
+        case 10: offsetX = offsetX0;                                        break;  // 215?
+        case 11: offsetX = (offsetX2 + offsetX1) >> 1;                      break;  //  67.5?
+        case 12: offsetX = offsetX0;                                        break;  // 197.5?
+        case 13: offsetX = offsetX1;                                        break;  //  22.5?
+        case 14: offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 242.5?
+        default: printf("error!"); exit(0);                                 break;
         }
         tab[widthLog2MinusMinCU][i++] = offsetX;
       }
@@ -6444,11 +6444,11 @@ static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX
   {
     size_t i = 0;
     const PosType height = 1 << (heightLog2MinusMinCU + MIN_CU_LOG2);
-    int       offsetY           = 0;
+    int       offsetY = 0;
     int offsetY2 = height >> 1;
     const int numNACandidate[7] = { 11, 13, 10, 2, 2, 2, 2 };
     const int idxMap[7][15] = { {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12}, {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14}, {0, 1, 3, 4, 5, 6, 7, 8, 11, 12}, {0, 1}, {0, 1}, {0, 1}, {0, 1} };
-    for (int iDistanceIndex = 0; iDistanceIndex < 7 ; iDistanceIndex++)
+    for (int iDistanceIndex = 0; iDistanceIndex < 7; iDistanceIndex++)
     {
       const int iNADistanceVer = height * (iDistanceIndex + 1);
       const int offsetY0 = height + iNADistanceVer - 1;
@@ -6457,22 +6457,22 @@ static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX
       {
         switch (idxMap[iDistanceIndex][iNASPIdx])
         {                                                                             // Angle CCW from (1,0), approx.
-          case 0:  offsetY = offsetY1;                                        break;  // 90°
-          case 1:  offsetY = offsetY2;                                        break;  // 180°
-          case 2:  offsetY = offsetY1;                                        break;  // 135°
-          case 3:  offsetY = (offsetY1 + offsetY2) >> 1;                      break;  // 157.5°
-          case 4:  offsetY = offsetY1;                                        break;  // 112.5°
-          case 5:  offsetY = ((offsetY2 + (offsetY1 + offsetY2)) >> 1) >> 1;  break;  // 146.25°
-          case 6:  offsetY = offsetY1;                                        break;  // 123.75°
-          case 7:  offsetY = -1;                                              break;  //   0°
-          case 8:  offsetY = offsetY0;                                        break;  // 270°
-          case 9:  offsetY = offsetY1;                                        break;  //  45°
-          case 10: offsetY = offsetY0;                                        break;  // 215°
-          case 11: offsetY = offsetY1;                                        break;  //  67.5°
-          case 12: offsetY = (offsetY2 + offsetY0) >> 1;                      break;  // 197.5°
-          case 13: offsetY = (offsetY1 + offsetY2) >> 1;                      break;  //  22.5°
-          case 14: offsetY = offsetY0;                                        break;  // 242.5°
-          default: printf("error!"); exit(0);                                 break;
+        case 0:  offsetY = offsetY1;                                        break;  // 90?
+        case 1:  offsetY = offsetY2;                                        break;  // 180?
+        case 2:  offsetY = offsetY1;                                        break;  // 135?
+        case 3:  offsetY = (offsetY1 + offsetY2) >> 1;                      break;  // 157.5?
+        case 4:  offsetY = offsetY1;                                        break;  // 112.5?
+        case 5:  offsetY = ((offsetY2 + (offsetY1 + offsetY2)) >> 1) >> 1;  break;  // 146.25?
+        case 6:  offsetY = offsetY1;                                        break;  // 123.75?
+        case 7:  offsetY = -1;                                              break;  //   0?
+        case 8:  offsetY = offsetY0;                                        break;  // 270?
+        case 9:  offsetY = offsetY1;                                        break;  //  45?
+        case 10: offsetY = offsetY0;                                        break;  // 215?
+        case 11: offsetY = offsetY1;                                        break;  //  67.5?
+        case 12: offsetY = (offsetY2 + offsetY0) >> 1;                      break;  // 197.5?
+        case 13: offsetY = (offsetY1 + offsetY2) >> 1;                      break;  //  22.5?
+        case 14: offsetY = offsetY0;                                        break;  // 242.5?
+        default: printf("error!"); exit(0);                                 break;
         }
         tab[heightLog2MinusMinCU][i++] = offsetY;
       }
