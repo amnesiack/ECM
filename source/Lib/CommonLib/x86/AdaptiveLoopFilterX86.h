@@ -6134,7 +6134,7 @@ static void simdGaussFiltering(CodingStructure &cs, Pel ***gaussPic, const CPelB
   const bool isSpsAdjust  = cs.sps->getAlfLumaFixedFilterAdjust();
 
   const bool useBounCondition = applyCodingInfo && !(!isSpsAdjust && isIntraSlice);
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && false;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && false;
   const int offsetClipValue = 1 << ( clpRng.bd - 1 );
 #endif
 #if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
@@ -6828,7 +6828,7 @@ static void simdFilter13x13Blk( AlfClassifier **classifier, const CPelBuf &srcLu
   const bool useCodingInfo = true;
 
   const bool useBounCondition = applyCodingInfo && !( !isSpsAdjust && isIntraSlice ) && useCodingInfo;
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && useCodingInfo;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && useCodingInfo;
   const int offsetClipValue = 1 << (clpRng.bd - 1);
 #endif
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
@@ -7731,7 +7731,7 @@ static void simdFixFilter9x9Db9Blk(AlfClassifier **classifier, const CPelBuf &sr
   const bool useCodingInfo = true;
 
   const bool useBounCondition = applyCodingInfo && !( !isSpsAdjust && isIntraSlice ) && useCodingInfo;
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && useCodingInfo;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && useCodingInfo;
   const int offsetClipValue = 1 << ( clpRng.bd - 1 );
 #endif
 
@@ -8944,7 +8944,7 @@ static void simdFilterResi9x9Db9Blk(AlfClassifier **classifier, const CPelBuf &s
   const bool isSpsAdjust = cs.sps->getAlfLumaFixedFilterAdjust();
   const bool useCodingInfo = isSpsAdjust ? true : false;
   const bool useBounCondition = applyCodingInfo && !( !isSpsAdjust && isIntraSlice ) && useCodingInfo;
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && useCodingInfo;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && useCodingInfo;
   const int offsetClipValue = 1 << ( clpRng.bd - 1 );
 #endif
 #if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
