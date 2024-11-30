@@ -3741,7 +3741,7 @@ void AdaptiveLoopFilter::fixedFilterBlk( AlfClassifier **classifier, const CPelB
   const bool useCodingInfo = true;
 
   const bool useBounCondition = applyCodingInfo && !( !isSpsAdjust && isIntraSlice ) && useCodingInfo;
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && useCodingInfo;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && useCodingInfo;
   const int offsetClipValue = 1 << ( clpRng.bd - 1 );
 #endif
   int fixedFiltIndF0 = -1;
@@ -4662,7 +4662,7 @@ void AdaptiveLoopFilter::fixedFilteringResi(AlfClassifier **classifier, const CP
   const bool isSpsAdjust = cs.sps->getAlfLumaFixedFilterAdjust();
   const bool useCodingInfo = isSpsAdjust ? true : false;
   const bool useBounCondition = applyCodingInfo && !( !isSpsAdjust && isIntraSlice ) && useCodingInfo;
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && useCodingInfo;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && useCodingInfo;
   const int offsetClipValue =  1 << ( clpRng.bd - 1 );
 #endif
 
@@ -8212,7 +8212,7 @@ void AdaptiveLoopFilter::gaussFiltering(CodingStructure &cs, Pel ***gaussPic, co
   const bool isIntraSlice = cs.slice->isIntra();
   const bool isSpsAdjust  = cs.sps->getAlfLumaFixedFilterAdjust();
   const bool useBounCondition = applyCodingInfo && !(!isSpsAdjust && isIntraSlice);
-  const bool useResiCondition = applyCodingInfo && (isSpsAdjust || !isSpsAdjust) && !isIntraSlice && false;
+  const bool useResiCondition = applyCodingInfo && !isIntraSlice && false;
   const int offsetClipValue = 1 << ( clpRng.bd - 1 );
 #endif
 
@@ -8401,8 +8401,7 @@ void AdaptiveLoopFilter::calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClass
 {
 
   const bool isIntraSlice = cs.slice->isIntra();
-  const bool isSpsAdjust = cs.sps->getAlfLumaFixedFilterAdjust();
-  const bool calcResi = !isIntraSlice && (isSpsAdjust || !isSpsAdjust);
+  const bool calcResi = !isIntraSlice;
 
   const Pel *srcResiPtr = srcLumaResi.buf;
   int        srcResiStride = srcLumaResi.stride;
