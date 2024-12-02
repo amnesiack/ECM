@@ -7196,6 +7196,8 @@ void IntraPrediction::xFillReferenceSamplesOBMC( const CPelBuf &recoBuf, Pel* re
 
   // ----- Step 1: analyze neighborhood -----
   const Position posLT          = area;
+  const Position posRT = area.topRight();
+  const Position posLB = area.bottomLeft();
 
 #if JVET_Y0116_EXTENDED_MRL_LIST
 #if JVET_AC0094_REF_SAMPLES_OPT
@@ -7210,6 +7212,12 @@ void IntraPrediction::xFillReferenceSamplesOBMC( const CPelBuf &recoBuf, Pel* re
   memset( neighborFlags, 0, totalUnits );
 
   neighborFlags[totalLeftUnits+leftMrlUnitNum] = isAboveLeftAvailable( cu, chType, posLT.offset(-multiRefIdx, -multiRefIdx) );
+  isAboveAvailableOBMC(cu, chType, posLT.offset(-aboveMrlUnitNum * unitWidth, -multiRefIdx), aboveMrlUnitNum, unitWidth, (neighborFlags + totalLeftUnits + 1 + leftMrlUnitNum), m_intraOBMCNeighState);
+  isLeftAvailableOBMC(cu, chType, posLT.offset(-multiRefIdx, -leftMrlUnitNum * unitHeight), leftMrlUnitNum, unitHeight, (neighborFlags + totalLeftUnits - 1 + leftMrlUnitNum), m_intraOBMCNeighState);
+  isAboveAvailableOBMC(cu, chType, posLT.offset(0, -multiRefIdx), numAboveUnits, unitWidth, (neighborFlags + totalLeftUnits + 1 + leftMrlUnitNum + aboveMrlUnitNum), m_intraOBMCNeighState);
+  isAboveRightAvailableOBMC(cu, chType, posRT.offset(0, -multiRefIdx), numAboveRightUnits, unitWidth, (neighborFlags + totalLeftUnits + 1 + leftMrlUnitNum + aboveMrlUnitNum + numAboveUnits), m_intraOBMCNeighState);
+  isLeftAvailableOBMC(cu, chType, posLT.offset(-multiRefIdx, 0), numLeftUnits, unitHeight, (neighborFlags + totalLeftUnits - 1), m_intraOBMCNeighState);
+  isBelowLeftAvailableOBMC(cu, chType, posLB.offset(-multiRefIdx, 0), numLeftBelowUnits, unitHeight, (neighborFlags + totalLeftUnits - 1 - numLeftUnits), m_intraOBMCNeighState);
 
   // ----- Step 2: fill reference samples (depending on neighborhood) -----
 
