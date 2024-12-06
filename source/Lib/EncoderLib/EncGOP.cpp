@@ -3491,7 +3491,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     catch(const std::exception&)
     {
       decPic = false;
-      encPic = false;
+      encPic = true;
       tryDecodePicture(nullptr, 0, std::string(""));
     }
  
