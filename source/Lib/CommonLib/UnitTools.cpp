@@ -29782,14 +29782,13 @@ bool PU::isBiPredFromSameDirUnEqDistPoc(const PredictionUnit& pu)
     const int poc0 = pu.cu->slice->getRefPOC(REF_PIC_LIST_0, pu.refIdx[0]);
     const int poc1 = pu.cu->slice->getRefPOC(REF_PIC_LIST_1, pu.refIdx[1]);
     const int poc = pu.cu->slice->getPOC();
+
     if ((poc - poc0) * (poc - poc1) < 0)
     {
       return false;
     }
     else
     {
-      const int poc0 = pu.cu->slice->getRefPOC(REF_PIC_LIST_0, pu.refIdx[0]);
-      const int poc1 = pu.cu->slice->getRefPOC(REF_PIC_LIST_1, pu.refIdx[1]);
       if (poc0 == poc1)
       {
         return false;
@@ -29798,9 +29797,8 @@ bool PU::isBiPredFromSameDirUnEqDistPoc(const PredictionUnit& pu)
       {
         return true;
       }
-      }
-
     }
+  }
   return false;
 }
 

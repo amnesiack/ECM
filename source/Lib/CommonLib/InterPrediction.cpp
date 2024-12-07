@@ -1061,104 +1061,105 @@ void InterPrediction::xSubPuMC( PredictionUnit& pu, PelUnitBuf& predBuf, const R
       subPu.mvRefine = false;
       subPu.bdmvrRefine = true;
       Position subPuStartPos = pu.lumaPos();
-      while (xGetSubPuGroupArea2D(pu, subPu, m_sbtmvpSubPuDerived, subPuStartPos))
+      while( xGetSubPuGroupArea2D( pu, subPu, m_sbtmvpSubPuDerived, subPuStartPos ) )
       {
         m_doAffineSubPuBdof = true;
-        const int sbtmvpSubPuDerivedOffset = ((subPu.lumaPos().x - pu.lumaPos().x) >> 2) + ((subPu.lumaPos().y - pu.lumaPos().y) >> 2) * BDOF_SUBPU_STRIDE;
-        const int bioSubPuIdxInc = BDOF_SUBPU_STRIDE - (subPu.lwidth() >> BDOF_SUBPU_DIM_LOG2);
-        const int mbBufPosXStart = (subPu.lumaPos().x - pu.lumaPos().x) >> 2, mbBufPosYStart = (subPu.lumaPos().y - pu.lumaPos().y) >> 2;
-        const int mbBufPosXEnd = mbBufPosXStart + (subPu.lwidth() >> 2), mbBufPosYEnd = mbBufPosYStart + (subPu.lheight() >> 2);
-        PelUnitBuf subPredBuf = predBuf.subBuf(UnitAreaRelative(pu, subPu));
+        const int sbtmvpSubPuDerivedOffset = ( ( subPu.lumaPos().x - pu.lumaPos().x ) >> 2 ) + ( ( subPu.lumaPos().y - pu.lumaPos().y ) >> 2 ) * BDOF_SUBPU_STRIDE;
+        const int bioSubPuIdxInc = BDOF_SUBPU_STRIDE - ( subPu.lwidth() >> BDOF_SUBPU_DIM_LOG2 );
+        const int mbBufPosXStart = ( subPu.lumaPos().x - pu.lumaPos().x ) >> 2, mbBufPosYStart = ( subPu.lumaPos().y - pu.lumaPos().y ) >> 2;
+        const int mbBufPosXEnd = mbBufPosXStart + ( subPu.lwidth() >> 2 ), mbBufPosYEnd = mbBufPosYStart + ( subPu.lheight() >> 2 );
+        PelUnitBuf subPredBuf = predBuf.subBuf( UnitAreaRelative( pu, subPu ) );
         int bioSubPuIdx1 = 0, bioSubPuIdx2 = sbtmvpSubPuDerivedOffset;
 #if MULTI_PASS_DMVR
-    m_bdofMvRefined = false;
-    xPredInterBi(subPu, subPredBuf, luma, chroma);
+        m_bdofMvRefined = false;
+        xPredInterBi( subPu, subPredBuf, luma, chroma );
 #if JVET_AJ0097_BDOF_LDB
-    bool bdofCond = pu.cs->sps->getBDOFEnabledFlag() && (!pu.cs->picHeader->getDisBdofFlag());
-    if (!bdofCond)
-    {
-      int bioSubPuIdx = 0;
-      for (int mbBufPosY = mbBufPosYStart; mbBufPosY < mbBufPosYEnd; mbBufPosY++)
-      {
-        for (int mbBufPosX = mbBufPosXStart; mbBufPosX < mbBufPosXEnd; mbBufPosX++)
+        bool bdofCond = pu.cs->sps->getBDOFEnabledFlag() && ( !pu.cs->picHeader->getDisBdofFlag() );
+        if( !bdofCond )
         {
-          m_bdofSubPuMvOffset[bioSubPuIdx].setZero();
-          bioSubPuIdx++;
+          int bioSubPuIdx = 0;
+          for( int mbBufPosY = mbBufPosYStart; mbBufPosY < mbBufPosYEnd; mbBufPosY++ )
+          {
+            for( int mbBufPosX = mbBufPosXStart; mbBufPosX < mbBufPosXEnd; mbBufPosX++ )
+            {
+              m_bdofSubPuMvOffset[ bioSubPuIdx ].setZero();
+              bioSubPuIdx++;
+            }
+            bioSubPuIdx += bioSubPuIdxInc;
+          }
         }
-        bioSubPuIdx += bioSubPuIdxInc;
-      }
-    }
 #endif
-    if (m_bdofMvRefined)
-    {
-      xPredInterBiSubPuBDOF(subPu, subPredBuf, luma, chroma);  // do not change the predBufWOBIO
-      m_bdofMvRefined = false;
-    }
-#else
-          xPredInterBi(subPu, subPredBuf, luma, chroma, predBufWOBIO);
-#endif
-          if (pu.availableBdofRefinedMv == AFFINE_SUBPU_BDOF_APPLY_AND_STORE_MV)
-          {
-            for (int mbBufPosY = mbBufPosYStart; mbBufPosY < mbBufPosYEnd; mbBufPosY++)
-            {
-              for (int mbBufPosX = mbBufPosXStart; mbBufPosX < mbBufPosXEnd; mbBufPosX++)
-              {
-                m_sbtmvpSubPuDerived[bioSubPuIdx2] = 1/*first refine stage*/;
-                *(m_bdofSubPuMvBuf + bioSubPuIdx2) = m_bdofSubPuMvOffset[bioSubPuIdx1];
-                bioSubPuIdx1++;
-                bioSubPuIdx2++;
-              }
-              bioSubPuIdx1 += bioSubPuIdxInc;
-              bioSubPuIdx2 += bioSubPuIdxInc;
-            }
-          }
-          else
-          {
-            for (int mbBufPosY = mbBufPosYStart; mbBufPosY < mbBufPosYEnd; mbBufPosY++)
-            {
-              for (int mbBufPosX = mbBufPosXStart; mbBufPosX < mbBufPosXEnd; mbBufPosX++)
-              {
-                m_sbtmvpSubPuDerived[bioSubPuIdx2] = 1/*first refine stage*/;
-                bioSubPuIdx2++;
-              }
-              bioSubPuIdx2 += bioSubPuIdxInc;
-            }
-          }
-      }
-        subPu.bdmvrRefine = false;
-        pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
-#if JVET_AG0098_AMVP_WITH_SBTMVP
-        if (pu.mergeType != MRG_TYPE_SUBPU_ATMVP && !pu.amvpSbTmvpFlag)
-#else
-        if (pu.mergeType != MRG_TYPE_SUBPU_ATMVP)
-#endif
+        if( m_bdofMvRefined )
         {
-          m_subPuMC = false;
-          pu.cu->affine = isAffine;
-#if JVET_AG0276_LIC_BDOF_BDMVR && JVET_AG0276_NLIC
-          if (pu.cu->altLMFlag)
+          xPredInterBiSubPuBDOF( subPu, subPredBuf, luma, chroma );  // do not change the predBufWOBIO
+          m_bdofMvRefined = false;
+        }
+#else
+        xPredInterBi( subPu, subPredBuf, luma, chroma, predBufWOBIO );
+#endif
+        if( pu.availableBdofRefinedMv == AFFINE_SUBPU_BDOF_APPLY_AND_STORE_MV )
+        {
+          for( int mbBufPosY = mbBufPosYStart; mbBufPosY < mbBufPosYEnd; mbBufPosY++ )
           {
-            for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+            for( int mbBufPosX = mbBufPosXStart; mbBufPosX < mbBufPosXEnd; mbBufPosX++ )
             {
-              ComponentID compID = (ComponentID)comp;
-              if (!luma && isLuma(compID))
-              {
-                continue;
-              }
-              if (!chroma && isChroma(compID))
-              {
-                continue;
-              }
+              m_sbtmvpSubPuDerived[ bioSubPuIdx2 ] = 1/*first refine stage*/;
+              *( m_bdofSubPuMvBuf + bioSubPuIdx2 ) = m_bdofSubPuMvOffset[ bioSubPuIdx1 ];
+              bioSubPuIdx1++;
+              bioSubPuIdx2++;
+            }
+            bioSubPuIdx1 += bioSubPuIdxInc;
+            bioSubPuIdx2 += bioSubPuIdxInc;
+          }
+        }
+        else
+        {
+          for( int mbBufPosY = mbBufPosYStart; mbBufPosY < mbBufPosYEnd; mbBufPosY++ )
+          {
+            for( int mbBufPosX = mbBufPosXStart; mbBufPosX < mbBufPosXEnd; mbBufPosX++ )
+            {
+              m_sbtmvpSubPuDerived[ bioSubPuIdx2 ] = 1/*first refine stage*/;
+              bioSubPuIdx2++;
+            }
+            bioSubPuIdx2 += bioSubPuIdxInc;
+          }
+        }
+      }
 
-              int scale = pu.cu->altLMParaUnit.scale[comp];
-              int shift = 5;
-              int offset = pu.cu->altLMParaUnit.offset[comp];
-              predBuf.bufs[comp].linearTransform(scale, shift, offset, true, pu.cu->slice->clpRng(compID));
-            }
-          }
+      subPu.bdmvrRefine = false;
+      pu.availableBdofRefinedMv = AFFINE_SUBPU_BDOF_NOT_APPLY;
+#if JVET_AG0098_AMVP_WITH_SBTMVP
+      if( pu.mergeType != MRG_TYPE_SUBPU_ATMVP && !pu.amvpSbTmvpFlag )
+#else
+      if( pu.mergeType != MRG_TYPE_SUBPU_ATMVP )
 #endif
-          return;
+      {
+        m_subPuMC = false;
+        pu.cu->affine = isAffine;
+#if JVET_AG0276_LIC_BDOF_BDMVR && JVET_AG0276_NLIC
+        if( pu.cu->altLMFlag )
+        {
+          for( int comp = 0; comp < MAX_NUM_COMPONENT; comp++ )
+          {
+            ComponentID compID = ( ComponentID ) comp;
+            if( !luma && isLuma( compID ) )
+            {
+              continue;
+            }
+            if( !chroma && isChroma( compID ) )
+            {
+              continue;
+            }
+
+            int scale = pu.cu->altLMParaUnit.scale[ comp ];
+            int shift = 5;
+            int offset = pu.cu->altLMParaUnit.offset[ comp ];
+            predBuf.bufs[ comp ].linearTransform( scale, shift, offset, true, pu.cu->slice->clpRng( compID ) );
+          }
         }
+#endif
+        return;
+      }
 #endif
 #if JVET_AG0098_AMVP_WITH_SBTMVP
     }

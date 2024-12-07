@@ -397,6 +397,7 @@ static const int MAX_TREE_TYPE              =                      3; ///< LumaC
 #endif
 
 #if JVET_AH0209_PDP
+static const int MAX_PDP_SIZE =                                   32;
 static const int PDP_NUM_MODES =                                  67;
 static const int PDP_NUM_SIZES =                                  18;
 static const int PDP_NUM_GROUPS =                                 67;

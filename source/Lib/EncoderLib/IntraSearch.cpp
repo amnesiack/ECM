@@ -515,7 +515,7 @@ void IntraSearch::init( EncCfg*        pcEncCfg,
     {
       continue;
     }
-    m_pdpIntraPredBuf[i] = new Pel[32*32]; //maxsize 32 where pdp is applied.
+    m_pdpIntraPredBuf[i] = new Pel[ MAX_PDP_SIZE * MAX_PDP_SIZE ]; //MAX_PDP_SIZE where pdp is applied.
   }
 #endif
 #if JVET_AG0058_EIP
@@ -1476,6 +1476,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 const int s = sizeIdx > 12 ? 4 : 2;
                 if (sizeIdx >= 0 && m_refAvailable && pu.cu->cs->sps->getUsePDP() && !(modeIdx > 1 && modeIdx % s != m))
                 {
+                  CHECK( m_pdpIntraPredBuf[ uiMode ] == nullptr, "PDP predictor unavailable" );
                   PelBuf predBuf(m_pdpIntraPredBuf[uiMode], tmpArea);
                   predBuf.copyFrom(piPred);
                   m_pdpIntraPredReady[modeIdx] = true;
@@ -2781,15 +2782,15 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 bool blendModes[OBIC_FUSION_NUM - 1] = {false};
                 PelBuf predFusion[OBIC_FUSION_NUM - 1];
 #if JVET_AH0209_PDP
-               CHECK(!m_intraModeReady[obicMode] && !m_pdpIntraPredReady[obicMode], "OBIC mode is not ready!");
+                CHECK(!m_intraModeReady[obicMode] && !m_pdpIntraPredReady[obicMode], "OBIC mode is not ready!");
 #else
                 CHECK(!m_intraModeReady[obicMode], "OBIC mode is not ready!");
 #endif
-               const UnitArea localUnitArea( pu.chromaFormat, Area( 0, 0, iWidth, iHeight ) );
+                const UnitArea localUnitArea( pu.chromaFormat, Area( 0, 0, iWidth, iHeight ) );
 #if JVET_AH0209_PDP
                 PelBuf predBuf(m_pdpIntraPredReady[obicMode]? m_pdpIntraPredBuf[obicMode]: m_intraPredBuf[obicMode], pu.Y());
 #else
-               PelBuf predBuf(m_intraPredBuf[obicMode], pu.Y());
+                PelBuf predBuf(m_intraPredBuf[obicMode], pu.Y());
 #endif
                 piPred.copyFrom(predBuf);
                 int planarIdx = 0;
@@ -11102,7 +11103,7 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     if (isPDPMode && m_pdpIntraPredReady[uiDirMode] && !pu.cu->dimd)
     {
       CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
-      CHECK(m_pdpIntraPredBuf[uiDirMode] == nullptr, "pdpc Predictor unavailable");
+      CHECK(m_pdpIntraPredBuf[uiDirMode] == nullptr, "PDP predictor unavailable");
       PelBuf predBuf(m_pdpIntraPredBuf[uiDirMode], tmpArea);
       piPred.copyFrom(predBuf);
     }
@@ -11141,11 +11142,10 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     {
       predIntraAng(COMPONENT_Y, piPred, pu);
     }
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AH0209_PDP && JVET_AJ0249_NEURAL_NETWORK_BASED
     }
 #endif
   }
-
 #else
 
   if (PU::isMIP(pu, chType))
@@ -11175,7 +11175,7 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     if (isPDPMode && m_pdpIntraPredReady[uiDirMode] && !pu.cu->dimd)
     {
       CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
-      CHECK(m_pdpIntraPredBuf[uiDirMode] == nullptr, "pdp Predictor unavailable");
+      CHECK(m_pdpIntraPredBuf[uiDirMode] == nullptr, "PDP predictor unavailable");
       PelBuf predBuf(m_pdpIntraPredBuf[uiDirMode], tmpArea);
       piPred.copyFrom(predBuf);
     }
@@ -11185,8 +11185,8 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
       predIntraAng(COMPONENT_Y, piPred, pu);
     }
   }
-
 #endif
+
   // save prediction
   sharedPredTS.copyFrom(piPred);
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
@@ -11578,7 +11578,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
             if (isPDPMode && m_pdpIntraPredReady[uiDirMode] && !pu.cu->dimd)
             {
               CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
-              CHECK(m_pdpIntraPredBuf[uiDirMode] == nullptr, "pdp predictor unavailable");
+              CHECK(m_pdpIntraPredBuf[uiDirMode] == nullptr, "PDP predictor unavailable");
               PelBuf predBuf(m_pdpIntraPredBuf[uiDirMode], tmpArea);
               piPred.copyFrom(predBuf);
             }
@@ -11618,7 +11618,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
             {
               predIntraAng(compID, piPred, pu);
             }
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AH0209_PDP && JVET_AJ0249_NEURAL_NETWORK_BASED
             }
 #endif
           }

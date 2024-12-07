@@ -1930,10 +1930,8 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
   currQP[0] = currQP[1] = pcSlice->getSliceQp();
 
-    prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
-
 #if (JVET_AC0335_CONTENT_ADAPTIVE_OBMC_ENABLING && ENABLE_OBMC) || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS || JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0 || JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
-    int hashBlkHitPerc = -1;
+  int hashBlkHitPerc = -1;
 #endif
 
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS

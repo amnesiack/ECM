@@ -495,7 +495,7 @@ void AreaBuf<T>::padCopyFrom(const AreaBuf<const T> &other, int w, int h, int pw
 }
 #if JVET_AI0208_PDP_MIP
 template<typename T>
-void AreaBuf<T>::copyTranspose           ( const AreaBuf<const T> &other )
+void AreaBuf<T>::copyTranspose( const AreaBuf<const T> &other )
 {
   int tw = width;
   int th = height;
@@ -516,7 +516,7 @@ void AreaBuf<T>::copyTranspose           ( const AreaBuf<const T> &other )
   }
 }
 template<typename T>
-void AreaBuf<T>::copyFromFill             ( const AreaBuf<const T> &other, int w, int h, T fill)
+void AreaBuf<T>::copyFromFill( const AreaBuf<const T> &other, int w, int h, T fill)
 {
   int pw = w - (int)other.width;
   int ph = h - (int)other.height;
@@ -703,16 +703,22 @@ void AreaBuf<T>::removeWeightHighFreq(const AreaBuf<T>& other, const bool bClip,
 #if ENABLE_SIMD_OPT_BCW && defined(TARGET_SIMD_X86)
   if(!bClip)
   {
-    if(!(width & 7))
-      g_pelBufOP.removeWeightHighFreq8(dst, dstStride, src, srcStride, width, height, 16, bcwWeight);
-    else if(!(width & 3))
-      g_pelBufOP.removeWeightHighFreq4(dst, dstStride, src, srcStride, width, height, 16, bcwWeight);
+    if( !( width & 7 ) )
+    {
+      g_pelBufOP.removeWeightHighFreq8( dst, dstStride, src, srcStride, width, height, 16, bcwWeight );
+    }
+    else if( !( width & 3 ) )
+    {
+      g_pelBufOP.removeWeightHighFreq4( dst, dstStride, src, srcStride, width, height, 16, bcwWeight );
+    }
     else
+    {
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
-      g_pelBufOP.removeWeightHighFreq1(dst, dstStride, src, srcStride, width, height, 16, bcwWeight);
+      g_pelBufOP.removeWeightHighFreq1( dst, dstStride, src, srcStride, width, height, 16, bcwWeight );
 #else
-      CHECK(true, "Not supported");
+      CHECK( true, "Not supported" );
 #endif
+    }
   }
   else
   {
@@ -770,16 +776,22 @@ void AreaBuf<T>::removeHighFreq( const AreaBuf<T>& other, const bool bClip, cons
 #if ENABLE_SIMD_OPT_BCW && defined(TARGET_SIMD_X86)
   if (!bClip)
   {
-    if(!(width & 7))
-      g_pelBufOP.removeHighFreq8(dst, dstStride, src, srcStride, width, height);
-    else if (!(width & 3))
-      g_pelBufOP.removeHighFreq4(dst, dstStride, src, srcStride, width, height);
+    if( !( width & 7 ) )
+    {
+      g_pelBufOP.removeHighFreq8( dst, dstStride, src, srcStride, width, height );
+    }
+    else if( !( width & 3 ) )
+    {
+      g_pelBufOP.removeHighFreq4( dst, dstStride, src, srcStride, width, height );
+    }
     else
+    {
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
       g_pelBufOP.removeHighFreq1(dst, dstStride, src, srcStride, width, height);
 #else
       CHECK(true, "Not supported");
 #endif
+    }
   }
   else
   {

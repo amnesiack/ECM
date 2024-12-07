@@ -6034,7 +6034,7 @@ void EncAppCfg::xPrintParameter()
   {
     msg( VERBOSE, "FastPicLevelLIC:%d ", m_fastPicLevelLIC );
 #if JVET_AG0276_LIC_SLOPE_ADJUST
-    msg( VERBOSE, "LicSlopeAdust:%d ", m_licSlopeAdjust );
+    msg( VERBOSE, "LicSlopeAdjust:%d ", m_licSlopeAdjust );
 #endif
   }
 #endif

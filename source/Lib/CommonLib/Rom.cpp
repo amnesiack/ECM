@@ -57,26 +57,26 @@ const int16_t g_filterDataPdpMip[] = {
 // Initialize / destroy functions
 // ====================================================================================================================
 #if JVET_AH0209_PDP
-const int g_sizeData[PDP_NUM_SIZES][11] =
+const int g_sizeData[ PDP_NUM_SIZES ][ 11 ] =
 {
-  { 16,	    4,	  4,	 4,	 4,	 2,	 2,	   36,	0, 0,	  20 },
-  { 32,	    4,	  8,	 4,	 8,	 2,	 2,	   52,	0, 0,	  28 },
-  { 32,	    8,	  4,	 8,	 4,	 2,	 2,	   52,	0, 0,	  28 },
-  { 64,	    8,	  8,	 8,	 8,	 2,	 2,	   68,	0, 0,	  36 },
-  { 64,	    4,	 16,	 4,	16,	 2,	 2,	   84,	0, 0,	  44 },
-  { 64,	   16,	  4,	16,	 4,	 2,	 2,	   84,	0, 0,	  44 },
-  { 128,	  4,   32,	 4,	32,	 2,	 2,	  148,	0, 0,	  76 },
-  { 128,	 32,	  4,	32,	 4,	 2,	 2,	  148,	0, 0,	  76 },
-  { 128,	  8,	 16,	 8,	16,	 2,	 2,	  100,	0, 0,	  52 },
-  { 128,	 16,	  8,	16,	 8,	 2,	 2,	  100,	0, 0,	  52 },
-  { 256,	 16,	 16,	16,	16,	 2,	 2,	  132,	0, 0,	  68 },
-  { 256,	  8,   32,	 8,	32,	 2,	 2,	  164,	0, 0,	  84 },
-  { 256,	 32,	  8,	32,	 8,	 2,	 2,	  164,	0, 0,	  84 },
-  { 512,	 16,	 32,	16,	32,	 1,	 1,	   97,	0, 0,	  49 },
-  { 512,	 32,	 16,	32,	16,	 1,	 1,	   97,	0, 0,	  49 },
-  {1024,	 32,	 32,	32,	32,	 1,	 1,	  129,	0, 0,	  65 },
-  { 1024,	 64,	 64,	32,	32,	 2,	 2,	  516,	1, 1,  260 }, //dont use anything more than 64x64 at this point
-  { 1024,	128,	128,	32,	32,	 2,	 2,	 1028,	2, 2,  516 }
+  { 16,     4,    4,   4,  4,  2,  2,    36,  0, 0,     20 },
+  { 32,     4,	  8,	 4,	 8,	 2,	 2,	   52,	0, 0,     28 },
+  { 32,	    8,	  4,	 8,	 4,	 2,	 2,	   52,	0, 0,     28 },
+  { 64,	    8,	  8,	 8,	 8,	 2,	 2,	   68,	0, 0,     36 },
+  { 64,	    4,	 16,	 4,	16,	 2,	 2,	   84,	0, 0,     44 },
+  { 64,	   16,	  4,	16,	 4,	 2,	 2,	   84,	0, 0,     44 },
+  { 128,    4,   32,	 4,	32,	 2,	 2,	  148,	0, 0,     76 },
+  { 128,   32,	  4,	32,	 4,	 2,	 2,	  148,	0, 0,     76 },
+  { 128,    8,	 16,	 8,	16,	 2,	 2,	  100,	0, 0,     52 },
+  { 128,   16,	  8,	16,	 8,	 2,	 2,	  100,	0, 0,     52 },
+  { 256,   16,	 16,	16,	16,	 2,	 2,	  132,	0, 0,     68 },
+  { 256,    8,   32,	 8,	32,	 2,	 2,	  164,	0, 0,     84 },
+  { 256,   32,	  8,	32,	 8,	 2,	 2,	  164,	0, 0,     84 },
+  { 512,   16,	 32,	16,	32,	 1,	 1,	   97,	0, 0,     49 },
+  { 512,   32,	 16,	32,	16,	 1,	 1,	   97,	0, 0,     49 },
+  { 1024,  32,   32,  32, 32,  1,	 1,	  129,	0, 0,     65 },
+  { 1024,  64,	 64,	32,	32,	 2,	 2,	  516,	1, 1,    260 }, //dont use anything more than 64x64 at this point
+  { 1024, 128,	128,	32,	32,	 2,	 2,	 1028,	2, 2,    516 }
 };
 
 std::unordered_map<int, int> g_size
@@ -101,164 +101,183 @@ std::unordered_map<int, int> g_size
   { 32896,17 }
 };
 
-const int g_modeGroupSym[PDP_NUM_MODES] = { 0, 1, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34 }; //BR
-int16_t*** g_pdpFilters[PDP_NUM_GROUPS][PDP_NUM_SIZES] = { {nullptr} };
-int g_validSize[PDP_NUM_SIZES] = { 0 };
+const int g_modeGroupSym[ PDP_NUM_MODES ] = { 0, 1, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34 }; //BR
+int16_t*** g_pdpFilters[ PDP_NUM_GROUPS ][ PDP_NUM_SIZES ] = { {nullptr} };
+int g_validSize[ PDP_NUM_SIZES ] = { 0 };
 #if JVET_AI0208_PDP_MIP
-int16_t*** g_pdpFiltersMip[PDP_NUM_GROUPS][PDP_NUM_SIZES] = { {nullptr} };
-int g_validSizeMip[PDP_NUM_SIZES] = { 0 };
+int16_t*** g_pdpFiltersMip[ PDP_NUM_GROUPS ][ PDP_NUM_SIZES ] = { {nullptr} };
+int g_validSizeMip[ PDP_NUM_SIZES ] = { 0 };
 
 void createMipFilters()
 {
-
-  auto create_buf = [](int16_t***& f, int w, int h, int len, int aligned = 1, int log_row_interleave = 0)
+  auto createBuf = []( int16_t***& f, int w, int h, int len, int aligned = 1, int logRowInterleave = 0 )
   {
-    if (!f)
+    if( !f )
     {
-      int len_align = aligned > 1 ? (len + aligned - 1) / aligned * aligned : len;
+      const int lenAlign = aligned > 1 ? ( len + aligned - 1 ) / aligned * aligned : len;
 
-      auto mem_size = len_align * h * w;
+      auto memSize = lenAlign * h * w;
 
-      int16_t* pMem = new int16_t[mem_size];
-      ::memset(pMem, 0, sizeof(int16_t) * mem_size);
+      int16_t* pMem = new int16_t[ memSize ];
+      ::memset( pMem, 0, sizeof( int16_t ) * memSize );
 
-      int buff_w = w >> log_row_interleave;
+      const int buffW = w >> logRowInterleave;
 
-      f = new int16_t * *[h];
-      for (int i = 0; i < h; ++i)
+      f = new int16_t * *[ h ];
+      for( int i = 0; i < h; ++i )
       {
-        f[i] = new int16_t * [buff_w];
-        for (int j = 0; j < buff_w; ++j)
+        f[ i ] = new int16_t * [ buffW ];
+        for( int j = 0; j < buffW; ++j )
         {
-          f[i][j] = pMem;
-          pMem += len_align << log_row_interleave;
+          f[ i ][ j ] = pMem;
+          pMem += lenAlign << logRowInterleave;
         }
       }
     }
   };
-  auto transpose_matrix_line = [](int16_t* src, int16_t* dst, int w, int h, int ts)
+
+  auto transposeMatrixLine = []( int16_t* src, int16_t* dst, int w, int h, int ts )
   {
-    int stride1 = ts + w * 2;
-    int stride2 = ts + h * 2;
+    const int stride1 = ts + w * 2;
+    const int stride2 = ts + h * 2;
 
-    AreaBuf<int16_t> src_corner(src, stride1, ts, ts);
-    AreaBuf<int16_t> src_top(src + ts, stride1, w * 2, ts);
-    AreaBuf<int16_t> src_left(src + ts * stride1, ts, ts, h * 2);
-    AreaBuf<int16_t> dst_corner(dst, stride2, ts, ts);
-    AreaBuf<int16_t> dst_top(dst + ts, stride2, h * 2, ts);
-    AreaBuf<int16_t> dst_left(dst + ts * stride2, ts, ts, w * 2);
+    AreaBuf<int16_t> srcCorner( src, stride1, ts, ts );
+    AreaBuf<int16_t> srcTop( src + ts, stride1, w * 2, ts );
+    AreaBuf<int16_t> srcLeft( src + ts * stride1, ts, ts, h * 2 );
+    AreaBuf<int16_t> dstCorner( dst, stride2, ts, ts );
+    AreaBuf<int16_t> dstTop( dst + ts, stride2, h * 2, ts );
+    AreaBuf<int16_t> dstLeft( dst + ts * stride2, ts, ts, w * 2 );
 
-    dst_corner.copyTranspose(src_corner);
-    dst_top.copyTranspose(src_left);
-    dst_left.copyTranspose(src_top);
+    dstCorner.copyTranspose( srcCorner );
+    dstTop.copyTranspose( srcLeft );
+    dstLeft.copyTranspose( srcTop );
   };
-  auto interleave_matrix_lines = [](AreaBuf<int16_t>& src, AreaBuf<int16_t>& dst, int sublen)
-  {
-    int ratio = src.height / dst.height;
-    for (auto i = 0; i < dst.height; ++i)
-    {
-      for (auto j = 0; j < dst.width; j += ratio * sublen)
-      {
-        int16_t* pSubDst = &dst.at(j, i);
-        AreaBuf<int16_t> subDst(pSubDst, sublen, ratio);
-        int src_subLen = std::min(sublen, int(src.width - j / ratio));
-        AreaBuf<int16_t> subSrc = src.subBuf(Position(j / ratio, i * ratio), Size(src_subLen, ratio));
 
-        subDst.copyFromFill(subSrc, sublen, ratio, 0);
+  auto interleaveMatrixLines = []( AreaBuf<int16_t>& src, AreaBuf<int16_t>& dst, int sublen )
+  {
+    const int ratio = src.height / dst.height;
+
+    for( auto i = 0; i < dst.height; ++i )
+    {
+      for( auto j = 0; j < dst.width; j += ratio * sublen )
+      {
+        int16_t* pSubDst = &dst.at( j, i );
+        AreaBuf<int16_t> subDst( pSubDst, sublen, ratio );
+        const int srcSubLen = std::min( sublen, int( src.width - j / ratio ) );
+        AreaBuf<int16_t> subSrc = src.subBuf( Position( j / ratio, i * ratio ), Size( srcSubLen, ratio ) );
+
+        subDst.copyFromFill( subSrc, sublen, ratio, 0 );
       }
 
     }
   };
-  static int16_t read_buffer[266240];
-  static int16_t read_bufferT[266240];
+
+  static int16_t readBuffer[ 266240 ];
+  static int16_t readBufferT[ 266240 ];
   const int16_t* pData = g_filterDataPdpMip;
-  while (pData < g_filterDataPdpMip + sizeof(g_filterDataPdpMip) / sizeof(int16_t))
+
+  while( pData < g_filterDataPdpMip + sizeof( g_filterDataPdpMip ) / sizeof( int16_t ) )
   {
     int tuWidth, tuHeight, groupID;
     tuWidth = *pData++;
     tuHeight = *pData++;
     groupID = *pData++;
-    int sizeID = g_size[(tuWidth << 8) + tuHeight];
-    g_validSizeMip[sizeID] = 1;
-    g_validSizeMip[g_size[(tuHeight << 8) + tuWidth]] = 1;
-    int dsWidth = g_sizeData[sizeID][3], dsHeight = g_sizeData[sizeID][4];
+
+    const int sizeID = g_size[ ( tuWidth << 8 ) + tuHeight ];
+    g_validSizeMip[ sizeID ] = 1;
+    g_validSizeMip[ g_size[ ( tuHeight << 8 ) + tuWidth ] ] = 1;
+    const int dsWidth = g_sizeData[ sizeID ][ 3 ], dsHeight = g_sizeData[ sizeID ][ 4 ];
 
     bool shortLen = false;
-    int len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
-    int16_t***& f = g_pdpFiltersMip[groupID][sizeID];
+    const int len = shortLen ? g_sizeData[ sizeID ][ 10 ] : g_sizeData[ sizeID ][ 7 ];
+    int16_t***& f = g_pdpFiltersMip[ groupID ][ sizeID ];
 
-    create_buf(f, dsWidth, dsHeight, len, 8, 2);
-    int16_t***& f_sym = g_pdpFiltersMip[groupID + 16][g_size[(tuHeight << 8) + tuWidth]];
-    create_buf(f_sym, dsHeight, dsWidth, len, 8, 2);
-    memcpy(read_buffer, pData, sizeof(int16_t) * len * dsWidth * dsHeight);
+    createBuf( f, dsWidth, dsHeight, len, 8, 2 );
+
+    int16_t***& fSym = g_pdpFiltersMip[ groupID + 16 ][ g_size[ ( tuHeight << 8 ) + tuWidth ] ];
+
+    createBuf( fSym, dsHeight, dsWidth, len, 8, 2 );
+
+    memcpy( readBuffer, pData, sizeof( int16_t ) * len * dsWidth * dsHeight );
+
     pData += len * dsWidth * dsHeight;
-    AreaBuf<int16_t> srcBuf(read_buffer, len, dsWidth * dsHeight);
-    AreaBuf<int16_t> dstBuf(f[0][0], (len + 7) / 8 * 8 * 4, dsWidth * dsHeight / 4);
-    interleave_matrix_lines(srcBuf, dstBuf, 8);
+    AreaBuf<int16_t> srcBuf( readBuffer, len, dsWidth * dsHeight );
+    AreaBuf<int16_t> dstBuf( f[ 0 ][ 0 ], ( len + 7 ) / 8 * 8 * 4, dsWidth * dsHeight / 4 );
 
-    int ts_x = g_sizeData[sizeID][5];
-    int ts_y = g_sizeData[sizeID][6];
-    CHECK(ts_x != ts_y, "Symmetry not true");
-    for (auto i = 0; i < dsHeight; ++i)
+    interleaveMatrixLines( srcBuf, dstBuf, 8 );
+
+    const int tsX = g_sizeData[ sizeID ][ 5 ];
+    const int tsY = g_sizeData[ sizeID ][ 6 ];
+    CHECK( tsX != tsY, "Symmetry not true" );
+
+    for( auto i = 0; i < dsHeight; ++i )
     {
-      for (auto j = 0; j < dsWidth; ++j)
+      for( auto j = 0; j < dsWidth; ++j )
       {
-        transpose_matrix_line(read_buffer + (i * dsWidth + j) * len, read_bufferT + (j * dsHeight + i) * len, dsWidth, dsHeight, ts_x);
+        transposeMatrixLine( readBuffer + ( i * dsWidth + j ) * len, readBufferT + ( j * dsHeight + i ) * len, dsWidth, dsHeight, tsX );
       }
     }
-    AreaBuf<int16_t> srcBufT(read_bufferT, len, dsWidth * dsHeight);
-    AreaBuf<int16_t> dstBufT(f_sym[0][0], (len + 7) / 8 * 8 * 4, dsWidth * dsHeight / 4);
-    interleave_matrix_lines(srcBufT, dstBufT, 8);
+
+    AreaBuf<int16_t> srcBufT( readBufferT, len, dsWidth * dsHeight );
+    AreaBuf<int16_t> dstBufT( fSym[ 0 ][ 0 ], ( len + 7 ) / 8 * 8 * 4, dsWidth * dsHeight / 4 );
+    interleaveMatrixLines( srcBufT, dstBufT, 8 );
   }
 }
 #endif
 void createPdpFilters()
 {
-  for (int sizeID = 0; sizeID < 16; sizeID++)
+  for( int sizeID = 0; sizeID < 16; sizeID++ )
   {
-    if (sizeID == 6 || sizeID == 7 || sizeID == 11 || sizeID == 12)
+    if( sizeID == 6 || sizeID == 7 || sizeID == 11 || sizeID == 12 )
     {
       continue;
     }
 
-    int dsWidth = g_sizeData[sizeID][3], dsHeight = g_sizeData[sizeID][4];
-    g_validSize[sizeID] = 1;
+    const int dsWidth = g_sizeData[ sizeID ][ 3 ], dsHeight = g_sizeData[ sizeID ][ 4 ];
+    g_validSize[ sizeID ] = 1;
 
-    for (int groupID = 0; groupID < 35; groupID++)
+    for( int groupID = 0; groupID < 35; groupID++ )
     {
-      if (groupID > 1 && groupID % 2 == 1) continue;
-      if (sizeID > 12 && groupID > 1 && groupID % 4 != 2) continue;
-      bool shortLen = (groupID < PDP_SHORT_TH[0]) || (groupID >= PDP_SHORT_TH[1] && groupID <= PDP_SHORT_TH[2]);
-      int len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
-      int16_t***& f = g_pdpFilters[groupID][sizeID];
-      int16_t***& fSym = g_pdpFilters[g_modeGroupSym[groupID]][g_size[(dsHeight << 8) + dsWidth]];
-
-      if (!f)
+      if( groupID > 1 && groupID % 2 == 1 )
       {
-        f = new int16_t * *[dsHeight];
-        for (int h = 0; h < dsHeight; ++h)
+        continue;
+      }
+      if( sizeID > 12 && groupID > 1 && groupID % 4 != 2 )
+      {
+        continue;
+      }
+
+      const bool shortLen = ( groupID < PDP_SHORT_TH[ 0 ] ) || ( groupID >= PDP_SHORT_TH[ 1 ] && groupID <= PDP_SHORT_TH[ 2 ] );
+      const int len = shortLen ? g_sizeData[ sizeID ][ 10 ] : g_sizeData[ sizeID ][ 7 ];
+      int16_t***& f = g_pdpFilters[ groupID ][ sizeID ];
+      int16_t***& fSym = g_pdpFilters[ g_modeGroupSym[ groupID ] ][ g_size[ ( dsHeight << 8 ) + dsWidth ] ];
+
+      if( !f )
+      {
+        f = new int16_t * *[ dsHeight ];
+        for( int h = 0; h < dsHeight; ++h )
         {
-          f[h] = new int16_t * [dsWidth];
-          for (int w = 0; w < dsWidth / 4; w += 1)
+          f[ h ] = new int16_t * [ dsWidth ];
+          for( int w = 0; w < dsWidth / 4; w += 1 )
           {
-            auto len4 = (((len + 7) / 8) * 8) * 4;
-            f[h][w] = new int16_t[len4];
-            ::memset(f[h][w], 0, sizeof(int16_t) * len4);
+            auto len4 = ( ( ( len + 7 ) / 8 ) * 8 ) * 4;
+            f[ h ][ w ] = new int16_t[ len4 ];
+            ::memset( f[ h ][ w ], 0, sizeof( int16_t ) * len4 );
           }
         }
       }
 
-      if (!fSym && groupID > 1 && groupID < 34)
+      if( !fSym && groupID > 1 && groupID < 34 )
       {
-        fSym = new int16_t * *[dsWidth];
-        for (int h = 0; h < dsWidth; ++h)
+        fSym = new int16_t * *[ dsWidth ];
+        for( int h = 0; h < dsWidth; ++h )
         {
-          fSym[h] = new int16_t * [dsHeight];
-          for (int w = 0; w < dsHeight / 4; w += 1)
+          fSym[ h ] = new int16_t * [ dsHeight ];
+          for( int w = 0; w < dsHeight / 4; w += 1 )
           {
-            auto len4 = (((len + 7) / 8) * 8) * 4;
-            fSym[h][w] = new int16_t[len4];
-            ::memset(fSym[h][w], 0, sizeof(int16_t) * len4);
+            auto len4 = ( ( ( len + 7 ) / 8 ) * 8 ) * 4;
+            fSym[ h ][ w ] = new int16_t[ len4 ];
+            ::memset( fSym[ h ][ w ], 0, sizeof( int16_t ) * len4 );
           }
         }
       }
@@ -266,164 +285,183 @@ void createPdpFilters()
   }
 
   int val = -1;
-  for (int sizeID = 0; sizeID < 11; sizeID++)
+
+  for( int sizeID = 0; sizeID < 11; sizeID++ )
   {
-    if (sizeID == 6 || sizeID == 7)
+    if( sizeID == 6 || sizeID == 7 )
     {
       continue;
     }
 
-    int dsWidth = g_sizeData[sizeID][3], dsHeight = g_sizeData[sizeID][4];
+    const int dsWidth = g_sizeData[ sizeID ][ 3 ], dsHeight = g_sizeData[ sizeID ][ 4 ];
     bool shortLen = false;
-    int len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
+    int len = shortLen ? g_sizeData[ sizeID ][ 10 ] : g_sizeData[ sizeID ][ 7 ];
 
-    for (int groupID = 0; groupID < 19; groupID++)
+    for( int groupID = 0; groupID < 19; groupID++ )
     {
-      if (groupID > 1 && groupID % 2 == 1)
+      if( groupID > 1 && groupID % 2 == 1 )
       {
         continue;
       }
 
-      int16_t***& f = g_pdpFilters[groupID][sizeID];
-      int16_t***& fSym = g_pdpFilters[g_modeGroupSym[groupID]][g_size[(dsHeight << 8) + dsWidth]];
+      int16_t***& f = g_pdpFilters[ groupID ][ sizeID ];
+      int16_t***& fSym = g_pdpFilters[ g_modeGroupSym[ groupID ] ][ g_size[ ( dsHeight << 8 ) + dsWidth ] ];
 
-      int dsMode = (groupID > 2) ? ((groupID - 2) >> 1) + 2 : groupID;
-      for (int y = 0; y < dsHeight; y++)
+      const int dsMode = ( groupID > 2 ) ? ( ( groupID - 2 ) >> 1 ) + 2 : groupID;
+
+      for( int y = 0; y < dsHeight; y++ )
       {
-        for (int x = 0; x < dsWidth; x++)
+        for( int x = 0; x < dsWidth; x++ )
         {
-          for (int i = 0; i < len; i++)
+          for( int i = 0; i < len; i++ )
           {
-            if (dsWidth == 4 && dsHeight == 4)
+            if( dsWidth == 4 && dsHeight == 4 )
             {
-              val = g_weights4x4[dsMode][y * dsWidth + x][i];
+              val = g_weights4x4[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 4 && dsHeight == 8)
+            else if( dsWidth == 4 && dsHeight == 8 )
             {
-              val = g_weights4x8[dsMode][y * dsWidth + x][i];
+              val = g_weights4x8[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 8 && dsHeight == 4)
+            else if( dsWidth == 8 && dsHeight == 4 )
             {
-              val = g_weights8x4[dsMode][y * dsWidth + x][i];
+              val = g_weights8x4[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 8 && dsHeight == 8)
+            else if( dsWidth == 8 && dsHeight == 8 )
             {
-              val = g_weights8x8[dsMode][y * dsWidth + x][i];
+              val = g_weights8x8[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 4 && dsHeight == 16)
+            else if( dsWidth == 4 && dsHeight == 16 )
             {
-              val = g_weights4x16[dsMode][y * dsWidth + x][i];
+              val = g_weights4x16[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 16 && dsHeight == 4)
+            else if( dsWidth == 16 && dsHeight == 4 )
             {
-              val = g_weights16x4[dsMode][y * dsWidth + x][i];
+              val = g_weights16x4[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 8 && dsHeight == 16)
+            else if( dsWidth == 8 && dsHeight == 16 )
             {
-              val = g_weights8x16[dsMode][y * dsWidth + x][i];
+              val = g_weights8x16[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 16 && dsHeight == 8)
+            else if( dsWidth == 16 && dsHeight == 8 )
             {
-              val = g_weights16x8[dsMode][y * dsWidth + x][i];
+              val = g_weights16x8[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 16 && dsHeight == 16)
+            else if( dsWidth == 16 && dsHeight == 16 )
             {
-              val = g_weights16x16[dsMode][y * dsWidth + x][i];
+              val = g_weights16x16[ dsMode ][ y * dsWidth + x ][ i ];
+            }
+            else
+            {
+              CHECK( true, "not supported case" );
             }
 
-            auto ii = i - (i % 8);
+            auto ii = i - ( i % 8 );
             auto ij = i % 8;
-            f[y][x >> 2][(ii * 4 + 8 * (x % 4)) + ij] = val;
+            f[ y ][ x >> 2 ][ ( ii * 4 + 8 * ( x % 4 ) ) + ij ] = val;
 
-            if (fSym && (groupID > 1 && groupID < 34))
+            if( fSym && ( groupID > 1 && groupID < 34 ) )
             {
-              int templateX = g_sizeData[sizeID][5];
-              int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
-              int stride2 = templateX;
-              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
-              int stride2Sym = templateY;
-              int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
-              fSym[x][y >> 2][iSymInterleave] = val;
+              const int templateX = g_sizeData[ sizeID ][ 5 ];
+              const int templateY = g_sizeData[ sizeID ][ 6 ];
+              const int stride1 = dsWidth * ( shortLen ? 1 : 2 ) + templateX;
+              const int stride2 = templateX;
+              const int stride1Sym = dsHeight * ( shortLen ? 1 : 2 ) + templateY;
+              const int stride2Sym = templateY;
+              const int lenZone1 = stride1 * templateY;
+              const int x1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) % stride2 ) : ( i % stride1 );
+              const int y1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) / stride2 ) + templateY : ( i / stride1 );
+              const int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + ( x1 - templateX ) * stride2Sym ) : x1 * stride1Sym );
+              const int iSymInterleave = ( iSym / 8 ) * 4 * 8 + ( y % 4 ) * 8 + ( iSym % 8 );
+
+              fSym[ x ][ y >> 2 ][ iSymInterleave ] = val;
             }
           }
         }
       }
     }
+
     shortLen = true;
-    len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
-    for (int groupID2 = 20; groupID2 < 35; groupID2++)
+    len = shortLen ? g_sizeData[ sizeID ][ 10 ] : g_sizeData[ sizeID ][ 7 ];
+
+    for( int groupID2 = 20; groupID2 < 35; groupID2++ )
     {
-      if (groupID2 > 1 && groupID2 % 2 == 1) continue;
-      int16_t***& f = g_pdpFilters[groupID2][sizeID];
-      int16_t***& fSym = g_pdpFilters[g_modeGroupSym[groupID2]][g_size[(dsHeight << 8) + dsWidth]];
-
-      int dsMode = ((groupID2 - 20) >> 1);
-      for (int y = 0; y < dsHeight; y++)
+      if( groupID2 > 1 && groupID2 % 2 == 1 )
       {
-        for (int x = 0; x < dsWidth; x++)
+        continue;
+      }
+
+      int16_t***& f = g_pdpFilters[ groupID2 ][ sizeID ];
+      int16_t***& fSym = g_pdpFilters[ g_modeGroupSym[ groupID2 ] ][ g_size[ ( dsHeight << 8 ) + dsWidth ] ];
+
+      const int dsMode = ( ( groupID2 - 20 ) >> 1 );
+
+      for( int y = 0; y < dsHeight; y++ )
+      {
+        for( int x = 0; x < dsWidth; x++ )
         {
-          for (int i = 0; i < len; i++)
+          for( int i = 0; i < len; i++ )
           {
-            if (dsWidth == 4 && dsHeight == 4)
+            if( dsWidth == 4 && dsHeight == 4 )
             {
-              val = g_weightsShort4x4[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort4x4[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 4 && dsHeight == 8)
+            else if( dsWidth == 4 && dsHeight == 8 )
             {
-              val = g_weightsShort4x8[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort4x8[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 8 && dsHeight == 4)
+            else if( dsWidth == 8 && dsHeight == 4 )
             {
-              val = g_weightsShort8x4[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort8x4[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 8 && dsHeight == 8)
+            else if( dsWidth == 8 && dsHeight == 8 )
             {
-              val = g_weightsShort8x8[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort8x8[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 4 && dsHeight == 16)
+            else if( dsWidth == 4 && dsHeight == 16 )
             {
-              val = g_weightsShort4x16[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort4x16[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 16 && dsHeight == 4)
+            else if( dsWidth == 16 && dsHeight == 4 )
             {
-              val = g_weightsShort16x4[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort16x4[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 8 && dsHeight == 16)
+            else if( dsWidth == 8 && dsHeight == 16 )
             {
-              val = g_weightsShort8x16[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort8x16[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 16 && dsHeight == 8)
+            else if( dsWidth == 16 && dsHeight == 8 )
             {
-              val = g_weightsShort16x8[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort16x8[ dsMode ][ y * dsWidth + x ][ i ];
             }
-            else if (dsWidth == 16 && dsHeight == 16)
+            else if( dsWidth == 16 && dsHeight == 16 )
             {
-              val = g_weightsShort16x16[dsMode][y * dsWidth + x][i];
+              val = g_weightsShort16x16[ dsMode ][ y * dsWidth + x ][ i ];
+            }
+            else
+            {
+              CHECK( true, "not supported case" );
             }
 
-            auto ii = i - (i % 8);
+            auto ii = i - ( i % 8 );
             auto ij = i % 8;
-            f[y][x >> 2][(ii * 4 + 8 * (x % 4)) + ij] = val;
+            f[ y ][ x >> 2 ][ ( ii * 4 + 8 * ( x % 4 ) ) + ij ] = val;
 
-            if (fSym && (groupID2 > 1 && groupID2 < 34))
+            if( fSym && ( groupID2 > 1 && groupID2 < 34 ) )
             {
-              int templateX = g_sizeData[sizeID][5];
-              int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
-              int stride2 = templateX;
-              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
-              int stride2Sym = templateY;
-              int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
-              fSym[x][y >> 2][iSymInterleave] = val;
+              const int templateX = g_sizeData[ sizeID ][ 5 ];
+              const int templateY = g_sizeData[ sizeID ][ 6 ];
+              const int stride1 = dsWidth * ( shortLen ? 1 : 2 ) + templateX;
+              const int stride2 = templateX;
+              const int stride1Sym = dsHeight * ( shortLen ? 1 : 2 ) + templateY;
+              const int stride2Sym = templateY;
+              const int lenZone1 = stride1 * templateY;
+              const int x1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) % stride2 ) : ( i % stride1 );
+              const int y1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) / stride2 ) + templateY : ( i / stride1 );
+              const int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + ( x1 - templateX ) * stride2Sym ) : x1 * stride1Sym );
+              const int iSymInterleave = ( iSym / 8 ) * 4 * 8 + ( y % 4 ) * 8 + ( iSym % 8 );
+
+              fSym[ x ][ y >> 2 ][ iSymInterleave ] = val;
             }
           }
         }
@@ -432,68 +470,74 @@ void createPdpFilters()
   }
   /////////////////////////Big blocks filter value loading///////////////////////////////////////////////////////////////
   val = -1;
-  for (int sizeID = 13; sizeID < 16; sizeID++)
+  for( int sizeID = 13; sizeID < 16; sizeID++ )
   {
-    int dsWidth = g_sizeData[sizeID][3], dsHeight = g_sizeData[sizeID][4];
-    int sampFacHor = dsWidth / 16;
-    int sampFacVer = dsHeight / 16;
+    const int dsWidth = g_sizeData[ sizeID ][ 3 ], dsHeight = g_sizeData[ sizeID ][ 4 ];
+    const int sampFacHor = dsWidth / 16;
+    const int sampFacVer = dsHeight / 16;
     int dx, dy;
-    int dsWidth2 = dsWidth / sampFacHor; //modified width at downsampled domain..nneded for picking up correct values using raster scan order.
+    const int dsWidth2 = dsWidth / sampFacHor; //modified width at downsampled domain..needed for picking up correct values using raster scan order.
     bool shortLen = false;
-    int len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
-    for (int groupID = 0; groupID < 19; groupID++)
+    int len = shortLen ? g_sizeData[ sizeID ][ 10 ] : g_sizeData[ sizeID ][ 7 ];
+
+    for( int groupID = 0; groupID < 19; groupID++ )
     {
-      if (groupID > 1 && groupID % 4 != 2)
+      if( groupID > 1 && groupID % 4 != 2 )
       {
         continue;
       }
 
-      int16_t***& f = g_pdpFilters[groupID][sizeID];
-      int16_t***& fSym = g_pdpFilters[g_modeGroupSym[groupID]][g_size[(dsHeight << 8) + dsWidth]];
-      int dsMode = groupID > 2 ? ((groupID - 2) >> 2) + 2 : groupID;
+      int16_t***& f = g_pdpFilters[ groupID ][ sizeID ];
+      int16_t***& fSym = g_pdpFilters[ g_modeGroupSym[ groupID ] ][ g_size[ ( dsHeight << 8 ) + dsWidth ] ];
+      const int dsMode = groupID > 2 ? ( ( groupID - 2 ) >> 2 ) + 2 : groupID;
 
-      for (int y = 0; y < dsHeight; y++)
+      for( int y = 0; y < dsHeight; y++ )
       {
-        for (int x = 0; x < dsWidth; x++)
+        for( int x = 0; x < dsWidth; x++ )
         {
-          if ((x % sampFacHor != (sampFacHor - 1)) || (y % sampFacVer != (sampFacVer - 1)))
+          if( ( x % sampFacHor != ( sampFacHor - 1 ) ) || ( y % sampFacVer != ( sampFacVer - 1 ) ) )
           {
             continue;
           }
           dx = x / sampFacHor;
           dy = y / sampFacVer;
 
-          for (int i = 0; i < len; i++)
+          for( int i = 0; i < len; i++ )
           {
-            if (dsWidth == 16 && dsHeight == 32)
+            if( dsWidth == 16 && dsHeight == 32 )
             {
-              val = g_weights16x32[dsMode][dy * dsWidth2 + dx][i];
+              val = g_weights16x32[ dsMode ][ dy * dsWidth2 + dx ][ i ];
             }
-            else if (dsWidth == 32 && dsHeight == 16)
+            else if( dsWidth == 32 && dsHeight == 16 )
             {
-              val = g_weights32x16[dsMode][dy * dsWidth2 + dx][i];
+              val = g_weights32x16[ dsMode ][ dy * dsWidth2 + dx ][ i ];
             }
-            else if (dsWidth == 32 && dsHeight == 32)
+            else if( dsWidth == 32 && dsHeight == 32 )
             {
-              val = g_weights32x32[dsMode][dy * dsWidth2 + dx][i];
+              val = g_weights32x32[ dsMode ][ dy * dsWidth2 + dx ][ i ];
+            }
+            else
+            {
+              CHECK( true, "not supported case" );
             }
 
-            f[y][x >> 2][((i / 8) * 32 + 8 * (x % 4)) + (i % 8)] = val;
+            f[ y ][ x >> 2 ][ ( ( i / 8 ) * 32 + 8 * ( x % 4 ) ) + ( i % 8 ) ] = val;
 
-            if (fSym && (groupID > 1 && groupID < 34))
+            if( fSym && ( groupID > 1 && groupID < 34 ) )
             {
-              int templateX = g_sizeData[sizeID][5];
-              int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
-              int stride2 = templateX;
-              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
-              int stride2Sym = templateY;
-              int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
-              fSym[x][y >> 2][iSymInterleave] = val;
+              const int templateX = g_sizeData[ sizeID ][ 5 ];
+              const int templateY = g_sizeData[ sizeID ][ 6 ];
+              const int stride1 = dsWidth * ( shortLen ? 1 : 2 ) + templateX;
+              const int stride2 = templateX;
+              const int stride1Sym = dsHeight * ( shortLen ? 1 : 2 ) + templateY;
+              const int stride2Sym = templateY;
+              const int lenZone1 = stride1 * templateY;
+              const int x1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) % stride2 ) : ( i % stride1 );
+              const int y1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) / stride2 ) + templateY : ( i / stride1 );
+              const int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + ( x1 - templateX ) * stride2Sym ) : x1 * stride1Sym );
+              const int iSymInterleave = ( iSym / 8 ) * 4 * 8 + ( y % 4 ) * 8 + ( iSym % 8 );
+
+              fSym[ x ][ y >> 2 ][ iSymInterleave ] = val;
             }
           }
         }
@@ -501,20 +545,24 @@ void createPdpFilters()
     }
 
     shortLen = true;
-    len = shortLen ? g_sizeData[sizeID][10] : g_sizeData[sizeID][7];
+    len = shortLen ? g_sizeData[ sizeID ][ 10 ] : g_sizeData[ sizeID ][ 7 ];
 
-    for (int groupID2 = 20; groupID2 < 35; groupID2++)
+    for( int groupID2 = 20; groupID2 < 35; groupID2++ )
     {
-      if (groupID2 > 1 && groupID2 % 4 != 2) continue;
-      int16_t***& f = g_pdpFilters[groupID2][sizeID];
-      int16_t***& fSym = g_pdpFilters[g_modeGroupSym[groupID2]][g_size[(dsHeight << 8) + dsWidth]];
-      int dsMode = ((groupID2 - 22) >> 2);
-
-      for (int y = 0; y < dsHeight; y++)
+      if( groupID2 > 1 && groupID2 % 4 != 2 )
       {
-        for (int x = 0; x < dsWidth; x++)
+        continue;
+      }
+
+      int16_t***& f = g_pdpFilters[ groupID2 ][ sizeID ];
+      int16_t***& fSym = g_pdpFilters[ g_modeGroupSym[ groupID2 ] ][ g_size[ ( dsHeight << 8 ) + dsWidth ] ];
+      const int dsMode = ( ( groupID2 - 22 ) >> 2 );
+
+      for( int y = 0; y < dsHeight; y++ )
+      {
+        for( int x = 0; x < dsWidth; x++ )
         {
-          if ((x % sampFacHor != (sampFacHor - 1)) || (y % sampFacVer != (sampFacVer - 1)))
+          if( ( x % sampFacHor != ( sampFacHor - 1 ) ) || ( y % sampFacVer != ( sampFacVer - 1 ) ) )
           {
             continue;
           }
@@ -522,37 +570,42 @@ void createPdpFilters()
           dx = x / sampFacHor;
           dy = y / sampFacVer;
 
-          for (int i = 0; i < len; i++)
+          for( int i = 0; i < len; i++ )
           {
-            if (dsWidth == 16 && dsHeight == 32)
+            if( dsWidth == 16 && dsHeight == 32 )
             {
-              val = g_weightsShort16x32[dsMode][dy * dsWidth2 + dx][i];
+              val = g_weightsShort16x32[ dsMode ][ dy * dsWidth2 + dx ][ i ];
             }
-            else if (dsWidth == 32 && dsHeight == 16)
+            else if( dsWidth == 32 && dsHeight == 16 )
             {
-              val = g_weightsShort32x16[dsMode][dy * dsWidth2 + dx][i];
+              val = g_weightsShort32x16[ dsMode ][ dy * dsWidth2 + dx ][ i ];
             }
-            else if (dsWidth == 32 && dsHeight == 32)
+            else if( dsWidth == 32 && dsHeight == 32 )
             {
-              val = g_weightsShort32x32[dsMode][dy * dsWidth2 + dx][i];
+              val = g_weightsShort32x32[ dsMode ][ dy * dsWidth2 + dx ][ i ];
+            }
+            else
+            {
+              CHECK( true, "not supported case" );
             }
 
-            f[y][x >> 2][((i / 8) * 32 + 8 * (x % 4)) + (i % 8)] = val;
+            f[ y ][ x >> 2 ][ ( ( i / 8 ) * 32 + 8 * ( x % 4 ) ) + ( i % 8 ) ] = val;
 
-            if (fSym && (groupID2 > 1 && groupID2 < 34))
+            if( fSym && ( groupID2 > 1 && groupID2 < 34 ) )
             {
-              int templateX = g_sizeData[sizeID][5];
-              int templateY = g_sizeData[sizeID][6];
-              int stride1 = dsWidth * ((shortLen || dsWidth == 128) ? 1 : 2) + templateX;
-              int stride2 = templateX;
-              int stride1Sym = dsHeight * ((shortLen || dsHeight == 128) ? 1 : 2) + templateY;
-              int stride2Sym = templateY;
-              int lenZone1 = stride1 * templateY;
-              int x1 = (i >= lenZone1) ? ((i - lenZone1) % stride2) : (i % stride1);
-              int y1 = (i >= lenZone1) ? ((i - lenZone1) / stride2) + templateY : (i / stride1);
-              int iSym = y1 + (x1 > templateX ? (templateX * stride1Sym + (x1 - templateX) * stride2Sym) : x1 * stride1Sym);
-              int iSymInterleave = (iSym / 8) * 4 * 8 + (y % 4) * 8 + (iSym % 8);
-              fSym[x][y >> 2][iSymInterleave] = val;
+              const int templateX = g_sizeData[ sizeID ][ 5 ];
+              const int templateY = g_sizeData[ sizeID ][ 6 ];
+              const int stride1 = dsWidth * ( shortLen ? 1 : 2 ) + templateX;
+              const int stride2 = templateX;
+              const int stride1Sym = dsHeight * ( shortLen ? 1 : 2 ) + templateY;
+              const int stride2Sym = templateY;
+              const int lenZone1 = stride1 * templateY;
+              const int x1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) % stride2 ) : ( i % stride1 );
+              const int y1 = ( i >= lenZone1 ) ? ( ( i - lenZone1 ) / stride2 ) + templateY : ( i / stride1 );
+              const int iSym = y1 + ( x1 > templateX ? ( templateX * stride1Sym + ( x1 - templateX ) * stride2Sym ) : x1 * stride1Sym );
+              const int iSymInterleave = ( iSym / 8 ) * 4 * 8 + ( y % 4 ) * 8 + ( iSym % 8 );
+
+              fSym[ x ][ y >> 2 ][ iSymInterleave ] = val;
             }
           }
         }
@@ -563,28 +616,34 @@ void createPdpFilters()
 #if JVET_AI0208_PDP_MIP
 void destroyMipFilters()
 {
-  for (int size = 0; size < PDP_NUM_SIZES; ++size)
+  for( int size = 0; size < PDP_NUM_SIZES; ++size )
   {
     //int currHeight = g_sizeData[size][4];
-    for (int group = 0; group < PDP_NUM_GROUPS; ++group)
+    for( int group = 0; group < PDP_NUM_GROUPS; ++group )
     {
-      if (g_pdpFiltersMip[group][size])
+      if( g_pdpFiltersMip[ group ][ size ] )
       {
-        if (g_pdpFiltersMip[group][size][0][0])
+        if( g_pdpFiltersMip[ group ][ size ][ 0 ][ 0 ] )
         {
-          delete[] g_pdpFiltersMip[group][size][0][0];
-          int currHeight = g_sizeData[size][4];
-          for (int i = 0; i < currHeight; i++)
+          delete[] g_pdpFiltersMip[ group ][ size ][ 0 ][ 0 ];
+          g_pdpFiltersMip[ group ][ size ][ 0 ][ 0 ] = nullptr;
+
+          const int currHeight = g_sizeData[ size ][ 4 ];
+
+          for( int i = 0; i < currHeight; i++ )
           {
-            if (g_pdpFiltersMip[group][size][i])
+            if( g_pdpFiltersMip[ group ][ size ][ i ] )
             {
-              delete[] g_pdpFiltersMip[group][size][i];
+              delete[] g_pdpFiltersMip[ group ][ size ][ i ];
+              g_pdpFiltersMip[ group ][ size ][ i ] = nullptr;
             }
           }
         }
-        if (g_pdpFiltersMip[group][size])
+
+        if( g_pdpFiltersMip[ group ][ size ] )
         {
-          delete[] g_pdpFiltersMip[group][size];
+          delete[] g_pdpFiltersMip[ group ][ size ];
+          g_pdpFiltersMip[ group ][ size ] = nullptr;
         }
       }
     }
@@ -593,23 +652,29 @@ void destroyMipFilters()
 #endif
 void destroyPdpFilters()
 {
-  for (int size = 0; size < PDP_NUM_SIZES; ++size)
+  for( int size = 0; size < PDP_NUM_SIZES; ++size )
   {
-    int currWidth = g_sizeData[size][3], currHeight = g_sizeData[size][4];
-    for (int group = 0; group < PDP_NUM_GROUPS; ++group)
+    const int currWidth = g_sizeData[ size ][ 3 ], currHeight = g_sizeData[ size ][ 4 ];
+
+    for( int group = 0; group < PDP_NUM_GROUPS; ++group )
     {
-      if (g_pdpFilters[group][size])
+      if( g_pdpFilters[ group ][ size ] )
       {
-        for (int h = 0; h < currHeight; ++h)
+        for( int h = 0; h < currHeight; ++h )
         {
 
-          for (int w = 0; w < currWidth / 4; ++w)
+          for( int w = 0; w < currWidth / 4; ++w )
           {
-            delete[] g_pdpFilters[group][size][h][w];
+            delete[] g_pdpFilters[ group ][ size ][ h ][ w ];
+            g_pdpFilters[ group ][ size ][ h ][ w ] = nullptr;
           }
-          delete[] g_pdpFilters[group][size][h];
+
+          delete[] g_pdpFilters[ group ][ size ][ h ];
+          g_pdpFilters[ group ][ size ][ h ] = nullptr;
         }
-        delete[] g_pdpFilters[group][size];
+
+        delete[] g_pdpFilters[ group ][ size ];
+        g_pdpFilters[ group ][ size ] = nullptr;
       }
     }
   }
@@ -634,27 +699,27 @@ MsgLevel g_verbosity = VERBOSE;
 #if JVET_W0119_LFNST_EXTENSION || EXTENDED_LFNST
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
 #if JVET_AJ0237_INTERNAL_12BIT
-int16_t* g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
+int16_t* g_resiBorderTemplateLFNST[ NUM_NSPT_BLOCK_TYPES ][ 6 ][ 6 ][ 210 ];
 #else
-int8_t* g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
+int8_t* g_resiBorderTemplateLFNST[ NUM_NSPT_BLOCK_TYPES ][ 6 ][ 6 ][ 210 ];
 #endif
 #else
 #if JVET_AJ0237_INTERNAL_12BIT
-int16_t* g_resiBorderTemplateLFNST[6][6][210];
+int16_t* g_resiBorderTemplateLFNST[ 6 ][ 6 ][ 210 ];
 #else
-int8_t* g_resiBorderTemplateLFNST[6][6][210];
+int8_t* g_resiBorderTemplateLFNST[ 6 ][ 6 ][ 210 ];
 #endif
 #endif
 #else
-int8_t* g_resiBorderTemplateLFNST[6][6][16];
+int8_t* g_resiBorderTemplateLFNST[ 6 ][ 6 ][ 16 ];
 #endif
 #if JVET_AJ0237_INTERNAL_12BIT
-int16_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
+int16_t* g_resiBorderTemplate[ 6 ][ 6 ][ NUM_TRANS_TYPE * NUM_TRANS_TYPE ];
 #else
-int8_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
+int8_t* g_resiBorderTemplate[ 6 ][ 6 ][ NUM_TRANS_TYPE * NUM_TRANS_TYPE ];
 #endif
 #else
-const int8_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
+const int8_t* g_resiBorderTemplate[ 6 ][ 6 ][ NUM_TRANS_TYPE * NUM_TRANS_TYPE ];
 #endif
 // g_initRomSignPred: Format for each [W][H][Idx] in [0-5][0-5][0-8], 0 => empty, 1 => (W+H-1)*16 template coefficients
 #if !JVET_W0103_INTRA_MTS
@@ -4221,9 +4286,9 @@ const int8_t g_initRomSignPred[] = {
 #endif
 #endif
 
-const char* nalUnitTypeToString(NalUnitType type)
+const char* nalUnitTypeToString( NalUnitType type )
 {
-  switch (type)
+  switch( type )
   {
   case NAL_UNIT_CODED_SLICE_TRAIL:      return "TRAIL";
   case NAL_UNIT_CODED_SLICE_STSA:       return "STSA";
@@ -4260,32 +4325,33 @@ private:
   const CoeffScanType m_scanType;
 
 public:
-  ScanGenerator(uint32_t blockWidth, uint32_t blockHeight, uint32_t stride, CoeffScanType scanType)
-    : m_line(0), m_column(0), m_blockWidth(blockWidth), m_blockHeight(blockHeight), m_stride(stride), m_scanType(scanType)
-  { }
+  ScanGenerator( uint32_t blockWidth, uint32_t blockHeight, uint32_t stride, CoeffScanType scanType )
+    : m_line( 0 ), m_column( 0 ), m_blockWidth( blockWidth ), m_blockHeight( blockHeight ), m_stride( stride ), m_scanType( scanType )
+  {
+  }
 
   uint32_t GetCurrentX() const { return m_column; }
   uint32_t GetCurrentY() const { return m_line; }
 
-  uint32_t GetNextIndex(uint32_t blockOffsetX, uint32_t blockOffsetY)
+  uint32_t GetNextIndex( uint32_t blockOffsetX, uint32_t blockOffsetY )
   {
-    const uint32_t rtn = ((m_line + blockOffsetY) * m_stride) + m_column + blockOffsetX;
+    const uint32_t rtn = ( ( m_line + blockOffsetY ) * m_stride ) + m_column + blockOffsetX;
 
     //advance line and column to the next position
-    switch (m_scanType)
+    switch( m_scanType )
     {
       //------------------------------------------------
 
     case SCAN_DIAG:
 
-      if ((m_column == m_blockWidth - 1) || (m_line == 0)) //if we reach the end of a rank, go diagonally down to the next one
+      if( ( m_column == m_blockWidth - 1 ) || ( m_line == 0 ) ) //if we reach the end of a rank, go diagonally down to the next one
       {
         m_line += m_column + 1;
         m_column = 0;
 
-        if (m_line >= m_blockHeight) //if that takes us outside the block, adjust so that we are back on the bottom row
+        if( m_line >= m_blockHeight ) //if that takes us outside the block, adjust so that we are back on the bottom row
         {
-          m_column += m_line - (m_blockHeight - 1);
+          m_column += m_line - ( m_blockHeight - 1 );
           m_line = m_blockHeight - 1;
         }
       }
@@ -4297,9 +4363,9 @@ public:
       break;
 
     case SCAN_TRAV_HOR:
-      if (m_line % 2 == 0)
+      if( m_line % 2 == 0 )
       {
-        if (m_column == (m_blockWidth - 1))
+        if( m_column == ( m_blockWidth - 1 ) )
         {
           m_line++;
           m_column = m_blockWidth - 1;
@@ -4311,7 +4377,7 @@ public:
       }
       else
       {
-        if (m_column == 0)
+        if( m_column == 0 )
         {
           m_line++;
           m_column = 0;
@@ -4324,9 +4390,9 @@ public:
       break;
 
     case SCAN_TRAV_VER:
-      if (m_column % 2 == 0)
+      if( m_column % 2 == 0 )
       {
-        if (m_line == (m_blockHeight - 1))
+        if( m_line == ( m_blockHeight - 1 ) )
         {
           m_column++;
           m_line = m_blockHeight - 1;
@@ -4338,7 +4404,7 @@ public:
       }
       else
       {
-        if (m_line == 0)
+        if( m_line == 0 )
         {
           m_column++;
           m_line = 0;
@@ -4353,7 +4419,7 @@ public:
 
     default:
 
-      THROW("ERROR: Unknown scan type \"" << m_scanType << "\"in ScanGenerator::GetNextIndex");
+      THROW( "ERROR: Unknown scan type \"" << m_scanType << "\"in ScanGenerator::GetNextIndex" );
       break;
     }
 
@@ -4361,64 +4427,64 @@ public:
   }
 };
 const int8_t g_bcwLog2WeightBase = 3;
-const int8_t g_bcwWeightBase = (1 << g_bcwLog2WeightBase);
+const int8_t g_bcwWeightBase = ( 1 << g_bcwLog2WeightBase );
 #if JVET_AB0079_TM_BCW_MRG
-const int8_t g_bcwWeights[BCW_NUM] = { 1, 3, 4, 5, 7 };
-const int8_t g_bcwMrgWeights[BCW_MRG_NUM] = { 1, 3, 4, 5, 7, 2, 6 };
-int8_t g_bcwMrgParsingOrder[BCW_MRG_NUM];
+const int8_t g_bcwWeights[ BCW_NUM ] = { 1, 3, 4, 5, 7 };
+const int8_t g_bcwMrgWeights[ BCW_MRG_NUM ] = { 1, 3, 4, 5, 7, 2, 6 };
+int8_t g_bcwMrgParsingOrder[ BCW_MRG_NUM ];
 #else
-const int8_t g_bcwWeights[BCW_NUM] = { -2, 3, 4, 5, 10 };
+const int8_t g_bcwWeights[ BCW_NUM ] = { -2, 3, 4, 5, 10 };
 #endif
-const int8_t g_bcwSearchOrder[BCW_NUM] = { BCW_DEFAULT, BCW_DEFAULT - 2, BCW_DEFAULT + 2, BCW_DEFAULT - 1, BCW_DEFAULT + 1 };
-int8_t g_bcwCodingOrder[BCW_NUM];
-int8_t g_bcwParsingOrder[BCW_NUM];
+const int8_t g_bcwSearchOrder[ BCW_NUM ] = { BCW_DEFAULT, BCW_DEFAULT - 2, BCW_DEFAULT + 2, BCW_DEFAULT - 1, BCW_DEFAULT + 1 };
+int8_t g_bcwCodingOrder[ BCW_NUM ];
+int8_t g_bcwParsingOrder[ BCW_NUM ];
 
-int8_t getBcwWeight(uint8_t bcwIdx, uint8_t uhRefFrmList)
+int8_t getBcwWeight( uint8_t bcwIdx, uint8_t uhRefFrmList )
 {
   // Weghts for the model: P0 + w * (P1 - P0) = (1-w) * P0 + w * P1
   // Retuning  1-w for P0 or w for P1
 #if JVET_AB0079_TM_BCW_MRG
-  return (uhRefFrmList == REF_PIC_LIST_0 ? g_bcwWeightBase - g_bcwMrgWeights[bcwIdx] : g_bcwMrgWeights[bcwIdx]);
+  return ( uhRefFrmList == REF_PIC_LIST_0 ? g_bcwWeightBase - g_bcwMrgWeights[ bcwIdx ] : g_bcwMrgWeights[ bcwIdx ] );
 #else
-  return (uhRefFrmList == REF_PIC_LIST_0 ? g_bcwWeightBase - g_bcwWeights[bcwIdx] : g_bcwWeights[bcwIdx]);
+  return ( uhRefFrmList == REF_PIC_LIST_0 ? g_bcwWeightBase - g_bcwWeights[ bcwIdx ] : g_bcwWeights[ bcwIdx ] );
 #endif
 }
 
-void resetBcwCodingOrder(bool bRunDecoding, const CodingStructure& cs)
+void resetBcwCodingOrder( bool bRunDecoding, const CodingStructure& cs )
 {
   // Form parsing order: { BCW_DEFAULT, BCW_DEFAULT+1, BCW_DEFAULT-1, BCW_DEFAULT+2, BCW_DEFAULT-2, ... }
-  g_bcwParsingOrder[0] = BCW_DEFAULT;
-  for (int i = 1; i <= (BCW_NUM >> 1); ++i)
+  g_bcwParsingOrder[ 0 ] = BCW_DEFAULT;
+  for( int i = 1; i <= ( BCW_NUM >> 1 ); ++i )
   {
-    g_bcwParsingOrder[2 * i - 1] = BCW_DEFAULT + (int8_t)i;
-    g_bcwParsingOrder[2 * i] = BCW_DEFAULT - (int8_t)i;
+    g_bcwParsingOrder[ 2 * i - 1 ] = BCW_DEFAULT + ( int8_t ) i;
+    g_bcwParsingOrder[ 2 * i ] = BCW_DEFAULT - ( int8_t ) i;
   }
 #if JVET_AB0079_TM_BCW_MRG
-  for (int i = 0; i < BCW_NUM; i++)
+  for( int i = 0; i < BCW_NUM; i++ )
   {
-    g_bcwMrgParsingOrder[i] = g_bcwParsingOrder[i];
+    g_bcwMrgParsingOrder[ i ] = g_bcwParsingOrder[ i ];
   }
-  for (int i = BCW_NUM; i < BCW_MRG_NUM; i++)
+  for( int i = BCW_NUM; i < BCW_MRG_NUM; i++ )
   {
-    g_bcwMrgParsingOrder[i] = i;
+    g_bcwMrgParsingOrder[ i ] = i;
   }
 #endif
   // Form encoding order
-  if (!bRunDecoding)
+  if( !bRunDecoding )
   {
-    for (int i = 0; i < BCW_NUM; ++i)
+    for( int i = 0; i < BCW_NUM; ++i )
     {
-      g_bcwCodingOrder[(uint32_t)g_bcwParsingOrder[i]] = i;
+      g_bcwCodingOrder[ ( uint32_t ) g_bcwParsingOrder[ i ] ] = i;
     }
   }
 }
 
-uint32_t deriveWeightIdxBits(uint8_t bcwIdx) // Note: align this with TEncSbac::codeBcwIdx and TDecSbac::parseBcwIdx
+uint32_t deriveWeightIdxBits( uint8_t bcwIdx ) // Note: align this with TEncSbac::codeBcwIdx and TDecSbac::parseBcwIdx
 {
   uint32_t numBits = 1;
-  uint8_t  bcwCodingIdx = (uint8_t)g_bcwCodingOrder[bcwIdx];
+  uint8_t  bcwCodingIdx = ( uint8_t ) g_bcwCodingOrder[ bcwIdx ];
 
-  if (BCW_NUM > 2 && bcwCodingIdx != 0)
+  if( BCW_NUM > 2 && bcwCodingIdx != 0 )
   {
     uint32_t prefixNumBits = BCW_NUM - 2;
     uint32_t step = 1;
@@ -4426,9 +4492,9 @@ uint32_t deriveWeightIdxBits(uint8_t bcwIdx) // Note: align this with TEncSbac::
 
     // Truncated unary code
     uint8_t idx = 1;
-    for (int ui = 0; ui < prefixNumBits; ++ui)
+    for( int ui = 0; ui < prefixNumBits; ++ui )
     {
-      if (prefixSymbol == idx)
+      if( prefixSymbol == idx )
       {
         ++numBits;
         break;
@@ -4443,7 +4509,7 @@ uint32_t deriveWeightIdxBits(uint8_t bcwIdx) // Note: align this with TEncSbac::
   return numBits;
 }
 
-uint32_t g_log2SbbSize[MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2] =
+uint32_t g_log2SbbSize[ MAX_CU_DEPTH + 1 ][ MAX_CU_DEPTH + 1 ][ 2 ] =
 //===== luma/chroma =====
 {
 #if TU_256
@@ -4469,24 +4535,24 @@ uint32_t g_log2SbbSize[MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2] =
 };
 
 #if TU_256
-TMatrixCoeff g_trCoreDCT2P256[256][256];
-TMatrixCoeff g_trCoreDCT8P256[256][256];
-TMatrixCoeff g_trCoreDST7P256[256][256];
+TMatrixCoeff g_trCoreDCT2P256[ 256 ][ 256 ];
+TMatrixCoeff g_trCoreDCT8P256[ 256 ][ 256 ];
+TMatrixCoeff g_trCoreDST7P256[ 256 ][ 256 ];
 #endif
 #if JVET_AG0067_DMVR_EXTENSIONS
-int g_bdofWeight[1600];
+int g_bdofWeight[ 1600 ];
 #endif
 #if JVET_W0103_INTRA_MTS
-TMatrixCoeff g_aiTr2[NUM_TRANS_TYPE][2][2];
-TMatrixCoeff g_aiTr4[NUM_TRANS_TYPE][4][4];
-TMatrixCoeff g_aiTr8[NUM_TRANS_TYPE][8][8];
-TMatrixCoeff g_aiTr16[NUM_TRANS_TYPE][16][16];
-TMatrixCoeff g_aiTr32[NUM_TRANS_TYPE][32][32];
-TMatrixCoeff g_aiTr64[NUM_TRANS_TYPE][64][64];
-TMatrixCoeff g_aiTr128[NUM_TRANS_TYPE][128][128];
-TMatrixCoeff g_aiTr256[NUM_TRANS_TYPE][256][256];
+TMatrixCoeff g_aiTr2[ NUM_TRANS_TYPE ][ 2 ][ 2 ];
+TMatrixCoeff g_aiTr4[ NUM_TRANS_TYPE ][ 4 ][ 4 ];
+TMatrixCoeff g_aiTr8[ NUM_TRANS_TYPE ][ 8 ][ 8 ];
+TMatrixCoeff g_aiTr16[ NUM_TRANS_TYPE ][ 16 ][ 16 ];
+TMatrixCoeff g_aiTr32[ NUM_TRANS_TYPE ][ 32 ][ 32 ];
+TMatrixCoeff g_aiTr64[ NUM_TRANS_TYPE ][ 64 ][ 64 ];
+TMatrixCoeff g_aiTr128[ NUM_TRANS_TYPE ][ 128 ][ 128 ];
+TMatrixCoeff g_aiTr256[ NUM_TRANS_TYPE ][ 256 ][ 256 ];
 
-const uint8_t g_aucIpmToTrSet[16][36] =
+const uint8_t g_aucIpmToTrSet[ 16 ][ 36 ] =
 {
   //0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 MIP
   { 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4 }, //4x4
@@ -4508,7 +4574,7 @@ const uint8_t g_aucIpmToTrSet[16][36] =
 };
 
 #if JVET_AJ0257_IMPLICIT_MTS_LUT
-const uint8_t g_aucImplicitToTrSet[16][35] =
+const uint8_t g_aucImplicitToTrSet[ 16 ][ 35 ] =
 {
   { 14,15,14,14,14,14,14,14,14,14,20,20,14,20,14,20,20,20,20,20,20,20,20,20,20,20,14,20,20,20,20,14,14,14,14},
   { 14,15,14,14,14,14,14,14,14,14,14,14,14,20,14,20,20,20,20,20,21,21,14,20,15,14,14,20,14,14,14,14,14,14,14},
@@ -4528,7 +4594,7 @@ const uint8_t g_aucImplicitToTrSet[16][35] =
   { 12,18,14,18, 0,15,14, 0, 0,21,15,18,21,18,12, 3,21, 0, 3, 0, 0,18, 0, 3,12, 0, 0, 0, 3, 0,12, 0, 3, 3,18},
 };
 
-const uint8_t g_aucImplicitTrIdxToTr[36][2] =
+const uint8_t g_aucImplicitTrIdxToTr[ 36 ][ 2 ] =
 {
     { DCT2, DCT2 }, { DCT2, DCT8 },{ DCT2, DST7 },{ DCT2, DCT5 },{ DCT2, DST4 }, { DCT2, DST1 },
     { DCT8, DCT2 }, { DCT8, DCT8 },{ DCT8, DST7 },{ DCT8, DCT5 },{ DCT8, DST4 }, { DCT8, DST1 },
@@ -4539,11 +4605,11 @@ const uint8_t g_aucImplicitTrIdxToTr[36][2] =
 };
 #endif
 
-const int8_t g_aiIdLut[3][3] =
+const int8_t g_aiIdLut[ 3 ][ 3 ] =
 {
   { 8, 6, 4 },{ 8, 8, 6 },{ 4, 2, -1 }
 };
-const uint8_t g_aucTrIdxToTr[25][2] =
+const uint8_t g_aucTrIdxToTr[ 25 ][ 2 ] =
 {
     { DCT8, DCT8 },{ DCT8, DST7 },{ DCT8, DCT5 },{ DCT8, DST4 }, {DCT8, DST1},
     { DST7, DCT8 },{ DST7, DST7 },{ DST7, DCT5 },{ DST7, DST4 }, {DST7, DST1},
@@ -4552,7 +4618,7 @@ const uint8_t g_aucTrIdxToTr[25][2] =
     { DST1, DCT8 },{ DST1, DST7 },{ DST1, DCT5 },{ DST1, DST4 }, {DST1, DST1},
 };
 #if JVET_Y0142_ADAPT_INTRA_MTS
-const uint8_t g_aucTrSet[80][6] =
+const uint8_t g_aucTrSet[ 80 ][ 6 ] =
 {
   //T0:0,  1,  2,  3,  4,  5,
   { 18, 24, 17, 23, 8, 12},
@@ -4716,7 +4782,7 @@ const uint8_t g_aucTrSet[80][6] =
   { 6,  12, 7, 11, 9, 16},
 };
 #else
-const uint8_t g_aucTrSet[80][4] =
+const uint8_t g_aucTrSet[ 80 ][ 4 ] =
 {
   //T0:0,  1,  2,  3,
   { 17, 18, 23, 24},
@@ -4885,101 +4951,101 @@ const uint8_t g_aucTrSet[80][4] =
 #if JVET_AG0058_EIP
 #if JVET_AH0086_EIP_BIAS_AND_CLIP
 // Note: Positions here are identical to the definition in the #else branch, just omitting the last position from each array
-const Position g_eipFilter[NUM_EIP_SHAPE][EIP_FILTER_TAP - 1] =
+const Position g_eipFilter[ NUM_EIP_SHAPE ][ EIP_FILTER_TAP - 1 ] =
 {
-  { Position(-1,  0), Position(-2,  0), Position(-3,  0), Position(0, -1), Position(-1, -1), Position(-2, -1), Position(-3, -1), Position(0, -2), Position(-1, -2), Position(-2, -2), Position(-3, -2), Position(0, -3), Position(-1, -3), Position(-2, -3) },
-  { Position(-1,  0), Position(0, -1), Position(-1, -1), Position(0, -2), Position(-1, -2), Position(0, -3), Position(-1, -3), Position(0, -4), Position(-1, -4), Position(0, -5), Position(-1, -5), Position(0, -6), Position(-1, -6), Position(0, -7) },
-  { Position(0, -1), Position(-1,  0), Position(-1, -1), Position(-2,  0), Position(-2, -1), Position(-3,  0), Position(-3, -1), Position(-4,  0), Position(-4, -1), Position(-5,  0), Position(-5, -1), Position(-6,  0), Position(-6, -1), Position(-7,  0) },
+  { Position( -1,  0 ), Position( -2,  0 ), Position( -3,  0 ), Position( 0, -1 ), Position( -1, -1 ), Position( -2, -1 ), Position( -3, -1 ), Position( 0, -2 ), Position( -1, -2 ), Position( -2, -2 ), Position( -3, -2 ), Position( 0, -3 ), Position( -1, -3 ), Position( -2, -3 ) },
+  { Position( -1,  0 ), Position( 0, -1 ), Position( -1, -1 ), Position( 0, -2 ), Position( -1, -2 ), Position( 0, -3 ), Position( -1, -3 ), Position( 0, -4 ), Position( -1, -4 ), Position( 0, -5 ), Position( -1, -5 ), Position( 0, -6 ), Position( -1, -6 ), Position( 0, -7 ) },
+  { Position( 0, -1 ), Position( -1,  0 ), Position( -1, -1 ), Position( -2,  0 ), Position( -2, -1 ), Position( -3,  0 ), Position( -3, -1 ), Position( -4,  0 ), Position( -4, -1 ), Position( -5,  0 ), Position( -5, -1 ), Position( -6,  0 ), Position( -6, -1 ), Position( -7,  0 ) },
 };
 #else
-const Position g_eipFilter[NUM_EIP_SHAPE][EIP_FILTER_TAP] =
+const Position g_eipFilter[ NUM_EIP_SHAPE ][ EIP_FILTER_TAP ] =
 {
-  { Position(-1,  0), Position(-2,  0), Position(-3,  0), Position(0, -1), Position(-1, -1), Position(-2, -1), Position(-3, -1), Position(0, -2), Position(-1, -2), Position(-2, -2), Position(-3, -2), Position(0, -3), Position(-1, -3), Position(-2, -3), Position(-3, -3) },
-  { Position(-1,  0), Position(0, -1), Position(-1, -1), Position(0, -2), Position(-1, -2), Position(0, -3), Position(-1, -3), Position(0, -4), Position(-1, -4), Position(0, -5), Position(-1, -5), Position(0, -6), Position(-1, -6), Position(0, -7), Position(-1, -7) },
-  { Position(0, -1), Position(-1,  0), Position(-1, -1), Position(-2,  0), Position(-2, -1), Position(-3,  0), Position(-3, -1), Position(-4,  0), Position(-4, -1), Position(-5,  0), Position(-5, -1), Position(-6,  0), Position(-6, -1), Position(-7,  0), Position(-7, -1) },
+  { Position( -1,  0 ), Position( -2,  0 ), Position( -3,  0 ), Position( 0, -1 ), Position( -1, -1 ), Position( -2, -1 ), Position( -3, -1 ), Position( 0, -2 ), Position( -1, -2 ), Position( -2, -2 ), Position( -3, -2 ), Position( 0, -3 ), Position( -1, -3 ), Position( -2, -3 ), Position( -3, -3 ) },
+  { Position( -1,  0 ), Position( 0, -1 ), Position( -1, -1 ), Position( 0, -2 ), Position( -1, -2 ), Position( 0, -3 ), Position( -1, -3 ), Position( 0, -4 ), Position( -1, -4 ), Position( 0, -5 ), Position( -1, -5 ), Position( 0, -6 ), Position( -1, -6 ), Position( 0, -7 ), Position( -1, -7 ) },
+  { Position( 0, -1 ), Position( -1,  0 ), Position( -1, -1 ), Position( -2,  0 ), Position( -2, -1 ), Position( -3,  0 ), Position( -3, -1 ), Position( -4,  0 ), Position( -4, -1 ), Position( -5,  0 ), Position( -5, -1 ), Position( -6,  0 ), Position( -6, -1 ), Position( -7,  0 ), Position( -7, -1 ) },
 };
 #endif
 #if JVET_AJ0082_MM_EIP
-const EIPInfo g_eipInfoLut[4][4][9] =
+const EIPInfo g_eipInfoLut[ 4 ][ 4 ][ 9 ] =
 {
   {
     { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x4, 0modes
     { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x8, 0modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },// 4x16, 1modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },// 4x32, 1modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },// 4x16, 1modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },// 4x32, 1modes
   },
   {
     { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x4, 0modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x8, 1modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x16, 1modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x32, 5modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x8, 1modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x16, 1modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x32, 5modes
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 16x4, 1modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x8, 1modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x16, 9modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x32, 9modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 16x4, 1modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x8, 1modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x16, 9modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()}, // 16x32, 9modes
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
   },
 };
-const EIPInfo g_mmEipInfoLut[4][4][9] =
+const EIPInfo g_mmEipInfoLut[ 4 ][ 4 ][ 9 ] =
 {
   {
     { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
     { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
   },
   {
     { EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x4, 0modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L, EIP_FILTER_S), EIPInfo(EIP_AL_A, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L, EIP_FILTER_S), EIPInfo(EIP_AL_A, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A, EIP_FILTER_S), EIPInfo(EIP_AL_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A, EIP_FILTER_S), EIPInfo(EIP_AL_L, EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() },
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A, EIP_FILTER_S ), EIPInfo( EIP_AL_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A, EIP_FILTER_S ), EIPInfo( EIP_AL_L, EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo()},
   },
 };
 #else
-const EIPInfo g_eipInfoLut[4][4][9] =
+const EIPInfo g_eipInfoLut[ 4 ][ 4 ][ 9 ] =
 {
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x4, 3modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x8, 3modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x16, 3modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x32, 2modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x4, 3modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x8, 3modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x16, 3modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 4x32, 2modes
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x4, 3modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x8, 5modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(EIP_AL_L,   EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x16, 5modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_V), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x32, 5modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x4, 3modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x8, 5modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo( EIP_AL_L,   EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x16, 5modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_V ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 8x32, 5modes
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 16x4, 3modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 16x8, 5modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_V), EIPInfo(EIP_AL_L,   EIP_FILTER_H), EIPInfo(EIP_AL_A,   EIP_FILTER_V) }, // 16x16, 9modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_V), EIPInfo(EIP_AL_L,   EIP_FILTER_H), EIPInfo(EIP_AL_A,   EIP_FILTER_V) }, // 16x32, 9modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 16x4, 3modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 16x8, 5modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_V ), EIPInfo( EIP_AL_L,   EIP_FILTER_H ), EIPInfo( EIP_AL_A,   EIP_FILTER_V ) }, // 16x16, 9modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_V ), EIPInfo( EIP_AL_L,   EIP_FILTER_H ), EIPInfo( EIP_AL_A,   EIP_FILTER_V ) }, // 16x32, 9modes
   },
   {
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 32x4, 3modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A,   EIP_FILTER_H), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 32x8, 5modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(EIP_AL_L,   EIP_FILTER_V), EIPInfo(EIP_AL_A,   EIP_FILTER_H), EIPInfo(EIP_AL_A,   EIP_FILTER_V), EIPInfo(EIP_AL_L,   EIP_FILTER_H) }, // 32x16, 9modes
-    { EIPInfo(EIP_AL_A_L, EIP_FILTER_S), EIPInfo(EIP_AL_A_L, EIP_FILTER_V), EIPInfo(EIP_AL_A_L, EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_S), EIPInfo(EIP_AL_A,   EIP_FILTER_H), EIPInfo(EIP_AL_L,   EIP_FILTER_V), EIPInfo(EIP_AL_L,   EIP_FILTER_H), EIPInfo(EIP_AL_A,   EIP_FILTER_V) }, // 32x32, 9modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 32x4, 3modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A,   EIP_FILTER_H ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo(), EIPInfo(), EIPInfo(), EIPInfo() }, // 32x8, 5modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo( EIP_AL_L,   EIP_FILTER_V ), EIPInfo( EIP_AL_A,   EIP_FILTER_H ), EIPInfo( EIP_AL_A,   EIP_FILTER_V ), EIPInfo( EIP_AL_L,   EIP_FILTER_H ) }, // 32x16, 9modes
+    { EIPInfo( EIP_AL_A_L, EIP_FILTER_S ), EIPInfo( EIP_AL_A_L, EIP_FILTER_V ), EIPInfo( EIP_AL_A_L, EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_S ), EIPInfo( EIP_AL_A,   EIP_FILTER_H ), EIPInfo( EIP_AL_L,   EIP_FILTER_V ), EIPInfo( EIP_AL_L,   EIP_FILTER_H ), EIPInfo( EIP_AL_A,   EIP_FILTER_V ) }, // 32x32, 9modes
   },
 };
 #endif
@@ -4991,128 +5057,128 @@ void initROM()
 #if LMS_LINEAR_MODEL || TRANSFORM_SIMD_OPT
   // g_aucConvertToBit[ x ]: log2(x/4), if x=4 -> 0, x=8 -> 1, x=16 -> 2, ...
   // g_aucLog2[ x ]: log2(x), if x=1 -> 0, x=2 -> 1, x=4 -> 2, x=8 -> 3, x=16 -> 4, ...
-  ::memset(g_aucLog2, 0, sizeof(g_aucLog2));
+  ::memset( g_aucLog2, 0, sizeof( g_aucLog2 ) );
   int c = 0;
-  for (int i = 0, n = 0; i <= MAX_CU_SIZE; i++)
+  for( int i = 0, n = 0; i <= MAX_CU_SIZE; i++ )
   {
 #if LMS_LINEAR_MODEL
-    g_aucNextLog2[i] = i <= 1 ? 0 : c + 1;
+    g_aucNextLog2[ i ] = i <= 1 ? 0 : c + 1;
 #endif
 
-    if (i == (1 << n))
+    if( i == ( 1 << n ) )
     {
       c = n;
       n++;
     }
 
 #if LMS_LINEAR_MODEL
-    g_aucPrevLog2[i] = c;
+    g_aucPrevLog2[ i ] = c;
 #endif
-    g_aucLog2[i] = c;
+    g_aucLog2[ i ] = c;
   }
 #elif MMLM
   int c = 0;
-  for (int i = 0, n = 0; i <= MAX_CU_SIZE; i++)
+  for( int i = 0, n = 0; i <= MAX_CU_SIZE; i++ )
   {
-    if (i == (1 << n))
+    if( i == ( 1 << n ) )
     {
       c = n;
       n++;
     }
 
-    g_aucPrevLog2[i] = c;
+    g_aucPrevLog2[ i ] = c;
   }
 #elif TU_256
   int c = 0;
 #endif
 
   gp_sizeIdxInfo = new SizeIndexInfoLog2();
-  gp_sizeIdxInfo->init(MAX_CU_SIZE);
+  gp_sizeIdxInfo->init( MAX_CU_SIZE );
 
 
   SizeIndexInfoLog2 sizeInfo;
-  sizeInfo.init(MAX_CU_SIZE);
+  sizeInfo.init( MAX_CU_SIZE );
 
   // initialize scan orders
-  for (uint32_t blockHeightIdx = 0; blockHeightIdx < sizeInfo.numAllHeights(); blockHeightIdx++)
+  for( uint32_t blockHeightIdx = 0; blockHeightIdx < sizeInfo.numAllHeights(); blockHeightIdx++ )
   {
-    for (uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++)
+    for( uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++ )
     {
-      const uint32_t blockWidth = sizeInfo.sizeFrom(blockWidthIdx);
-      const uint32_t blockHeight = sizeInfo.sizeFrom(blockHeightIdx);
+      const uint32_t blockWidth = sizeInfo.sizeFrom( blockWidthIdx );
+      const uint32_t blockHeight = sizeInfo.sizeFrom( blockHeightIdx );
       const uint32_t totalValues = blockWidth * blockHeight;
 
       //--------------------------------------------------------------------------------------------------
 
       //non-grouped scan orders
 
-      for (uint32_t scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++)
+      for( uint32_t scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++ )
       {
-        const CoeffScanType scanType = CoeffScanType(scanTypeIndex);
+        const CoeffScanType scanType = CoeffScanType( scanTypeIndex );
         ScanElement* scan = nullptr;
 
-        if (blockWidthIdx < sizeInfo.numWidths() && blockHeightIdx < sizeInfo.numHeights())
+        if( blockWidthIdx < sizeInfo.numWidths() && blockHeightIdx < sizeInfo.numHeights() )
         {
-          scan = new ScanElement[totalValues];
+          scan = new ScanElement[ totalValues ];
         }
 
-        g_scanOrder[SCAN_UNGROUPED][scanType][blockWidthIdx][blockHeightIdx] = scan;
+        g_scanOrder[ SCAN_UNGROUPED ][ scanType ][ blockWidthIdx ][ blockHeightIdx ] = scan;
 
-        if (scan == nullptr)
+        if( scan == nullptr )
         {
           continue;
         }
 
-        ScanGenerator fullBlockScan(blockWidth, blockHeight, blockWidth, scanType);
+        ScanGenerator fullBlockScan( blockWidth, blockHeight, blockWidth, scanType );
 
-        for (uint32_t scanPosition = 0; scanPosition < totalValues; scanPosition++)
+        for( uint32_t scanPosition = 0; scanPosition < totalValues; scanPosition++ )
         {
-          const int rasterPos = fullBlockScan.GetNextIndex(0, 0);
+          const int rasterPos = fullBlockScan.GetNextIndex( 0, 0 );
           const int posY = rasterPos / blockWidth;
-          const int posX = rasterPos - (posY * blockWidth);
+          const int posX = rasterPos - ( posY * blockWidth );
 
-          scan[scanPosition].idx = rasterPos;
-          scan[scanPosition].x = posX;
-          scan[scanPosition].y = posY;
+          scan[ scanPosition ].idx = rasterPos;
+          scan[ scanPosition ].x = posX;
+          scan[ scanPosition ].y = posY;
         }
       }
 
       //--------------------------------------------------------------------------------------------------
 
       //grouped scan orders
-      const uint32_t* log2Sbb = g_log2SbbSize[floorLog2(blockWidth)][floorLog2(blockHeight)];
-      const uint32_t  log2CGWidth = log2Sbb[0];
-      const uint32_t  log2CGHeight = log2Sbb[1];
+      const uint32_t* log2Sbb = g_log2SbbSize[ floorLog2( blockWidth ) ][ floorLog2( blockHeight ) ];
+      const uint32_t  log2CGWidth = log2Sbb[ 0 ];
+      const uint32_t  log2CGHeight = log2Sbb[ 1 ];
 
       const uint32_t  groupWidth = 1 << log2CGWidth;
       const uint32_t  groupHeight = 1 << log2CGHeight;
-      const uint32_t  widthInGroups = std::min<unsigned>(JVET_C0024_ZERO_OUT_TH, blockWidth) >> log2CGWidth;
-      const uint32_t  heightInGroups = std::min<unsigned>(JVET_C0024_ZERO_OUT_TH, blockHeight) >> log2CGHeight;
+      const uint32_t  widthInGroups = std::min<unsigned>( JVET_C0024_ZERO_OUT_TH, blockWidth ) >> log2CGWidth;
+      const uint32_t  heightInGroups = std::min<unsigned>( JVET_C0024_ZERO_OUT_TH, blockHeight ) >> log2CGHeight;
 
       const uint32_t  groupSize = groupWidth * groupHeight;
       const uint32_t  totalGroups = widthInGroups * heightInGroups;
 
-      for (uint32_t scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++)
+      for( uint32_t scanTypeIndex = 0; scanTypeIndex < SCAN_NUMBER_OF_TYPES; scanTypeIndex++ )
       {
-        const CoeffScanType scanType = CoeffScanType(scanTypeIndex);
+        const CoeffScanType scanType = CoeffScanType( scanTypeIndex );
 
-        ScanElement* scan = new ScanElement[totalValues];
+        ScanElement* scan = new ScanElement[ totalValues ];
 
-        g_scanOrder[SCAN_GROUPED_4x4][scanType][blockWidthIdx][blockHeightIdx] = scan;
+        g_scanOrder[ SCAN_GROUPED_4x4 ][ scanType ][ blockWidthIdx ][ blockHeightIdx ] = scan;
 
-        if (blockWidth > JVET_C0024_ZERO_OUT_TH || blockHeight > JVET_C0024_ZERO_OUT_TH)
+        if( blockWidth > JVET_C0024_ZERO_OUT_TH || blockHeight > JVET_C0024_ZERO_OUT_TH )
         {
-          for (uint32_t i = 0; i < totalValues; i++)
+          for( uint32_t i = 0; i < totalValues; i++ )
           {
-            scan[i].idx = totalValues - 1;
-            scan[i].x = blockWidth - 1;
-            scan[i].y = blockHeight - 1;
+            scan[ i ].idx = totalValues - 1;
+            scan[ i ].x = blockWidth - 1;
+            scan[ i ].y = blockHeight - 1;
           }
         }
 
-        ScanGenerator fullBlockScan(widthInGroups, heightInGroups, groupWidth, scanType);
+        ScanGenerator fullBlockScan( widthInGroups, heightInGroups, groupWidth, scanType );
 
-        for (uint32_t groupIndex = 0; groupIndex < totalGroups; groupIndex++)
+        for( uint32_t groupIndex = 0; groupIndex < totalGroups; groupIndex++ )
         {
           const uint32_t groupPositionY = fullBlockScan.GetCurrentY();
           const uint32_t groupPositionX = fullBlockScan.GetCurrentX();
@@ -5120,20 +5186,20 @@ void initROM()
           const uint32_t groupOffsetY = groupPositionY * groupHeight;
           const uint32_t groupOffsetScan = groupIndex * groupSize;
 
-          ScanGenerator groupScan(groupWidth, groupHeight, blockWidth, scanType);
+          ScanGenerator groupScan( groupWidth, groupHeight, blockWidth, scanType );
 
-          for (uint32_t scanPosition = 0; scanPosition < groupSize; scanPosition++)
+          for( uint32_t scanPosition = 0; scanPosition < groupSize; scanPosition++ )
           {
-            const int rasterPos = groupScan.GetNextIndex(groupOffsetX, groupOffsetY);
+            const int rasterPos = groupScan.GetNextIndex( groupOffsetX, groupOffsetY );
             const int posY = rasterPos / blockWidth;
-            const int posX = rasterPos - (posY * blockWidth);
+            const int posX = rasterPos - ( posY * blockWidth );
 
-            scan[groupOffsetScan + scanPosition].idx = rasterPos;
-            scan[groupOffsetScan + scanPosition].x = posX;
-            scan[groupOffsetScan + scanPosition].y = posY;
+            scan[ groupOffsetScan + scanPosition ].idx = rasterPos;
+            scan[ groupOffsetScan + scanPosition ].x = posX;
+            scan[ groupOffsetScan + scanPosition ].y = posY;
           }
 
-          fullBlockScan.GetNextIndex(0, 0);
+          fullBlockScan.GetNextIndex( 0, 0 );
         }
       }
 
@@ -5142,11 +5208,11 @@ void initROM()
   }
 
   // initialize CoefTopLeftDiagScan8x8 for LFNST
-  for (uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++)
+  for( uint32_t blockWidthIdx = 0; blockWidthIdx < sizeInfo.numAllWidths(); blockWidthIdx++ )
   {
-    const uint32_t blockWidth = sizeInfo.sizeFrom(blockWidthIdx);
+    const uint32_t blockWidth = sizeInfo.sizeFrom( blockWidthIdx );
 
-    const static uint8_t g_auiXYDiagScan8x8[64][2] =
+    const static uint8_t g_auiXYDiagScan8x8[ 64 ][ 2 ] =
     {
       { 0, 0 }, { 0, 1 }, { 1, 0 }, { 0, 2 }, { 1, 1 }, { 2, 0 }, { 0, 3 }, { 1, 2 },
       { 2, 1 }, { 3, 0 }, { 1, 3 }, { 2, 2 }, { 3, 1 }, { 2, 3 }, { 3, 2 }, { 3, 3 },
@@ -5157,23 +5223,23 @@ void initROM()
       { 4, 4 }, { 4, 5 }, { 5, 4 }, { 4, 6 }, { 5, 5 }, { 6, 4 }, { 4, 7 }, { 5, 6 },
       { 6, 5 }, { 7, 4 }, { 5, 7 }, { 6, 6 }, { 7, 5 }, { 6, 7 }, { 7, 6 }, { 7, 7 }
     };
-    for (int i = 0; i < 64; i++)
+    for( int i = 0; i < 64; i++ )
     {
-      g_coefTopLeftDiagScan8x8[blockWidthIdx][i].idx = g_auiXYDiagScan8x8[i][0] + g_auiXYDiagScan8x8[i][1] * blockWidth;
-      g_coefTopLeftDiagScan8x8[blockWidthIdx][i].x = g_auiXYDiagScan8x8[i][0];
-      g_coefTopLeftDiagScan8x8[blockWidthIdx][i].y = g_auiXYDiagScan8x8[i][1];
+      g_coefTopLeftDiagScan8x8[ blockWidthIdx ][ i ].idx = g_auiXYDiagScan8x8[ i ][ 0 ] + g_auiXYDiagScan8x8[ i ][ 1 ] * blockWidth;
+      g_coefTopLeftDiagScan8x8[ blockWidthIdx ][ i ].x = g_auiXYDiagScan8x8[ i ][ 0 ];
+      g_coefTopLeftDiagScan8x8[ blockWidthIdx ][ i ].y = g_auiXYDiagScan8x8[ i ][ 1 ];
     }
 #if JVET_W0119_LFNST_EXTENSION
-    for (int blky = 0; blky <= 1; blky++)
+    for( int blky = 0; blky <= 1; blky++ )
     {
-      for (int blkx = 0; blkx <= 1; blkx++)
+      for( int blkx = 0; blkx <= 1; blkx++ )
       {
-        for (int i = 0; i < 64; i++)
+        for( int i = 0; i < 64; i++ )
         {
           int i4 = blky * 128 + blkx * 64 + i;
-          g_coefTopLeftDiagScan16x16[blockWidthIdx][i4].idx = g_auiXYDiagScan8x8[i][0] + g_auiXYDiagScan8x8[i][1] * blockWidth + blkx * 8 + blky * 8 * blockWidth;
-          g_coefTopLeftDiagScan16x16[blockWidthIdx][i4].x = g_auiXYDiagScan8x8[i][0];
-          g_coefTopLeftDiagScan16x16[blockWidthIdx][i4].y = g_auiXYDiagScan8x8[i][1];
+          g_coefTopLeftDiagScan16x16[ blockWidthIdx ][ i4 ].idx = g_auiXYDiagScan8x8[ i ][ 0 ] + g_auiXYDiagScan8x8[ i ][ 1 ] * blockWidth + blkx * 8 + blky * 8 * blockWidth;
+          g_coefTopLeftDiagScan16x16[ blockWidthIdx ][ i4 ].x = g_auiXYDiagScan8x8[ i ][ 0 ];
+          g_coefTopLeftDiagScan16x16[ blockWidthIdx ][ i4 ].y = g_auiXYDiagScan8x8[ i ][ 1 ];
         }
       }
     }
@@ -5182,41 +5248,41 @@ void initROM()
 
   initGeoTemplate();
 
-  ::memset(g_isReusedUniMVsFilled, 0, sizeof(g_isReusedUniMVsFilled));
+  ::memset( g_isReusedUniMVsFilled, 0, sizeof( g_isReusedUniMVsFilled ) );
 #if INTER_LIC
-  ::memset(g_isReusedUniMVsFilledLIC, 0, sizeof(g_isReusedUniMVsFilledLIC));
+  ::memset( g_isReusedUniMVsFilledLIC, 0, sizeof( g_isReusedUniMVsFilledLIC ) );
 #endif
 
-  for (int qp = 0; qp < 57; qp++)
+  for( int qp = 0; qp < 57; qp++ )
   {
-    int qpRem = (qp + 12) % 6;
-    int qpPer = (qp + 12) / 6;
-    int quantiserScale = g_quantScales[0][qpRem];
+    int qpRem = ( qp + 12 ) % 6;
+    int qpPer = ( qp + 12 ) / 6;
+    int quantiserScale = g_quantScales[ 0 ][ qpRem ];
     int quantiserRightShift = QUANT_SHIFT + qpPer;
-    double threshQP = ((double)(1 << quantiserRightShift)) / quantiserScale;
-    g_paletteQuant[qp] = (int)(threshQP * 0.16 + 0.5);
+    double threshQP = ( ( double ) ( 1 << quantiserRightShift ) ) / quantiserScale;
+    g_paletteQuant[ qp ] = ( int ) ( threshQP * 0.16 + 0.5 );
   }
 
 #if SIGN_PREDICTION && !JVET_W0103_INTRA_MTS
-  memset(&g_resiBorderTemplate[0][0][0], 0, sizeof(g_resiBorderTemplate));
+  memset( &g_resiBorderTemplate[ 0 ][ 0 ][ 0 ], 0, sizeof( g_resiBorderTemplate ) );
   const int8_t* p_data = g_initRomSignPred;
-  for (int log2Width = 0; log2Width < 6; ++log2Width)
+  for( int log2Width = 0; log2Width < 6; ++log2Width )
   {
     int width = 4 << log2Width;
-    for (int log2Height = 0; log2Height < 6; ++log2Height)
+    for( int log2Height = 0; log2Height < 6; ++log2Height )
     {
       int height = 4 << log2Height;
       int length = width + height - 1;
-      for (int idx = 0; idx < 9; ++idx)
+      for( int idx = 0; idx < 9; ++idx )
       {
-        if (*p_data != 0 && *p_data != 1)
+        if( *p_data != 0 && *p_data != 1 )
         {
           int j = 0;
           j += 1;
         }
-        if (*p_data++ != 0)
+        if( *p_data++ != 0 )
         {
-          g_resiBorderTemplate[log2Width][log2Height][idx] = p_data;
+          g_resiBorderTemplate[ log2Width ][ log2Height ][ idx ] = p_data;
           p_data += length * 16;
         }
       }
@@ -5227,16 +5293,16 @@ void initROM()
   int bdofWidth[] = { 8,  8,  8,   12,  12,  12,  20,  20,   20 };
   int bdofHeight[] = { 8, 12, 20,    8,  12,  20,   8,  12,   20 };
   int weightOffset[] = { 0, 64, 160, 320, 416, 560, 800, 960, 1200 };
-  for (int i = 0; i < 9; i++)
+  for( int i = 0; i < 9; i++ )
   {
-    int offset = weightOffset[i];
-    int width = bdofWidth[i];
-    int height = bdofHeight[i];
-    for (int y = 0; y < height; y++)
+    int offset = weightOffset[ i ];
+    int width = bdofWidth[ i ];
+    int height = bdofHeight[ i ];
+    for( int y = 0; y < height; y++ )
     {
-      for (int x = 0; x < width; x++)
+      for( int x = 0; x < width; x++ )
       {
-        g_bdofWeight[y * width + x + offset] = (x >= (width / 2) ? width - x : x + 1) * (y >= (height / 2) ? height - y : y + 1);
+        g_bdofWeight[ y * width + x + offset ] = ( x >= ( width / 2 ) ? width - x : x + 1 ) * ( y >= ( height / 2 ) ? height - y : y + 1 );
       }
     }
   }
@@ -5254,44 +5320,44 @@ void initROM()
     6,     8,    10,    11,    13,    13,    13,    13,    11,    10,     8,     6,
     5,     6,     8,     9,    10,    11,    11,    10,     9,     8,     6,     5,
     4,     5,     6,     7,     8,     8,     8,     8,     7,     6,     5,     4 };
-  for (int i = 0; i < 144; i++)
+  for( int i = 0; i < 144; i++ )
   {
-    g_bdofWeight[416 + i] = weight8x8[i];
+    g_bdofWeight[ 416 + i ] = weight8x8[ i ];
   }
 #endif
 #endif
 
 #if JVET_Y0141_SIGN_PRED_IMPROVE
-  memset(&g_resiBorderTemplate[0][0][0], 0, sizeof(g_resiBorderTemplate));
+  memset( &g_resiBorderTemplate[ 0 ][ 0 ][ 0 ], 0, sizeof( g_resiBorderTemplate ) );
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
-  memset(&g_resiBorderTemplateLFNST[0][0][0][0], 0, sizeof(g_resiBorderTemplateLFNST));
+  memset( &g_resiBorderTemplateLFNST[ 0 ][ 0 ][ 0 ][ 0 ], 0, sizeof( g_resiBorderTemplateLFNST ) );
 #else
-  memset(&g_resiBorderTemplateLFNST[0][0][0], 0, sizeof(g_resiBorderTemplateLFNST));
+  memset( &g_resiBorderTemplateLFNST[ 0 ][ 0 ][ 0 ], 0, sizeof( g_resiBorderTemplateLFNST ) );
 #endif
 #endif
 #if TU_256
   c = 256;
-  const double s = sqrt((double)c) * (64 << COM16_C806_TRANS_PREC);
+  const double s = sqrt( ( double ) c ) * ( 64 << COM16_C806_TRANS_PREC );
   const double PI = 3.14159265358979323846;
 
-  for (int k = 0; k < c; k++)
+  for( int k = 0; k < c; k++ )
   {
-    for (int n = 0; n < c; n++)
+    for( int n = 0; n < c; n++ )
     {
       double w0, v;
 
       // DCT-II
-      w0 = (k == 0) ? sqrt(0.5) : 1.0;
-      v = cos(PI * (n + 0.5) * k / c) * w0 * sqrt(2.0 / c);
-      g_trCoreDCT2P256[k][n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+      w0 = ( k == 0 ) ? sqrt( 0.5 ) : 1.0;
+      v = cos( PI * ( n + 0.5 ) * k / c ) * w0 * sqrt( 2.0 / c );
+      g_trCoreDCT2P256[ k ][ n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
       // DCT-VIII
-      v = cos(PI * (k + 0.5) * (n + 0.5) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
-      g_trCoreDCT8P256[k][n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+      v = cos( PI * ( k + 0.5 ) * ( n + 0.5 ) / ( c + 0.5 ) ) * sqrt( 2.0 / ( c + 0.5 ) );
+      g_trCoreDCT8P256[ k ][ n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
       // DST-VII
-      v = sin(PI * (k + 0.5) * (n + 1) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
-      g_trCoreDST7P256[k][n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+      v = sin( PI * ( k + 0.5 ) * ( n + 1 ) / ( c + 0.5 ) ) * sqrt( 2.0 / ( c + 0.5 ) );
+      g_trCoreDST7P256[ k ][ n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
     }
   }
 #endif
@@ -5303,59 +5369,59 @@ void initROM()
   const double PI = 3.14159265358979323846;
 #endif
 
-  for (int i = 0; i < 8; i++)
+  for( int i = 0; i < 8; i++ )
   {
-    const double s = sqrt((double)c) * (64 << COM16_C806_TRANS_PREC);
+    const double s = sqrt( ( double ) c ) * ( 64 << COM16_C806_TRANS_PREC );
     TMatrixCoeff* iT = NULL;
 
-    switch (i)
+    switch( i )
     {
-    case 0: iT = g_aiTr2[0][0]; break;
-    case 1: iT = g_aiTr4[0][0]; break;
-    case 2: iT = g_aiTr8[0][0]; break;
-    case 3: iT = g_aiTr16[0][0]; break;
-    case 4: iT = g_aiTr32[0][0]; break;
-    case 5: iT = g_aiTr64[0][0]; break;
-    case 6: iT = g_aiTr128[0][0]; break;
-    case 7: iT = g_aiTr256[0][0]; break;
-    case 8: exit(0); break;
+    case 0: iT = g_aiTr2[ 0 ][ 0 ]; break;
+    case 1: iT = g_aiTr4[ 0 ][ 0 ]; break;
+    case 2: iT = g_aiTr8[ 0 ][ 0 ]; break;
+    case 3: iT = g_aiTr16[ 0 ][ 0 ]; break;
+    case 4: iT = g_aiTr32[ 0 ][ 0 ]; break;
+    case 5: iT = g_aiTr64[ 0 ][ 0 ]; break;
+    case 6: iT = g_aiTr128[ 0 ][ 0 ]; break;
+    case 7: iT = g_aiTr256[ 0 ][ 0 ]; break;
+    case 8: exit( 0 ); break;
     }
 
-    for (int k = 0; k < c; k++)
+    for( int k = 0; k < c; k++ )
     {
-      for (int n = 0; n < c; n++)
+      for( int n = 0; n < c; n++ )
       {
         double w0, w1, v;
 
         // DCT-II
-        w0 = k == 0 ? sqrt(0.5) : 1;
-        v = cos(PI * (n + 0.5) * k / c) * w0 * sqrt(2.0 / c);
-        iT[DCT2 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        w0 = k == 0 ? sqrt( 0.5 ) : 1;
+        v = cos( PI * ( n + 0.5 ) * k / c ) * w0 * sqrt( 2.0 / c );
+        iT[ DCT2 * c * c + k * c + n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
         // DCT-V
-        w0 = (k == 0) ? sqrt(0.5) : 1.0;
-        w1 = (n == 0) ? sqrt(0.5) : 1.0;
-        v = cos(PI * n * k / (c - 0.5)) * w0 * w1 * sqrt(2.0 / (c - 0.5));
-        iT[DCT5 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        w0 = ( k == 0 ) ? sqrt( 0.5 ) : 1.0;
+        w1 = ( n == 0 ) ? sqrt( 0.5 ) : 1.0;
+        v = cos( PI * n * k / ( c - 0.5 ) ) * w0 * w1 * sqrt( 2.0 / ( c - 0.5 ) );
+        iT[ DCT5 * c * c + k * c + n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
         // DCT-VIII
-        v = cos(PI * (k + 0.5) * (n + 0.5) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
-        iT[DCT8 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = cos( PI * ( k + 0.5 ) * ( n + 0.5 ) / ( c + 0.5 ) ) * sqrt( 2.0 / ( c + 0.5 ) );
+        iT[ DCT8 * c * c + k * c + n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
         // DST-I
-        v = sin(PI * (n + 1) * (k + 1) / (c + 1)) * sqrt(2.0 / (c + 1));
-        iT[DST1 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = sin( PI * ( n + 1 ) * ( k + 1 ) / ( c + 1 ) ) * sqrt( 2.0 / ( c + 1 ) );
+        iT[ DST1 * c * c + k * c + n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
         // DST-VII
-        v = sin(PI * (k + 0.5) * (n + 1) / (c + 0.5)) * sqrt(2.0 / (c + 0.5));
-        iT[DST7 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = sin( PI * ( k + 0.5 ) * ( n + 1 ) / ( c + 0.5 ) ) * sqrt( 2.0 / ( c + 0.5 ) );
+        iT[ DST7 * c * c + k * c + n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
         // DST4
-        v = sin(PI * (k + 0.5) * (n + 0.5) / c) * sqrt(2.0 / c);
-        iT[DST4 * c * c + k * c + n] = (short)(s * v + (v > 0 ? 0.5 : -0.5));
+        v = sin( PI * ( k + 0.5 ) * ( n + 0.5 ) / c ) * sqrt( 2.0 / c );
+        iT[ DST4 * c * c + k * c + n ] = ( short ) ( s * v + ( v > 0 ? 0.5 : -0.5 ) );
 
         // ID
-        iT[IDTR * c * c + k * c + n] = (k == n) ? (short)(s + (s > 0 ? 0.5 : -0.5)) : 0;
+        iT[ IDTR * c * c + k * c + n ] = ( k == n ) ? ( short ) ( s + ( s > 0 ? 0.5 : -0.5 ) ) : 0;
       }
     }
     c <<= 1;
@@ -5363,7 +5429,7 @@ void initROM()
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 #if JVET_AA0133_INTER_MTS_OPT
-  TMatrixCoeff KLT4[2][4][4] = {
+  TMatrixCoeff KLT4[ 2 ][ 4 ][ 4 ] = {
   {
   { -79,  -88,  -46,  -17},
   {  74,  -10,  -86,  -58},
@@ -5377,7 +5443,7 @@ void initROM()
   {  86,  -77,   51,  -23},
   },
   };
-  TMatrixCoeff KLT8[2][8][8] = {
+  TMatrixCoeff KLT8[ 2 ][ 8 ][ 8 ] = {
   {
   {  55,   81,   92,   87,   68,   43,   25,   15},
   { -84,  -87,  -28,   46,   82,   72,   49,   31},
@@ -5399,7 +5465,7 @@ void initROM()
   { -42,   75,  -83,   82,  -75,   62,  -43,   19},
   },
   };
-  TMatrixCoeff KLT16[2][16][16] = {
+  TMatrixCoeff KLT16[ 2 ][ 16 ][ 16 ] = {
   {
   {  42,   57,   71,   82,   90,   94,   93,   88,   79,   64,   50,   38,   28,   20,   15,   11},
   { -72,  -91,  -95,  -83,  -55,  -16,   26,   61,   80,   83,   75,   63,   50,   39,   31,   23},
@@ -5438,68 +5504,68 @@ void initROM()
   },
   };
 
-  for (int i = 0; i < 4; i++)
+  for( int i = 0; i < 4; i++ )
   {
-    for (int j = 0; j < 4; j++)
+    for( int j = 0; j < 4; j++ )
     {
-      g_aiTr4[KLT0][i][j] = KLT4[0][i][j];
-      g_aiTr4[KLT1][i][j] = KLT4[1][i][j];
+      g_aiTr4[ KLT0 ][ i ][ j ] = KLT4[ 0 ][ i ][ j ];
+      g_aiTr4[ KLT1 ][ i ][ j ] = KLT4[ 1 ][ i ][ j ];
     }
   }
-  for (int i = 0; i < 8; i++)
+  for( int i = 0; i < 8; i++ )
   {
-    for (int j = 0; j < 8; j++)
+    for( int j = 0; j < 8; j++ )
     {
-      g_aiTr8[KLT0][i][j] = KLT8[0][i][j];
-      g_aiTr8[KLT1][i][j] = KLT8[1][i][j];
+      g_aiTr8[ KLT0 ][ i ][ j ] = KLT8[ 0 ][ i ][ j ];
+      g_aiTr8[ KLT1 ][ i ][ j ] = KLT8[ 1 ][ i ][ j ];
     }
   }
-  for (int i = 0; i < 16; i++)
+  for( int i = 0; i < 16; i++ )
   {
-    for (int j = 0; j < 16; j++)
+    for( int j = 0; j < 16; j++ )
     {
-      g_aiTr16[KLT0][i][j] = KLT16[0][i][j];
-      g_aiTr16[KLT1][i][j] = KLT16[1][i][j];
+      g_aiTr16[ KLT0 ][ i ][ j ] = KLT16[ 0 ][ i ][ j ];
+      g_aiTr16[ KLT1 ][ i ][ j ] = KLT16[ 1 ][ i ][ j ];
     }
   }
 #endif
   ////////////////////////////////////////////////////////////////////////////////////////////////
 #endif
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
-  g_rmvfMultApproxTbl[0] = 0;
-  for (int k = 1; k < (3 << sizeof(int64_t)); k++)
+  g_rmvfMultApproxTbl[ 0 ] = 0;
+  for( int k = 1; k < ( 3 << sizeof( int64_t ) ); k++ )
   {
-    g_rmvfMultApproxTbl[k] = ((1 << 15) + (k >> 1)) / k;
+    g_rmvfMultApproxTbl[ k ] = ( ( 1 << 15 ) + ( k >> 1 ) ) / k;
   }
 #endif
 #if JVET_AE0169_IBC_MBVD_LIST_DERIVATION
   const int bvpStep = IBC_MBVD_AD_MAX_REFINE_NUM;
   const int curInterval = 1 << IBC_MBVD_LOG2_START_STEP;
   const int incInterval = curInterval * IBC_MBVD_OFFSET_DIR;
-  const int startStepOffset = (curInterval - 1) * IBC_MBVD_OFFSET_DIR;
+  const int startStepOffset = ( curInterval - 1 ) * IBC_MBVD_OFFSET_DIR;
   int searchCandIdx = 0;
-  for (int bvpIdx = 0; bvpIdx < IBC_MBVD_BASE_NUM; bvpIdx++)
+  for( int bvpIdx = 0; bvpIdx < IBC_MBVD_BASE_NUM; bvpIdx++ )
   {
     int startBvdIdx = bvpIdx * bvpStep;
     int endBvdIdx = startBvdIdx + bvpStep;
-    for (int bvdIdx = startBvdIdx + startStepOffset; bvdIdx < endBvdIdx; bvdIdx += incInterval)
+    for( int bvdIdx = startBvdIdx + startStepOffset; bvdIdx < endBvdIdx; bvdIdx += incInterval )
     {
-      for (int dir = 0; dir < IBC_MBVD_OFFSET_DIR; dir++)
+      for( int dir = 0; dir < IBC_MBVD_OFFSET_DIR; dir++ )
       {
-        g_ibcMbvdStepCandIdxList[searchCandIdx++] = bvdIdx + dir;
+        g_ibcMbvdStepCandIdxList[ searchCandIdx++ ] = bvdIdx + dir;
       }
     }
   }
-  for (int bvdIdx = 0; bvdIdx < IBC_MBVD_AD_STEP_NUM; bvdIdx++)
+  for( int bvdIdx = 0; bvdIdx < IBC_MBVD_AD_STEP_NUM; bvdIdx++ )
   {
-    g_ibcMbvdCandOffsets[bvdIdx] = ((bvdIdx + 1) << MV_FRACTIONAL_BITS_INTERNAL);
+    g_ibcMbvdCandOffsets[ bvdIdx ] = ( ( bvdIdx + 1 ) << MV_FRACTIONAL_BITS_INTERNAL );
   }
   int neiShift = 0;
-  for (int neiIdx = 0; neiIdx < IBC_MBVD_NEI_NUM * 2; neiIdx += 2)
+  for( int neiIdx = 0; neiIdx < IBC_MBVD_NEI_NUM * 2; neiIdx += 2 )
   {
     neiShift += IBC_MBVD_OFFSET_DIR;
-    g_ibcMbvdNeiOffsets[neiIdx] = -neiShift;
-    g_ibcMbvdNeiOffsets[neiIdx + 1] = +neiShift;
+    g_ibcMbvdNeiOffsets[ neiIdx ] = -neiShift;
+    g_ibcMbvdNeiOffsets[ neiIdx + 1 ] = +neiShift;
   }
 #endif
 }
@@ -5509,16 +5575,16 @@ void destroyROM()
   unsigned numWidths = gp_sizeIdxInfo->numAllWidths();
   unsigned numHeights = gp_sizeIdxInfo->numAllHeights();
 
-  for (uint32_t groupTypeIndex = 0; groupTypeIndex < SCAN_NUMBER_OF_GROUP_TYPES; groupTypeIndex++)
+  for( uint32_t groupTypeIndex = 0; groupTypeIndex < SCAN_NUMBER_OF_GROUP_TYPES; groupTypeIndex++ )
   {
-    for (uint32_t scanOrderIndex = 0; scanOrderIndex < SCAN_NUMBER_OF_TYPES; scanOrderIndex++)
+    for( uint32_t scanOrderIndex = 0; scanOrderIndex < SCAN_NUMBER_OF_TYPES; scanOrderIndex++ )
     {
-      for (uint32_t blockWidthIdx = 0; blockWidthIdx <= numWidths; blockWidthIdx++)
+      for( uint32_t blockWidthIdx = 0; blockWidthIdx <= numWidths; blockWidthIdx++ )
       {
-        for (uint32_t blockHeightIdx = 0; blockHeightIdx <= numHeights; blockHeightIdx++)
+        for( uint32_t blockHeightIdx = 0; blockHeightIdx <= numHeights; blockHeightIdx++ )
         {
-          delete[] g_scanOrder[groupTypeIndex][scanOrderIndex][blockWidthIdx][blockHeightIdx];
-          g_scanOrder[groupTypeIndex][scanOrderIndex][blockWidthIdx][blockHeightIdx] = nullptr;
+          delete[] g_scanOrder[ groupTypeIndex ][ scanOrderIndex ][ blockWidthIdx ][ blockHeightIdx ];
+          g_scanOrder[ groupTypeIndex ][ scanOrderIndex ][ blockWidthIdx ][ blockHeightIdx ] = nullptr;
         }
       }
     }
@@ -5528,84 +5594,84 @@ void destroyROM()
   gp_sizeIdxInfo = nullptr;
 
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-  for (int modeIdx = 0; modeIdx < GEO_TOTAL_NUM_PARTITION_MODE; modeIdx++)
+  for( int modeIdx = 0; modeIdx < GEO_TOTAL_NUM_PARTITION_MODE; modeIdx++ )
 #else
-  for (int modeIdx = 0; modeIdx < GEO_NUM_PARTITION_MODE; modeIdx++)
+  for( int modeIdx = 0; modeIdx < GEO_NUM_PARTITION_MODE; modeIdx++ )
 #endif
   {
-    delete[] g_geoParams[modeIdx];
-    g_geoParams[modeIdx] = nullptr;
+    delete[] g_geoParams[ modeIdx ];
+    g_geoParams[ modeIdx ] = nullptr;
   }
   delete[] g_geoParams;
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
 #if JVET_AB0155_SGPM
-  for (int bldIdx = 0; bldIdx < TOTAL_GEO_BLENDING_NUM; bldIdx++)
+  for( int bldIdx = 0; bldIdx < TOTAL_GEO_BLENDING_NUM; bldIdx++ )
 #else
-  for (int bldIdx = 0; bldIdx < GEO_BLENDING_NUM; bldIdx++)
+  for( int bldIdx = 0; bldIdx < GEO_BLENDING_NUM; bldIdx++ )
 #endif
   {
-    for (int i = 0; i < GEO_NUM_PRESTORED_MASK; i++)
+    for( int i = 0; i < GEO_NUM_PRESTORED_MASK; i++ )
     {
-      delete[] g_geoWeights[bldIdx][i];
-      g_geoWeights[bldIdx][i] = nullptr;
+      delete[] g_geoWeights[ bldIdx ][ i ];
+      g_geoWeights[ bldIdx ][ i ] = nullptr;
     }
   }
 
-  for (int i = 0; i < GEO_NUM_PRESTORED_MASK; i++)
+  for( int i = 0; i < GEO_NUM_PRESTORED_MASK; i++ )
   {
-    delete[] g_geoEncSadMask[i];
-    g_geoEncSadMask[i] = nullptr;
+    delete[] g_geoEncSadMask[ i ];
+    g_geoEncSadMask[ i ] = nullptr;
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
-    delete[] g_geoWeightsTpl[i];
-    g_geoWeightsTpl[i] = nullptr;
+    delete[] g_geoWeightsTpl[ i ];
+    g_geoWeightsTpl[ i ] = nullptr;
 #endif
   }
 #else
-  for (int i = 0; i < GEO_NUM_PRESTORED_MASK; i++)
+  for( int i = 0; i < GEO_NUM_PRESTORED_MASK; i++ )
   {
-    delete[] g_geoWeights[i];
-    delete[] g_geoEncSadMask[i];
-    g_geoWeights[i] = nullptr;
-    g_geoEncSadMask[i] = nullptr;
+    delete[] g_geoWeights[ i ];
+    delete[] g_geoEncSadMask[ i ];
+    g_geoWeights[ i ] = nullptr;
+    g_geoEncSadMask[ i ] = nullptr;
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
-    delete[] g_geoWeightsTpl[i];
-    g_geoWeightsTpl[i] = nullptr;
+    delete[] g_geoWeightsTpl[ i ];
+    g_geoWeightsTpl[ i ] = nullptr;
 #endif
   }
 #endif
 #if JVET_Y0141_SIGN_PRED_IMPROVE
-  for (int log2Width = 0; log2Width < 6; log2Width++)
+  for( int log2Width = 0; log2Width < 6; log2Width++ )
   {
-    for (int log2Height = 0; log2Height < 6; log2Height++)
+    for( int log2Height = 0; log2Height < 6; log2Height++ )
     {
-      for (int idx = 0; idx < NUM_TRANS_TYPE * NUM_TRANS_TYPE; idx++)
+      for( int idx = 0; idx < NUM_TRANS_TYPE * NUM_TRANS_TYPE; idx++ )
       {
-        if (g_resiBorderTemplate[log2Width][log2Height][idx])
+        if( g_resiBorderTemplate[ log2Width ][ log2Height ][ idx ] )
         {
-          xFree(g_resiBorderTemplate[log2Width][log2Height][idx]);
-          g_resiBorderTemplate[log2Width][log2Height][idx] = nullptr;
+          xFree( g_resiBorderTemplate[ log2Width ][ log2Height ][ idx ] );
+          g_resiBorderTemplate[ log2Width ][ log2Height ][ idx ] = nullptr;
         }
       }
 #if JVET_W0119_LFNST_EXTENSION || EXTENDED_LFNST
-      for (int idx = 0; idx < 210; idx++)
+      for( int idx = 0; idx < 210; idx++ )
 #else
-      for (int idx = 0; idx < 16; idx++)
+      for( int idx = 0; idx < 16; idx++ )
 #endif
       {
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
-        for (int t = 0; t < NUM_NSPT_BLOCK_TYPES; t++)
+        for( int t = 0; t < NUM_NSPT_BLOCK_TYPES; t++ )
         {
-          if (g_resiBorderTemplateLFNST[t][log2Width][log2Height][idx])
+          if( g_resiBorderTemplateLFNST[ t ][ log2Width ][ log2Height ][ idx ] )
           {
-            xFree(g_resiBorderTemplateLFNST[t][log2Width][log2Height][idx]);
-            g_resiBorderTemplateLFNST[t][log2Width][log2Height][idx] = nullptr;
+            xFree( g_resiBorderTemplateLFNST[ t ][ log2Width ][ log2Height ][ idx ] );
+            g_resiBorderTemplateLFNST[ t ][ log2Width ][ log2Height ][ idx ] = nullptr;
           }
         }
 #else
-        if (g_resiBorderTemplateLFNST[log2Width][log2Height][idx])
+        if( g_resiBorderTemplateLFNST[ log2Width ][ log2Height ][ idx ] )
         {
-          xFree(g_resiBorderTemplateLFNST[log2Width][log2Height][idx]);
-          g_resiBorderTemplateLFNST[log2Width][log2Height][idx] = nullptr;
+          xFree( g_resiBorderTemplateLFNST[ log2Width ][ log2Height ][ idx ] );
+          g_resiBorderTemplateLFNST[ log2Width ][ log2Height ][ idx ] = nullptr;
         }
 #endif
       }
@@ -5627,13 +5693,13 @@ int g_aiLMDivTableHigh[] = {
 // Data structure related table & variable
 // ====================================================================================================================
 
-const int g_quantScales[2][SCALING_LIST_REM_NUM] = // can be represented as a 9 element table
+const int g_quantScales[ 2 ][ SCALING_LIST_REM_NUM ] = // can be represented as a 9 element table
 {
     { 26214,23302,20560,18396,16384,14564 },
     { 18396,16384,14564,13107,11651,10280 } // Note: last 3 values of second row == half of the first 3 values of the first row
 };
 
-const int g_invQuantScales[2][SCALING_LIST_REM_NUM] = // can be represented as a 9 element table
+const int g_invQuantScales[ 2 ][ SCALING_LIST_REM_NUM ] = // can be represented as a 9 element table
 {
   { 40,45,51,57,64,72 },
   { 57,64,72,80,90,102 } // Note: last 3 values of second row == double of the first 3 values of the first row
@@ -5648,7 +5714,7 @@ const int g_invQuantScales[2][SCALING_LIST_REM_NUM] = // can be represented as a
 // Intra prediction
 // ====================================================================================================================
 
-const uint8_t g_aucIntraModeNumFast_UseMPM_2D[7 - MIN_CU_LOG2 + 1][7 - MIN_CU_LOG2 + 1] =
+const uint8_t g_aucIntraModeNumFast_UseMPM_2D[ 7 - MIN_CU_LOG2 + 1 ][ 7 - MIN_CU_LOG2 + 1 ] =
 {
   {3, 3, 3, 3, 2, 2},  //   4x4,   4x8,   4x16,   4x32,   4x64,   4x128,
   {3, 3, 3, 3, 3, 2},  //   8x4,   8x8,   8x16,   8x32,   8x64,   8x128,
@@ -5658,7 +5724,7 @@ const uint8_t g_aucIntraModeNumFast_UseMPM_2D[7 - MIN_CU_LOG2 + 1][7 - MIN_CU_LO
   {2, 2, 2, 2, 2, 3},  // 128x4, 128x8, 128x16, 128x32, 128x64, 128x128,
 };
 
-const uint8_t g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =
+const uint8_t g_aucIntraModeNumFast_UseMPM[ MAX_CU_DEPTH ] =
 {
   3,  //   2x2
   8,  //   4x4
@@ -5668,7 +5734,7 @@ const uint8_t g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =
   3,  //  64x64
   3   // 128x128
 };
-const uint8_t g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
+const uint8_t g_aucIntraModeNumFast_NotUseMPM[ MAX_CU_DEPTH ] =
 {
   3,  //   2x2
   9,  //   4x4
@@ -5679,16 +5745,16 @@ const uint8_t g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
   5   // 128x128
 };
 
-const uint8_t g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE] =
+const uint8_t g_chroma422IntraAngleMappingTable[ NUM_INTRA_MODE ] =
 //                                    *                                H                              *                                D      *   *   *   *       *   *   *                   *        V       *                   *   *   *      *   *   *   *
 //0, 1,  2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, DM
 { 0, 1, 61, 62, 63, 64, 65, 66, 2, 3,  5,  6,  8, 10, 12, 13, 14, 16, 18, 20, 22, 23, 24, 26, 28, 30, 31, 33, 34, 35, 36, 37, 38, 39, 40, 41, 41, 42, 43, 43, 44, 44, 45, 45, 46, 47, 48, 48, 49, 49, 50, 51, 51, 52, 52, 53, 54, 55, 55, 56, 56, 57, 57, 58, 59, 59, 60, DM_CHROMA_IDX };
 
 
 #if JVET_AE0169_IBC_MBVD_LIST_DERIVATION
-int g_ibcMbvdCandOffsets[IBC_MBVD_AD_STEP_NUM];
-int g_ibcMbvdStepCandIdxList[IBC_MBVD_AD_NUM >> IBC_MBVD_LOG2_START_STEP];
-int g_ibcMbvdNeiOffsets[IBC_MBVD_NEI_NUM * 2];
+int g_ibcMbvdCandOffsets[ IBC_MBVD_AD_STEP_NUM ];
+int g_ibcMbvdStepCandIdxList[ IBC_MBVD_AD_NUM >> IBC_MBVD_LOG2_START_STEP ];
+int g_ibcMbvdNeiOffsets[ IBC_MBVD_NEI_NUM * 2 ];
 #endif
 
 // ====================================================================================================================
@@ -5696,21 +5762,21 @@ int g_ibcMbvdNeiOffsets[IBC_MBVD_NEI_NUM * 2];
 // ====================================================================================================================
 SizeIndexInfo* gp_sizeIdxInfo = NULL;
 
-const int                 g_ictModes[2][4] = { { 0, 3, 1, 2 }, { 0, -3, -1, -2 } };
+const int                 g_ictModes[ 2 ][ 4 ] = { { 0, 3, 1, 2 }, { 0, -3, -1, -2 } };
 
 #if LMS_LINEAR_MODEL || TRANSFORM_SIMD_OPT
-int8_t                    g_aucLog2[MAX_CU_SIZE + 1];
+int8_t                    g_aucLog2[ MAX_CU_SIZE + 1 ];
 #endif
 #if LMS_LINEAR_MODEL
-int8_t                    g_aucNextLog2[MAX_CU_SIZE + 1];
-int8_t                    g_aucPrevLog2[MAX_CU_SIZE + 1];
+int8_t                    g_aucNextLog2[ MAX_CU_SIZE + 1 ];
+int8_t                    g_aucPrevLog2[ MAX_CU_SIZE + 1 ];
 #endif
 
 #if MMLM && !LMS_LINEAR_MODEL
-int8_t                    g_aucPrevLog2[MAX_CU_SIZE + 1];
+int8_t                    g_aucPrevLog2[ MAX_CU_SIZE + 1 ];
 #endif
 
-UnitScale g_miScaling(MIN_CU_LOG2, MIN_CU_LOG2);
+UnitScale g_miScaling( MIN_CU_LOG2, MIN_CU_LOG2 );
 
 
 // ====================================================================================================================
@@ -5718,20 +5784,20 @@ UnitScale g_miScaling(MIN_CU_LOG2, MIN_CU_LOG2);
 // ====================================================================================================================
 
 // scanning order table
-ScanElement* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][MAX_CU_SIZE / 2 + 1][MAX_CU_SIZE / 2 + 1];
+ScanElement* g_scanOrder[ SCAN_NUMBER_OF_GROUP_TYPES ][ SCAN_NUMBER_OF_TYPES ][ MAX_CU_SIZE / 2 + 1 ][ MAX_CU_SIZE / 2 + 1 ];
 #if JVET_W0119_LFNST_EXTENSION
-ScanElement  g_coefTopLeftDiagScan8x8[MAX_CU_DEPTH + 1][64];
-ScanElement  g_coefTopLeftDiagScan16x16[MAX_CU_DEPTH + 1][256];
+ScanElement  g_coefTopLeftDiagScan8x8[ MAX_CU_DEPTH + 1 ][ 64 ];
+ScanElement  g_coefTopLeftDiagScan16x16[ MAX_CU_DEPTH + 1 ][ 256 ];
 #else
-ScanElement  g_coefTopLeftDiagScan8x8[MAX_CU_SIZE / 2 + 1][64];
+ScanElement  g_coefTopLeftDiagScan8x8[ MAX_CU_SIZE / 2 + 1 ][ 64 ];
 #endif
 
 #if TU_256
 // starting position of the coefficient in a group
 // 2^suffix_length * ( 2 + (prefix & 1) )
-const uint32_t g_uiMinInGroup[LAST_SIGNIFICANT_GROUPS] = { 0,1,2,3,4,6,8,12,16,24,32,48,64,96,128,192 };
+const uint32_t g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ] = { 0,1,2,3,4,6,8,12,16,24,32,48,64,96,128,192 };
 #else
-const uint32_t g_uiMinInGroup[LAST_SIGNIFICANT_GROUPS] = { 0,1,2,3,4,6,8,12,16,24,32,48,64,96 };
+const uint32_t g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ] = { 0,1,2,3,4,6,8,12,16,24,32,48,64,96 };
 #endif
 
 // suffix_length = prefix/2 - 1
@@ -5744,10 +5810,10 @@ const uint32_t g_uiGroupIdx[] = { 0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,
 ,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15
 };
 #else
-const uint32_t g_uiGroupIdx[MAX_TB_SIZEY] = { 0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11 };
+const uint32_t g_uiGroupIdx[ MAX_TB_SIZEY ] = { 0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11 };
 #endif
 #if JVET_AG0100_TRANSFORM_COEFFICIENT_CODING
-const uint32_t g_auiGoRiceParsCoeffGTN[GTN_MAXSUM] =
+const uint32_t g_auiGoRiceParsCoeffGTN[ GTN_MAXSUM ] =
 {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
@@ -5755,13 +5821,13 @@ const uint32_t g_auiGoRiceParsCoeffGTN[GTN_MAXSUM] =
   2, 3, 3, 3, 3, 3, 3, 3
 };
 #endif
-const uint32_t g_auiGoRiceParsCoeff[32] =
+const uint32_t g_auiGoRiceParsCoeff[ 32 ] =
 {
   0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3
 };
 
 #if TCQ_8STATES
-const uint64_t g_stateTransTab[3] = { UINT64_C(0), UINT64_C(587280912), UINT64_C(6274468666787591456) };
+const uint64_t g_stateTransTab[ 3 ] = { UINT64_C( 0 ), UINT64_C( 587280912 ), UINT64_C( 6274468666787591456 ) };
 // the values represent the following state transition tables (curr : next[parity=0]  next[parity=1])
 //
 //    (1) no dep quant:  0 : 0 0
@@ -5781,7 +5847,7 @@ const uint64_t g_stateTransTab[3] = { UINT64_C(0), UINT64_C(587280912), UINT64_C
 //                       7 : 7 5
 #endif
 
-const char* MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
+const char* MatrixType[ SCALING_LIST_SIZE_NUM ][ SCALING_LIST_NUM ] =
 {
   {
     "INTRA1X1_LUMA",
@@ -5843,7 +5909,7 @@ const char* MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
   },
 };
 
-const char* MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
+const char* MatrixType_DC[ SCALING_LIST_SIZE_NUM ][ SCALING_LIST_NUM ] =
 {
   {  //1x1
   },
@@ -5881,7 +5947,7 @@ const char* MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
   },
 };
 
-const int g_quantTSDefault4x4[4 * 4] =
+const int g_quantTSDefault4x4[ 4 * 4 ] =
 {
   16,16,16,16,
   16,16,16,16,
@@ -5889,7 +5955,7 @@ const int g_quantTSDefault4x4[4 * 4] =
   16,16,16,16
 };
 
-const int g_quantIntraDefault8x8[8 * 8] =
+const int g_quantIntraDefault8x8[ 8 * 8 ] =
 {
   16,16,16,16,16,16,16,16,
   16,16,16,16,16,16,16,16,
@@ -5901,7 +5967,7 @@ const int g_quantIntraDefault8x8[8 * 8] =
   16,16,16,16,16,16,16,16
 };
 
-const int g_quantInterDefault8x8[8 * 8] =
+const int g_quantInterDefault8x8[ 8 * 8 ] =
 {
   16,16,16,16,16,16,16,16,
   16,16,16,16,16,16,16,16,
@@ -5913,10 +5979,10 @@ const int g_quantInterDefault8x8[8 * 8] =
   16,16,16,16,16,16,16,16
 };
 
-const uint32_t g_scalingListSize[SCALING_LIST_SIZE_NUM] = { 1, 4, 16, 64, 256, 1024, 4096, 16384 };
-const uint32_t g_scalingListSizeX[SCALING_LIST_SIZE_NUM] = { 1, 2,  4,  8,  16,   32,   64,   128 };
+const uint32_t g_scalingListSize[ SCALING_LIST_SIZE_NUM ] = { 1, 4, 16, 64, 256, 1024, 4096, 16384 };
+const uint32_t g_scalingListSizeX[ SCALING_LIST_SIZE_NUM ] = { 1, 2,  4,  8,  16,   32,   64,   128 };
 
-const uint32_t g_scalingListId[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
+const uint32_t g_scalingListId[ SCALING_LIST_SIZE_NUM ][ SCALING_LIST_NUM ] =
 {
   {  0,  0,  0,  0,  0,  0},  // SCALING_LIST_1x1
   {  0,  0,  0,  0,  0,  1},  // SCALING_LIST_2x2
@@ -5929,85 +5995,85 @@ const uint32_t g_scalingListId[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 };
 
 #if CTU_256
-Mv   g_reusedUniMVs[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2][33];
-bool g_isReusedUniMVsFilled[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1];
+Mv   g_reusedUniMVs[ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_DEPTH + 1 ][ MAX_CU_DEPTH + 1 ][ 2 ][ 33 ];
+bool g_isReusedUniMVsFilled[ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_DEPTH + 1 ][ MAX_CU_DEPTH + 1 ];
 #else
-Mv   g_reusedUniMVs[32][32][8][8][2][33];
-bool g_isReusedUniMVsFilled[32][32][8][8];
+Mv   g_reusedUniMVs[ 32 ][ 32 ][ 8 ][ 8 ][ 2 ][ 33 ];
+bool g_isReusedUniMVsFilled[ 32 ][ 32 ][ 8 ][ 8 ];
 #endif
 #if INTER_LIC
-Mv   g_reusedUniMVsLIC[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2][33];
-bool g_isReusedUniMVsFilledLIC[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1];
+Mv   g_reusedUniMVsLIC[ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_DEPTH + 1 ][ MAX_CU_DEPTH + 1 ][ 2 ][ 33 ];
+bool g_isReusedUniMVsFilledLIC[ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_SIZE >> MIN_CU_LOG2 ][ MAX_CU_DEPTH + 1 ][ MAX_CU_DEPTH + 1 ];
 #endif
 
-uint16_t g_paletteQuant[57];
-uint8_t g_paletteRunTopLut[5] = { 0, 1, 1, 2, 2 };
-uint8_t g_paletteRunLeftLut[5] = { 0, 1, 2, 3, 4 };
+uint16_t g_paletteQuant[ 57 ];
+uint8_t g_paletteRunTopLut[ 5 ] = { 0, 1, 1, 2, 2 };
+uint8_t g_paletteRunLeftLut[ 5 ] = { 0, 1, 2, 3, 4 };
 
 void initGeoTemplate()
 {
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-  g_geoParams = new int16_t * [GEO_TOTAL_NUM_PARTITION_MODE];
+  g_geoParams = new int16_t * [ GEO_TOTAL_NUM_PARTITION_MODE ];
 #else
-  g_geoParams = new int16_t * [GEO_NUM_PARTITION_MODE];
+  g_geoParams = new int16_t * [ GEO_NUM_PARTITION_MODE ];
 #endif
   int modeIdx = 0;
-  for (int angleIdx = 0; angleIdx < GEO_NUM_ANGLES; angleIdx++)
+  for( int angleIdx = 0; angleIdx < GEO_NUM_ANGLES; angleIdx++ )
   {
-    for (int distanceIdx = 0; distanceIdx < GEO_NUM_DISTANCES; distanceIdx++)
+    for( int distanceIdx = 0; distanceIdx < GEO_NUM_DISTANCES; distanceIdx++ )
     {
-      if ((distanceIdx == 0 && angleIdx >= 16)
+      if( ( distanceIdx == 0 && angleIdx >= 16 )
 #if !JVET_AJ0107_GPM_SHAPE_ADAPT
-        || ((distanceIdx == 2 || distanceIdx == 0) && (g_angle2mask[angleIdx] == 0 || g_angle2mask[angleIdx] == 5))
+        || ( ( distanceIdx == 2 || distanceIdx == 0 ) && ( g_angle2mask[ angleIdx ] == 0 || g_angle2mask[ angleIdx ] == 5 ) )
 #endif
-        || g_angle2mask[angleIdx] == -1)
+        || g_angle2mask[ angleIdx ] == -1 )
       {
         continue;
       }
-      g_geoParams[modeIdx] = new int16_t[2];
-      g_geoParams[modeIdx][0] = (int16_t)angleIdx;
-      g_geoParams[modeIdx][1] = (int16_t)distanceIdx;
+      g_geoParams[ modeIdx ] = new int16_t[ 2 ];
+      g_geoParams[ modeIdx ][ 0 ] = ( int16_t ) angleIdx;
+      g_geoParams[ modeIdx ][ 1 ] = ( int16_t ) distanceIdx;
       modeIdx++;
     }
   }
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING || JVET_AB0155_SGPM
   // initialization of blending weights
-  for (int angleIdx = 0; angleIdx < (GEO_NUM_ANGLES >> 2) + 1; angleIdx++)
+  for( int angleIdx = 0; angleIdx < ( GEO_NUM_ANGLES >> 2 ) + 1; angleIdx++ )
   {
-    if (g_angle2mask[angleIdx] == -1)
+    if( g_angle2mask[ angleIdx ] == -1 )
     {
       continue;
     }
 #if JVET_AB0155_SGPM
-    for (int bldIdx = 0; bldIdx < TOTAL_GEO_BLENDING_NUM; bldIdx++)
+    for( int bldIdx = 0; bldIdx < TOTAL_GEO_BLENDING_NUM; bldIdx++ )
 #else
-    for (int bldIdx = 0; bldIdx < GEO_BLENDING_NUM; bldIdx++)
+    for( int bldIdx = 0; bldIdx < GEO_BLENDING_NUM; bldIdx++ )
 #endif
     {
-      g_geoWeights[bldIdx][g_angle2mask[angleIdx]] = new int16_t[GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE];
+      g_geoWeights[ bldIdx ][ g_angle2mask[ angleIdx ] ] = new int16_t[ GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE ];
 
       int distanceX = angleIdx;
-      int distanceY = (distanceX + (GEO_NUM_ANGLES >> 2)) % GEO_NUM_ANGLES;
-      int16_t rho = (g_dis[distanceX] << (GEO_MAX_CU_LOG2 + 1)) + (g_dis[distanceY] << (GEO_MAX_CU_LOG2 + 1));
-      static const int16_t maskOffset = (2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE) >> 1;
+      int distanceY = ( distanceX + ( GEO_NUM_ANGLES >> 2 ) ) % GEO_NUM_ANGLES;
+      int16_t rho = ( g_dis[ distanceX ] << ( GEO_MAX_CU_LOG2 + 1 ) ) + ( g_dis[ distanceY ] << ( GEO_MAX_CU_LOG2 + 1 ) );
+      static const int16_t maskOffset = ( 2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE ) >> 1;
       int index = 0;
 
-      for (int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++)
+      for( int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++ )
       {
-        int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-        for (int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++)
+        int16_t lookUpY = ( ( ( y + maskOffset ) << 1 ) + 1 ) * g_dis[ distanceY ];
+        for( int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++ )
         {
-          int16_t sxi = ((x + maskOffset) << 1) + 1;
-          int16_t weightIdx = sxi * g_dis[distanceX] + lookUpY - rho;
-          if (g_bld2Width[bldIdx] > 1)
+          int16_t sxi = ( ( x + maskOffset ) << 1 ) + 1;
+          int16_t weightIdx = sxi * g_dis[ distanceX ] + lookUpY - rho;
+          if( g_bld2Width[ bldIdx ] > 1 )
           {
-            int weightLinearIdx = 8 * g_bld2Width[bldIdx] + weightIdx;
-            g_geoWeights[bldIdx][g_angle2mask[angleIdx]][index] = Clip3(0, 32, (weightLinearIdx + (g_bld2Width[bldIdx] >> 2)) >> floorLog2(g_bld2Width[bldIdx] >> 1));
+            int weightLinearIdx = 8 * g_bld2Width[ bldIdx ] + weightIdx;
+            g_geoWeights[ bldIdx ][ g_angle2mask[ angleIdx ] ][ index ] = Clip3( 0, 32, ( weightLinearIdx + ( g_bld2Width[ bldIdx ] >> 2 ) ) >> floorLog2( g_bld2Width[ bldIdx ] >> 1 ) );
           }
           else
           {
             int weightLinearIdx = 8 + weightIdx;
-            g_geoWeights[bldIdx][g_angle2mask[angleIdx]][index] = Clip3(0, 32, weightLinearIdx << 1);
+            g_geoWeights[ bldIdx ][ g_angle2mask[ angleIdx ] ][ index ] = Clip3( 0, 32, weightLinearIdx << 1 );
           }
         }
       }
@@ -6015,176 +6081,176 @@ void initGeoTemplate()
   }
 
   // initialization of mask weights
-  for (int angleIdx = 0; angleIdx < (GEO_NUM_ANGLES >> 2) + 1; angleIdx++)
+  for( int angleIdx = 0; angleIdx < ( GEO_NUM_ANGLES >> 2 ) + 1; angleIdx++ )
   {
-    if (g_angle2mask[angleIdx] == -1)
+    if( g_angle2mask[ angleIdx ] == -1 )
     {
       continue;
     }
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
-    g_geoWeightsTpl[g_angle2mask[angleIdx]] = new Pel[GEO_WEIGHT_MASK_SIZE_EXT * GEO_WEIGHT_MASK_SIZE_EXT];
+    g_geoWeightsTpl[ g_angle2mask[ angleIdx ] ] = new Pel[ GEO_WEIGHT_MASK_SIZE_EXT * GEO_WEIGHT_MASK_SIZE_EXT ];
 #endif
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
-    g_geoEncSadMask[g_angle2mask[angleIdx]] = new Pel[GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE];
+    g_geoEncSadMask[ g_angle2mask[ angleIdx ] ] = new Pel[ GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE ];
 #else
-    g_geoEncSadMask[g_angle2mask[angleIdx]] = new int16_t[GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE];
+    g_geoEncSadMask[ g_angle2mask[ angleIdx ] ] = new int16_t[ GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE ];
 #endif
 
     int distanceX = angleIdx;
-    int distanceY = (distanceX + (GEO_NUM_ANGLES >> 2)) % GEO_NUM_ANGLES;
-    int16_t rho = (g_dis[distanceX] << (GEO_MAX_CU_LOG2 + 1)) + (g_dis[distanceY] << (GEO_MAX_CU_LOG2 + 1));
-    static const int16_t maskOffset = (2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE) >> 1;
+    int distanceY = ( distanceX + ( GEO_NUM_ANGLES >> 2 ) ) % GEO_NUM_ANGLES;
+    int16_t rho = ( g_dis[ distanceX ] << ( GEO_MAX_CU_LOG2 + 1 ) ) + ( g_dis[ distanceY ] << ( GEO_MAX_CU_LOG2 + 1 ) );
+    static const int16_t maskOffset = ( 2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE ) >> 1;
     int index = 0;
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
     int indexGeoWeight = 0;
-    for (int y = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; y < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; y++)
+    for( int y = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; y < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; y++ )
     {
-      int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-      for (int x = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; x < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; x++)
+      int16_t lookUpY = ( ( ( y + maskOffset ) << 1 ) + 1 ) * g_dis[ distanceY ];
+      for( int x = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; x < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; x++ )
       {
-        int16_t sx_i = ((x + maskOffset) << 1) + 1;
-        int16_t weightIdx = sx_i * g_dis[distanceX] + lookUpY - rho;
-        g_geoWeightsTpl[g_angle2mask[angleIdx]][index++] = weightIdx > 0 ? 1 : 0;
-        if (x >= 0 && x < GEO_WEIGHT_MASK_SIZE && y >= 0 && y < GEO_WEIGHT_MASK_SIZE)
+        int16_t sx_i = ( ( x + maskOffset ) << 1 ) + 1;
+        int16_t weightIdx = sx_i * g_dis[ distanceX ] + lookUpY - rho;
+        g_geoWeightsTpl[ g_angle2mask[ angleIdx ] ][ index++ ] = weightIdx > 0 ? 1 : 0;
+        if( x >= 0 && x < GEO_WEIGHT_MASK_SIZE && y >= 0 && y < GEO_WEIGHT_MASK_SIZE )
         {
-          g_geoEncSadMask[g_angle2mask[angleIdx]][indexGeoWeight] = weightIdx > 0 ? 1 : 0;
+          g_geoEncSadMask[ g_angle2mask[ angleIdx ] ][ indexGeoWeight ] = weightIdx > 0 ? 1 : 0;
           ++indexGeoWeight;
         }
       }
     }
 #else
-    for (int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++)
+    for( int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++ )
     {
-      int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-      for (int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++)
+      int16_t lookUpY = ( ( ( y + maskOffset ) << 1 ) + 1 ) * g_dis[ distanceY ];
+      for( int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++ )
       {
-        int16_t sx_i = ((x + maskOffset) << 1) + 1;
-        int16_t weightIdx = sx_i * g_dis[distanceX] + lookUpY - rho;
-        g_geoEncSadMask[g_angle2mask[angleIdx]][index] = weightIdx > 0 ? 1 : 0;
+        int16_t sx_i = ( ( x + maskOffset ) << 1 ) + 1;
+        int16_t weightIdx = sx_i * g_dis[ distanceX ] + lookUpY - rho;
+        g_geoEncSadMask[ g_angle2mask[ angleIdx ] ][ index ] = weightIdx > 0 ? 1 : 0;
       }
     }
 #endif
   }
 #else
-  for (int angleIdx = 0; angleIdx < (GEO_NUM_ANGLES >> 2) + 1; angleIdx++)
+  for( int angleIdx = 0; angleIdx < ( GEO_NUM_ANGLES >> 2 ) + 1; angleIdx++ )
   {
-    if (g_angle2mask[angleIdx] == -1)
+    if( g_angle2mask[ angleIdx ] == -1 )
     {
       continue;
     }
-    g_geoWeights[g_angle2mask[angleIdx]] = new int16_t[GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE];
+    g_geoWeights[ g_angle2mask[ angleIdx ] ] = new int16_t[ GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE ];
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
-    g_geoWeightsTpl[g_angle2mask[angleIdx]] = new Pel[GEO_WEIGHT_MASK_SIZE_EXT * GEO_WEIGHT_MASK_SIZE_EXT];
+    g_geoWeightsTpl[ g_angle2mask[ angleIdx ] ] = new Pel[ GEO_WEIGHT_MASK_SIZE_EXT * GEO_WEIGHT_MASK_SIZE_EXT ];
 #endif
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
-    g_geoEncSadMask[g_angle2mask[angleIdx]] = new Pel[GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE];
+    g_geoEncSadMask[ g_angle2mask[ angleIdx ] ] = new Pel[ GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE ];
 #else
-    g_geoEncSadMask[g_angle2mask[angleIdx]] = new int16_t[GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE];
+    g_geoEncSadMask[ g_angle2mask[ angleIdx ] ] = new int16_t[ GEO_WEIGHT_MASK_SIZE * GEO_WEIGHT_MASK_SIZE ];
 #endif
 
     int distanceX = angleIdx;
-    int distanceY = (distanceX + (GEO_NUM_ANGLES >> 2)) % GEO_NUM_ANGLES;
-    int16_t rho = (g_dis[distanceX] << (GEO_MAX_CU_LOG2 + 1)) + (g_dis[distanceY] << (GEO_MAX_CU_LOG2 + 1));
-    static const int16_t maskOffset = (2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE) >> 1;
+    int distanceY = ( distanceX + ( GEO_NUM_ANGLES >> 2 ) ) % GEO_NUM_ANGLES;
+    int16_t rho = ( g_dis[ distanceX ] << ( GEO_MAX_CU_LOG2 + 1 ) ) + ( g_dis[ distanceY ] << ( GEO_MAX_CU_LOG2 + 1 ) );
+    static const int16_t maskOffset = ( 2 * GEO_MAX_CU_SIZE - GEO_WEIGHT_MASK_SIZE ) >> 1;
     int index = 0;
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
     int indexGeoWeight = 0;
-    for (int y = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; y < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; y++)
+    for( int y = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; y < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; y++ )
     {
-      int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-      for (int x = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; x < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; x++)
+      int16_t lookUpY = ( ( ( y + maskOffset ) << 1 ) + 1 ) * g_dis[ distanceY ];
+      for( int x = -GEO_TM_ADDED_WEIGHT_MASK_SIZE; x < GEO_WEIGHT_MASK_SIZE + GEO_TM_ADDED_WEIGHT_MASK_SIZE; x++ )
       {
-        int16_t sx_i = ((x + maskOffset) << 1) + 1;
-        int16_t weightIdx = sx_i * g_dis[distanceX] + lookUpY - rho;
+        int16_t sx_i = ( ( x + maskOffset ) << 1 ) + 1;
+        int16_t weightIdx = sx_i * g_dis[ distanceX ] + lookUpY - rho;
         int weightLinearIdx = 32 + weightIdx;
-        g_geoWeightsTpl[g_angle2mask[angleIdx]][index++] = weightIdx > 0 ? 1 : 0;
-        if (x >= 0 && x < GEO_WEIGHT_MASK_SIZE && y >= 0 && y < GEO_WEIGHT_MASK_SIZE)
+        g_geoWeightsTpl[ g_angle2mask[ angleIdx ] ][ index++ ] = weightIdx > 0 ? 1 : 0;
+        if( x >= 0 && x < GEO_WEIGHT_MASK_SIZE && y >= 0 && y < GEO_WEIGHT_MASK_SIZE )
         {
-          g_geoWeights[g_angle2mask[angleIdx]][indexGeoWeight] = Clip3(0, 8, (weightLinearIdx + 4) >> 3);
-          g_geoEncSadMask[g_angle2mask[angleIdx]][indexGeoWeight] = weightIdx > 0 ? 1 : 0;
+          g_geoWeights[ g_angle2mask[ angleIdx ] ][ indexGeoWeight ] = Clip3( 0, 8, ( weightLinearIdx + 4 ) >> 3 );
+          g_geoEncSadMask[ g_angle2mask[ angleIdx ] ][ indexGeoWeight ] = weightIdx > 0 ? 1 : 0;
           ++indexGeoWeight;
         }
       }
     }
 #else
-    for (int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++)
+    for( int y = 0; y < GEO_WEIGHT_MASK_SIZE; y++ )
     {
-      int16_t lookUpY = (((y + maskOffset) << 1) + 1) * g_dis[distanceY];
-      for (int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++)
+      int16_t lookUpY = ( ( ( y + maskOffset ) << 1 ) + 1 ) * g_dis[ distanceY ];
+      for( int x = 0; x < GEO_WEIGHT_MASK_SIZE; x++, index++ )
       {
-        int16_t sx_i = ((x + maskOffset) << 1) + 1;
-        int16_t weightIdx = sx_i * g_dis[distanceX] + lookUpY - rho;
+        int16_t sx_i = ( ( x + maskOffset ) << 1 ) + 1;
+        int16_t weightIdx = sx_i * g_dis[ distanceX ] + lookUpY - rho;
         int weightLinearIdx = 32 + weightIdx;
-        g_geoWeights[g_angle2mask[angleIdx]][index] = Clip3(0, 8, (weightLinearIdx + 4) >> 3);
-        g_geoEncSadMask[g_angle2mask[angleIdx]][index] = weightIdx > 0 ? 1 : 0;
+        g_geoWeights[ g_angle2mask[ angleIdx ] ][ index ] = Clip3( 0, 8, ( weightLinearIdx + 4 ) >> 3 );
+        g_geoEncSadMask[ g_angle2mask[ angleIdx ] ][ index ] = weightIdx > 0 ? 1 : 0;
       }
     }
 #endif
   }
 #endif
 
-  for (int hIdx = 0; hIdx < GEO_NUM_CU_SIZE; hIdx++)
+  for( int hIdx = 0; hIdx < GEO_NUM_CU_SIZE; hIdx++ )
   {
-    int16_t height = 1 << (hIdx + GEO_MIN_CU_LOG2);
-    for (int wIdx = 0; wIdx < GEO_NUM_CU_SIZE; wIdx++)
+    int16_t height = 1 << ( hIdx + GEO_MIN_CU_LOG2 );
+    for( int wIdx = 0; wIdx < GEO_NUM_CU_SIZE; wIdx++ )
     {
-      int16_t width = 1 << (wIdx + GEO_MIN_CU_LOG2);
+      int16_t width = 1 << ( wIdx + GEO_MIN_CU_LOG2 );
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-      for (int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; splitDir++)
+      for( int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; splitDir++ )
 #else
-      for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+      for( int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++ )
 #endif
       {
-        int16_t angle = g_geoParams[splitDir][0];
-        int16_t distance = g_geoParams[splitDir][1];
-        int16_t offsetX = (GEO_WEIGHT_MASK_SIZE - width) >> 1;
-        int16_t offsetY = (GEO_WEIGHT_MASK_SIZE - height) >> 1;
-        if (distance > 0)
+        int16_t angle = g_geoParams[ splitDir ][ 0 ];
+        int16_t distance = g_geoParams[ splitDir ][ 1 ];
+        int16_t offsetX = ( GEO_WEIGHT_MASK_SIZE - width ) >> 1;
+        int16_t offsetY = ( GEO_WEIGHT_MASK_SIZE - height ) >> 1;
+        if( distance > 0 )
         {
-          if (angle % 16 == 8 || (angle % 16 != 0 && height >= width))
+          if( angle % 16 == 8 || ( angle % 16 != 0 && height >= width ) )
           {
-            offsetY += angle < 16 ? ((distance * (int32_t)height) >> 3) : -((distance * (int32_t)height) >> 3);
+            offsetY += angle < 16 ? ( ( distance * ( int32_t ) height ) >> 3 ) : -( ( distance * ( int32_t ) height ) >> 3 );
           }
           else
           {
-            offsetX += angle < 16 ? ((distance * (int32_t)width) >> 3) : -((distance * (int32_t)width) >> 3);
+            offsetX += angle < 16 ? ( ( distance * ( int32_t ) width ) >> 3 ) : -( ( distance * ( int32_t ) width ) >> 3 );
           }
         }
-        g_weightOffset[splitDir][hIdx][wIdx][0] = offsetX;
-        g_weightOffset[splitDir][hIdx][wIdx][1] = offsetY;
+        g_weightOffset[ splitDir ][ hIdx ][ wIdx ][ 0 ] = offsetX;
+        g_weightOffset[ splitDir ][ hIdx ][ wIdx ][ 1 ] = offsetY;
       }
     }
   }
 #if JVET_AB0155_SGPM
-  for (int hIdx = 0; hIdx < GEO_NUM_CU_SIZE_EX; hIdx++)
+  for( int hIdx = 0; hIdx < GEO_NUM_CU_SIZE_EX; hIdx++ )
   {
-    int16_t height = 1 << (hIdx + GEO_MIN_CU_LOG2_EX);
-    for (int wIdx = 0; wIdx < GEO_NUM_CU_SIZE_EX; wIdx++)
+    int16_t height = 1 << ( hIdx + GEO_MIN_CU_LOG2_EX );
+    for( int wIdx = 0; wIdx < GEO_NUM_CU_SIZE_EX; wIdx++ )
     {
-      int16_t width = 1 << (wIdx + GEO_MIN_CU_LOG2_EX);
+      int16_t width = 1 << ( wIdx + GEO_MIN_CU_LOG2_EX );
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-      for (int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; splitDir++)
+      for( int splitDir = 0; splitDir < GEO_TOTAL_NUM_PARTITION_MODE; splitDir++ )
 #else
-      for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+      for( int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++ )
 #endif
       {
-        int16_t angle = g_geoParams[splitDir][0];
-        int16_t distance = g_geoParams[splitDir][1];
-        int16_t offsetX = (GEO_WEIGHT_MASK_SIZE - width) >> 1;
-        int16_t offsetY = (GEO_WEIGHT_MASK_SIZE - height) >> 1;
-        if (distance > 0)
+        int16_t angle = g_geoParams[ splitDir ][ 0 ];
+        int16_t distance = g_geoParams[ splitDir ][ 1 ];
+        int16_t offsetX = ( GEO_WEIGHT_MASK_SIZE - width ) >> 1;
+        int16_t offsetY = ( GEO_WEIGHT_MASK_SIZE - height ) >> 1;
+        if( distance > 0 )
         {
-          if (angle % 16 == 8 || (angle % 16 != 0 && height >= width))
+          if( angle % 16 == 8 || ( angle % 16 != 0 && height >= width ) )
           {
-            offsetY += angle < 16 ? ((distance * (int32_t)height) >> 3) : -((distance * (int32_t)height) >> 3);
+            offsetY += angle < 16 ? ( ( distance * ( int32_t ) height ) >> 3 ) : -( ( distance * ( int32_t ) height ) >> 3 );
           }
           else
           {
-            offsetX += angle < 16 ? ((distance * (int32_t)width) >> 3) : -((distance * (int32_t)width) >> 3);
+            offsetX += angle < 16 ? ( ( distance * ( int32_t ) width ) >> 3 ) : -( ( distance * ( int32_t ) width ) >> 3 );
           }
         }
-        g_weightOffsetEx[splitDir][hIdx][wIdx][0] = offsetX;
-        g_weightOffsetEx[splitDir][hIdx][wIdx][1] = offsetY;
+        g_weightOffsetEx[ splitDir ][ hIdx ][ wIdx ][ 0 ] = offsetX;
+        g_weightOffsetEx[ splitDir ][ hIdx ][ wIdx ][ 1 ] = offsetY;
       }
     }
   }
@@ -6194,30 +6260,30 @@ void initGeoTemplate()
 
 int16_t** g_geoParams;
 #if JVET_AB0155_SGPM
-int16_t* g_geoWeights[TOTAL_GEO_BLENDING_NUM][GEO_NUM_PRESTORED_MASK];
-int      g_bld2Width[TOTAL_GEO_BLENDING_NUM] = { 1, 2, 4, 8, 16, 32 };
+int16_t* g_geoWeights[ TOTAL_GEO_BLENDING_NUM ][ GEO_NUM_PRESTORED_MASK ];
+int      g_bld2Width[ TOTAL_GEO_BLENDING_NUM ] = { 1, 2, 4, 8, 16, 32 };
 #elif JVET_AA0058_GPM_ADAPTIVE_BLENDING
-int16_t* g_geoWeights[GEO_BLENDING_NUM][GEO_NUM_PRESTORED_MASK];
-int       g_bld2Width[GEO_BLENDING_NUM] = { 1, 2, 4, 8, 16 };
+int16_t* g_geoWeights[ GEO_BLENDING_NUM ][ GEO_NUM_PRESTORED_MASK ];
+int       g_bld2Width[ GEO_BLENDING_NUM ] = { 1, 2, 4, 8, 16 };
 #else
-int16_t* g_geoWeights[GEO_NUM_PRESTORED_MASK];
+int16_t* g_geoWeights[ GEO_NUM_PRESTORED_MASK ];
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_AB0155_SGPM
-Pel* g_geoWeightsTpl[GEO_NUM_PRESTORED_MASK];
+Pel* g_geoWeightsTpl[ GEO_NUM_PRESTORED_MASK ];
 #endif
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
-Pel* g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
+Pel* g_geoEncSadMask[ GEO_NUM_PRESTORED_MASK ];
 #else
-int16_t* g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
+int16_t* g_geoEncSadMask[ GEO_NUM_PRESTORED_MASK ];
 #endif
 #if JVET_AB0155_SGPM
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-int16_t g_weightOffsetEx[GEO_TOTAL_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE_EX][GEO_NUM_CU_SIZE_EX][2];
+int16_t g_weightOffsetEx[ GEO_TOTAL_NUM_PARTITION_MODE ][ GEO_NUM_CU_SIZE_EX ][ GEO_NUM_CU_SIZE_EX ][ 2 ];
 #else
-int16_t g_weightOffsetEx[GEO_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE_EX][GEO_NUM_CU_SIZE_EX][2];
+int16_t g_weightOffsetEx[ GEO_NUM_PARTITION_MODE ][ GEO_NUM_CU_SIZE_EX ][ GEO_NUM_CU_SIZE_EX ][ 2 ];
 #endif
 #if !JVET_AJ0107_GPM_SHAPE_ADAPT
-int8_t g_sgpmSplitDir[GEO_NUM_PARTITION_MODE] = {
+int8_t g_sgpmSplitDir[ GEO_NUM_PARTITION_MODE ] = {
 1,1,0,0,0,0,1,0,
 1,0,1,0,1,0,1,0,
 1,0,1,1,1,0,1,0,
@@ -6232,7 +6298,7 @@ int8_t g_sgpmSplitDir[GEO_NUM_PARTITION_MODE] = {
 
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
 // Shape-dependent indices for 'regular GPM'
-int8_t g_gpmSplitDir[GEO_NUM_CU_SHAPES][GEO_NUM_PARTITION_MODE] = {
+int8_t g_gpmSplitDir[ GEO_NUM_CU_SHAPES ][ GEO_NUM_PARTITION_MODE ] = {
 {1, 3, 64, 66, 33, 35, 88, 90, 4, 7, 69, 60, 63, 111, 8, 11, 72, 56, 59, 108, 12, 15, 75, 52, 55, 105, 5, 67, 61, 109, 9, 70, 57, 106, 13, 73, 53, 103, 16, 17, 19, 76, 78, 48, 49, 51, 100, 102, 6, 68, 62, 110, 10, 71, 58, 107, 14, 74, 54, 104, 18, 77, 50, 101},
 {1, 3, 64, 66, 33, 35, 88, 90, 8, 11, 72, 56, 59, 108, 12, 15, 75, 52, 55, 105, 4, 7, 69, 60, 63, 111, 9, 70, 57, 106, 13, 73, 53, 103, 5, 67, 61, 109, 20, 21, 23, 79, 81, 44, 45, 47, 97, 99, 10, 71, 58, 107, 14, 74, 54, 104, 6, 68, 62, 110, 22, 80, 46, 98},
 {1, 3, 64, 66, 33, 35, 88, 90, 12, 15, 75, 52, 55, 105, 16, 19, 78, 48, 51, 102, 8, 11, 72, 56, 59, 108, 13, 73, 53, 103, 17, 76, 49, 100, 9, 70, 57, 106, 4, 5, 7, 67, 69, 60, 61, 63, 109, 111, 14, 74, 54, 104, 18, 77, 50, 101, 10, 71, 58, 107, 6, 68, 62, 110},
@@ -6241,36 +6307,36 @@ int8_t g_gpmSplitDir[GEO_NUM_CU_SHAPES][GEO_NUM_PARTITION_MODE] = {
 {1, 3, 64, 66, 33, 35, 88, 90, 24, 27, 84, 40, 43, 96, 28, 31, 87, 36, 39, 93, 20, 23, 81, 44, 47, 99, 25, 82, 41, 94, 29, 85, 37, 91, 21, 79, 45, 97, 16, 17, 19, 76, 78, 48, 49, 51, 100, 102, 26, 83, 42, 95, 30, 86, 38, 92, 22, 80, 46, 98, 18, 77, 50, 101},
 {1, 3, 64, 66, 33, 35, 88, 90, 28, 31, 87, 36, 39, 93, 20, 23, 81, 44, 47, 99, 24, 27, 84, 40, 43, 96, 29, 85, 37, 91, 21, 79, 45, 97, 25, 82, 41, 94, 16, 17, 19, 76, 78, 48, 49, 51, 100, 102, 30, 86, 38, 92, 14, 74, 54, 104, 26, 83, 42, 95, 18, 77, 50, 101} };
 // Fixed-shape indices for IBC-GPM and SGPM
-int8_t g_sgpmSplitDir[SGPM_TOTAL_NUM_PARTITIONS] = { 1, 3, 12, 14, 16, 18, 20, 22, 33, 35, 44, 46, 48, 50, 52, 54, 64, 66, 74, 77, 80, 88, 90, 98, 101, 104 };
-int8_t g_ibcGpmSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM] = { 1, 3, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 33, 35, 44, 45, 47, 48, 49, 51, 52, 53, 55, 56, 57, 59, 64, 66, 70, 72, 73, 75, 76, 78, 79, 81, 88, 90, 97, 99, 100, 102, 103, 105, 106, 108 };
-int8_t g_ibcGpmSplitDirFirstSetRank[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM] = { 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0 };
+int8_t g_sgpmSplitDir[ SGPM_TOTAL_NUM_PARTITIONS ] = { 1, 3, 12, 14, 16, 18, 20, 22, 33, 35, 44, 46, 48, 50, 52, 54, 64, 66, 74, 77, 80, 88, 90, 98, 101, 104 };
+int8_t g_ibcGpmSplitDir[ IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM ] = { 1, 3, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 33, 35, 44, 45, 47, 48, 49, 51, 52, 53, 55, 56, 57, 59, 64, 66, 70, 72, 73, 75, 76, 78, 79, 81, 88, 90, 97, 99, 100, 102, 103, 105, 106, 108 };
+int8_t g_ibcGpmSplitDirFirstSetRank[ IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM ] = { 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0 };
 #endif
 
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-int16_t   g_weightOffset[GEO_TOTAL_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
-int8_t    g_angle2mask[GEO_NUM_ANGLES] = { 0,  1, 2, 3, 4, 5,  6, 7, 8, 7,  6, 5, 4, 3, 2,  1, 0,  1, 2, 3, 4, 5,  6, 7, 8, 7,  6, 5, 4, 3, 2,  1 };
+int16_t   g_weightOffset[ GEO_TOTAL_NUM_PARTITION_MODE ][ GEO_NUM_CU_SIZE ][ GEO_NUM_CU_SIZE ][ 2 ];
+int8_t    g_angle2mask[ GEO_NUM_ANGLES ] = { 0,  1, 2, 3, 4, 5,  6, 7, 8, 7,  6, 5, 4, 3, 2,  1, 0,  1, 2, 3, 4, 5,  6, 7, 8, 7,  6, 5, 4, 3, 2,  1 };
 #else
-int16_t   g_weightOffset[GEO_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
-int8_t    g_angle2mask[GEO_NUM_ANGLES] = { 0, -1, 1, 2, 3, 4, -1, -1, 5, -1, -1, 4, 3, 2, 1, -1, 0, -1, 1, 2, 3, 4, -1, -1, 5, -1, -1, 4, 3, 2, 1, -1 };
+int16_t   g_weightOffset[ GEO_NUM_PARTITION_MODE ][ GEO_NUM_CU_SIZE ][ GEO_NUM_CU_SIZE ][ 2 ];
+int8_t    g_angle2mask[ GEO_NUM_ANGLES ] = { 0, -1, 1, 2, 3, 4, -1, -1, 5, -1, -1, 4, 3, 2, 1, -1, 0, -1, 1, 2, 3, 4, -1, -1, 5, -1, -1, 4, 3, 2, 1, -1 };
 #endif
-int8_t    g_dis[GEO_NUM_ANGLES] = { 8, 8, 8, 8, 4, 4, 2, 1, 0, -1, -2, -4, -4, -8, -8, -8, -8, -8, -8, -8, -4, -4, -2, -1, 0, 1, 2, 4, 4, 8, 8, 8 };
-int8_t    g_angle2mirror[GEO_NUM_ANGLES] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2 };
+int8_t    g_dis[ GEO_NUM_ANGLES ] = { 8, 8, 8, 8, 4, 4, 2, 1, 0, -1, -2, -4, -4, -8, -8, -8, -8, -8, -8, -8, -4, -4, -2, -1, 0, 1, 2, 4, 4, 8, 8, 8 };
+int8_t    g_angle2mirror[ GEO_NUM_ANGLES ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2 };
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-int8_t    g_geoAngle2IntraAng[GEO_NUM_ANGLES] = { 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54, 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54 };
+int8_t    g_geoAngle2IntraAng[ GEO_NUM_ANGLES ] = { 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54, 50,46, 44, 41, 34, 27,23, 21, 18, 15,13, 9, 66, 59, 56,54 };
 #else
-int8_t    g_geoAngle2IntraAng[GEO_NUM_ANGLES] = { 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0, 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0 };
+int8_t    g_geoAngle2IntraAng[ GEO_NUM_ANGLES ] = { 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0, 50, 0, 44, 41, 34, 27, 0, 0, 18, 0, 0, 9, 66, 59, 56, 0 };
 #endif
 #endif
 
 
 #if MULTI_HYP_PRED
-const int g_addHypWeight[MULTI_HYP_PRED_NUM_WEIGHTS] = { 2, -1 };
-static_assert(g_bcwLog2WeightBase == MULTI_HYP_PRED_WEIGHT_BITS, "number of bits for gbi and multi-hyp weights do not match");
+const int g_addHypWeight[ MULTI_HYP_PRED_NUM_WEIGHTS ] = { 2, -1 };
+static_assert( g_bcwLog2WeightBase == MULTI_HYP_PRED_WEIGHT_BITS, "number of bits for gbi and multi-hyp weights do not match" );
 #endif
 #if (JVET_W0097_GPM_MMVD_TM && TM_MRG) || JVET_Y0065_GPM_INTRA
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
-uint8_t g_geoTmShape[2][GEO_NUM_ANGLES] = {
+uint8_t g_geoTmShape[ 2 ][ GEO_NUM_ANGLES ] = {
                                           { GEO_TM_SHAPE_A,  GEO_TM_SHAPE_A,  GEO_TM_SHAPE_A,  GEO_TM_SHAPE_A,
                                             GEO_TM_SHAPE_A,  GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL,
                                             GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL,
@@ -6288,7 +6354,7 @@ uint8_t g_geoTmShape[2][GEO_NUM_ANGLES] = {
                                             GEO_TM_SHAPE_L,  GEO_TM_SHAPE_L,  GEO_TM_SHAPE_L,  GEO_TM_SHAPE_L,
                                             GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL, GEO_TM_SHAPE_AL, } };
 #else
-uint8_t g_geoTmShape[2][GEO_NUM_ANGLES] = {
+uint8_t g_geoTmShape[ 2 ][ GEO_NUM_ANGLES ] = {
                                           { GEO_TM_SHAPE_A,  0,               GEO_TM_SHAPE_A,  GEO_TM_SHAPE_A,
                                             GEO_TM_SHAPE_A,  GEO_TM_SHAPE_AL, 0,               0,
                                             GEO_TM_SHAPE_AL, 0,               0,               GEO_TM_SHAPE_AL,
@@ -6308,42 +6374,42 @@ uint8_t g_geoTmShape[2][GEO_NUM_ANGLES] = {
 #endif
 #endif
 #if JVET_W0066_CCSAO
-const int8_t g_ccSaoCandPosX[MAX_NUM_LUMA_COMP][MAX_CCSAO_CAND_POS_Y] = { {-1,  0,  1, -1,  0,  1, -1,  0,  1} };
-const int8_t g_ccSaoCandPosY[MAX_NUM_LUMA_COMP][MAX_CCSAO_CAND_POS_Y] = { {-1, -1, -1,  0,  0,  0,  1,  1,  1} };
+const int8_t g_ccSaoCandPosX[ MAX_NUM_LUMA_COMP ][ MAX_CCSAO_CAND_POS_Y ] = { {-1,  0,  1, -1,  0,  1, -1,  0,  1} };
+const int8_t g_ccSaoCandPosY[ MAX_NUM_LUMA_COMP ][ MAX_CCSAO_CAND_POS_Y ] = { {-1, -1, -1,  0,  0,  0,  1,  1,  1} };
 #endif
 #if JVET_Y0106_CCSAO_EDGE_CLASSIFIER
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
-const int8_t g_ccSaoEdgePosX[MAX_CCSAO_EDGE_DIR][2] = { { -1,  1 }, {  0,  0 }, { -1,  1 }, {  1, -1 } };
-const int8_t g_ccSaoEdgePosY[MAX_CCSAO_EDGE_DIR][2] = { {  0,  0 }, { -1,  1 }, { -1,  1 }, { -1,  1 } };
-const short  g_ccSaoEdgeThr[MAX_CCSAO_EDGE_IDC][MAX_CCSAO_EDGE_THR]
+const int8_t g_ccSaoEdgePosX[ MAX_CCSAO_EDGE_DIR ][ 2 ] = { { -1,  1 }, {  0,  0 }, { -1,  1 }, {  1, -1 } };
+const int8_t g_ccSaoEdgePosY[ MAX_CCSAO_EDGE_DIR ][ 2 ] = { {  0,  0 }, { -1,  1 }, { -1,  1 }, { -1,  1 } };
+const short  g_ccSaoEdgeThr[ MAX_CCSAO_EDGE_IDC ][ MAX_CCSAO_EDGE_THR ]
 = { {   2,   4,   6,   8,  10,  14,  18,  22,  30,  38,  54,  70,  86, 118, 150, 182},
     {  -4,   4,  -8,   8, -14,  14, -22,  22, -38,  38, -70,  70,-118, 118,-182, 182} };
-const int8_t g_ccSaoEdgeNum[MAX_CCSAO_EDGE_IDC][2] = { {16, 4}, { 4, 2} };
-const int8_t g_ccSaoBandTab[MAX_CCSAO_BAND_IDC][2] = { {COMPONENT_Y, 1}, {COMPONENT_Y, 2}, {COMPONENT_Y, 3}, {COMPONENT_Y, 4}, {COMPONENT_Y, 5}, {COMPONENT_Y, 6}, {COMPONENT_Y,  7}, {COMPONENT_Y,  8},
+const int8_t g_ccSaoEdgeNum[ MAX_CCSAO_EDGE_IDC ][ 2 ] = { {16, 4}, { 4, 2} };
+const int8_t g_ccSaoBandTab[ MAX_CCSAO_BAND_IDC ][ 2 ] = { {COMPONENT_Y, 1}, {COMPONENT_Y, 2}, {COMPONENT_Y, 3}, {COMPONENT_Y, 4}, {COMPONENT_Y, 5}, {COMPONENT_Y, 6}, {COMPONENT_Y,  7}, {COMPONENT_Y,  8},
                                                         {COMPONENT_Y, 9}, {COMPONENT_Y,10}, {COMPONENT_Y,11}, {COMPONENT_Y,12}, {COMPONENT_Y,13}, {COMPONENT_Y,14}, {COMPONENT_Cb, 2}, {COMPONENT_Cr, 2} };
 #else
-const int8_t g_ccSaoEdgeTypeX[CCSAO_EDGE_TYPE][2] = { { -1, 1 }, { 0, 0 }, { -1, 1 }, { 1, -1 } };
-const int8_t g_ccSaoEdgeTypeY[CCSAO_EDGE_TYPE][2] = { { 0, 0 }, { -1, 1 }, { -1, 1 }, { -1, 1 } };
-const short  g_ccSaoQuanValue[CCSAO_QUAN_NUM] = { 2, 4, 6, 8, 10, 14, 18, 22, 30, 38, 54, 70, 86, 118, 150, 182 };
+const int8_t g_ccSaoEdgeTypeX[ CCSAO_EDGE_TYPE ][ 2 ] = { { -1, 1 }, { 0, 0 }, { -1, 1 }, { 1, -1 } };
+const int8_t g_ccSaoEdgeTypeY[ CCSAO_EDGE_TYPE ][ 2 ] = { { 0, 0 }, { -1, 1 }, { -1, 1 }, { -1, 1 } };
+const short  g_ccSaoQuanValue[ CCSAO_QUAN_NUM ] = { 2, 4, 6, 8, 10, 14, 18, 22, 30, 38, 54, 70, 86, 118, 150, 182 };
 #endif
 #endif
 #if JVET_AC0130_NSPT
-const uint8_t g_nsptLut[97] =
+const uint8_t g_nsptLut[ 97 ] =
 {  // 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2
 };
 #endif
 #if JVET_V0130_INTRA_TMP
-unsigned int g_uiDepth2Width[5] = { 4, 8, 16, 32, 64 };
+unsigned int g_uiDepth2Width[ 5 ] = { 4, 8, 16, 32, 64 };
 #endif
 #if JVET_X0149_TIMD_DIMD_LUT
-int g_gradDivTable[16] = { 0, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 1, 1, 0 };
+int g_gradDivTable[ 16 ] = { 0, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 1, 1, 0 };
 #endif
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
-int g_rmvfMultApproxTbl[3 << sizeof(int64_t)];
+int g_rmvfMultApproxTbl[ 3 << sizeof( int64_t ) ];
 #endif
 #if JVET_AA0126_GLM
-const int8_t g_glmPattern[NUM_GLM_PATTERN][6] =
+const int8_t g_glmPattern[ NUM_GLM_PATTERN ][ 6 ] =
 {
   {  1,  0, -1,  1,  0, -1, }, {  1,  2,  1, -1, -2, -1, }, {  2,  1, -1,  1, -1, -2, }, { -1,  1,  2, -2, -1,  1, },
 #if !JVET_AA0057_CCCM
@@ -6355,7 +6421,7 @@ const int8_t g_glmPattern[NUM_GLM_PATTERN][6] =
 #endif
 #if JVET_AC0112_IBC_GPM
 #if !JVET_AJ0107_GPM_SHAPE_ADAPT
-const int8_t g_ibcGpmFirstSetSplitDirToIdx[GEO_NUM_PARTITION_MODE] = {
+const int8_t g_ibcGpmFirstSetSplitDirToIdx[ GEO_NUM_PARTITION_MODE ] = {
 0,1,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,
 0,0,2,3,0,0,0,0,
@@ -6365,8 +6431,8 @@ const int8_t g_ibcGpmFirstSetSplitDirToIdx[GEO_NUM_PARTITION_MODE] = {
 0,0,6,7,0,0,0,0,
 0,0,0,0,0,0,0,0
 };
-const int8_t g_ibcGpmFirstSetSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM] = { 0, 1, 18, 19, 36, 37, 50, 51 };
-const int8_t g_ibcGpmSecondSetSplitDir[GEO_NUM_PARTITION_MODE] = {
+const int8_t g_ibcGpmFirstSetSplitDir[ IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM ] = { 0, 1, 18, 19, 36, 37, 50, 51 };
+const int8_t g_ibcGpmSecondSetSplitDir[ GEO_NUM_PARTITION_MODE ] = {
 0,0,1,1,0,1,1,1,
 0,1,1,1,0,1,1,1,
 0,1,0,0,1,1,0,1,
@@ -6380,56 +6446,56 @@ const int8_t g_ibcGpmSecondSetSplitDir[GEO_NUM_PARTITION_MODE] = {
 #endif
 
 #if JVET_AG0098_AMVP_WITH_SBTMVP
-const int8_t g_amvpSbTmvp_mvd_dir[2][8] = { { 1, -1,  0,  0,  1, -1,  1, -1 },
+const int8_t g_amvpSbTmvp_mvd_dir[ 2 ][ 8 ] = { { 1, -1,  0,  0,  1, -1,  1, -1 },
                                             { 0,  0,  1, -1,  1, -1, -1,  1 } };
-const int8_t g_amvpSbTmvp_mvd_offset[6] = { 4, 8, 12, 16, 24, 32 };
+const int8_t g_amvpSbTmvp_mvd_offset[ 6 ] = { 4, 8, 12, 16, 24, 32 };
 uint32_t g_picAmvpSbTmvpEnabledArea = 0;
 #endif
 
 #if JVET_AG0276_LIC_SLOPE_ADJUST
-const int g_licSlopeDeltaSet[LIC_SLOPE_MAX_NUM_DELTA + 1] = { 0, 1, -1 };
+const int g_licSlopeDeltaSet[ LIC_SLOPE_MAX_NUM_DELTA + 1 ] = { 0, 1, -1 };
 #endif
 
 #if JVET_AJ0061_TIMD_MERGE
-uint64_t g_timdMrgCost[EXT_VDIA_IDX + 1];
+uint64_t g_timdMrgCost[ EXT_VDIA_IDX + 1 ];
 static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> timdMergeOffsetXTable()
 {
-  std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> tab {{{0}}};
-  for (size_t widthLog2MinusMinCU = 0; widthLog2MinusMinCU < MAX_CU_DEPTH - MIN_CU_LOG2 + 1; widthLog2MinusMinCU++)
+  std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> tab{ {{0}} };
+  for( size_t widthLog2MinusMinCU = 0; widthLog2MinusMinCU < MAX_CU_DEPTH - MIN_CU_LOG2 + 1; widthLog2MinusMinCU++ )
   {
     size_t i = 0;
-    const PosType width = 1 << (widthLog2MinusMinCU + MIN_CU_LOG2);
+    const PosType width = 1 << ( widthLog2MinusMinCU + MIN_CU_LOG2 );
     int       offsetX = 0;
     int offsetX2 = width >> 1;
-    const int numNACandidate[7] = { 11, 13, 10, 2, 2, 2, 2 };
-    const int idxMap[7][15] = { {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12}, {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14}, {0, 1, 3, 4, 5, 6, 7, 8, 11, 12}, {0, 1}, {0, 1}, {0, 1}, {0, 1} };
-    for (int iDistanceIndex = 0; iDistanceIndex < 7; iDistanceIndex++)
+    const int numNACandidate[ 7 ] = { 11, 13, 10, 2, 2, 2, 2 };
+    const int idxMap[ 7 ][ 15 ] = { {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12}, {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14}, {0, 1, 3, 4, 5, 6, 7, 8, 11, 12}, {0, 1}, {0, 1}, {0, 1}, {0, 1} };
+    for( int iDistanceIndex = 0; iDistanceIndex < 7; iDistanceIndex++ )
     {
-      const int iNADistanceHor = width * (iDistanceIndex + 1);
+      const int iNADistanceHor = width * ( iDistanceIndex + 1 );
       const int offsetX0 = -iNADistanceHor - 1;
       const int offsetX1 = width + iNADistanceHor - 1;
-      for (int iNASPIdx = 0; iNASPIdx < numNACandidate[iDistanceIndex]; iNASPIdx++)
+      for( int iNASPIdx = 0; iNASPIdx < numNACandidate[ iDistanceIndex ]; iNASPIdx++ )
       {
-        switch (idxMap[iDistanceIndex][iNASPIdx])
+        switch( idxMap[ iDistanceIndex ][ iNASPIdx ] )
         {                                                                             // Angle CCW from (1,0), approx.
         case 0:  offsetX = offsetX2;                                        break;  //  90
         case 1:  offsetX = offsetX0;                                        break;  // 180
         case 2:  offsetX = offsetX0;                                        break;  // 135
         case 3:  offsetX = offsetX0;                                        break;  // 157.5
-        case 4:  offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 112.5
+        case 4:  offsetX = ( offsetX0 + offsetX2 ) >> 1;                      break;  // 112.5
         case 5:  offsetX = offsetX0;                                        break;  // 146.25
-        case 6:  offsetX = ((offsetX2 + (offsetX0 + offsetX2)) >> 1) >> 1;  break;  // 123.75
+        case 6:  offsetX = ( ( offsetX2 + ( offsetX0 + offsetX2 ) ) >> 1 ) >> 1;  break;  // 123.75
         case 7:  offsetX = offsetX1;                                        break;  //   0
         case 8:  offsetX = -1;                                              break;  // 270
         case 9:  offsetX = offsetX1;                                        break;  //  45
         case 10: offsetX = offsetX0;                                        break;  // 215
-        case 11: offsetX = (offsetX2 + offsetX1) >> 1;                      break;  //  67.5
+        case 11: offsetX = ( offsetX2 + offsetX1 ) >> 1;                      break;  //  67.5
         case 12: offsetX = offsetX0;                                        break;  // 197.5
         case 13: offsetX = offsetX1;                                        break;  //  22.5
-        case 14: offsetX = (offsetX0 + offsetX2) >> 1;                      break;  // 242.5
-        default: printf("error!"); exit(0);                                 break;
+        case 14: offsetX = ( offsetX0 + offsetX2 ) >> 1;                      break;  // 242.5
+        default: printf( "error!" ); exit( 0 );                                 break;
         }
-        tab[widthLog2MinusMinCU][i++] = offsetX;
+        tab[ widthLog2MinusMinCU ][ i++ ] = offsetX;
       }
     }
   }
@@ -6439,42 +6505,42 @@ const std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH -
 
 static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> timdMergeOffsetYTable()
 {
-  std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> tab {{{0}}};
-  for (size_t heightLog2MinusMinCU = 0; heightLog2MinusMinCU < MAX_CU_DEPTH - MIN_CU_LOG2 + 1; heightLog2MinusMinCU++)
+  std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> tab{ {{0}} };
+  for( size_t heightLog2MinusMinCU = 0; heightLog2MinusMinCU < MAX_CU_DEPTH - MIN_CU_LOG2 + 1; heightLog2MinusMinCU++ )
   {
     size_t i = 0;
-    const PosType height = 1 << (heightLog2MinusMinCU + MIN_CU_LOG2);
+    const PosType height = 1 << ( heightLog2MinusMinCU + MIN_CU_LOG2 );
     int       offsetY = 0;
     int offsetY2 = height >> 1;
-    const int numNACandidate[7] = { 11, 13, 10, 2, 2, 2, 2 };
-    const int idxMap[7][15] = { {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12}, {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14}, {0, 1, 3, 4, 5, 6, 7, 8, 11, 12}, {0, 1}, {0, 1}, {0, 1}, {0, 1} };
-    for (int iDistanceIndex = 0; iDistanceIndex < 7; iDistanceIndex++)
+    const int numNACandidate[ 7 ] = { 11, 13, 10, 2, 2, 2, 2 };
+    const int idxMap[ 7 ][ 15 ] = { {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12}, {0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14}, {0, 1, 3, 4, 5, 6, 7, 8, 11, 12}, {0, 1}, {0, 1}, {0, 1}, {0, 1} };
+    for( int iDistanceIndex = 0; iDistanceIndex < 7; iDistanceIndex++ )
     {
-      const int iNADistanceVer = height * (iDistanceIndex + 1);
+      const int iNADistanceVer = height * ( iDistanceIndex + 1 );
       const int offsetY0 = height + iNADistanceVer - 1;
       const int offsetY1 = -iNADistanceVer - 1;
-      for (int iNASPIdx = 0; iNASPIdx < numNACandidate[iDistanceIndex]; iNASPIdx++)
+      for( int iNASPIdx = 0; iNASPIdx < numNACandidate[ iDistanceIndex ]; iNASPIdx++ )
       {
-        switch (idxMap[iDistanceIndex][iNASPIdx])
+        switch( idxMap[ iDistanceIndex ][ iNASPIdx ] )
         {                                                                             // Angle CCW from (1,0), approx.
         case 0:  offsetY = offsetY1;                                        break;  // 90
         case 1:  offsetY = offsetY2;                                        break;  // 180
         case 2:  offsetY = offsetY1;                                        break;  // 135
-        case 3:  offsetY = (offsetY1 + offsetY2) >> 1;                      break;  // 157.5
+        case 3:  offsetY = ( offsetY1 + offsetY2 ) >> 1;                      break;  // 157.5
         case 4:  offsetY = offsetY1;                                        break;  // 112.5
-        case 5:  offsetY = ((offsetY2 + (offsetY1 + offsetY2)) >> 1) >> 1;  break;  // 146.25
+        case 5:  offsetY = ( ( offsetY2 + ( offsetY1 + offsetY2 ) ) >> 1 ) >> 1;  break;  // 146.25
         case 6:  offsetY = offsetY1;                                        break;  // 123.75
         case 7:  offsetY = -1;                                              break;  //   0
         case 8:  offsetY = offsetY0;                                        break;  // 270
         case 9:  offsetY = offsetY1;                                        break;  //  45
         case 10: offsetY = offsetY0;                                        break;  // 215
         case 11: offsetY = offsetY1;                                        break;  //  67.5
-        case 12: offsetY = (offsetY2 + offsetY0) >> 1;                      break;  // 197.5
-        case 13: offsetY = (offsetY1 + offsetY2) >> 1;                      break;  //  22.5
+        case 12: offsetY = ( offsetY2 + offsetY0 ) >> 1;                      break;  // 197.5
+        case 13: offsetY = ( offsetY1 + offsetY2 ) >> 1;                      break;  //  22.5
         case 14: offsetY = offsetY0;                                        break;  // 242.5
-        default: printf("error!"); exit(0);                                 break;
+        default: printf( "error!" ); exit( 0 );                                 break;
         }
-        tab[heightLog2MinusMinCU][i++] = offsetY;
+        tab[ heightLog2MinusMinCU ][ i++ ] = offsetY;
       }
     }
   }
