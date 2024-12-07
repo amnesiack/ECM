@@ -335,8 +335,8 @@ public:
 #if JVET_AH0209_PDP
   Pel* m_pdpIntraPredBufIP[NUM_LUMA_MODE];
   bool m_pdpIntraPredReady[NUM_LUMA_MODE];
-  Pel  m_ref[256] = {0};
-  Pel  m_refShort[256] = {0};
+  Pel  m_ref[ MAX_PDP_SIZE * 6 ];
+  Pel  m_refShort[ MAX_PDP_SIZE * 6 ];
   bool m_refAvailable;
 #endif
 

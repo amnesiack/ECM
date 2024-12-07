@@ -201,10 +201,15 @@ IntraPrediction::IntraPrediction()
   }
 #endif
 #if JVET_AH0209_PDP
-  for (int i = 0; i < NUM_LUMA_MODE; i++)
+  for( int i = 0; i < NUM_LUMA_MODE; i++ )
   {
-    m_pdpIntraPredReady[i] = false;
+    m_pdpIntraPredBufIP[ i ] = nullptr;
   }
+
+  std::memset( m_pdpIntraPredReady, 0, sizeof( m_pdpIntraPredReady ) );
+  std::memset( m_ref, 0, sizeof( m_ref ) );
+  std::memset( m_refShort, 0, sizeof( m_refShort ) );
+  m_refAvailable = false;
 #endif
 }
 
@@ -1531,8 +1536,10 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       {
         if (pu.cu->cs->pcv->isEncoder && m_pdpIntraPredReady[uiDirMode])
         {
+          CHECK( m_pdpIntraPredBufIP[ uiDirMode ] == nullptr, "PDP predictor unavailable" );
           PelBuf predBuf(m_pdpIntraPredBufIP[uiDirMode], pu.Y());
           piPred.copyFrom(predBuf);
+
           if (!pu.cu->dimd)
           {
             return;
@@ -1720,6 +1727,7 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
         auto modeIdx = puTmp.intraDir[0];
         if (pu.cu->cs->pcv->isEncoder && m_pdpIntraPredReady[puTmp.intraDir[0]])
         {
+          CHECK( m_pdpIntraPredBufIP[ puTmp.intraDir[ 0 ] ] == nullptr, "PDP predictor unavailable" );
           PelBuf predBuf(m_pdpIntraPredBufIP[puTmp.intraDir[0]], pu.Y());
           predAngExtra[i].copyFrom(predBuf);
         }
@@ -6299,7 +6307,11 @@ void IntraPrediction::initIntraPatternChType(const CodingUnit &cu, const CompAre
 #if JVET_AB0157_INTRA_FUSION
 #if JVET_AB0155_SGPM
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-  if (m_ipaParam.fetchRef2nd && applyFusion && !partIdx && !(forceDeac1 && m_refAvailable))
+  if (m_ipaParam.fetchRef2nd && applyFusion && !partIdx && !(forceDeac1 
+#if JVET_AH0209_PDP
+    && m_refAvailable
+#endif
+    ))
 #else
   if (m_ipaParam.fetchRef2nd && applyFusion && !partIdx)
 #endif
@@ -6564,10 +6576,10 @@ bool IntraPrediction::isRefTemplateAvailable(CodingUnit& cu, CompArea& area)
 #endif
 
 #if JVET_AH0209_PDP
-bool xFillReferenceSamplesL(const CPelBuf &refBuf, Pel *ref, int num_template_lines, int w, int h, int pw, int ph)
+bool xFillReferenceSamplesL(const CPelBuf &refBuf, Pel *ref, int numTemplateLines, int w, int h, int pw, int ph)
 {
-  int numMRLLeft = num_template_lines;
-  int numMRLTop = num_template_lines;
+  int numMRLLeft = numTemplateLines;
+  int numMRLTop = numTemplateLines;
 
   // buffer for top neighbors ( corner included )
   int buf1W = numMRLLeft + w;
@@ -6732,14 +6744,10 @@ void IntraPrediction::xFillReferenceSamples2(const CPelBuf &recoBuf, const CompA
 
       if( m_refAvailable )
       {
-        int len = g_sizeData[ sizeID ][ 7 ];
-        ::memset( m_ref, 0, sizeof( Pel ) * len );
-        len = g_sizeData[ sizeID ][ 10 ];
-        ::memset( m_refShort, 0, sizeof( Pel ) * len );
         int padW = ( totalUnits - endUnit ) * 4;
         int padH = startUnit * 4;
-        int sizeW = tuWidth * ( tuWidth == 128 ? 1 : 2 );
-        int sizeH = tuHeight * ( tuHeight == 128 ? 1 : 2 );
+        int sizeW = tuWidth << 1;
+        int sizeH = tuHeight << 1;
 
         CPelBuf refBuf = CPelBuf( recoBuf.buf - numMRLTop * srcStride - numMRLLeft, recoBuf.stride, Size( sizeW + numMRLLeft, sizeH + numMRLTop ) );
         xFillReferenceSamplesL( refBuf, m_ref, numMRLTop, sizeW, sizeH, padW, padH );
@@ -7155,7 +7163,9 @@ void IntraPrediction::xFillReferenceSamples( const CPelBuf &recoBuf, Pel* refBuf
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 void IntraPrediction::xFillReferenceSamplesOBMC( const CPelBuf &recoBuf, Pel* refBufUnfiltered, const CompArea &area, const CodingUnit &cu )
 {
+#if JVET_AH0209_PDP
   m_refAvailable                = false;
+#endif
 
   const ChannelType      chType = toChannelType( area.compID );
   const CodingStructure &cs     = *cu.cs;
