@@ -315,7 +315,7 @@ protected:
 #endif
 
   void xCalculateAddPSNRs(const bool isField, const bool isFieldTopFieldFirst, const int iGOPid, Picture *pcPic,
-                          const AccessUnit &accessUnit, PicList &rcListPic, int64_t dEncTime,
+                          const AccessUnit &accessUnit, PicList &rcListPic, double dEncTime,
                           const InputColourSpaceConversion snr_conversion, const bool printFrameMSE,
 #if MSSIM_UNIFORM_METRICS_LOG
                           const bool printMSSSIM,

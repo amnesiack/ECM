@@ -4716,7 +4716,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 
       //-- For time output for each slice
       auto elapsed = std::chrono::steady_clock::now() - beforeTime;
-      auto encTime = std::chrono::duration_cast<std::chrono::seconds>( elapsed ).count();
+      auto encTime = std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count()/1000.0;
 
 
       std::string digestStr;
@@ -5484,7 +5484,7 @@ double EncGOP::xFindDistortionPlaneWPSNR(const CPelBuf& pic0, const CPelBuf& pic
 #endif
 
 void EncGOP::xCalculateAddPSNRs(const bool isField, const bool isFieldTopFieldFirst, const int iGOPid, Picture *pcPic,
-                                const AccessUnit &accessUnit, PicList &rcListPic, const int64_t dEncTime,
+                                const AccessUnit &accessUnit, PicList &rcListPic, const double dEncTime,
                                 const InputColourSpaceConversion snr_conversion, const bool printFrameMSE,
 #if MSSIM_UNIFORM_METRICS_LOG
                                 const bool printMSSSIM,
@@ -5973,7 +5973,7 @@ void EncGOP::xCalculateAddPSNR(Picture *pcPic, PelUnitBuf cPicD, const AccessUni
       }
     }
 #endif
-    msg( NOTICE, " [ET %5.0f ]", dEncTime );
+    msg( NOTICE, " [ET %5.3f ]", dEncTime );
 
     // msg( SOME, " [WP %d]", pcSlice->getUseWeightedPrediction());
 
