@@ -3571,7 +3571,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 
       //-- For time output for each slice
       auto elapsed = std::chrono::steady_clock::now() - beforeTime;
-      auto encTime = std::chrono::duration_cast<std::chrono::seconds>( elapsed ).count();
+      auto encTime = std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count()/1000.0;
 
       std::string digestStr;
       if (m_pcCfg->getDecodedPictureHashSEIType()!=HASHTYPE_NONE)
@@ -3606,7 +3606,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       m_pcCfg->setEncodedFlag(iGOPid, true);
 
       double PSNR_Y;
-      xCalculateAddPSNRs(isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, encTime, snr_conversion, 
+      xCalculateAddPSNRs(isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, encTime, snr_conversion,
         printFrameMSE, printMSSSIM, &PSNR_Y, isEncodeLtRef );
 
 
@@ -4140,7 +4140,7 @@ double EncGOP::xFindDistortionPlaneWPSNR(const CPelBuf& pic0, const CPelBuf& pic
 
 void EncGOP::xCalculateAddPSNRs( const bool isField, const bool isFieldTopFieldFirst, 
   const int iGOPid, Picture* pcPic, const AccessUnit&accessUnit, PicList &rcListPic, 
-  const int64_t dEncTime, const InputColourSpaceConversion snr_conversion, 
+  const double dEncTime, const InputColourSpaceConversion snr_conversion,
   const bool printFrameMSE, const bool printMSSSIM, double* PSNR_Y, bool isEncodeLtRef)
 {
   xCalculateAddPSNR(pcPic, pcPic->getRecoBuf(), accessUnit, (double)dEncTime, snr_conversion, 
@@ -4576,7 +4576,7 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
       }
     }
 #endif
-    msg( NOTICE, " [ET %5.0f ]", dEncTime );
+    msg( NOTICE, " [ET %5.3f ]", dEncTime );
 
     // msg( SOME, " [WP %d]", pcSlice->getUseWeightedPrediction());
 
