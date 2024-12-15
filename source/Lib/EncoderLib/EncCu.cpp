@@ -4126,7 +4126,7 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #if JVET_AJ0146_TIMDSAD
               if (CU::allowTimdSad(cu))
               {
-                std::sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());
+                std::stable_sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());
                 cu.timdModeSad = m_pcIntraSearch->deriveTimdModeSad(bestCS->picture->getRecoBuf(area), area, cu );
               }
 #endif
@@ -25914,7 +25914,7 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
         );
         if (CU::allowTimdSad(cu) && cu.timdSad)
         {
-          std::sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());
+          std::stable_sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());
           cu.timdModeSad = m_pcIntraSearch->deriveTimdModeSad(bestCS->picture->getRecoBuf(area), area, cu );
           pu->intraDir[0] = cu.timdModeSad;
         }
