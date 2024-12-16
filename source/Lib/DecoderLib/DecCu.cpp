@@ -396,7 +396,7 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
             m_pcIntraPred->m_timdModeCostList.clear();          
             currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU
               , true, false, true );
-            std::sort(m_pcIntraPred->m_timdModeCostList.begin(),m_pcIntraPred->m_timdModeCostList.end());
+            std::stable_sort(m_pcIntraPred->m_timdModeCostList.begin(),m_pcIntraPred->m_timdModeCostList.end());
             currCU.timdModeSad = m_pcIntraPred->deriveTimdModeSad(currCU.cs->picture->getRecoBuf(area), area, currCU);
           }
           else
@@ -425,7 +425,7 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
             m_pcIntraPred->m_timdModeCostList.clear();          
             currCU.timdMode = m_pcIntraPred->deriveTimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU
               , true, false, true );
-            std::sort(m_pcIntraPred->m_timdModeCostList.begin(),m_pcIntraPred->m_timdModeCostList.end());
+            std::stable_sort(m_pcIntraPred->m_timdModeCostList.begin(),m_pcIntraPred->m_timdModeCostList.end());
             currCU.timdModeSad = m_pcIntraPred->deriveTimdModeSad(currCU.cs->picture->getRecoBuf(area), area, currCU);
           }
           else
