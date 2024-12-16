@@ -4741,16 +4741,35 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
 #if JVET_W0123_TIMD_FUSION
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-      if (spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd && (isNnIn ? !(cu.dimd && !cu.obicFlag) : true) && cu.firstPU->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX)
+      if (spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 &&
+#if JVET_AJ0146_TIMDSAD
+        (!cu.timd || cu.timdSad)
 #else
-      if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd )
+        !cu.timd 
+#endif
+        
+       && (isNnIn ? !(cu.dimd && !cu.obicFlag) : true) && cu.firstPU->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX)
+#else
+      if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 
+#if JVET_AJ0146_TIMDSAD
+      (!cu.timd || cu.timdSad)
+#else
+        !cu.timd 
+#endif        
+        )
 #endif
 #else
       if( spsIntraLfnstEnabled && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 )
 #endif
 #else
 #if JVET_W0123_TIMD_FUSION
-      if( sps.getUseLFNST() && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && !cu.timd )
+      if( sps.getUseLFNST() && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 && 
+#if JVET_AJ0146_TIMDSAD
+      (!cu.timd || cu.timdSad)
+#else
+      !cu.timd 
+#endif
+        )
 #else
       if( sps.getUseLFNST() && mtsUsageFlag == 1 && !cu.ispMode && mode >= 0 )
 #endif
