@@ -3535,7 +3535,7 @@ bool PU::hasChromaFusionFlag(const PredictionUnit &pu, int intraMode)
 {
 #if ENABLE_DIMD
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
-  bool hasChromaFusionFlag = pu.cs->slice->getSliceType() == I_SLICE ||  (CS::isDualITree(*pu.cs) || (pu.cu->isSST && pu.cu->separateTree) ) || (pu.cs->sps->getUseDimd() && intraMode == DIMD_CHROMA_IDX);
+  bool hasChromaFusionFlag = pu.cs->slice->getSliceType() == I_SLICE || (CS::isDualITree(*pu.cs) || (pu.cu->isSST && pu.cu->separateTree) ) || (pu.cs->sps->getUseDimd() && intraMode == DIMD_CHROMA_IDX);
 #else
   bool hasChromaFusionFlag = pu.cs->slice->getSliceType() == I_SLICE || (pu.cs->sps->getUseDimd() && intraMode == DIMD_CHROMA_IDX);
 #endif
@@ -33769,7 +33769,7 @@ bool storeContexts( const Slice* slice, const int ctuXPosInCtus, const int ctuYP
 #if JVET_AJ0146_TIMDSAD
 bool CU::allowTimdSad(const CodingUnit& cu)
 {
-  bool allowTimdSad = cu.slice->getSPS()->getUseTimd();;
+  bool allowTimdSad = cu.slice->getSPS()->getUseTimd();
   if (!cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType) || cu.bdpcmMode)
   {
     allowTimdSad = false;
@@ -34090,10 +34090,16 @@ int PU::getNSPTMatrixDim( int width, int height )
 int PU::getNSPTBucket( const TransformUnit &tu )
 {
   const CodingUnit &cu = *tu.cu;
-  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm)
+  if( cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm )
+  {
     return 1;
-  if (cu.tmpFlag || CU::isInter(cu))
+  }
+
+  if( cu.tmpFlag || CU::isInter( cu ) )
+  {
     return 2;
+  }
+
   // Conventional intra mode
   return 0;
 }

@@ -2588,13 +2588,16 @@ void CABACWriter::cu_timd_flag( const CodingUnit& cu )
 
   unsigned ctxId = DeriveCtx::CtxTimdFlag(cu);
   m_BinEncoder.encodeBin(cu.timd, Ctx::TimdFlag(ctxId));
+  DTRACE(g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timd);
+
 #if JVET_AJ0146_TIMDSAD
   if (cu.timd && CU::allowTimdSad(cu))
   {
     m_BinEncoder.encodeBin(cu.timdSad, Ctx::TimdFlagSad());
+
+    DTRACE( g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timdSad=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timdSad );
   }
 #endif  
-  DTRACE(g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timd);
 #if JVET_AJ0061_TIMD_MERGE
   cu_timd_merge_flag(cu);
 #endif
@@ -2619,6 +2622,8 @@ void CABACWriter::cu_timd_merge_flag( const CodingUnit& cu )
   }
   int ctxId = cu.lwidth() * cu.lheight() >= 64 ? 0 : 1;
   m_BinEncoder.encodeBin(cu.timdMrg ? 1 : 0, Ctx::TimdMrgFlag(ctxId));  
+
+  DTRACE( g_trace_ctx, D_SYNTAX, "cu_timd_merge_flag() ctx=%d pos=(%d,%d) timdMrg=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timdMrg );
 }
 #endif
 #endif
@@ -2964,7 +2969,6 @@ void CABACWriter::intra_chroma_lmc_mode(const PredictionUnit& pu)
     CHECK(symbol > 5, "invalid symbol for MMLM");
     m_BinEncoder.encodeBin(symbol == 1 ? 0 : 1, Ctx::MMLMFlag(0));
 
-
     if (symbol > 1)
     {
       m_BinEncoder.encodeBinEP(symbol > 2);
@@ -3238,8 +3242,13 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
     if (PU::isLMCMode(intraDir))
     {
       intra_chroma_lmc_mode(pu);
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+#if JVET_AG0154_DECODER_DERIVED_CCP_FUSION && JVET_AD0188_CCP_MERGE
+      DTRACE( g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() LM pos=(%d,%d) dir=%d\n", pu.blocks[ CHANNEL_TYPE_CHROMA ].x, pu.blocks[ CHANNEL_TYPE_CHROMA ].y, ( pu.decoderDerivedCcpMode || pu.idxNonLocalCCP ) ? LM_CHROMA_IDX : pu.intraDir[ CHANNEL_TYPE_CHROMA ] );
+#elif JVET_AG0154_DECODER_DERIVED_CCP_FUSION
+      DTRACE( g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() LM pos=(%d,%d) dir=%d\n", pu.blocks[ CHANNEL_TYPE_CHROMA ].x, pu.blocks[ CHANNEL_TYPE_CHROMA ].y, pu.decoderDerivedCcpMode ? LM_CHROMA_IDX : pu.intraDir[ CHANNEL_TYPE_CHROMA ] );
+#else
+      DTRACE( g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() LM pos=(%d,%d) dir=%d\n", pu.blocks[ CHANNEL_TYPE_CHROMA ].x, pu.blocks[ CHANNEL_TYPE_CHROMA ].y, pu.intraDir[ CHANNEL_TYPE_CHROMA ] );
+#endif
 
       return;
     }
@@ -3290,11 +3299,9 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
 #endif
       }
 #if JVET_AH0136_CHROMA_REORDERING
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x,
-             pu.blocks[CHANNEL_TYPE_CHROMA].y, isDbvChromaMode ? DBV_CHROMA_IDX : pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() ChromaBv pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, isDbvChromaMode ? DBV_CHROMA_IDX : pu.intraDir[CHANNEL_TYPE_CHROMA]);
 #else
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() ChromaBv pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
 #endif
       return;
     }
@@ -3359,8 +3366,7 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
 #endif
       }
 #endif
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() DM pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, DM_CHROMA_IDX /*pu.intraDir[CHANNEL_TYPE_CHROMA]*/);
       return;
     }
 
@@ -3380,8 +3386,7 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
           m_BinEncoder.encodeBin(isFusion ? 1 : 0, Ctx::ChromaFusionMode());
 #endif
         }
-        DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-          pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+        DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() DIMD pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, DIMD_CHROMA_IDX /*pu.intraDir[CHANNEL_TYPE_CHROMA]*/);
         return;
       }
     }
@@ -3392,21 +3397,19 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
 #endif
 
     // chroma candidate index
-    {
-      m_BinEncoder.encodeBinsEP(chromaIdx - 2, 2);
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) cand_idx=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, chromaIdx - 2);
+    m_BinEncoder.encodeBinsEP( chromaIdx - 2, 2 );
+    DTRACE( g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) cand_idx=%d\n", pu.blocks[ CHANNEL_TYPE_CHROMA ].x, pu.blocks[ CHANNEL_TYPE_CHROMA ].y, chromaIdx - 2 );
 #if JVET_Z0050_DIMD_CHROMA_FUSION
-      if (PU::hasChromaFusionFlag(pu, pu.intraDir[1]))
-      {
+    if( PU::hasChromaFusionFlag( pu, pu.intraDir[ 1 ] ) )
+    {
 #if JVET_AC0119_LM_CHROMA_FUSION
-        intraChromaFusionMode(pu);
+      intraChromaFusionMode( pu );
 #else
-        const bool     isFusion = pu.isChromaFusion;
-        m_BinEncoder.encodeBin(isFusion ? 1 : 0, Ctx::ChromaFusionMode());
-#endif
-      }
+      const bool     isFusion = pu.isChromaFusion;
+      m_BinEncoder.encodeBin( isFusion ? 1 : 0, Ctx::ChromaFusionMode() );
 #endif
     }
+#endif
     return;
   }
 #endif
@@ -3425,8 +3428,7 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
 #endif
     }
 #endif
-    DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-      pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+    DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
     return;
   }
 
@@ -3446,8 +3448,7 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
         m_BinEncoder.encodeBin(isFusion ? 1 : 0, Ctx::ChromaFusionMode());
 #endif
       }
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() DIMD pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
       return;
     }
   }

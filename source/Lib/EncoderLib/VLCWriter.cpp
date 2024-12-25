@@ -1655,7 +1655,7 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
       }
 #endif
 #if JVET_AH0119_SUBBLOCK_TM
-      WRITE_FLAG(pcSPS->getUseSbTmvpTM() ? 1 : 0, "sps_JVET_AH0119_SUBBLOCK_TM_flag");
+      WRITE_FLAG(pcSPS->getUseSbTmvpTM() ? 1 : 0, "sps_tm_sbtmvp_flag");
 #endif
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS
     }
