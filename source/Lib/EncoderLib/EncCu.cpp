@@ -25910,8 +25910,8 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
         const CompArea &area = cu.Y();
 #if JVET_AJ0146_TIMDSAD
         m_pcIntraSearch->m_timdModeCostList.clear();
-        cu.timdMode = m_pcIntraSearch->deriveTimdMode(bestCS->picture->getRecoBuf(area), area, cu, true, true, CU::allowTimdSad(cu)
-        );
+        cu.timdMode = m_pcIntraSearch->deriveTimdMode(bestCS->picture->getRecoBuf(area), area, cu, true, true, CU::allowTimdSad(cu) );
+
         if (CU::allowTimdSad(cu) && cu.timdSad)
         {
           std::stable_sort(m_pcIntraSearch->m_timdModeCostList.begin(),m_pcIntraSearch->m_timdModeCostList.end());

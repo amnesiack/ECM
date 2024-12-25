@@ -2894,10 +2894,13 @@ void CABACReader::cu_timd_flag( CodingUnit& cu )
   unsigned ctxId = DeriveCtx::CtxTimdFlag( cu );
   cu.timd = m_BinDecoder.decodeBin( Ctx::TimdFlag(ctxId) );
   DTRACE(g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timd);
+
 #if JVET_AJ0146_TIMDSAD
   if (cu.timd && CU::allowTimdSad(cu))
   {
     cu.timdSad = m_BinDecoder.decodeBin( Ctx::TimdFlagSad() );
+
+    DTRACE( g_trace_ctx, D_SYNTAX, "cu_timd_flag() ctx=%d pos=(%d,%d) timdSad=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timdSad );
   }
   else
   {
@@ -2928,7 +2931,9 @@ void CABACReader::cu_timd_merge_flag( CodingUnit& cu)
     return;
   }
   int ctxId = cu.lwidth() * cu.lheight() >= 64 ? 0 : 1;
-  cu.timdMrg = m_BinDecoder.decodeBin( Ctx::TimdMrgFlag(ctxId) ) ? 1 : 0;  
+  cu.timdMrg = m_BinDecoder.decodeBin( Ctx::TimdMrgFlag(ctxId) ) ? 1 : 0;
+
+  DTRACE( g_trace_ctx, D_SYNTAX, "cu_timd_merge_flag() ctx=%d pos=(%d,%d) timdMrg=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.timdMrg );
 }
 #endif
 #endif
@@ -3509,8 +3514,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
     if (isLMCMode)
     {
       intra_chroma_lmc_mode(pu);
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE( g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() LM pos=(%d,%d) dir=%d\n", pu.blocks[ CHANNEL_TYPE_CHROMA ].x, pu.blocks[ CHANNEL_TYPE_CHROMA ].y, pu.intraDir[ CHANNEL_TYPE_CHROMA ] );
       return;
     }
   }
@@ -3544,8 +3548,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
         }
 #endif
       }
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() ChromaBv pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
       return;
     }
   }
@@ -3567,8 +3570,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
 #endif
     }
 #endif
-    DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-      pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+    DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() DM pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
     return;
   }
 
@@ -3589,8 +3591,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
         }
 #endif
       }
-      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() pos=(%d,%d) dir=%d\n",
-        pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, pu.intraDir[CHANNEL_TYPE_CHROMA]);
+      DTRACE(g_trace_ctx, D_SYNTAX, "intra_chroma_pred_modes() DIMD pos=(%d,%d) dir=%d\n", pu.blocks[CHANNEL_TYPE_CHROMA].x, pu.blocks[CHANNEL_TYPE_CHROMA].y, DIMD_CHROMA_IDX /*pu.intraDir[CHANNEL_TYPE_CHROMA]*/);
       return;
     }
   }
@@ -10368,9 +10369,8 @@ void CABACReader::residual_coding_subblockTS(CoeffCodingContext &cctx, TCoeff *c
         RExt__DECODER_DEBUG_BIT_STATISTICS_SET(ctype_gt2);
         unsigned gt2Flag;
         gt2Flag = m_BinDecoder.decodeBin(cctx.greaterXCtxIdAbsTS(cutoffVal >> 1));
-        DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_gt%d_flag() bin=%d ctx=%d sp=%d coeff=%d\n", i, gt2Flag,
-          cctx.greaterXCtxIdAbsTS(cutoffVal >> 1), scanPos, tcoeff);
         tcoeff += (gt2Flag << 1);
+        DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_gt%d_flag() bin=%d ctx=%d sp=%d coeff=%d\n", i, gt2Flag, cctx.greaterXCtxIdAbsTS(cutoffVal >> 1), scanPos, tcoeff);
         cctx.decimateNumCtxBins(1);
       }
       cutoffVal += 2;

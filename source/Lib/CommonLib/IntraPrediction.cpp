@@ -2612,13 +2612,13 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 
         if( num2blend == 2 )
         {
-            int index1 = blendIndexes[1];
-            Pel* p1 = (index1 == 0 ? piPred.buf : (index1 == 2 ?  pelPredNonAng : pelPredFusion));
-            int stride1 = (index1 == 0 ? piPred.stride : (index1 == 2 ? nonAngBuffer.stride : predFusion.stride));
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : (index1 == 2 ?  pelPredNonAng : pelPredFusion));
+          int stride1 = (index1 == 0 ? piPred.stride : (index1 == 2 ? nonAngBuffer.stride : predFusion.stride));
 
-            int w0 = (weights[index]*factor);
-            int w1 = 64 - w0;
-            m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
+          int w0 = (weights[index]*factor);
+          int w1 = 64 - w0;
+          m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
         }
         else if ( num2blend == 3 )
         {
@@ -2724,7 +2724,7 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
   }
 #if JVET_AJ0146_TIMDSAD
-  if (pu.cu->timdSad &&  pu.cu->timd && pu.cu->timdIsBlendedSad && isLuma(compID))
+  if (pu.cu->timdSad && pu.cu->timd && pu.cu->timdIsBlendedSad && isLuma(compID))
   {
     int width = piPred.width;
     int height = piPred.height;
@@ -10605,34 +10605,34 @@ void IntraPrediction::genTimdMrgList(
 #if JVET_AJ0146_TIMDSAD
     else if (cuNeighbours[i]->timdSad)
     {
-        bool isThere = false;
-        for (int idx = 0; idx < timdMrgList.size(); idx++)
+      bool isThere = false;
+      for (int idx = 0; idx < timdMrgList.size(); idx++)
+      {
+        if (timdMrgList[idx].timdMode[0] == cuNeighbours[i]->timdModeSad && timdMrgList[idx].timdMode[1] == cuNeighbours[i]->timdModeSecondarySad)
         {
-          if (timdMrgList[idx].timdMode[0] == cuNeighbours[i]->timdModeSad && timdMrgList[idx].timdMode[1] == cuNeighbours[i]->timdModeSecondarySad)
-          {
-            isThere = true;
-            break;
-          }
+          isThere = true;
+          break;
         }
-        if (!isThere && cuNeighbours[i]->timdModeSad != INVALID_TIMD_IDX)
-        {
-          TimdMergeInfo m = TimdMergeInfo();
-          m.timdMode[0] = cuNeighbours[i]->timdModeSad;
-          m.timdMode[1] = cuNeighbours[i]->timdModeSecondarySad;
-          m.timdMode[2] = cuNeighbours[i]->timdModeNonAngSad;
-          m.timdFusionWeight[0] = cuNeighbours[i]->timdFusionWeightSad[0];
-          m.timdFusionWeight[1] = cuNeighbours[i]->timdFusionWeightSad[1];
-          m.timdFusionWeight[2] = cuNeighbours[i]->timdFusionWeightSad[2];
-          m.timdModeCheckWA[0] = true;
-          m.timdModeCheckWA[1] = true;
-          m.timdModeCheckWA[2] = true;
-          m.timdLocDep[0] = cuNeighbours[i]->timdLocDepSad[0];
-          m.timdLocDep[1] = cuNeighbours[i]->timdLocDepSad[1];
-          m.timdLocDep[2] = cuNeighbours[i]->timdLocDepSad[2];
-          m.timdIsBlended = cuNeighbours[i]->timdIsBlendedSad;
-          m.timdmTrType[0] = !CS::isDualITree(*cu.cs) ? TransType::DCT2 : cuNeighbours[i]->timdmTrType[NUM_TIMD_MERGE_MODES][0];
-          m.timdmTrType[1] = !CS::isDualITree(*cu.cs) ? TransType::DCT2 : cuNeighbours[i]->timdmTrType[NUM_TIMD_MERGE_MODES][1];
-          timdMrgList.push_back(m);
+      }
+      if (!isThere && cuNeighbours[i]->timdModeSad != INVALID_TIMD_IDX)
+      {
+        TimdMergeInfo m = TimdMergeInfo();
+        m.timdMode[0] = cuNeighbours[i]->timdModeSad;
+        m.timdMode[1] = cuNeighbours[i]->timdModeSecondarySad;
+        m.timdMode[2] = cuNeighbours[i]->timdModeNonAngSad;
+        m.timdFusionWeight[0] = cuNeighbours[i]->timdFusionWeightSad[0];
+        m.timdFusionWeight[1] = cuNeighbours[i]->timdFusionWeightSad[1];
+        m.timdFusionWeight[2] = cuNeighbours[i]->timdFusionWeightSad[2];
+        m.timdModeCheckWA[0] = true;
+        m.timdModeCheckWA[1] = true;
+        m.timdModeCheckWA[2] = true;
+        m.timdLocDep[0] = cuNeighbours[i]->timdLocDepSad[0];
+        m.timdLocDep[1] = cuNeighbours[i]->timdLocDepSad[1];
+        m.timdLocDep[2] = cuNeighbours[i]->timdLocDepSad[2];
+        m.timdIsBlended = cuNeighbours[i]->timdIsBlendedSad;
+        m.timdmTrType[0] = !CS::isDualITree(*cu.cs) ? TransType::DCT2 : cuNeighbours[i]->timdmTrType[NUM_TIMD_MERGE_MODES][0];
+        m.timdmTrType[1] = !CS::isDualITree(*cu.cs) ? TransType::DCT2 : cuNeighbours[i]->timdmTrType[NUM_TIMD_MERGE_MODES][1];
+        timdMrgList.push_back(m);
       }
     }
 #endif
@@ -11616,10 +11616,9 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
         {
           tmpCost1 = distParamSad[1].distFunc(distParamSad[1]);
         }
-
         else
         {
-          assert(0);
+          CHECK( true, "invalid case" );
         }
 
         uiCost = tmpCost0 + tmpCost1;
@@ -11685,7 +11684,7 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
           }
           else
           {
-            assert(0);
+            CHECK( true, "invalid case" );
           }
 
           if (uiCost < uiBestCost)
@@ -11806,7 +11805,7 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
       }
       else
       {
-        assert(0);
+        CHECK( true, "invalid case" );
       }
 
       if (bFull && updateFull)
