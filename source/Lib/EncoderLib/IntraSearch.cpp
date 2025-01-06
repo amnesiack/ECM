@@ -4236,7 +4236,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
             break;
           }
         }
+#if AHG7_LN_TOOLOFF_CFG
+        xGetNextISPMode( uiRdModeList[ mode ], ( mode > 0 ? &uiRdModeList[ mode - 1 ] : nullptr ), Size( width, height ), sps.getUseLFNSTExt(), sps.getUseNSPT() );
+#else
         xGetNextISPMode(uiRdModeList[mode], (mode > 0 ? &uiRdModeList[mode - 1] : nullptr), Size(width, height));
+#endif
         if (uiRdModeList[mode].ispMod == INTRA_SUBPARTITIONS_RESERVED)
         {
           continue;
@@ -15447,7 +15451,11 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
 }
 
 // It decides which modes from the ISP lists can be full RD tested
+#if AHG7_LN_TOOLOFF_CFG
+void IntraSearch::xGetNextISPMode( ModeInfo& modeInfo, const ModeInfo* lastMode, const Size cuSize, bool lfnstExtFlag, bool nsptFlag )
+#else
 void IntraSearch::xGetNextISPMode(ModeInfo& modeInfo, const ModeInfo* lastMode, const Size cuSize)
+#endif
 {
   static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM>* rdModeLists[2] = { &m_ispCandListHor, &m_ispCandListVer };
 
@@ -15479,6 +15487,17 @@ void IntraSearch::xGetNextISPMode(ModeInfo& modeInfo, const ModeInfo* lastMode, 
     xFinishISPModes();
     return;   // no more modes will be tested
   }
+
+#if AHG7_LN_TOOLOFF_CFG
+  Size tuSize = ( nextISPcandSplitType == HOR_INTRA_SUBPARTITIONS ) ? Size( cuSize.width, CU::getISPSplitDim( cuSize.width, cuSize.height, TU_1D_HORZ_SPLIT ) ) :
+                                                                      Size( CU::getISPSplitDim( cuSize.width, cuSize.height, TU_1D_VERT_SPLIT ), cuSize.height );
+  int kerCandNum = ( lfnstExtFlag || ( nsptFlag && CU::isNSPTAllowed( tuSize.width, tuSize.height ) ) ) ? 3 : 2;
+  if( curIspLfnstIdx >= ( kerCandNum + 1 ) )
+  {
+    //All lfnst indices have been checked
+    return;
+  }
+#endif
 
   int maxNumSubPartitions = ispTestedModes.numTotalParts[nextISPcandSplitType - 1];
 

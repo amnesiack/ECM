@@ -1810,6 +1810,10 @@ private:
 #else
   bool              m_LFNST;
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool              m_NSPT;
+  bool              m_LFNSTExt;
+#endif
   bool              m_SMVD;
   bool              m_Affine;
   bool              m_AffineType;
@@ -2571,6 +2575,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #else
   void      setUseLFNST           ( bool b )                                        { m_LFNST = b; }
   bool      getUseLFNST           ()                                      const     { return m_LFNST; }
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  void      setUseNSPT            ( bool b )                                        { m_NSPT = b; }
+  bool      getUseNSPT            ()                                      const     { return m_NSPT; }
+  void      setUseLFNSTExt        ( bool b )                                        { m_LFNSTExt = b; }
+  bool      getUseLFNSTExt        ()                                      const     { return m_LFNSTExt; }
 #endif
   void      setUseSMVD(bool b)                                                      { m_SMVD = b; }
   bool      getUseSMVD()                                                  const     { return m_SMVD; }

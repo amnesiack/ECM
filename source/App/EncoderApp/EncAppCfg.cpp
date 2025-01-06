@@ -1047,6 +1047,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AI0050_SBT_LFNST
   ("SbtLFNST",                                        m_useSbtLFNST,                                     true, "SBT-LFNST (0:off, 1:on)  [default: on]")
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  ( "NSPT",                                           m_NSPT,                                            true, "Enable NSPT (0:off, 1:on)  [default: on]" )
+  ( "LFNSTExt",                                       m_LFNSTExt,                                        true, "Enable LFNST extension (0:off, 1:on)  [default: on]" )
+#endif
   ("SbTMVP",                                          m_sbTmvpEnableFlag,                               false, "Enable Subblock Temporal Motion Vector Prediction (0: off, 1: on) [default: off]")
   ("MMVD",                                            m_MMVD,                                            true, "Enable Merge mode with Motion Vector Difference (0:off, 1:on)  [default: 1]")
   ("Affine",                                          m_Affine,                                         false, "Enable affine prediction (0:off, 1:on)  [default: off]")
@@ -3591,6 +3595,14 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   }
 #endif
 
+#if AHG7_LN_TOOLOFF_CFG
+  if( !m_interLFNST )
+  {
+    m_useInterMTSS = false;
+    m_useSbtLFNST = false;
+  }
+#endif
+
 #if JVET_AJ0237_INTERNAL_12BIT
   if ((m_internalBitDepth[CHANNEL_TYPE_LUMA] > 10) && m_CCSAO && (m_iQP >= 37) && (m_sourceWidth * m_sourceHeight > 1920 * 1080))
   {
@@ -5678,6 +5690,10 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AI0050_SBT_LFNST
     msg( VERBOSE, "SbtLFNST:%d ", m_useSbtLFNST );
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+    msg( VERBOSE, "NSPT:%d ", m_NSPT );
+    msg( VERBOSE, "LFNSTExt:%d ", m_LFNSTExt );
 #endif
     msg( VERBOSE, "MMVD:%d ", m_MMVD);
     msg( VERBOSE, "Affine:%d ", m_Affine );

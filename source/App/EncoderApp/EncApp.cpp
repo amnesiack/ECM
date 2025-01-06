@@ -824,6 +824,10 @@ void EncApp::xInitLibCfg()
 #if JVET_AI0050_SBT_LFNST
   m_cEncLib.setUseSBTLFNST                                       ( m_useSbtLFNST );
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  m_cEncLib.setNSPT                                              ( m_NSPT );
+  m_cEncLib.setLFNSTExt                                          ( m_LFNSTExt );
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   m_cEncLib.setUseFastInterLFNST                                 ( m_useFastInterLFNST );
 #endif

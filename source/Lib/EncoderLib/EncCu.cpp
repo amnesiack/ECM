@@ -3571,12 +3571,25 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   int    bestLfnstIdx            =   0;
 
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+  const int tuWidth  = ( CS::isDualITree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA ) ? partitioner.currArea().blocks[ 1 ].width  : partitioner.currArea().lwidth();
+  const int tuHeight = ( CS::isDualITree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA ) ? partitioner.currArea().blocks[ 1 ].height : partitioner.currArea().lheight();
+  int kerCandNum = ( sps.getUseLFNSTExt() || ( sps.getUseNSPT() && CU::isNSPTAllowed( tuWidth, tuHeight ) ) ) ? 3 : 2;
+#if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
+  const int  maxLfnstIdx = ( CS::isDualITree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA && ( partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8 ) )
+                           || ( partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize() ) ? 0 : kerCandNum;
+#else
+  const int  maxLfnstIdx = ( partitioner.isSepTree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA && ( partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8 ) )
+                           || ( partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize() ) ? 0 : kerCandNum;
+#endif
+#else
 #if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   const int  maxLfnstIdx         = (CS::isDualITree(*tempCS) && partitioner.chType == CHANNEL_TYPE_CHROMA && (partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8))
                                    || (partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize()) ? 0 : 3;
 #else
   const int  maxLfnstIdx         = ( partitioner.isSepTree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA && ( partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8 ) )
                                    || ( partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize() ) ? 0 : 3;
+#endif
 #endif
 #else
 #if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS

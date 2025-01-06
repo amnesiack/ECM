@@ -312,15 +312,30 @@ void TrQuant::init( const Quant* otherQuant,
 #endif
 }
 
+#if AHG7_LN_TOOLOFF_CFG
+#if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
+void TrQuant::fwdLfnstNxN( TCoeff* src, TCoeff* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize, bool lfnstExtFlag )
+#else
+void TrQuant::fwdLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize, bool lfnstExtFlag )
+#endif
+#else
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
 void TrQuant::fwdLfnstNxN( TCoeff* src, TCoeff* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize )
 #else
 void TrQuant::fwdLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize )
 #endif
+#endif
 {
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+  const int8_t* trMat  = lfnstExtFlag ? ( ( size > 8 ) ? g_lfnst16x16[ mode ][ index ][ 0 ] : ( ( size > 4 ) ? g_lfnst8x8[ mode ][ index ][ 0 ] : g_lfnst4x4[ mode ][ index ][ 0 ] ) )
+                                      : ( ( size > 4 ) ? g_vvcLfnst8x8[ mode ][ index ][ 0 ] : g_vvcLfnst4x4[ mode ][ index ][ 0 ] );
+  const int     trSize = lfnstExtFlag ? ( ( size > 8 ) ? L16W_ZO : ( ( size > 4 ) ? L8W_ZO : 16 ) )
+                                      : ( ( size > 4 ) ? 48 : 16 );
+#else
   const int8_t* trMat  = ( size > 8 ) ? g_lfnst16x16[ mode ][ index ][ 0 ] : ( ( size > 4 ) ? g_lfnst8x8[ mode ][ index ][ 0 ] : g_lfnst4x4[ mode ][ index ][ 0 ] );
   const int     trSize = ( size > 8 ) ? L16W_ZO : ( ( size > 4 ) ? L8W_ZO : 16 );
+#endif
 #else
   const int8_t* trMat  = ( size > 4 ) ? g_lfnst8x8[ mode ][ index ][ 0 ] : g_lfnst4x4[ mode ][ index ][ 0 ];
 #if EXTENDED_LFNST
@@ -367,6 +382,16 @@ void TrQuant::fwdLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32
   ::memset( out, 0, ( trSize - zeroOutSize ) * sizeof( int ) );
 }
 
+#if AHG7_LN_TOOLOFF_CFG
+#if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
+void TrQuant::invLfnstNxN( TCoeff* src, TCoeff* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize, const int maxLog2TrDynamicRange, bool lfnstExtFlag )
+{
+#else
+void TrQuant::invLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize, bool lfnstExtFlag )
+{
+  int             maxLog2TrDynamicRange = 15;
+#endif
+#else
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
 void TrQuant::invLfnstNxN( TCoeff* src, TCoeff* dst, const uint32_t mode, const uint32_t index, const uint32_t size, int zeroOutSize, const int maxLog2TrDynamicRange )
 {
@@ -375,12 +400,20 @@ void TrQuant::invLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32
 {
   int             maxLog2TrDynamicRange =  15;
 #endif
+#endif
   const TCoeff    outputMinimum         = -( 1 << maxLog2TrDynamicRange );
   const TCoeff    outputMaximum         =  ( 1 << maxLog2TrDynamicRange ) - 1;
 
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+  const int8_t*   trMat  = lfnstExtFlag ? ( ( size > 8 ) ? g_lfnst16x16[ mode ][ index ][ 0 ] : ( ( size > 4 ) ? g_lfnst8x8[ mode ][ index ][ 0 ] : g_lfnst4x4[ mode ][ index ][ 0 ] ) )
+                                        : ( ( size > 4 ) ? g_vvcLfnst8x8[ mode ][ index ][ 0 ] : g_vvcLfnst4x4[ mode ][ index ][ 0 ] );
+  const int       trSize = lfnstExtFlag ? ( ( size > 8 ) ? L16W_ZO : ( ( size > 4 ) ? L8W_ZO : 16 ) )
+                                        : ( ( size > 4 ) ? 48 : 16 );
+#else
   const int8_t*   trMat  = ( size > 8 ) ? g_lfnst16x16[ mode ][ index ][ 0 ] : ( ( size > 4 ) ? g_lfnst8x8[ mode ][ index ][ 0 ] : g_lfnst4x4[ mode ][ index ][ 0 ] );
   const int       trSize = ( size > 8 ) ? L16W_ZO : ( ( size > 4 ) ? L8W_ZO : 16 );
+#endif
 #else
   const int8_t*   trMat                 =  ( size > 4 ) ? g_lfnst8x8[ mode ][ index ][ 0 ] : g_lfnst4x4[ mode ][ index ][ 0 ];
 #if EXTENDED_LFNST
@@ -494,7 +527,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
     }
 #endif
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    const bool whge4         = tu.cu->cs->sps->getUseLFNSTExt() ? PU::getUseLFNST16( width, height ) : false;
+#else
     const bool whge4         = PU::getUseLFNST16( width, height );
+#endif
     const bool whge3         = PU::getUseLFNST8 ( width, height );
     int widthIdx             = gp_sizeIdxInfo->idxFrom(  width );
     int heightIdx            = gp_sizeIdxInfo->idxFrom( height );
@@ -636,7 +673,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
 #endif
 
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    if( lfnstIdx < ( tu.cu->cs->sps->getUseLFNSTExt() ? 4 : 3 ) )
+#else
     if (lfnstIdx < 4)
+#endif
 #else
     if( lfnstIdx < 3 )
 #endif
@@ -664,7 +705,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
 
       const ScanElement *scanPtr = scan;
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      int numLfnstCoeff = tu.cu->cs->sps->getUseLFNSTExt() ? ( whge4 ? L16H : ( whge3 ? L8H : 16 ) ) : 16;
+#else
       int numLfnstCoeff = whge4 ? L16H : ( whge3 ? L8H : 16 );
+#endif
       for( y = 0; y < numLfnstCoeff; y++ )
 #else
 #if EXTENDED_LFNST
@@ -679,11 +724,20 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
         scanPtr++;
       }
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      int zeroOutSize = PU::getLFNSTMatrixDim( width, height, tu.cu->cs->sps->getUseLFNSTExt() );
+#if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
+      invLfnstNxN( m_tempInMatrix, m_tempOutMatrix, tu.cu->cs->sps->getUseLFNSTExt() ? g_lfnstLut[ intraMode ] : g_vvcLfnstLut[ intraMode ], lfnstIdx - 1, sbSize, zeroOutSize, maxLog2TrDynamicRange, tu.cu->cs->sps->getUseLFNSTExt() );
+#else
+      invLfnstNxN( m_tempInMatrix, m_tempOutMatrix, tu.cu->cs->sps->getUseLFNSTExt() ? g_lfnstLut[ intraMode ] : g_vvcLfnstLut[ intraMode ], lfnstIdx - 1, sbSize, zeroOutSize, tu.cu->cs->sps->getUseLFNSTExt() );
+#endif
+#else
       int zeroOutSize = PU::getLFNSTMatrixDim( width, height );
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
       invLfnstNxN( m_tempInMatrix, m_tempOutMatrix, g_lfnstLut[ intraMode ], lfnstIdx - 1, sbSize, zeroOutSize, maxLog2TrDynamicRange );
 #else
       invLfnstNxN( m_tempInMatrix, m_tempOutMatrix, g_lfnstLut[ intraMode ], lfnstIdx - 1, sbSize, zeroOutSize );
+#endif
 #endif
 #else
 #if EXTENDED_LFNST
@@ -795,7 +849,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
         for (y = 0; y < sbSize; y++)
         {
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+          uint32_t uiStride = tu.cu->cs->sps->getUseLFNSTExt() ? sbSize : ( ( y < 4 ) ? sbSize : 4 );
+#else
           uint32_t uiStride = sbSize;
+#endif
 #else
           uint32_t uiStride = (y < 4) ? sbSize : 4;
 #endif
@@ -844,7 +902,11 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
     }
 #endif
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    const bool whge4         = tu.cu->cs->sps->getUseLFNSTExt() ? PU::getUseLFNST16( width, height ) : false;  // width >= 16 && height >= 16;
+#else
     const bool whge4         = PU::getUseLFNST16( width, height );  // width >= 16 && height >= 16;
+#endif
     const bool whge3         = PU::getUseLFNST8( width, height );
     int widthIdx             = gp_sizeIdxInfo->idxFrom( width );
     int heightIdx            = gp_sizeIdxInfo->idxFrom( height );
@@ -986,7 +1048,11 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
 #endif
 
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    if( lfnstIdx < ( tu.cu->cs->sps->getUseLFNSTExt() ? 4 : 3 ) )
+#else
     if ( lfnstIdx < 4 )
+#endif
 #else
     if( lfnstIdx < 3 )
 #endif
@@ -1007,7 +1073,12 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
       TCoeff*         coeffTemp;
 #if JVET_AG0061_INTER_LFNST_NSPT
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+      const int       kerCandNum = ( tu.cu->cs->sps->getUseLFNSTExt() || ( tu.cu->cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) ) ? 3 : 2;
+      TCoeff *        tempCoeff = loadTr ? m_mtsCoeffs[ lfnstIdx ? lfnstIdx + NUM_TRAFO_MODES_MTS + kerCandNum * lfnstIntra - 1 : tu.mtsIdx[ compID ] ] : m_tempCoeff;
+#else
       TCoeff *        tempCoeff = loadTr ? m_mtsCoeffs[lfnstIdx ? lfnstIdx + NUM_TRAFO_MODES_MTS + 3 * lfnstIntra - 1 : tu.mtsIdx[compID]] : m_tempCoeff;
+#endif
 #else
       TCoeff *        tempCoeff = loadTr ? m_mtsCoeffs[lfnstIdx ? lfnstIdx + NUM_TRAFO_MODES_MTS - 1 : tu.mtsIdx[compID]] : m_tempCoeff;
 #endif
@@ -1110,7 +1181,11 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
         for( y = 0; y < sbSize; y++ )
         {
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+          uint32_t uiStride = tu.cu->cs->sps->getUseLFNSTExt() ? sbSize : ( ( y < 4 ) ? sbSize : 4 );
+#else
           uint32_t uiStride = sbSize;
+#endif
 #else
           uint32_t uiStride = ( y < 4 ) ? sbSize : 4;
 #endif
@@ -1124,9 +1199,17 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
       }
 
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      int zeroOutSize = PU::getLFNSTMatrixDim( width, height, tu.cu->cs->sps->getUseLFNSTExt() );
+#else
       int zeroOutSize = PU::getLFNSTMatrixDim( width, height );
+#endif
 
+#if AHG7_LN_TOOLOFF_CFG
+      fwdLfnstNxN( m_tempInMatrix, m_tempOutMatrix, tu.cu->cs->sps->getUseLFNSTExt() ? g_lfnstLut[ intraMode ] : g_vvcLfnstLut[ intraMode ], lfnstIdx - 1, sbSize, zeroOutSize, tu.cu->cs->sps->getUseLFNSTExt() );
+#else
       fwdLfnstNxN( m_tempInMatrix, m_tempOutMatrix, g_lfnstLut[ intraMode ], lfnstIdx - 1, sbSize, zeroOutSize );
+#endif
 #else
 #if EXTENDED_LFNST
       const int trSize = whge3 ? 64 : 16;
@@ -1141,7 +1224,12 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
       const ScanElement *scanPtr = scan;
 
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      int lfnstCoeffNum = tu.cu->cs->sps->getUseLFNSTExt() ? ( ( sbSize > 8 ) ? L16W_ZO : ( ( sbSize > 4 ) ? L8W_ZO : 16 ) )
+                                                           : ( ( sbSize == 4 ) ? sbSize * sbSize : 48 );
+#else
       int lfnstCoeffNum = ( sbSize > 8 ) ? L16W_ZO : ( ( sbSize > 4 ) ? L8W_ZO : 16 );
+#endif
 #else
 #if EXTENDED_LFNST
       int lfnstCoeffNum = sbSize * sbSize;
@@ -2393,9 +2481,16 @@ void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const 
 #if JVET_AG0061_INTER_LFNST_NSPT
     tu.mtsIdx[compID]   = it->first < NUM_TRAFO_MODES_MTS ? it->first : 0;
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+    int kerCandNum = ( tu.cu->cs->sps->getUseLFNSTExt() || ( tu.cu->cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) ) ? 3 : 2;
+    int factor = ( it->first - NUM_TRAFO_MODES_MTS ) / kerCandNum;
+    tu.lfnstIdx[ compID ] = it->first < NUM_TRAFO_MODES_MTS ? 0 : it->first - NUM_TRAFO_MODES_MTS - kerCandNum * factor + 1;
+    tu.lfnstIntra[ compID ] = it->first < ( NUM_TRAFO_MODES_MTS + kerCandNum ) ? 0 : ( it->first < ( NUM_TRAFO_MODES_MTS + ( kerCandNum << 1 ) ) ? 1 : 2 );
+#else
     int factor = (it->first - NUM_TRAFO_MODES_MTS) / 3;
     tu.lfnstIdx[compID] = it->first < NUM_TRAFO_MODES_MTS ? 0 : it->first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
     tu.lfnstIntra[compID] = it->first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (it->first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
+#endif
 #else
     tu.lfnstIdx[compID] = it->first < NUM_TRAFO_MODES_MTS ? 0 : it->first - NUM_TRAFO_MODES_MTS + 1;
 #endif
@@ -2560,7 +2655,12 @@ void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const 
 
 #if JVET_AG0061_INTER_LFNST_NSPT
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+  const int       kerCandNum = ( tu.cu->cs->sps->getUseLFNSTExt() || ( tu.cu->cs->sps->getUseNSPT() && CU::isNSPTAllowed( uiWidth, uiHeight ) ) ) ? 3 : 2;
+  CoeffBuf tempCoeff( loadTr ? m_mtsCoeffs[ tu.lfnstIdx[ compID ] ? ( tu.lfnstIdx[ compID ] + NUM_TRAFO_MODES_MTS + kerCandNum * tu.lfnstIntra[ compID ] - 1 ) : tu.mtsIdx[ compID ] ] : m_tempCoeff, rect );
+#else
   CoeffBuf tempCoeff(loadTr ? m_mtsCoeffs[tu.lfnstIdx[compID] ? (tu.lfnstIdx[compID] + NUM_TRAFO_MODES_MTS + 3 * tu.lfnstIntra[compID] - 1) : tu.mtsIdx[compID]] : m_tempCoeff, rect);
+#endif
 #else
   CoeffBuf tempCoeff(loadTr ? m_mtsCoeffs[tu.lfnstIdx[compID] ? tu.lfnstIdx[compID] + NUM_TRAFO_MODES_MTS - 1 : tu.mtsIdx[compID]] : m_tempCoeff, rect);
 #endif

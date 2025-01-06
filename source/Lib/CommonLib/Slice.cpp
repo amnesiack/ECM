@@ -4300,6 +4300,10 @@ SPS::SPS()
 #else
 , m_LFNST                     ( false )
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+, m_NSPT                      ( false )
+, m_LFNSTExt                  ( false )
+#endif
 , m_Affine                    ( false )
 , m_AffineType                ( false )
 #if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
