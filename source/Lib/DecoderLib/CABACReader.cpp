@@ -9432,13 +9432,21 @@ void CABACReader::residual_coding( TransformUnit& tu, ComponentID compID, CUCtx&
 #endif
 
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    const int maxLfnstPos = ( allowNSPT ? PU::getNSPTMatrixDim( width, height ) : PU::getLFNSTMatrixDim( width, height, tu.cu->cs->sps->getUseLFNSTExt() ) ) - 1;
+#else
     const int maxLfnstPos = ( allowNSPT ? PU::getNSPTMatrixDim( width, height ) : PU::getLFNSTMatrixDim( width, height ) ) - 1;
+#endif
 #else
     const int maxLfnstPos = allowNSPT ? PU::getNSPTMatrixDim( width, height ) - 1: ( ((tu.blocks[compID].height == 4 && tu.blocks[compID].width == 4) || (tu.blocks[compID].height == 8 && tu.blocks[compID].width == 8)) ? 7 : 15 );
 #endif
 #else
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    const int maxLfnstPos = PU::getLFNSTMatrixDim( tu.blocks[ compID ].width, tu.blocks[ compID ].height, tu.cu->cs->sps->getUseLFNSTExt() ) - 1;
+#else
     const int maxLfnstPos = PU::getLFNSTMatrixDim( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) - 1;
+#endif
 #else
     const int maxLfnstPos = ((tu.blocks[compID].height == 4 && tu.blocks[compID].width == 4) || (tu.blocks[compID].height == 8 && tu.blocks[compID].width == 8)) ? 7 : 15;
 #endif
@@ -9791,10 +9799,35 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
     if (idxLFNST)
     {
       idxLFNST += m_BinDecoder.decodeBin(Ctx::InterLFNSTIdx(1));
+#if AHG7_LN_TOOLOFF_CFG
+      int width = cu.blocks[ chIdx ].width;
+      int height = cu.blocks[ chIdx ].height;
+
+#if JVET_AI0050_SBT_LFNST
+      if( cu.sbtInfo )
+      {
+        for( auto &currTU : CU::traverseTUs( cu ) )
+        {
+          if( !currTU.noResidual )
+          {
+            width = currTU.lwidth();
+            height = currTU.lheight();
+            break;
+          }
+        }
+      }
+#endif
+
+      if( cu.cs->sps->getUseLFNSTExt() || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) )
+      {
+#endif
       if (idxLFNST == 2)
       {
         idxLFNST += m_BinDecoder.decodeBin(Ctx::InterLFNSTIdx(2));
       }
+#if AHG7_LN_TOOLOFF_CFG
+      }
+#endif
     }
     cu.lfnstIdx = idxLFNST;
 #if JVET_AI0050_INTER_MTSS
@@ -9817,10 +9850,36 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
 
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2(STATS__CABAC_BITS__LFNST, cu.blocks[chIdx].lumaSize(), ChannelType(chIdx));
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    uint32_t idxLFNST = 0;
+
+    Size tuSize = ( cu.ispMode == HOR_INTRA_SUBPARTITIONS ) ? Size( cu.blocks[ chIdx ].width, CU::getISPSplitDim( cu.blocks[ chIdx ].width, cu.blocks[ chIdx ].height, TU_1D_HORZ_SPLIT ) ) :
+                                                              Size( CU::getISPSplitDim( cu.blocks[ chIdx ].width, cu.blocks[ chIdx ].height, TU_1D_VERT_SPLIT ), cu.blocks[ chIdx ].height );
+    int width  = ( cu.ispMode == NOT_INTRA_SUBPARTITIONS ) ? cu.blocks[ chIdx ].width  : tuSize.width;
+    int height = ( cu.ispMode == NOT_INTRA_SUBPARTITIONS ) ? cu.blocks[ chIdx ].height : tuSize.height;
+
+    if( cu.cs->sps->getUseLFNSTExt() || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) )
+    {
+#endif
     uint32_t firstBit  = m_BinDecoder.decodeBin(Ctx::LFNSTIdx(cctx));
     cctx               = 2 + firstBit;
     uint32_t secondBit = m_BinDecoder.decodeBin(Ctx::LFNSTIdx(cctx));
+#if AHG7_LN_TOOLOFF_CFG
+    idxLFNST = firstBit + ( secondBit << 1 );
+#else
     uint32_t idxLFNST  = firstBit + (secondBit << 1);
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+    }
+    else
+    {
+      idxLFNST = m_BinDecoder.decodeBin( Ctx::VvcLFNSTIdx( cctx ) );
+      if( idxLFNST )
+      {
+        idxLFNST += m_BinDecoder.decodeBin( Ctx::VvcLFNSTIdx( 2 ) );
+      }
+    }
+#endif
 #else
     uint32_t idxLFNST = m_BinDecoder.decodeBin(Ctx::LFNSTIdx(cctx));
     if (idxLFNST)

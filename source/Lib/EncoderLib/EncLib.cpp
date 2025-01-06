@@ -1842,6 +1842,10 @@ void EncLib::xInitSPS( SPS& sps )
 #else
   sps.setUseLFNST                            ( m_LFNST );
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  sps.setUseNSPT                             ( m_NSPT );
+  sps.setUseLFNSTExt                         ( m_LFNSTExt );
+#endif
   sps.setSbTMVPEnabledFlag(m_sbTmvpEnableFlag);
   sps.setAMVREnabledFlag                ( m_ImvMode != IMV_OFF );
   sps.setBDOFEnabledFlag                    ( m_BIO );

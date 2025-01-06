@@ -1296,6 +1296,10 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #else
   WRITE_FLAG(pcSPS->getUseLFNST() ? 1 : 0, "sps_lfnst_enabled_flag");
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  WRITE_FLAG( pcSPS->getUseNSPT() ? 1 : 0, "sps_nspt_enabled_flag" );
+  WRITE_FLAG( pcSPS->getUseLFNSTExt() ? 1 : 0, "sps_lfnst_ext_enabled_flag" );
+#endif
 #endif
 
 #if JVET_S0052_RM_SEPARATE_COLOUR_PLANE

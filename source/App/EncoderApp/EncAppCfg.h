@@ -412,6 +412,10 @@ protected:
 #if JVET_AI0050_SBT_LFNST
   bool      m_useSbtLFNST;
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool      m_NSPT;
+  bool      m_LFNSTExt;
+#endif
   bool      m_sbTmvpEnableFlag;
   bool      m_Affine;
   bool      m_AffineType;

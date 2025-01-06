@@ -9321,13 +9321,21 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID, 
 #endif
 
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      const int maxLfnstPos = ( allowNSPT ? PU::getNSPTMatrixDim( width, height ) : PU::getLFNSTMatrixDim( width, height, tu.cu->cs->sps->getUseLFNSTExt() ) ) - 1;
+#else
       const int maxLfnstPos = (allowNSPT ? PU::getNSPTMatrixDim(width, height) : PU::getLFNSTMatrixDim(width, height)) - 1;
+#endif
 #else
       const int maxLfnstPos = allowNSPT ? PU::getNSPTMatrixDim(width, height) - 1 : (((tu.blocks[compID].height == 4 && tu.blocks[compID].width == 4) || (tu.blocks[compID].height == 8 && tu.blocks[compID].width == 8)) ? 7 : 15);
 #endif
 #else
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      const int maxLfnstPos = PU::getLFNSTMatrixDim( tu.blocks[ compID ].width, tu.blocks[ compID ].height, tu.cu->cs->sps->getUseLFNSTExt() ) - 1;
+#else
       const int maxLfnstPos = PU::getLFNSTMatrixDim(tu.blocks[compID].width, tu.blocks[compID].height) - 1;
+#endif
 #else
       const int maxLfnstPos = ((tu.blocks[compID].height == 4 && tu.blocks[compID].width == 4) || (tu.blocks[compID].height == 8 && tu.blocks[compID].width == 8)) ? 7 : 15;
 #endif
@@ -9686,16 +9694,46 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
   if (CU::isInter(cu))
   {
     uint32_t idxLFNST = cu.lfnstIdx;
+#if AHG7_LN_TOOLOFF_CFG
+    int width  = cu.blocks[ chIdx ].width;
+    int height = cu.blocks[ chIdx ].height;
+
+#if JVET_AI0050_SBT_LFNST
+    if( cu.sbtInfo )
+    {
+      for( auto &currTU : CU::traverseTUs( cu ) )
+      {
+        if( !currTU.noResidual )
+        {
+          width = currTU.lwidth();
+          height = currTU.lheight();
+          break;
+        }
+      }
+    }
+#endif
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+    assert( idxLFNST < ( ( cu.cs->sps->getUseLFNSTExt() || cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) ? 4 : 3 ) );
+#else
     assert(idxLFNST < 4);
+#endif
 
     m_BinEncoder.encodeBin(idxLFNST > 0, Ctx::InterLFNSTIdx(0));
     if (idxLFNST > 0)
     {
       m_BinEncoder.encodeBin(idxLFNST > 1, Ctx::InterLFNSTIdx(1));
+#if AHG7_LN_TOOLOFF_CFG
+      if( cu.cs->sps->getUseLFNSTExt() || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) )
+      {
+#endif
       if (idxLFNST > 1)
       {
         m_BinEncoder.encodeBin(idxLFNST > 2, Ctx::InterLFNSTIdx(2));
       }
+#if AHG7_LN_TOOLOFF_CFG
+      }
+#endif
     }
 #if JVET_AI0050_INTER_MTSS
     if (cu.cs->sps->getUseInterMTSS() && idxLFNST > 0 && cu.geoFlag)
@@ -9714,6 +9752,15 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
     if ( cu.isSepTree() ) cctx++;
 #endif
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+    Size tuSize = ( cu.ispMode == HOR_INTRA_SUBPARTITIONS ) ? Size( cu.blocks[ chIdx ].width, CU::getISPSplitDim( cu.blocks[ chIdx ].width, cu.blocks[ chIdx ].height, TU_1D_HORZ_SPLIT ) ) :
+                                                              Size( CU::getISPSplitDim( cu.blocks[ chIdx ].width, cu.blocks[ chIdx ].height, TU_1D_VERT_SPLIT ), cu.blocks[ chIdx ].height );
+    int width  = ( cu.ispMode == NOT_INTRA_SUBPARTITIONS ) ? cu.blocks[ chIdx ].width  : tuSize.width;
+    int height = ( cu.ispMode == NOT_INTRA_SUBPARTITIONS ) ? cu.blocks[ chIdx ].height : tuSize.height;
+
+    if( cu.cs->sps->getUseLFNSTExt() || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) )
+    {
+#endif
     uint32_t idxLFNST = cu.lfnstIdx;
     assert(idxLFNST < 4);
 
@@ -9722,6 +9769,20 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
     m_BinEncoder.encodeBin(firstBit, Ctx::LFNSTIdx(cctx));
     cctx = 2 + firstBit;
     m_BinEncoder.encodeBin(secondBit, Ctx::LFNSTIdx(cctx));
+#if AHG7_LN_TOOLOFF_CFG
+    }
+    else
+    {
+      const uint32_t idxLFNST = cu.lfnstIdx;
+      assert( idxLFNST < 3 );
+      m_BinEncoder.encodeBin( idxLFNST ? 1 : 0, Ctx::VvcLFNSTIdx( cctx ) );
+
+      if( idxLFNST )
+      {
+        m_BinEncoder.encodeBin( ( idxLFNST - 1 ) ? 1 : 0, Ctx::VvcLFNSTIdx( 2 ) );
+      }
+    }
+#endif
 #else
     const uint32_t idxLFNST = cu.lfnstIdx;
     assert( idxLFNST < 3 );

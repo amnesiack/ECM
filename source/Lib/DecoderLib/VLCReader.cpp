@@ -2109,6 +2109,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #else
   READ_FLAG(uiCode, "sps_lfnst_enabled_flag");                    pcSPS->setUseLFNST(uiCode != 0);
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  READ_FLAG( uiCode, "sps_nspt_enabled_flag" );                    pcSPS->setUseNSPT( uiCode != 0 );
+  READ_FLAG( uiCode, "sps_lfnst_ext_enabled_flag" );               pcSPS->setUseLFNSTExt( uiCode != 0 );
+#endif
 #endif
 
 #if JVET_S0052_RM_SEPARATE_COLOUR_PLANE

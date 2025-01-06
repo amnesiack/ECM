@@ -420,6 +420,10 @@ protected:
 #if JVET_AI0050_SBT_LFNST
   bool      m_useSbtLFNST;
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool      m_NSPT;
+  bool      m_LFNSTExt;
+#endif
   bool      m_useFastLFNST;
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool      m_useFastInterLFNST;
@@ -1623,6 +1627,12 @@ public:
 #if JVET_AI0050_SBT_LFNST
   void      setUseSBTLFNST                  ( bool b )       { m_useSbtLFNST = b; }
   bool      getUseSBTLFNST()                           const { return m_useSbtLFNST; }
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  void      setNSPT                         ( bool b )       { m_NSPT = b; }
+  bool      getNSPT()                                  const { return m_NSPT; }
+  void      setLFNSTExt                     ( bool b )       { m_LFNSTExt = b; }
+  bool      getLFNSTExt()                              const { return m_LFNSTExt; }
 #endif
   void      setUseLMChroma                  ( int n )        { m_LMChroma = n; }
   int       getUseLMChroma()                           const { return m_LMChroma; }
