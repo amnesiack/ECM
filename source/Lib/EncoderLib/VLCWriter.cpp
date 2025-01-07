@@ -633,8 +633,23 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
       WRITE_UVLC(param.numAlternativesLuma - 1, "alf_luma_num_alts_minus1" );
     }
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
+#if FIXFILTER_CFG
+    if(param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_13_EXT_DB_RESI_DIRECT || param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_13_EXT_DB_RESI)
+    {
+      WRITE_FLAG(1, "alf_luma_use_fixed_filter");
+      WRITE_FLAG(param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_13_EXT_DB_RESI_DIRECT ? 1 : 0,
+        "alf_luma_13_ext_db_resi_direct : alf_luma_13_ext_db_resi");
+    }
+    else
+    {
+      WRITE_FLAG(0, "alf_luma_use_fixed_filter");
+      WRITE_FLAG(param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_13_DB_RESI_DIRECT ? 1 : 0,
+        "alf_luma_13_db_resi_direct : alf_luma_13_db_resi");
+    }
+#else
     WRITE_FLAG(param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_13_EXT_DB_RESI_DIRECT ? 1 : 0,
                "alf_luma_13_ext_db_resi_direct : alf_luma_13_ext_db_resi");
+#endif
 #else
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF && JVET_AA0095_ALF_LONGER_FILTER
     WRITE_FLAG(param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_9_EXT_DB ? 1 : 0, "alf_luma_9_ext_db");
@@ -728,6 +743,10 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
   {
 #if !ALF_IMPROVEMENT
     WRITE_FLAG( param.nonLinearFlag[CHANNEL_TYPE_CHROMA], "alf_nonlinear_enable_flag_chroma" );
+#endif
+#if FIXFILTER_CFG
+    WRITE_FLAG(param.filterType[CHANNEL_TYPE_CHROMA] == ALF_FILTER_9 ? 1 : 0,
+      "alf_chroma_use_fixed_filter");
 #endif
     if( MAX_NUM_ALF_ALTERNATIVES_CHROMA > 1 )
     {

@@ -1086,7 +1086,9 @@ protected:
 #endif
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
-
+#if FIXFILTER_CFG
+  bool        m_alfFixedFilter;                               
+#endif
 #if JVET_V0130_INTRA_TMP
   bool        m_intraTMP;                                       ///< intra Template Matching 
   unsigned    m_intraTmpMaxSize;                               ///< max CU size for which intra TMP is allowed
@@ -2945,6 +2947,10 @@ public:
 #endif
   void         setUseALF( bool b ) { m_alf = b; }
   bool         getUseALF()                                      const { return m_alf; }
+#if FIXFILTER_CFG  
+  void         setUseAlfFixedFilter( bool b )                         { m_alfFixedFilter = b; }
+  bool         getUseAlfFixedFilter()                           const { return m_alfFixedFilter; }
+#endif
   void         setUseCCALF( bool b )                                  { m_ccalf = b; }
   bool         getUseCCALF()                                    const { return m_ccalf; }
   void         setCCALFQpThreshold( int b )                           { m_ccalfQpThreshold = b; }
