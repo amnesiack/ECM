@@ -1091,6 +1091,9 @@ protected:
   bool        m_forceDecodeBitstream1;
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
+#if FIXFILTER_CFG
+  bool        m_alfFixedFilter;
+#endif
   bool        m_ccalf;
   int         m_ccalfQpThreshold;
 

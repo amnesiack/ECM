@@ -1098,9 +1098,25 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
       code = 0;
     param.numAlternativesLuma = code + 1;
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
+#if FIXFILTER_CFG
+    READ_FLAG(code, "alf_luma_use_fixed_filter");
+    if(code)
+    {
+      READ_FLAG(code, "alf_luma_13_ext_db_resi_direct : alf_luma_13_ext_db_resi");
+      param.filterType[CHANNEL_TYPE_LUMA] =
+        code ? ALF_FILTER_13_EXT_DB_RESI_DIRECT : ALF_FILTER_13_EXT_DB_RESI;
+    }
+    else
+    {
+      READ_FLAG(code, "alf_luma_13_db_resi_direct : alf_luma_13_db_resi");
+      param.filterType[CHANNEL_TYPE_LUMA] =
+        code ? ALF_FILTER_13_DB_RESI_DIRECT : ALF_FILTER_13_DB_RESI;
+    }
+#else
     READ_FLAG(code, "alf_luma_13_ext_db_resi_direct : alf_luma_13_ext_db_resi");
     param.filterType[CHANNEL_TYPE_LUMA] =
       code ? ALF_FILTER_13_EXT_DB_RESI_DIRECT : ALF_FILTER_13_EXT_DB_RESI;
+#endif
 #else
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF && JVET_AA0095_ALF_LONGER_FILTER
     READ_FLAG(code, "alf_luma_9_ext_db : alf_luma_13_ext_db");
@@ -1203,7 +1219,19 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
     READ_FLAG(code, "alf_nonlinear_enable_flag_chroma");
     param.nonLinearFlag[CHANNEL_TYPE_CHROMA] = code ? true : false;
 #else
+#if FIXFILTER_CFG
+    READ_FLAG(code, "alf_chroma_use_fixed_filter");
+    if(code)
+    {
+      param.filterType[CHANNEL_TYPE_CHROMA] = ALF_FILTER_9;
+    }
+    else
+    {
+      param.filterType[CHANNEL_TYPE_CHROMA] = ALF_FILTER_9_NO_FIX;
+    }
+#else
     param.filterType[CHANNEL_TYPE_CHROMA] = ALF_FILTER_9;
+#endif
 #endif
 
     if( MAX_NUM_ALF_ALTERNATIVES_CHROMA > 1 )

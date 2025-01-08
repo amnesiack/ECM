@@ -51,8 +51,8 @@
 #include <cassert>
 #include <cstdint>
 
-#define AHG7_LN_TOOLOFF_CFG                                1
-
+#define AHG7_LN_TOOLOFF_CFG                               1
+#define FIXFILTER_CFG                                     1
 
 #define BASE_ENCODER                                      1
 #define BASE_NORMATIVE                                    1
