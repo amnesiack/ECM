@@ -9547,7 +9547,11 @@ void CABACReader::residual_coding( TransformUnit& tu, ComponentID compID, CUCtx&
 #endif
     }
 #if JVET_Y0142_ADAPT_INTRA_MTS
-    if (isLuma(compID) && tu.mtsIdx[compID] != MTS_SKIP)
+    if (isLuma(compID) && tu.mtsIdx[compID] != MTS_SKIP
+#if AHG7_MTS_TOOLOFF_CFG
+      && tu.cu->cs->sps->getUseMTSExt()
+#endif
+      )
     {
       const int  coeffStride = tu.getCoeffs(compID).stride;
       const int  uiWidth = tu.getCoeffs(compID).width;
@@ -9595,7 +9599,11 @@ void CABACReader::mts_idx( CodingUnit& cu, CUCtx& cuCtx )
 #if JVET_Y0142_ADAPT_INTRA_MTS
 #if JVET_Y0159_INTER_MTS
     int ctxIdx = 0;
-    if (CU::isIntra(cu))
+    if (CU::isIntra(cu)
+#if AHG7_MTS_TOOLOFF_CFG
+       && tu.cu->cs->sps->getUseMTSExt()
+#endif
+      )
     {
       ctxIdx = (cuCtx.mtsCoeffAbsSum > MTS_TH_COEFF[1]) ? 2 : (cuCtx.mtsCoeffAbsSum > MTS_TH_COEFF[0]) ? 1 : 0;
     }
@@ -9615,7 +9623,11 @@ void CABACReader::mts_idx( CodingUnit& cu, CUCtx& cuCtx )
 #if JVET_W0103_INTRA_MTS
 #if JVET_Y0142_ADAPT_INTRA_MTS
 #if JVET_Y0159_INTER_MTS
-      int nCands = CU::isIntra(cu)? MTS_NCANDS[ctxIdx] : 4;
+      int nCands = CU::isIntra(cu)
+#if AHG7_MTS_TOOLOFF_CFG
+        && tu.cu->cs->sps->getUseMTSExt()
+#endif
+        ? MTS_NCANDS[ctxIdx] : 4;
 #else
       int nCands = MTS_NCANDS[ctxIdx];
 #endif

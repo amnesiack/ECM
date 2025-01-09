@@ -1463,7 +1463,10 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       
     trTypeHor = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 1 : 0];      
     trTypeVer = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 0 : 1];
-
+#if AHG7_MTS_TOOLOFF_CFG
+    trTypeHor = (width > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeHor;
+    trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
+#endif
     return;    
 #else
     bool widthDstOk = width >= 4 && width <= 16;
@@ -1569,7 +1572,11 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
   if (isExplicitMTS)
   {
 #if JVET_W0103_INTRA_MTS
-    if (tu.mtsIdx[compID] > MTS_SKIP && CU::isIntra(*tu.cu))
+    if (tu.mtsIdx[compID] > MTS_SKIP && CU::isIntra(*tu.cu)
+#if AHG7_MTS_TOOLOFF_CFG
+      && tu.cs->sps->getUseMTSExt()
+#endif
+      )
     {
       CHECK(compID != COMPONENT_Y, " MTS activated for chroma");
       uint32_t width = tu.blocks[compID].width;
@@ -1697,14 +1704,21 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       trTypeHor = indHor ? DCT8 : DST7;
       trTypeVer = indVer ? DCT8 : DST7;
 #if JVET_AA0133_INTER_MTS_OPT
-      uint32_t width = tu.blocks[compID].width;
-      uint32_t height = tu.blocks[compID].height;
-      CHECK(width < 4 || height < 4, "width < 4 || height < 4 for KLT");
-      if (width <= 16 && height <= 16)
+#if AHG7_MTS_TOOLOFF_CFG
+      if (tu.cs->sps->getUseMTSExt())
       {
-        trTypeHor = indHor ? KLT1 : KLT0;
-        trTypeVer = indVer ? KLT1 : KLT0;
+#endif
+        uint32_t width = tu.blocks[compID].width;
+        uint32_t height = tu.blocks[compID].height;
+        CHECK(width < 4 || height < 4, "width < 4 || height < 4 for KLT");
+        if (width <= 16 && height <= 16)
+        {
+          trTypeHor = indHor ? KLT1 : KLT0;
+          trTypeVer = indVer ? KLT1 : KLT0;
+        }
+#if AHG7_MTS_TOOLOFF_CFG
       }
+#endif
 #endif
     }
   }
@@ -1728,6 +1742,10 @@ void TrQuant::xT( const TransformUnit &tu, const ComponentID &compID, const CPel
     int implicitDst7 = PU::canTimdMergeImplicitDst7(tu);
     trTypeHor = (implicitDst7 & 2) ? DST7 : tu.cu->timdmTrType[tu.cu->timdMrg - 1][0];
     trTypeVer = (implicitDst7 & 1) ? DST7 : tu.cu->timdmTrType[tu.cu->timdMrg - 1][1];
+#if AHG7_MTS_TOOLOFF_CFG
+    trTypeHor = (width > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeHor;
+    trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
+#endif
   }
   else
 #endif
@@ -1875,6 +1893,10 @@ void TrQuant::xIT( const TransformUnit &tu, const ComponentID &compID, const CCo
     int implicitDst7 = PU::canTimdMergeImplicitDst7(tu);
     trTypeHor = (implicitDst7 & 2) ? DST7 : tu.cu->timdmTrType[tu.cu->timdMrg - 1][0];
     trTypeVer = (implicitDst7 & 1) ? DST7 : tu.cu->timdmTrType[tu.cu->timdMrg - 1][1];
+#if AHG7_MTS_TOOLOFF_CFG
+    trTypeHor = (width > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeHor;
+    trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
+#endif
   }
   else
 #endif
@@ -3047,6 +3069,10 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
       int implicitDst7 = PU::canTimdMergeImplicitDst7(tu);
       trHor = (implicitDst7 & 2) ? DST7 : tu.cu->timdmTrType[tu.cu->timdMrg - 1][0];
       trVer = (implicitDst7 & 1) ? DST7 : tu.cu->timdmTrType[tu.cu->timdMrg - 1][1];
+#if AHG7_MTS_TOOLOFF_CFG
+      trHor = (uiWidth > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trHor;
+      trVer = (uiHeight > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trVer;
+#endif
     }
     else
 #endif

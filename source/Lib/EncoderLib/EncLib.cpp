@@ -1835,6 +1835,9 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setLog2SignPredArea                    (m_log2SignPredArea);
 #endif
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  sps.setUseMTSExt(m_MTSExt);
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   sps.setUseIntraLFNSTISlice                 ( m_intraLFNSTISlice );
   sps.setUseIntraLFNSTPBSlice                ( m_intraLFNSTPBSlice );
@@ -2040,6 +2043,9 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   sps.setInterMTSMaxSize(m_interMTSMaxSize);
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  sps.setIntraMTSMaxSize(m_intraMTSMaxSize);
 #endif
 #if ENABLE_DIMD
   sps.setUseDimd            ( m_dimd );

@@ -953,7 +953,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   // 1: MTS fast algorithm can be applied for the current CU, and the DCT2 is being checked
   // 2: MTS is being checked for current CU. Stored results of DCT2 can be utilized for speedup
   uint8_t mtsUsageFlag = 0;
+#if AHG7_MTS_TOOLOFF_CFG
+  const int maxSizeEMT = sps.getIntraMTSMaxSize();
+#else
   const int maxSizeEMT = MTS_INTRA_MAX_CU_SIZE;
+#endif
   if( width <= maxSizeEMT && height <= maxSizeEMT && sps.getUseIntraMTS() )
   {
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
@@ -4021,9 +4025,17 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
     }
 #if JVET_Y0142_ADAPT_INTRA_MTS
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
-    if( spsIntraLfnstEnabled && m_modesForMTS.size() == 0 && cu.mtsFlag )
+    if( spsIntraLfnstEnabled && m_modesForMTS.size() == 0 && cu.mtsFlag 
+#if AHG7_MTS_TOOLOFF_CFG
+      && sps.getUseMTSExt()
+#endif
+      )
 #else
-    if (sps.getUseLFNST() && m_modesForMTS.size() == 0 && cu.mtsFlag)
+    if (sps.getUseLFNST() && m_modesForMTS.size() == 0 && cu.mtsFlag
+#if AHG7_MTS_TOOLOFF_CFG
+      && sps.getUseMTSExt()
+#endif
+      )
 #endif
     {
       return false;
@@ -4599,7 +4611,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
       pu.intraDir[CHANNEL_TYPE_CHROMA] = cu.colorTransform ? DM_CHROMA_IDX : pu.intraDir[CHANNEL_TYPE_CHROMA];
 #if JVET_Y0142_ADAPT_INTRA_MTS
-      if (cu.mtsFlag)
+      if (cu.mtsFlag
+#if AHG7_MTS_TOOLOFF_CFG
+        && sps.getUseMTSExt()
+#endif
+        )
       {
         int mtsModeIdx = -1;
         for (int i = 0; i < m_modesForMTS.size(); i++)
@@ -4678,6 +4694,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       if (!cu.mtsFlag && !lfnstIdx && mode < numNonISPModes && !(cu.timd && pu.multiRefIdx)
 #if JVET_AJ0061_TIMD_MERGE
           && !cu.timdMrg
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+        && sps.getUseMTSExt()
 #endif
         )
 #else
@@ -11018,7 +11037,7 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     generateTMPrediction(piPred.buf, piPred.stride, pu.lwidth(), pu.lheight(), foundCandiNum);
 #endif
     CHECK(foundCandiNum < 1, "");
-  
+
   }
   else if (PU::isMIP(pu, chType))
   {
@@ -11119,7 +11138,7 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     )
     {
       TimdMode mode = getTimdMode(pu.cu->timdMrg, pu.multiRefIdx);
-      const CPelBuf timdSaveBuf(m_timdPredBuf[mode], pu.Y());      
+      const CPelBuf timdSaveBuf(m_timdPredBuf[mode], pu.Y());
       piPred.copyFrom(timdSaveBuf);
     }
 #endif
@@ -11214,15 +11233,26 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
   }
   // do transform and calculate Coeff AbsSum for all MTS candidates
 #if JVET_Y0142_ADAPT_INTRA_MTS
+#if AHG7_MTS_TOOLOFF_CFG
+  int nCands = cs.sps->getUseMTSExt() ? MTS_NCANDS[2] : 4;
+#else
   int nCands = MTS_NCANDS[2];
-  if (m_coeffAbsSumDCT2 >= 0 && m_coeffAbsSumDCT2 <= MTS_TH_COEFF[0])
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  if (cs.sps->getUseMTSExt())
   {
-    nCands = MTS_NCANDS[0];
+#endif
+    if (m_coeffAbsSumDCT2 >= 0 && m_coeffAbsSumDCT2 <= MTS_TH_COEFF[0])
+    {
+      nCands = MTS_NCANDS[0];
+    }
+    else if (m_coeffAbsSumDCT2 > MTS_TH_COEFF[0] && m_coeffAbsSumDCT2 <= MTS_TH_COEFF[1])
+    {
+      nCands = MTS_NCANDS[1];
+    }
+#if AHG7_MTS_TOOLOFF_CFG
   }
-  else if(m_coeffAbsSumDCT2 > MTS_TH_COEFF[0] && m_coeffAbsSumDCT2 <= MTS_TH_COEFF[1])
-  {
-    nCands = MTS_NCANDS[1];
-  }
+#endif
   std::vector<std::pair<int, uint64_t>> coeffAbsSum(nCands);
   for (int i = 0; i < nCands; i++)
 #else
@@ -11757,7 +11787,11 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
       return;
     }
 #if JVET_Y0142_ADAPT_INTRA_MTS
-    if (isLuma(compID) && tu.mtsIdx[compID] >= MTS_DST7_DST7)
+    if (isLuma(compID) && tu.mtsIdx[compID] >= MTS_DST7_DST7
+#if AHG7_MTS_TOOLOFF_CFG
+      && tu.cu->cs->sps->getUseMTSExt()
+#endif
+      )
     {
       bool signHiding = cs.slice->getSignDataHidingEnabledFlag();
       CoeffCodingContext  cctx(tu, compID, signHiding);
@@ -12995,6 +13029,9 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
         if (tu.mtsIdx[COMPONENT_Y] > MTS_SKIP)
         {
 #if JVET_Y0142_ADAPT_INTRA_MTS
+#if AHG7_MTS_TOOLOFF_CFG
+          m_validMTSReturn = (tu.cs->sps->getUseMTSExt())? m_validMTSReturn : cuCtx.mtsLastScanPos;
+#endif
           if(!m_validMTSReturn)
 #else
           if (!cuCtx.mtsLastScanPos)
@@ -13043,7 +13080,14 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
           double skipThreshold = 1.0 + 1.0 / sqrt((double)(area.width*area.height));
           skipThreshold = std::max(skipThreshold, !m_pcEncCfg->getUseFastLFNST()? 1.06: 1.03);
 #if JVET_Y0142_ADAPT_INTRA_MTS
-          skipThreshold = (m_coeffAbsSumDCT2 >= MTS_TH_COEFF[1])? std::max(skipThreshold, 1.06) : skipThreshold;
+#if AHG7_MTS_TOOLOFF_CFG
+          if (tu.cs->sps->getUseMTSExt())
+          {
+#endif
+            skipThreshold = (m_coeffAbsSumDCT2 >= MTS_TH_COEFF[1]) ? std::max(skipThreshold, 1.06) : skipThreshold;
+#if AHG7_MTS_TOOLOFF_CFG
+          }
+#endif
 #endif
           if (singleCostTmp > skipThreshold * m_globalBestCostStore)
           {
@@ -13052,7 +13096,11 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
         }
       }
 #if JVET_Y0142_ADAPT_INTRA_MTS
-      if (tu.mtsIdx[0] == 0 && !cu.ispMode && !cu.lfnstIdx)
+      if (tu.mtsIdx[0] == 0 && !cu.ispMode && !cu.lfnstIdx
+#if AHG7_MTS_TOOLOFF_CFG
+         && tu.cs->sps->getUseMTSExt()
+#endif
+        )
       {
         m_coeffAbsSumDCT2 = cuCtx.mtsCoeffAbsSum;
       }

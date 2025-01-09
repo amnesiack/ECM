@@ -2117,6 +2117,14 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   {
     READ_FLAG(uiCode, "sps_explicit_mts_intra_enabled_flag");               pcSPS->setUseIntraMTS(uiCode != 0);
     READ_FLAG(uiCode, "sps_explicit_mts_inter_enabled_flag");               pcSPS->setUseInterMTS(uiCode != 0);
+#if AHG7_MTS_TOOLOFF_CFG
+    READ_FLAG(uiCode, "sps_explicit_mts_extension_enabled_flag");               pcSPS->setUseMTSExt(uiCode != 0);
+    if (pcSPS->getUseIntraMTS())
+    {
+      READ_CODE(2, uiCode, "intraMTSMaxSizeMinus5");
+      pcSPS->setIntraMTSMaxSize(1 << (uiCode + 5));
+    }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
     if (pcSPS->getUseInterMTS())
     {

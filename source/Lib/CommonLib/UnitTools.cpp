@@ -32867,7 +32867,11 @@ bool CU::isMTSAllowed(const CodingUnit &cu, const ComponentID compID)
 {
   SizeType tsMaxSize = 1 << cu.cs->sps->getLog2MaxTransformSkipBlockSize();
 #if JVET_AA0133_INTER_MTS_OPT
+#if AHG7_MTS_TOOLOFF_CFG
+  const int maxSize = CU::isIntra(cu) ? cu.cs->sps->getIntraMTSMaxSize() : cu.cs->sps->getInterMTSMaxSize();
+#else
   const int maxSize = CU::isIntra(cu) ? MTS_INTRA_MAX_CU_SIZE : cu.cs->sps->getInterMTSMaxSize();
+#endif
 #else
   const int maxSize  = CU::isIntra( cu ) ? MTS_INTRA_MAX_CU_SIZE : MTS_INTER_MAX_CU_SIZE;
 #endif
