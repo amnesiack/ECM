@@ -1160,6 +1160,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AA0133_INTER_MTS_OPT
   ("InterMTSMaxSize",                                 m_interMTSMaxSize,                                   32, "InterMTSMaxSize")
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  ("IntraMTSMaxSize",                                 m_intraMTSMaxSize,                                  128, "InterMTSMaxSize")
+  ("MTSExt",                                          m_MTSExt,                                          true, "Enable extended MTS (0: 0ff, 1: on)")
+#endif
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   ("EnableTMnoninterTools",                           m_tmNoninterToolsEnableFlag,                       (bool) JVET_AE0174_NONINTER_TM_TOOLS_CONTROL,  "Enable non-inter based template matching  (0:off, 1:on) \n")
 #endif
@@ -5719,6 +5723,13 @@ void EncAppCfg::xPrintParameter()
     msg( VERBOSE, "HorCollocatedChroma:%d ", m_horCollocatedChromaFlag );
     msg( VERBOSE, "VerCollocatedChroma:%d ", m_verCollocatedChromaFlag );
     msg( VERBOSE, "MTS: %1d(intra) %1d(inter) ", m_MTS & 1, ( m_MTS >> 1 ) & 1 );
+#if AHG7_MTS_TOOLOFF_CFG
+    msg(VERBOSE, "MTSExt: %d ", m_MTSExt);
+    if (m_MTS & 1)
+    {
+      msg(VERBOSE, "IntraMTSMaxSize: %d ", m_intraMTSMaxSize);
+    }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
     if ((m_MTS >> 1) & 1)
     {

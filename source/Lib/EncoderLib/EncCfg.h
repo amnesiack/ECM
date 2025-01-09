@@ -404,6 +404,9 @@ protected:
   int       m_MTSIntraMaxCand;
   int       m_MTSInterMaxCand;
   int       m_ImplicitMTS;
+#if AHG7_MTS_TOOLOFF_CFG
+  bool      m_MTSExt;
+#endif
   bool      m_SBT;                                ///< Sub-Block Transform for inter blocks
   int       m_SBTFast64WidthTh;                   ///< Enable size-64 SBT in encoder RDO check for HD and above sequences
 
@@ -512,6 +515,9 @@ protected:
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   int      m_interMTSMaxSize;
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int      m_intraMTSMaxSize;
 #endif
 #if ENABLE_DIMD
   bool      m_dimd;
@@ -1642,7 +1648,10 @@ public:
   bool      getHorCollocatedChromaFlag()               const { return m_horCollocatedChromaFlag; }
   void      setVerCollocatedChromaFlag( bool b )             { m_verCollocatedChromaFlag = b; }
   bool      getVerCollocatedChromaFlag()               const { return m_verCollocatedChromaFlag; }
-
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setMTSExt(bool b)                              { m_MTSExt = b; }
+  bool      getMTSExt()                              const { return m_MTSExt; }
+#endif
   void setSbTmvpEnabledFlag(bool val) { m_sbTmvpEnableFlag = val; }
 
   void      setAffine                       ( bool b )       { m_Affine = b; }
@@ -1834,7 +1843,10 @@ public:
   void      setInterMTSMaxSize(int size) { m_interMTSMaxSize = size; }
   int       getInterMTSMaxSize()        const { return m_interMTSMaxSize; }
 #endif
-
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setIntraMTSMaxSize(int size) { m_intraMTSMaxSize = size; }
+  int       getIntraMTSMaxSize()        const { return m_intraMTSMaxSize; }
+#endif
 #if ENABLE_DIMD
   void      setUseDimd                   ( bool b )       { m_dimd = b; }
   bool      getUseDimd                   ()         const { return m_dimd; }

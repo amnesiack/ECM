@@ -387,6 +387,9 @@ protected:
   unsigned  m_uiMaxMTTHierarchyDepthIChroma;
   unsigned  m_uiMaxBT[3];
   unsigned  m_uiMaxTT[3];
+#if AHG7_MTS_TOOLOFF_CFG
+  bool      m_MTSExt;
+#endif
 #if JVET_Y0152_TT_ENC_SPEEDUP
   int       m_ttFastSkip;
   double    m_ttFastSkipThr;
@@ -508,6 +511,9 @@ protected:
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   int       m_interMTSMaxSize;
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int       m_intraMTSMaxSize;
 #endif
 #if ENABLE_DIMD
   bool      m_dimd;

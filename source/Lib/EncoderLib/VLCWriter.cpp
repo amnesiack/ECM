@@ -1293,6 +1293,16 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   {
     WRITE_FLAG(pcSPS->getUseIntraMTS() ? 1 : 0, "sps_explicit_mts_intra_enabled_flag");
     WRITE_FLAG(pcSPS->getUseInterMTS() ? 1 : 0, "sps_explicit_mts_inter_enabled_flag");
+#if AHG7_MTS_TOOLOFF_CFG
+    WRITE_FLAG(pcSPS->getUseMTSExt() ? 1 : 0, "sps_explicit_mts_extension_enabled_flag");
+    if (pcSPS->getUseIntraMTS())
+    {
+      uint32_t intraMTSMaxCU = pcSPS->getIntraMTSMaxSize();
+      CHECK((intraMTSMaxCU != 32 && intraMTSMaxCU != 64 && intraMTSMaxCU != 128 && intraMTSMaxCU != 256), "intraMTSMaxSize != 32 or 64 or 128 or 256");
+      uint32_t log2IntraMTSMaxCUMinus5 = floorLog2(intraMTSMaxCU) - 5;
+      WRITE_CODE((log2IntraMTSMaxCUMinus5 & 0x3), 2, "intraMTSMaxSizeMinus5");
+    }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
     if (pcSPS->getUseInterMTS())
     {

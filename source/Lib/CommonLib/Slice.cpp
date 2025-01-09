@@ -4293,6 +4293,9 @@ SPS::SPS()
 , m_verCollocatedChromaFlag   ( false )
 , m_IntraMTS                  ( false )
 , m_InterMTS                  ( false )
+#if AHG7_MTS_TOOLOFF_CFG
+, m_MTSExt                    ( false )
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
 , m_intraLFNSTISlice          ( false )
 , m_intraLFNSTPBSlice         ( false )
