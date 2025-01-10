@@ -9729,7 +9729,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
 #endif
 #endif
 #if AHG7_LN_TOOLOFF_CFG
-    assert( idxLFNST < ( ( cu.cs->sps->getUseLFNSTExt() || cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) ? 4 : 3 ) );
+    CHECK( idxLFNST >= ( ( cu.cs->sps->getUseLFNSTExt() || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) ) ? 4 : 3 ), "idxLFNST out of range" );
 #else
     assert(idxLFNST < 4);
 #endif
