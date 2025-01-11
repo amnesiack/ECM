@@ -837,7 +837,7 @@ void AdaptiveLoopFilter::ALFProcess(CodingStructure& cs)
               const Area blkDst( xStart, yStart, w, h );
               short filterSetIndex = alfCtuFilterIndex[ctuIdx];
 #if FIXFILTER_CFG
-              bool useFixedFilter = m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI || m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI_DIRECT;
+              bool useFixedFilter = filterSetIndex < NUM_FIXED_FILTER_SETS || m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI || m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI_DIRECT;
 #endif
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
               PelUnitBuf bufDb = m_tempBufBeforeDb2.subBuf(UnitArea(CHROMA_400, Area(0, 0, wBuf, hBuf)));
@@ -1278,7 +1278,7 @@ void AdaptiveLoopFilter::ALFProcess(CodingStructure& cs)
           Area blk( xPos, yPos, width, height );
           short filterSetIndex = alfCtuFilterIndex[ctuIdx];
 #if FIXFILTER_CFG
-          bool useFixedFilter = m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI || m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI_DIRECT;
+          bool useFixedFilter = filterSetIndex < NUM_FIXED_FILTER_SETS || m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI || m_filterTypeApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS] == ALF_FILTER_13_EXT_DB_RESI_DIRECT;
 #endif
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
           calcAlfLumaCodingInfoBlk(cs, m_classifierCodingInfo[0], blk, blk, recYuv.get(COMPONENT_Y), 2, 2, m_inputBitDepth[CHANNEL_TYPE_LUMA], tmpYuvResi.get(COMPONENT_Y), m_laplacian[0], tmpYuvCodingInfo.get(COMPONENT_Y) );

@@ -12684,7 +12684,13 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
     else
     {
 #if JVET_Y0142_ADAPT_INTRA_MTS
-      nNumTransformCands = 1 + (tsAllowed ? 1 : 0) + (mtsAllowed ? 6 : 0); // DCT + TS + 6 MTS = 8 tests
+      nNumTransformCands = 1 + (tsAllowed ? 1 : 0) + (mtsAllowed ? 
+#if AHG7_MTS_TOOLOFF_CFG
+      (tu.cs->sps->getUseMTSExt()? 6 : 4) : 0
+#else
+        6 : 0
+#endif
+        ); // DCT + TS + 6 MTS = 8 tests
 #else
       nNumTransformCands = 1 + ( tsAllowed ? 1 : 0 ) + ( mtsAllowed ? 4 : 0 ); // DCT + TS + 4 MTS = 6 tests
 #endif
@@ -12711,7 +12717,12 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
         if (mtsAllowed)
         {
 #if JVET_Y0142_ADAPT_INTRA_MTS
+#if AHG7_MTS_TOOLOFF_CFG
+          int endIdx = 2 + (tu.cs->sps->getUseMTSExt() ? 6 : 4);
+          for (int i = 2; i < endIdx; i++)
+#else
           for (int i = 2; i < 8; i++)
+#endif
 #else
           for (int i = 2; i < 6; i++)
 #endif
