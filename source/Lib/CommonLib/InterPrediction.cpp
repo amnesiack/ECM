@@ -448,6 +448,10 @@ void InterPrediction::destroy()
   m_tmpObmcBufL0.destroy();
   m_tmpObmcBufT0.destroy();
   m_tmpSubObmcBuf.destroy();
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  m_tmpIntraObmcBufL0.destroy();
+  m_tmpIntraObmcBufT0.destroy();
+#endif
 #endif
   xFree(m_cYuvPredTempDMVRL0);
   m_cYuvPredTempDMVRL0 = nullptr;
@@ -755,6 +759,10 @@ void InterPrediction::init( RdCost* pcRdCost, ChromaFormat chromaFormatIDC, cons
       m_tmpSubObmcBuf.bufs[1].memset(0);
       m_tmpSubObmcBuf.bufs[2].memset(0);
     }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    m_tmpIntraObmcBufL0.create(UnitArea(chromaFormatIDC, Area(0, 0, 4, MAX_CU_SIZE)));
+    m_tmpIntraObmcBufT0.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, 4)));
+#endif
 #endif
   }
 
@@ -4613,6 +4621,24 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
   {
 #if RPR_ENABLE
     PelBuf& dstBuf = dstPic.bufs[compID];
+#endif
+#if JVET_AD0213_LIC_IMP && JVET_AK0076_EXTENDED_OBMC_IBC
+    if (pu.cu->isobmcMC)
+    {
+      CHECK(m_storeBeforeLIC || pu.ibcCiipFlag, "m_storeBeforeLIC || pu.ibcCiip");
+      if (pu.cu->ibcLicFlag
+#if JVET_AC0112_IBC_CIIP
+        && !pu.ibcCiipFlag
+#endif
+#if JVET_AC0112_IBC_GPM
+        && !pu.ibcGpmFlag
+#endif
+        && !bi)
+      {
+        dstBuf.linearTransform(pu.cu->licScale[m_iRefListIdx][compID], m_licShift, pu.cu->licOffset[m_iRefListIdx][compID], true, clpRng);
+      }
+      return;
+    }
 #endif
     if (m_storeBeforeLIC)
     {
@@ -8945,7 +8971,11 @@ void InterPrediction::motionCompensation( PredictionUnit &pu, const RefPicList &
 *    to make the motion estimation biased to OBMC.
 */
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst, IntraPrediction *pcIntraPred, bool lumaOnly)
+#else
 void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst, IntraPrediction *pcIntraPred)
+#endif
 #else
 void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
@@ -8956,6 +8986,12 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if INTER_LIC && !JVET_AD0213_LIC_IMP
     || pu.cu->licFlag
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    || pu.cu->rribcFlipType != 0
+#if JVET_AC0112_IBC_LIC && !JVET_AD0213_LIC_IMP
+    || pu.cu->ibcLicFlag
+#endif
+#endif
     || pu.lwidth() * pu.lheight() < 32
     )
   {
@@ -8963,7 +8999,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
   }
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if ((pu.cu->predMode == MODE_INTER && pu.mergeFlag) || CU::isIBC(*pu.cu) || PU::isTmp(pu))
+#else
   if (pu.cu->predMode == MODE_INTER && pu.mergeFlag)
+#endif
   {
     if (isSCC(pu))
     {
@@ -9016,6 +9056,12 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 #if JVET_AD0213_LIC_IMP
   bool licFlag = pu.cu->licFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  bool ibcLicFlag = pu.cu->ibcLicFlag;
+  bool tmpLicFlag = pu.cu->tmpLicFlag;
+  bool tmpFlag = pu.cu->tmpFlag;
+  PredMode predMode = pu.cu->predMode;
+#endif
   int  licScale[2][3], licOffset[2][3];
   for (int refList = 0; refList < 2; refList++)
   {
@@ -9053,16 +9099,39 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if JVET_AG0098_AMVP_WITH_SBTMVP
   subPu.amvpSbTmvpFlag = false;
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  subPu.cu->tmpLicFlag = false;
+  if (PU::isTmp(pu))
+  {
+    subPu.cu->predMode = MODE_IBC;
+    subPu.cu->tmpFlag = false;
+  }
+  subPu.ibcCiipFlag = 0;
+  int numComp = !lumaOnly && pu.Cb().valid() ? MAX_NUM_COMPONENT : 1;
+#endif
   PelUnitBuf pcYuvPred = pDst == nullptr ? pu.cs->getPredBuf(pu) : *pDst;
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  UnitArea localUnitAreaL(pu.chromaFormat, Area(0, 0, uiMinCUW, pu.lheight()));
+  UnitArea localUnitAreaT(pu.chromaFormat, Area(0, 0, pu.lwidth(), uiMinCUW));
+  PelUnitBuf pcYuvTmpPredL0 = m_tmpObmcBufL0.getBuf(localUnitAreaL);
+  PelUnitBuf pcYuvTmpPredT0 = m_tmpObmcBufT0.getBuf(localUnitAreaT);
+  PelUnitBuf pcYuvIntraTmpPredL0 = m_tmpIntraObmcBufL0.getBuf(localUnitAreaL);
+  PelUnitBuf pcYuvIntraTmpPredT0 = m_tmpIntraObmcBufT0.getBuf(localUnitAreaT);
+#else
   PelUnitBuf pcYuvTmpPredL0 = m_tmpObmcBufL0.subBuf(UnitAreaRelative(*pu.cu, pu));
   PelUnitBuf pcYuvTmpPredT0 = m_tmpObmcBufT0.subBuf(UnitAreaRelative(*pu.cu, pu));
+#endif
 
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
   PelUnitBuf beforeOBMC = PelUnitBuf(pu.chromaFormat, PelBuf(m_beforeOBMCBuf[COMPONENT_Y], pu.blocks[COMPONENT_Y].width, pu.blocks[COMPONENT_Y].height),
     PelBuf(m_beforeOBMCBuf[COMPONENT_Cb], pu.blocks[COMPONENT_Cb].width, pu.blocks[COMPONENT_Cb].height),
     PelBuf(m_beforeOBMCBuf[COMPONENT_Cr], pu.blocks[COMPONENT_Cr].width, pu.blocks[COMPONENT_Cr].height));
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  beforeOBMC.copyFrom(pcYuvPred, lumaOnly);
+#else
   beforeOBMC.copyFrom(pcYuvPred);
+#endif
 #endif
 
   for (int iBlkBoundary = 0; iBlkBoundary < 2; iBlkBoundary++)  // 0 - top; 1 - left
@@ -9082,10 +9151,17 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if JVET_AD0213_LIC_IMP
       Position posNeighbor;
       subPu.cu->licFlag = licFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      subPu.cu->ibcLicFlag = ibcLicFlag;
+#endif
       subPu.cu->bcwIdx = bcwIdx;
       for (int refList = 0; refList < 2; refList++)
       {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+        for (int comp = 0; comp < numComp; comp++)
+#else
         for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
         {
           subPu.cu->licScale[refList][comp] = licScale[refList][comp];
           subPu.cu->licOffset[refList][comp] = licOffset[refList][comp];
@@ -9126,10 +9202,31 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         }
 #if JVET_Z0061_TM_OBMC
         bool isAbove   = (iBlkBoundary == 0) ? 1 : 0;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+        int  iOBMCmode = (CU::isIBC(*pu.cu) || NeighMi.isIBCmot) ? 2 : selectOBMCmode(pu, subPu, isAbove, iLength, uiMinCUW, curOffset);
+#else
         int  iOBMCmode = selectOBMCmode(pu, subPu, isAbove, iLength, uiMinCUW, curOffset);
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+        std::vector<Pel>* lut = nullptr;
+        if (m_pcReshape->getSliceReshaperInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
+        {
+          lut = (CU::isIBC(*pu.cu) && !NeighMi.isIBCmot) ? &m_pcReshape->getFwdLUT() : (!CU::isIBC(*pu.cu) && NeighMi.isIBCmot) ? &m_pcReshape->getInvLUT() : nullptr;
+        }
+        PredMode modeBak = subPu.cu->predMode;
+        subPu.cu->predMode = (subPu.refIdx[0] == MAX_NUM_REF) ? MODE_IBC : MODE_INTER;
+        int imv = subPu.cu->imv;
+        if (NeighMi.isIBCmot)
+        {
+          subPu.cu->imv = 0;
+        }
+#endif
 #if JVET_AD0213_LIC_IMP
         PredictionUnit* neighPu = pu.cs->getPU(posNeighbor, pu.chType);
         subPu.cu->licFlag = neighPu->cu->licFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+        subPu.cu->ibcLicFlag = neighPu->cu->ibcLicFlag;
+#endif
         subPu.cu->bcwIdx = neighPu->cu->bcwIdx;
         for (int refList = 0; refList < 2; refList++)
         {
@@ -9137,7 +9234,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
           if(neighPu->interDir & (refList + 1))
           {
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          for (int comp = 0; comp < numComp; comp++)
+#else
           for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
           {
             subPu.cu->licScale[refList][comp] = neighPu->cu->licScale[refList][comp];
             subPu.cu->licOffset[refList][comp] = neighPu->cu->licOffset[refList][comp];
@@ -9146,7 +9247,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
           }
           else
           {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            for (int comp = 0; comp < numComp; comp++)
+#else
             for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
             {
               subPu.cu->licScale[refList][comp] = 32;
               subPu.cu->licOffset[refList][comp] = 0;
@@ -9165,11 +9270,20 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS
         if (iOBMCmode == -1)
         {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, lut);
+          for (int compID = 0; compID < numComp; compID++)
+#else
           xSubBlockMotionCompensation(subPu, cTmp1);
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
           {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            xSubblockOBMC(ComponentID(compID), subPu, cPred, cTmp1, cTmpBeforeOBMC, lut, iBlkBoundary, false, false);
+#else
             xSubblockOBMC(ComponentID(compID), subPu, cPred, cTmp1, cTmpBeforeOBMC, iBlkBoundary, false, false);
+#endif
 #else
             xSubblockOBMC(ComponentID(compID), subPu, cPred, cTmp1, iBlkBoundary);
 #endif
@@ -9184,12 +9298,22 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         }
         else if (iOBMCmode == 2)   // 2: neighbour;
         {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, lut);
+
+          for (int compID = 0; compID < numComp; compID++)
+#else
           xSubBlockMotionCompensation(subPu, cTmp1);
 
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
           {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            xSubblockTMOBMC(ComponentID(compID), subPu, cPred, cTmp1, cTmpBeforeOBMC, lut, iBlkBoundary, iOBMCmode);
+#else
             xSubblockTMOBMC(ComponentID(compID), subPu, cPred, cTmp1, cTmpBeforeOBMC, iBlkBoundary, iOBMCmode);
+#endif
 #else
             xSubblockTMOBMC(ComponentID(compID), subPu, cPred, cTmp1, iBlkBoundary, iOBMCmode);
 #endif
@@ -9198,12 +9322,22 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         }
         else   // 3: blend (OBMC) or default 0: best has not been found;
         {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, lut);
+
+          for (int compID = 0; compID < numComp; compID++)
+#else
           xSubBlockMotionCompensation(subPu, cTmp1);
 
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
           {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            xSubblockTMOBMC(ComponentID(compID), subPu, cPred, cTmp1, cTmpBeforeOBMC, lut, iBlkBoundary, iOBMCmode);
+#else
             xSubblockTMOBMC(ComponentID(compID), subPu, cPred, cTmp1, cTmpBeforeOBMC, iBlkBoundary, iOBMCmode);
+#endif
 #else
             xSubblockTMOBMC(ComponentID(compID), subPu, cPred, cTmp1, iBlkBoundary, iOBMCmode);
 #endif
@@ -9248,6 +9382,10 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
         iSub += iLength;
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+        subPu.cu->predMode = modeBak;
+        subPu.cu->imv = imv;
+#endif
       }
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
       else if (iState == 1 && m_modeGetCheck[iBlkBoundary])
@@ -9285,12 +9423,34 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
           PelUnitBuf     cPredForBlend = pcYuvPred.subBuf(predArea);
           PelUnitBuf cTmp = predIntra.subBuf(predArea);
          
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          PelUnitBuf cTmp1 = iBlkBoundary == 0 ? pcYuvIntraTmpPredT0.subBuf(predArea) : pcYuvIntraTmpPredL0.subBuf(predArea);
+          if (m_intraObmcPred && pu.cu->cs->pcv->isEncoder && pu.cu->slice->getSliceType() == I_SLICE)
+          {
+            cTmp.copyFrom(cTmp1, lumaOnly);
+          }
+          else
+          {
+            subBlockIntraForOBMC(subPu, iSub, (iBlkBoundary == 0), cTmp, pcIntraPred, lumaOnly);
+            if (pu.cu->cs->pcv->isEncoder && pu.cu->slice->getSliceType() == I_SLICE)
+            {
+              cTmp1.copyFrom(cTmp, lumaOnly);
+            }
+          }
+
+          for (int compID = 0; compID < numComp; compID++)
+#else
           subBlockIntraForOBMC(subPu, iSub, (iBlkBoundary == 0), cTmp, pcIntraPred);
 
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
           {
             PelUnitBuf cTmpBeforeOBMC = beforeOBMC.subBuf(predArea);
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            xSubblockOBMC(ComponentID(compID), subPu, cPredForBlend, cTmp, cTmpBeforeOBMC, nullptr, iBlkBoundary, false, true);
+#else
             xSubblockOBMC(ComponentID(compID), subPu, cPredForBlend, cTmp, cTmpBeforeOBMC, iBlkBoundary, false, true);
+#endif
           }
 
           iSub += currLength;
@@ -9310,8 +9470,19 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
     CHECK(iSub != uiLengthInBlock, "not all sub-blocks are merged");
   }
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (pu.cu->cs->pcv->isEncoder)
+  {
+    m_intraObmcPred = true;
+  }
+#endif
+
 #if JVET_AD0213_LIC_IMP
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (!bSubMotion || licFlag || ibcLicFlag)
+#else
   if (!bSubMotion || licFlag)
+#endif
 #else
   if (!bSubMotion)
 #endif
@@ -9323,9 +9494,19 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 #if JVET_AD0213_LIC_IMP
     pu.cu->licFlag = licFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    pu.cu->ibcLicFlag = ibcLicFlag;
+    pu.cu->tmpLicFlag = tmpLicFlag;
+    pu.cu->predMode = predMode;
+    pu.cu->tmpFlag = tmpFlag;
+#endif
     for (int refList = 0; refList < 2; refList++)
     {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      for (int comp = 0; comp < numComp; comp++)
+#else
       for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
       {
         pu.cu->licScale[refList][comp] = licScale[refList][comp];
         pu.cu->licOffset[refList][comp] = licOffset[refList][comp];
@@ -9343,13 +9524,21 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 #if JVET_AD0213_LIC_IMP
   subPu.cu->licFlag = licFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  subPu.cu->ibcLicFlag = ibcLicFlag;
+  subPu.cu->tmpLicFlag = tmpLicFlag;
+#endif
   for (int refList = 0; refList < 2; refList++)
   {
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
     if (pu.interDir & (refList + 1))
     {
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    for (int comp = 0; comp < numComp; comp++)
+#else
     for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
     {
       subPu.cu->licScale[refList][comp] = licScale[refList][comp];
       subPu.cu->licOffset[refList][comp] = licOffset[refList][comp];
@@ -9358,7 +9547,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
     }
     else
     {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      for (int comp = 0; comp < numComp; comp++)
+#else
       for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
       {
         subPu.cu->licScale[refList][comp] = 32;
         subPu.cu->licOffset[refList][comp] = 0;
@@ -9435,7 +9628,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
       if( isAboveAvail || isLeftAvail || isBelowAvail || isRightAvail )
       {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+        for (int compID = 0; compID < numComp; compID++)
+#else
         for( int compID = 0; compID < MAX_NUM_COMPONENT; compID++ )
+#endif
         {
           xSubblockOBMCBlending( ComponentID( compID ), subPu, cPred, isAboveAvail ? cTmp1: zero, isLeftAvail ? cTmp2: zero, isBelowAvail ? cTmp3: zero, isRightAvail ? cTmp4: zero, isAboveAvail, isLeftAvail, isBelowAvail, isRightAvail, true );
         }
@@ -9449,9 +9646,19 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 #if JVET_AD0213_LIC_IMP
   pu.cu->licFlag = licFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  pu.cu->ibcLicFlag = ibcLicFlag;
+  pu.cu->tmpLicFlag = tmpLicFlag;
+  pu.cu->predMode = predMode;
+  pu.cu->tmpFlag = tmpFlag;
+#endif
   for (int refList = 0; refList < 2; refList++)
   {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    for (int comp = 0; comp < numComp; comp++)
+#else
     for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
     {
       pu.cu->licScale[refList][comp] = licScale[refList][comp];
       pu.cu->licOffset[refList][comp] = licOffset[refList][comp];
@@ -9467,7 +9674,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 // Function for (weighted) averaging predictors of current block and predictors generated by applying neighboring motions to current block.
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 void InterPrediction::xSubblockOBMC(const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc, 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+   PelUnitBuf &pcYuvBefore, std::vector<Pel>* lmcsLut, int iDir, bool bSubMotion, bool bIsIntra)
+#else
    PelUnitBuf &pcYuvBefore, int iDir, bool bSubMotion, bool bIsIntra)
+#endif
 #else
 void InterPrediction::xSubblockOBMC(const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc, int iDir, bool bSubMotion)
 #endif
@@ -9491,7 +9702,11 @@ void InterPrediction::xSubblockOBMC(const ComponentID eComp, PredictionUnit &pu,
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (!bIsIntra && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp)), lmcsLut))
+#else
   if (!bIsIntra && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp))))
+#endif
 #else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pOrgDst, strideDst, pu.cs->sps->getBitDepth(toChannelType(eComp))))
 #endif
@@ -9704,7 +9919,11 @@ void InterPrediction::xSubblockOBMCBlending(const ComponentID eComp, PredictionU
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
 bool InterPrediction::isSCC(const PredictionUnit  &pu)
 {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (pu.cs->sps->getPLTMode() || pu.cs->sps->getBDPCMEnabledFlag())
+#else
   if (pu.cs->sps->getIBCFlag() || pu.cs->sps->getPLTMode() || pu.cs->sps->getBDPCMEnabledFlag())
+#endif
   {
     const uint32_t uiMinCUW = pu.cs->pcv->minCUWidth;
     for (int iBlkBoundary = 0; iBlkBoundary < 2; iBlkBoundary++)   // 0 - top; 1 - left
@@ -9798,7 +10017,11 @@ bool InterPrediction::isSCC(const PredictionUnit  &pu)
 }
 
 // dst is the prediction of the current block
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+bool InterPrediction::skipObmcConditionByPixel(PredictionUnit& pu, ComponentID comp, int width, int height, const Pel* src, int strideSrc, const Pel* dst, int strideDst, int bitDepth, std::vector<Pel>* lmcsLut)
+#else
 bool InterPrediction::skipObmcConditionByPixel(PredictionUnit& pu, ComponentID comp, int width, int height, const Pel* src, int strideSrc, const Pel* dst, int strideDst, int bitDepth)
+#endif
 {
   const SPS &sps = *pu.cs->sps;
   const int baseThreshold = 96;
@@ -9815,8 +10038,29 @@ bool InterPrediction::skipObmcConditionByPixel(PredictionUnit& pu, ComponentID c
       Mv mv = pu.mv[refList];
       clipMv(mv, pu.lumaPos(), pu.lumaSize(), sps, *pu.cs->pps);
       mv.roundToPrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      if (CU::isIBC(*pu.cu))
+      {
+        const int picWidth     = pu.cs->slice->getPPS()->getPicWidthInLumaSamples();
+        const int picHeight    = pu.cs->slice->getPPS()->getPicHeightInLumaSamples();
+        const uint32_t ctuSize = pu.cs->slice->getSPS()->getMaxCUWidth();
+        int xPred = mv.getHor() >> MV_FRACTIONAL_BITS_INTERNAL;
+        int yPred = mv.getVer() >> MV_FRACTIONAL_BITS_INTERNAL;
+        if (!PU::searchBv(pu, pu.Y().x, pu.Y().y, pu.Y().width, pu.Y().height, picWidth, picHeight, xPred, yPred, ctuSize))
+        {
+          return false;
+        }
+      }
+      const Picture *refPic = pu.refIdx[refList] == MAX_NUM_REF ? pu.cu->slice->getPic() : pu.cs->slice->getRefPic(RefPicList(refList), pu.refIdx[refList])->unscaledPic;
+      xPredInterBlk(comp, pu, refPic, mv, refFromNeighbor, false, pu.cs->slice->clpRng(comp), false, pu.refIdx[refList] == MAX_NUM_REF, pu.cs->slice->getScalingRatio(RefPicList(refList), pu.refIdx[refList]));
+      if (isLuma(comp) && lmcsLut)
+      {
+        refFromNeighbor.Y().rspSignal(*lmcsLut);
+      }
+#else
       const Picture *refPic = pu.cs->slice->getRefPic(RefPicList(refList), pu.refIdx[refList])->unscaledPic;
       xPredInterBlk(comp, pu, refPic, mv, refFromNeighbor, false, pu.cs->slice->clpRng(comp), false, false, pu.cs->slice->getScalingRatio(RefPicList(refList), pu.refIdx[refList]));
+#endif
       const Pel* ref = refFromNeighbor.bufs[comp].buf;
       const int strideRef = refFromNeighbor.bufs[comp].stride;
       const Pel* pred = dst;
@@ -9839,15 +10083,31 @@ bool InterPrediction::skipObmcConditionByPixel(PredictionUnit& pu, ComponentID c
 #endif
 #endif
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf &pcYuvPred, bool lumaOnly, std::vector<Pel>* lmcsLut)
+#else
 void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf &pcYuvPred)
+#endif
 {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if ((CU::isIBC(*pu.cu) && pu.interDir == 1) || xCheckIdenticalMotion(pu))
+#else
   if (xCheckIdenticalMotion(pu))
+#endif
   {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    xPredInterUni(pu, REF_PIC_LIST_0, pcYuvPred, false, false, true, !lumaOnly);
+#else
     xPredInterUni(pu, REF_PIC_LIST_0, pcYuvPred, false, false, true, true);
+#endif
 #if JVET_AG0276_NLIC
     if (pu.cu->altLMFlag)
     {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      for (int comp = 0; comp < (lumaOnly ? 1 : MAX_NUM_COMPONENT); comp++)
+#else
       for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
       {
         ComponentID compID = (ComponentID)comp;
 
@@ -9861,8 +10121,18 @@ void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf
   }
   else
   {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    xPredInterBi(pu, pcYuvPred, true, !lumaOnly);
+#else
     xPredInterBi(pu, pcYuvPred, true);
+#endif
   }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (lmcsLut)
+  {
+    pcYuvPred.Y().rspSignal(*lmcsLut);
+  }
+#endif
 }
 #endif
 
@@ -11322,6 +11592,12 @@ void InterPrediction::motionCompensationIbcGpm( CodingUnit &cu, MergeCtx &ibcGpm
 #if JVET_AE0169_GPM_IBC_IBC
         tmMergeIdx0Mv = pu.mv[0];
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      if (isIntra0 || isIntra1)
+      {
+        PU::spanMotionInfo(pu, ibcGpmMrgCtx);
+      }
+#endif
       if (luma && (chroma || !isChromaEnabled(cu.chromaFormat)))
       {
         motionCompensation(pu, tmpGeoBuf0, REF_PIC_LIST_X, true, true);
@@ -11368,6 +11644,12 @@ void InterPrediction::motionCompensationIbcGpm( CodingUnit &cu, MergeCtx &ibcGpm
 #if JVET_AE0169_GPM_IBC_IBC
         tmMergeIdx1Mv = pu.mv[0];
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      if (isIntra0 || isIntra1)
+      {
+        PU::spanMotionInfo(pu, ibcGpmMrgCtx);
+      }
+#endif
       if (luma && (chroma || !isChromaEnabled(cu.chromaFormat)))
       {
         motionCompensation(pu, tmpGeoBuf1, REF_PIC_LIST_X, true, true);
@@ -11377,6 +11659,18 @@ void InterPrediction::motionCompensationIbcGpm( CodingUnit &cu, MergeCtx &ibcGpm
         motionCompensation(pu, tmpGeoBuf1, REF_PIC_LIST_X, true, chroma);
       }
     }
+#if ENABLE_OBMC && JVET_AK0076_EXTENDED_OBMC_IBC
+    if (isIntra0 || isIntra1)
+    {
+      cu.isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      subBlockOBMC(pu, isIntra0 ? &tmpGeoBuf1 : &tmpGeoBuf0, pcIntraPred, !chroma);
+#else
+      subBlockOBMC(pu, isIntra0 ? &tmpGeoBuf1 : &tmpGeoBuf0, !chroma);
+#endif
+      cu.isobmcMC = false;
+    }
+#endif
 
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
     weightedGeoBlkRounded(pu, splitDir, bldIdx, CHANNEL_TYPE_LUMA, predBuf, tmpGeoBuf0, tmpGeoBuf1);
@@ -22367,7 +22661,11 @@ void InterPrediction::xSubblockTMOBMC(const ComponentID eComp, PredictionUnit &p
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
   PelUnitBuf &pcYuvBefore, 
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  std::vector<Pel>* lmcsLut, int iDir, int iOBMCmode)
+#else
   int iDir, int iOBMCmode)
+#endif
 {
   int iWidth  = pu.blocks[eComp].width;
   int iHeight = pu.blocks[eComp].height;
@@ -22388,7 +22686,11 @@ void InterPrediction::xSubblockTMOBMC(const ComponentID eComp, PredictionUnit &p
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp)), lmcsLut))
+#else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp))))
+#endif
 #else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pOrgDst, strideDst, pu.cs->sps->getBitDepth(toChannelType(eComp))))
 #endif
@@ -23967,6 +24269,11 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
     *offset2 = parameters[1].b;
     *shift2 = parameters[1].shift;
     *mean = meanRef;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    m_shift[0][compID] = 5;
+    m_scale[0][compID] = 32;
+    m_offset[0][compID] = 0;
+#endif
 
     return;
   }
@@ -23976,6 +24283,11 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
   {
     scale = (1 << shift);
     offset = 0;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    m_shift[0][compID] = shift;
+    m_scale[0][compID] = scale;
+    m_offset[0][compID] = offset;
+#endif
     return;
   }
 
@@ -24002,6 +24314,11 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
   const int minOffset = -1 - maxOffset;
   offset = (sumY - ((scale * sumX) >> shift) + ((1 << (cntShift)) >> 1)) >> cntShift;
   offset = Clip3(minOffset, maxOffset, offset);
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  m_shift[0][compID] = shift;
+  m_scale[0][compID] = scale;
+  m_offset[0][compID] = offset;
+#endif
 }
 #endif
 
@@ -24629,6 +24946,11 @@ void InterPrediction::xLocalIlluComp(const PredictionUnit& pu,
   {
     xCalIbcFilterParam(dstBuf, pu.cu, compID, bv, pu.blocks[compID].width, pu.blocks[compID].height ); 
     xGenerateIbcFilterPred(dstBuf, pu.blocks[compID].width, pu.blocks[compID].height, compID, pu.cu);
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    m_shift[0][compID] = 5;
+    m_scale[0][compID] = 32;
+    m_offset[0][compID] = 0;
+#endif
   }
 #else
 #if JVET_AD0213_LIC_IMP
@@ -42181,7 +42503,11 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
 #endif
 
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  void InterPrediction::subBlockIntraForOBMC(PredictionUnit &subPu, const int iSub, const bool isAbove, PelUnitBuf &cTmp, IntraPrediction *pcIntraPred, const bool lumaOnly)
+#else
   void InterPrediction::subBlockIntraForOBMC(PredictionUnit &subPu, const int iSub, const bool isAbove, PelUnitBuf &cTmp, IntraPrediction *pcIntraPred)
+#endif
   {
     const uint32_t uiMinCUW = subPu.cs->pcv->minCUWidth;
     const int scaleX = getComponentScaleX((ComponentID)COMPONENT_Cb, subPu.chromaFormat);
@@ -42205,7 +42531,12 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
     subPu.cu = &tempCu;
     subPu.cu->UnitArea::operator=(UnitArea(subPu));
     
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    int numComp = !lumaOnly && subPu.Cb().valid() ? MAX_NUM_COMPONENT : 1;
+    for (uint32_t c = 0; c < numComp; c++)
+#else
     for (uint32_t c = 0; c < MAX_NUM_COMPONENT; c++)
+#endif
     {
       const uint32_t uiScaledMinCUW = c == 0 ? uiMinCUW : (isAbove ? (uiMinCUW >> scaleX) : (uiMinCUW >> scaleY));
 
@@ -42267,9 +42598,17 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
         }
       }
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      pcIntraPred->predIntraAng(ComponentID(c), cTmp.bufs[c], subPu, false, false);
+#else
       pcIntraPred->predIntraAng(ComponentID(c), cTmp.bufs[c], subPu);
+#endif
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      if (c == 0 && !CU::isIBC(*subPu.cu))
+#else
       if (c == 0)
+#endif
       {
         if (subPu.cs->picHeader->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
         {

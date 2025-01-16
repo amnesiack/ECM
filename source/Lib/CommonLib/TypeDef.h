@@ -271,6 +271,7 @@
 #define JVET_AI0082_TEMPORAL_BV                           1 // JVET-AI0081: Temporal BV for IBC merge list construction
 #define JVET_AJ0096_SATD_REORDER_INTRA                    1 // JVET-AJ0096: SATD-based reordering for intra coding
 #define JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA               1 // JVET-AJ0172: Unified reference area of IBC and IntraTMP
+#define JVET_AK0076_EXTENDED_OBMC_IBC                     1 // JVET-AK0076: Extended OBMC for non-inter blocks
 
 #if JVET_AC0071_DBV && JVET_V0130_INTRA_TMP
 #define JVET_AF0066_ENABLE_DBV_4_SINGLE_TREE              1 // JVET-AF0066: Enable DBV mode in single tree configuration

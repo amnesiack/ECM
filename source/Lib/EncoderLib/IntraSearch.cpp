@@ -46,6 +46,9 @@
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
 #include "CommonLib/BilateralFilter.h"
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+#include "CommonLib/InterPrediction.h"
+#endif
 
 #include "CommonLib/dtrace_next.h"
 #include "CommonLib/dtrace_buffer.h"
@@ -1192,6 +1195,10 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
     bool bestSgpmMode = false;
     const CompArea &area = pu.Y();
     CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    int bestTmpLicParam[2] = {32, 0};
+    bool enableOBMC = (sps.getUseOBMC() && cu.lwidth() * cu.lheight() >= 32);
 #endif
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST 
     int intraTmpDimdMode = 0;
@@ -4376,6 +4383,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
 #if JVET_V0130_INTRA_TMP
       cu.tmpFlag = uiOrgMode.tmpFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      cu.obmcFlag = enableOBMC;
+#endif
 #if JVET_AD0086_ENHANCED_INTRA_TMP
       cu.tmpIdx = uiOrgMode.tmpIdx;
       cu.tmpFusionFlag = uiOrgMode.tmpFusionFlag;
@@ -4966,6 +4976,10 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           {
             CodingUnit* curCu = csBest->getCU(partitioner.currArea().lumaPos(), partitioner.chType);
             intraTmpDimdMode = curCu->intraTmpDimdMode;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            bestTmpLicParam[0] = curCu->licScale[0][COMPONENT_Y];
+            bestTmpLicParam[1] = curCu->licOffset[0][COMPONENT_Y];
+#endif
           }
 #endif 
 #if JVET_AH0076_OBIC
@@ -5147,6 +5161,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       //=== update PU data ====
 #if JVET_V0130_INTRA_TMP
       cu.tmpFlag = uiBestPUMode.tmpFlag;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      cu.obmcFlag = enableOBMC;
+#endif
 #endif
 #if JVET_AD0086_ENHANCED_INTRA_TMP
       cu.tmpIdx        = uiBestPUMode.tmpIdx;
@@ -5156,6 +5173,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       cu.tmpLicFlag = uiBestPUMode.tmpLicFlag;
       cu.ibcLicFlag = uiBestPUMode.tmpLicFlag;
       cu.ibcLicIdx = uiBestPUMode.tmpLicIdc;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      if (cu.tmpLicFlag)
+      {
+         cu.licScale[0][COMPONENT_Y] = bestTmpLicParam[0];
+         cu.licOffset[0][COMPONENT_Y] = bestTmpLicParam[1];
+      }
+      else
+      {
+        cu.licScale[0][COMPONENT_Y] = 32;
+        cu.licOffset[0][COMPONENT_Y] = 0;
+      }
+#endif
 #endif
       cu.tmpIsSubPel   = uiBestPUMode.tmpIsSubPel;
       cu.tmpSubPelIdx  = uiBestPUMode.tmpSubPelIdx;
@@ -10938,6 +10967,10 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
                            , !(tu.cu)->tmpFlmFlag
 #endif
                            );
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      pu.cu->licScale[0][COMPONENT_Y] = 32;
+      pu.cu->licOffset[0][COMPONENT_Y] = 0;
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
       if ((tu.cu)->tmpLicFlag)
       {
@@ -10957,6 +10990,10 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
           else
           {
             piPred.linearTransform(arrayLicParams[1], arrayLicParams[0], arrayLicParams[2], true, (tu.cu)->cs->slice->clpRng(COMPONENT_Y));
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            pu.cu->licScale[0][COMPONENT_Y] = arrayLicParams[1];
+            pu.cu->licOffset[0][COMPONENT_Y] = arrayLicParams[2];
+#endif
           }
         }
       }
@@ -11031,6 +11068,19 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
     getTargetTemplate(tu.cu, pu.lwidth(), pu.lheight());
     candidateSearchIntra(tu.cu, pu.lwidth(), pu.lheight());
     generateTMPrediction(piPred.buf, piPred.stride, pu.lwidth(), pu.lheight(), foundCandiNum);
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    if (pu.cu->obmcFlag)
+    {
+      PU::spanMotionInfo(pu);
+      pu.cu->isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      m_pcInterPred->subBlockOBMC(pu, nullptr, this, true);
+#else
+      m_pcInterPred->subBlockOBMC(pu, nullptr, true);
+#endif
+      pu.cu->isobmcMC = false;
+    }
 #endif
     CHECK(foundCandiNum < 1, "");
   
@@ -11411,6 +11461,10 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
                 else
                 {
                   piPred.linearTransform(arrayLicParams[1], arrayLicParams[0], arrayLicParams[2], true, (tu.cu)->cs->slice->clpRng(COMPONENT_Y));
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+                  pu.cu->licScale[0][COMPONENT_Y] = arrayLicParams[1];
+                  pu.cu->licOffset[0][COMPONENT_Y] = arrayLicParams[2];
+#endif
                 }
               }
             }
@@ -11487,6 +11541,19 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
           getTargetTemplate( tu.cu, pu.lwidth(), pu.lheight() );
           candidateSearchIntra( tu.cu, pu.lwidth(), pu.lheight() );
           generateTMPrediction( piPred.buf, piPred.stride, pu.lwidth(), pu.lheight(), foundCandiNum );
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          if (pu.cu->obmcFlag)
+          {
+            PU::spanMotionInfo(pu);
+            pu.cu->isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+            m_pcInterPred->subBlockOBMC(pu, nullptr, this, true);
+#else
+            m_pcInterPred->subBlockOBMC(pu, nullptr, true);
+#endif
+            pu.cu->isobmcMC = false;
+          }
 #endif
           CHECK( foundCandiNum < 1, "" );
         }

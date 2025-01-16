@@ -6767,7 +6767,11 @@ void IntraPrediction::xFillReferenceSamples( const CPelBuf &recoBuf, Pel* refBuf
 #if JVET_AH0209_PDP
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (isLuma(area.compID) && (cu.cs)->sps->getUsePDP() && m_intraOBMCNeighState == INTRA_OBMC_BOTH_NEIGH_AVAIL && !cu.tmpFlag && !cu.eipFlag && !cu.timd && !cu.sgpm && !cu.plIdx && !cu.firstPU->multiRefIdx && !cu.ispMode && !forceDeac0 && (cu.firstPU)->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX && !cu.isobmcMC)
+#else
   if (isLuma(area.compID) && (cu.cs)->sps->getUsePDP() && m_intraOBMCNeighState == INTRA_OBMC_BOTH_NEIGH_AVAIL && !cu.tmpFlag && !cu.eipFlag && !cu.timd && !cu.sgpm && !cu.plIdx && !cu.firstPU->multiRefIdx && !cu.ispMode && !forceDeac0 && (cu.firstPU)->intraDir[CHANNEL_TYPE_LUMA] != PNN_IDX)
+#endif
 #else
   if (m_intraOBMCNeighState == INTRA_OBMC_BOTH_NEIGH_AVAIL && !cu.firstPU->multiRefIdx && !cu.ispMode && !cu.plIdx)
 #endif
