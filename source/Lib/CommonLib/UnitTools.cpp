@@ -34116,7 +34116,11 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
   if( PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
 #endif
   {
+#if JVET_AK0064_CCP_LFNST_NSPT
+    intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+#else
     intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
     if (intraMode == PNN_IDX)
     {

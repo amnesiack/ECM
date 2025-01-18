@@ -14516,6 +14516,13 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
 #endif
       }
 
+#if JVET_AK0064_CCP_LFNST_NSPT
+      if (PU::isLMCMode(predMode) && currTU.cu->lfnstIdx)
+      {
+        IntraPrediction::deriveChromaIpmForTransform(piPredCb, piPredCr, *pu.cu);
+      }
+#endif
+
     // determination of chroma residuals including reshaping and cross-component prediction
     //----- get chroma residuals -----
     PelBuf resiCb  = cs.getResiBuf(cbArea);

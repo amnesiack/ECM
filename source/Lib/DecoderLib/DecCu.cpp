@@ -1143,6 +1143,10 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #endif
   if( compID != COMPONENT_Y && PU::isLMCMode( uiChFinalMode ) )
   {
+#if JVET_AK0064_CCP_LFNST_NSPT
+    if (compID == COMPONENT_Cb)
+    {
+#endif
 #if JVET_AD0188_CCP_MERGE
     PredictionUnit& pu = *tu.cu->firstPU;
 #else
@@ -1150,6 +1154,16 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #endif
     m_pcIntraPred->xGetLumaRecPixels( pu, area );
     m_pcIntraPred->predIntraChromaLM( compID, piPred, pu, area, uiChFinalMode );
+#if JVET_AK0064_CCP_LFNST_NSPT
+      {
+        CompArea areaCr = pu.Cr();
+        m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
+        PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+        m_pcIntraPred->xGetLumaRecPixels(pu, areaCr);
+        m_pcIntraPred->predIntraChromaLM(COMPONENT_Cr, predCr, pu, areaCr, uiChFinalMode);
+      }
+    }
+#endif
   }
   else
   {
@@ -1419,6 +1433,8 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     }
   }
 #if SIGN_PREDICTION
+#if JVET_AK0064_CCP_LFNST_NSPT
+  if (isJCCR && compID == COMPONENT_Cb && !PU::isLMCMode(uiChFinalMode))
 #if JVET_AA0057_CCCM
 #if JVET_AD0188_CCP_MERGE
   if (isJCCR && compID == COMPONENT_Cb && !pu.cccmFlag && !pu.idxNonLocalCCP
@@ -1439,6 +1455,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     && !pu.decoderDerivedCcpMode
 #endif
     )
+#endif
 #endif
   {
     m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
@@ -1491,6 +1508,16 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       }
     }
   }
+  }
+#endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  if (compID != COMPONENT_Y)
+  {
+    if (compID == COMPONENT_Cb && PU::isLMCMode(uiChFinalMode) && tu.cu->lfnstIdx)
+    {
+      PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+      IntraPrediction::deriveChromaIpmForTransform(piPred, predCr, *pu.cu);
+    }
   }
 #endif
   const Slice           &slice = *cs.slice;
