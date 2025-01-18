@@ -360,6 +360,9 @@ struct CodingUnit : public UnitArea
   int8_t         dimdChromaModeSecond;
 #endif
 #endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  int8_t         ccpChromaDimdMode[4]; // jointCbCr: 0,1,2,3
+#endif
 #if JVET_AB0157_INTRA_FUSION
   int8_t         dimdBlendMode[DIMD_FUSION_NUM-1]; // max number of blend modes (the main mode is not counter) --> incoherent with dimdRelWeight
   int8_t         dimdRelWeight[DIMD_FUSION_NUM]; // max number of predictions to blend

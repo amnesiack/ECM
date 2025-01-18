@@ -15885,6 +15885,138 @@ int IntraPrediction::deriveIpmForTransform(CPelBuf predBuf, CodingUnit& cu
   return firstMode;
 }
 #endif
+
+#if JVET_AK0064_CCP_LFNST_NSPT && ENABLE_DIMD
+int IntraPrediction::deriveChromaIpmForTransform(CPelBuf predBufCb, CPelBuf predBufCr, CodingUnit& cu)
+{
+  if (!cu.slice->getSPS()->getUseDimd())
+  {
+    return PLANAR_IDX;
+  }
+  const Pel* pPredCb = predBufCb.buf;
+  const Pel* pPredCr = predBufCr.buf;
+  const int iStride = predBufCb.stride;
+  const int width = predBufCb.width;
+  const int height = predBufCb.height;
+
+  int histogram[NUM_LUMA_MODE] = { 0 };
+  int histogramCb[NUM_LUMA_MODE] = { 0 };
+  int histogramCr[NUM_LUMA_MODE] = { 0 };
+  int firstAmp = 0, curAmp = 0;
+  int firstMode = 0, curMode = 0;
+  if (!cu.firstPU->cs->pcv->isEncoder && cu.firstTU->jointCbCr == 1)
+  {
+    pPredCb = pPredCb + iStride + 1;
+    buildHistogram(pPredCb, iStride, height - 2, width - 2, histogramCb, 0, width - 2, height - 2);
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      curAmp = histogramCb[i];
+      curMode = i;
+      if (curAmp > firstAmp)
+      {
+        firstAmp = curAmp;
+        firstMode = curMode;
+      }
+    }
+    cu.ccpChromaDimdMode[1] = firstMode;
+  }
+  else if (!cu.firstPU->cs->pcv->isEncoder && cu.firstTU->jointCbCr == 2)
+  {
+    //Cr
+    pPredCr = pPredCr + iStride + 1;
+    buildHistogram(pPredCr, iStride, height - 2, width - 2, histogramCr, 0, width - 2, height - 2);
+    firstAmp = 0;
+    curAmp = 0;
+    firstMode = 0;
+    curMode = 0;
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      curAmp = histogramCr[i];
+      curMode = i;
+      if (curAmp > firstAmp)
+      {
+        firstAmp = curAmp;
+        firstMode = curMode;
+      }
+    }
+    cu.ccpChromaDimdMode[2] = firstMode;
+  }
+  else if (!cu.firstPU->cs->pcv->isEncoder)
+  {
+    pPredCb = pPredCb + iStride + 1;
+    buildHistogram(pPredCb, iStride, height - 2, width - 2, histogram, 0, width - 2, height - 2);
+    pPredCr = pPredCr + iStride + 1;
+    buildHistogram(pPredCr, iStride, height - 2, width - 2, histogram, 0, width - 2, height - 2);
+
+    int firstAmp = 0, curAmp = 0;
+    int firstMode = 0, curMode = 0;
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      curAmp = histogram[i];
+      curMode = i;
+      if (curAmp > firstAmp)
+      {
+        firstAmp = curAmp;
+        firstMode = curMode;
+      }
+    }
+    cu.ccpChromaDimdMode[0] = cu.ccpChromaDimdMode[3] = firstMode;
+  }
+  else
+  {
+    pPredCb = pPredCb + iStride + 1;
+    buildHistogram(pPredCb, iStride, height - 2, width - 2, histogramCb, 0, width - 2, height - 2);
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      curAmp = histogramCb[i];
+      curMode = i;
+      if (curAmp > firstAmp)
+      {
+        firstAmp = curAmp;
+        firstMode = curMode;
+      }
+    }
+    cu.ccpChromaDimdMode[1] = firstMode;
+
+    pPredCr = pPredCr + iStride + 1;
+    buildHistogram(pPredCr, iStride, height - 2, width - 2, histogramCr, 0, width - 2, height - 2);
+
+    firstAmp = 0;
+    curAmp = 0;
+    firstMode = 0;
+    curMode = 0;
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      curAmp = histogramCr[i];
+      curMode = i;
+      if (curAmp > firstAmp)
+      {
+        firstAmp = curAmp;
+        firstMode = curMode;
+      }
+    }
+    cu.ccpChromaDimdMode[2] = firstMode;
+
+    firstAmp = 0;
+    curAmp = 0;
+    firstMode = 0;
+    curMode = 0;
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      curAmp = histogramCb[i] + histogramCr[i];
+      curMode = i;
+      if (curAmp > firstAmp)
+      {
+        firstAmp = curAmp;
+        firstMode = curMode;
+      }
+    }
+    cu.ccpChromaDimdMode[0] = cu.ccpChromaDimdMode[3] = firstMode;
+  }
+  return firstMode;
+}
+#endif
+
 #if !JVET_AG0061_INTER_LFNST_NSPT
 int IntraPrediction::buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int* piHistogram, int direction, int bw, int bh)
 {

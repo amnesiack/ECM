@@ -936,6 +936,9 @@ public:
 #endif 
   );
 #endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  static int deriveChromaIpmForTransform   (CPelBuf predBufCb, CPelBuf predBufCr, CodingUnit& cu);
+#endif
 #if !JVET_AG0061_INTER_LFNST_NSPT
   static int  buildHistogram               ( const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int* piHistogram, int direction, int bw, int bh );
 #endif
