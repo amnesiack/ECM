@@ -495,6 +495,13 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           pu->intraDir[0] = m_pcIntraPred->m_tmrlList[currCU.tmrlListIdx].intraDir;
         }
 #endif
+#if JVET_AK0061_PDP_MPM
+        else if (currCU.plIdx) 
+        {
+          currCU.firstPU->intraDir[0] = PLANAR_IDX;
+        }
+#endif
+
         else if (currCU.firstPU->parseLumaMode)
         {
           const CompArea &area = currCU.Y();
@@ -508,13 +515,23 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           uint8_t* mpmPred = m_pcIntraPred->m_intraMPM;  // mpm_idx / rem_intra_luma_pred_mode
           uint8_t* nonMpmPred = m_pcIntraPred->m_intraNonMPM;
 #if JVET_AD0085_MPM_SORTING
+#if JVET_AK0061_PDP_MPM
+          bool enablePlanarSort = false;
+          enablePlanarSort = PU::determinePDPTemp(*currCU.firstPU);
+          if (PU::allowMPMSorted(*currCU.firstPU) && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0 && !enablePlanarSort))
+#else
           if (PU::allowMPMSorted(*currCU.firstPU) && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0))
+#endif
           {
             PU::getIntraMPMs(*currCU.firstPU, mpmPred, nonMpmPred
 #if JVET_AC0094_REF_SAMPLES_OPT
-                           , true
+              , true
+              , true
+              , true
 #endif
-                           , m_pcIntraPred
+
+
+              , m_pcIntraPred
             );
           }
           else
@@ -523,6 +540,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           PU::getIntraMPMs( *currCU.firstPU, mpmPred, nonMpmPred
 #if JVET_AC0094_REF_SAMPLES_OPT
                            , false
+#endif
+#if JVET_AK0061_PDP_MPM
+            , true, false, m_pcIntraPred
 #endif
           );
 #if JVET_AD0085_MPM_SORTING

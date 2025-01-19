@@ -1111,7 +1111,15 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> uiHadModeList;
   static_vector<double, FAST_UDI_MAX_RDMODE_NUM> candCostList;
   static_vector<double, FAST_UDI_MAX_RDMODE_NUM> candHadList;
-
+#if JVET_AK0061_PDP_MPM
+  bool pdpPredEligible = PU::determinePDPTemp(*cu.firstPU) && testTimdMerge;
+  bool pdpSaveRdModeList = pdpPredEligible && pdpSaveFlag;
+  if (pdpSaveRdModeList) 
+  {
+    m_mpmSavedPdpModeList.clear();
+    m_mpmSavedPdpRdList.clear();
+  }
+#endif
 #if JVET_AJ0061_TIMD_MERGE
   double mipHadCostStore[MAX_NUM_MIP_MODE] = { MAX_DOUBLE };
 #endif
@@ -1448,7 +1456,6 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
           bool bSatdChecked[NUM_INTRA_MODE];
           memset(bSatdChecked, 0, sizeof(bSatdChecked));
-
           if (!LFNSTLoadFlag)
           {
             for (int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++)
@@ -1534,9 +1541,20 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                              candCostList, numModesForFullRD);
               updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiMode), double(minSadHad),
                              uiHadModeList, candHadList, numHadCand);
+#if JVET_AK0061_PDP_MPM
+              if (pdpSaveRdModeList && pdpMode && m_mpmIncludedPdpMode[uiMode]) 
+              {
+                updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiMode), cost, m_mpmSavedPdpModeList, m_mpmSavedPdpRdList, NUM_PDP_MODES);
+              }
+#endif
             }
 #if JVET_AC0105_DIRECTIONAL_PLANAR
+#if JVET_AK0061_PDP_MPM
+            const bool& enablePlanarSort = PU::determinePDPTemp(pu);
+            bool testDirPlanar = isLuma(partitioner.chType) && !enablePlanarSort;
+#else
             bool testDirPlanar = isLuma(partitioner.chType);
+#endif
             if (testDirPlanar)
             {
               for (int dirPlanarModeIdx = 0; dirPlanarModeIdx < 2; dirPlanarModeIdx++)
@@ -1903,6 +1921,16 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 timdSaveBuf.copyFrom(piPred);
                 m_satdCostTIMD[mode][0] = static_cast<uint64_t>(cost);
                 m_satdCostTIMD[mode][1] = minSadHad;
+#if JVET_AK0061_PDP_MPM
+                if (pdpPredEligible && pdpSaveFlag) 
+                {
+                  if (cu.timdMrg) 
+                  {
+                    m_timdMergeRdModeList.first = ModeInfo(false, false, modeRefIdx, NOT_INTRA_SUBPARTITIONS, modeId);
+                    m_timdMergeRdModeList.second = cost;
+                  }
+                }
+#endif
               }
             }
             cu.tmrlFlag = false;           
@@ -3939,8 +3967,45 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
         {
           if (cu.timdMrgList[idx][0] != INVALID_TIMD_IDX && !m_skipTimdMode[TimdMrg])
           {
+#if JVET_AK0061_PDP_MPM
+            if (pdpPredEligible) 
+            {
+              bool pdpPredCostSmall = false;
+              for (int idx = 0; idx < m_mpmSavedPdpModeList.size() && !pdpPredCostSmall; ++idx) 
+              {
+                for (int i = 0; i < uiRdModeList.size() && !pdpPredCostSmall; ++i) 
+                {
+                  if (m_mpmSavedPdpModeList[idx] == uiRdModeList[i]) 
+                  {
+                    continue;
+                  }
+                  if (m_mpmSavedPdpRdList[idx] <= m_timdMergeRdModeList.second)
+                  {
+                    pdpPredCostSmall = true;
+                    break;
+                  }
+                }
+                if (pdpPredCostSmall) 
+                {
+                  ModeInfo m = m_mpmSavedPdpModeList[idx];
+                  uiRdModeList.push_back(m);
+                  break;
+                }
+              }
+              if (!pdpPredCostSmall)
+              {
+                ModeInfo m = ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, TIMDM_IDX + idx);
+                uiRdModeList.push_back(m);
+              }
+            }
+            else 
+            {
+#endif
             ModeInfo m = ModeInfo( false, false, 0, NOT_INTRA_SUBPARTITIONS, TIMDM_IDX + idx );
             uiRdModeList.push_back(m);
+#if JVET_AK0061_PDP_MPM
+            }
+#endif
           }
         }
       }
@@ -5350,6 +5415,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
         CHECK(cu.tmrlFlag, "use of PL");
         CHECK(cu.sgpm, "use of PL");
         CHECK(cu.timd, "use of PL");
+#if JVET_AK0061_PDP_MPM
+        pu.intraDir[CHANNEL_TYPE_LUMA] = PLANAR_IDX;
+#endif
       }
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
@@ -15338,7 +15406,12 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AK0061_PDP_MPM
+  const bool& enablePlanarSort = PU::determinePDPTemp(pu);
+  if (!(pu.cu)->slice->getPnnMode() && !enablePlanarSort)
+#else
   if (!(pu.cu)->slice->getPnnMode())
+#endif
   {
 #endif
   static_vector<uint8_t, 2> sortedDirPlanarModes(2);
@@ -16178,6 +16251,16 @@ void IntraSearch::xFinishISPModes()
 }
 void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
 {
+#if JVET_AK0061_PDP_MPM
+  if (pu.cu->plIdx) 
+  {
+    pu.mpmFlag = true;
+    pu.secondMpmFlag = false;
+    pu.ipredIdx = 0;
+    return;
+  }
+#endif
+
 #if SECONDARY_MPM
   const int numMPMs = NUM_PRIMARY_MOST_PROBABLE_MODES + NUM_SECONDARY_MOST_PROBABLE_MODES;
 #else
