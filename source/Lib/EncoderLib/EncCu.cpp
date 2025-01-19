@@ -1453,7 +1453,11 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   if( partitioner.currQtDepth == 0 && partitioner.currMtDepth == 0 && !tempCS->slice->isIntra() && ( sps.getUseSBT() || sps.getUseInterMTS() ) )
   {
     auto slsSbt = dynamic_cast<SaveLoadEncInfoSbt*>( m_modeCtrl );
+#if AHG7_MTS_TOOLOFF_CFG
+    int maxSLSize = sps.getUseSBT() ? tempCS->slice->getSPS()->getMaxTbSize() : tempCS->slice->getSPS()->getInterMTSMaxSize();
+#else
     int maxSLSize = sps.getUseSBT() ? tempCS->slice->getSPS()->getMaxTbSize() : MTS_INTER_MAX_CU_SIZE;
+#endif
     slsSbt->resetSaveloadSbt( maxSLSize );
 #if ENABLE_SPLIT_PARALLELISM
     CHECK( tempCS->picture->scheduler.getSplitJobId() != 0, "The SBT search reset need to happen in sequential region." );
@@ -3479,7 +3483,11 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   double          costSize2Nx2NmtsFirstPass = m_modeCtrl->getMtsSize2Nx2NFirstPassCost();
   bool            skipSecondMtsPass         = m_modeCtrl->getSkipSecondMTSPass();
   const SPS&      sps                       = *tempCS->sps;
+#if AHG7_MTS_TOOLOFF_CFG
+  const int       maxSizeMTS                = sps.getIntraMTSMaxSize();
+#else
   const int       maxSizeMTS                = MTS_INTRA_MAX_CU_SIZE;
+#endif
   uint8_t         considerMtsSecondPass     = ( sps.getUseIntraMTS() && isLuma( partitioner.chType ) && partitioner.currArea().lwidth() <= maxSizeMTS && partitioner.currArea().lheight() <= maxSizeMTS ) ? 1 : 0;
 
   bool   useIntraSubPartitions   = false;
@@ -3571,12 +3579,25 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   int    bestLfnstIdx            =   0;
 
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+  const int tuWidth  = ( CS::isDualITree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA ) ? partitioner.currArea().blocks[ 1 ].width  : partitioner.currArea().lwidth();
+  const int tuHeight = ( CS::isDualITree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA ) ? partitioner.currArea().blocks[ 1 ].height : partitioner.currArea().lheight();
+  int kerCandNum = ( sps.getUseLFNSTExt() || ( sps.getUseNSPT() && CU::isNSPTAllowed( tuWidth, tuHeight ) ) ) ? 3 : 2;
+#if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
+  const int  maxLfnstIdx = ( CS::isDualITree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA && ( partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8 ) )
+                           || ( partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize() ) ? 0 : kerCandNum;
+#else
+  const int  maxLfnstIdx = ( partitioner.isSepTree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA && ( partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8 ) )
+                           || ( partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize() ) ? 0 : kerCandNum;
+#endif
+#else
 #if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   const int  maxLfnstIdx         = (CS::isDualITree(*tempCS) && partitioner.chType == CHANNEL_TYPE_CHROMA && (partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8))
                                    || (partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize()) ? 0 : 3;
 #else
   const int  maxLfnstIdx         = ( partitioner.isSepTree( *tempCS ) && partitioner.chType == CHANNEL_TYPE_CHROMA && ( partitioner.currArea().lwidth() < 8 || partitioner.currArea().lheight() < 8 ) )
                                    || ( partitioner.currArea().lwidth() > sps.getMaxTbSize() || partitioner.currArea().lheight() > sps.getMaxTbSize() ) ? 0 : 3;
+#endif
 #endif
 #else
 #if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS

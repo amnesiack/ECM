@@ -716,6 +716,9 @@ public:
   static const CtxSet   TransformSkipFlag;
   static const CtxSet   MTSIdx;
   static const CtxSet   LFNSTIdx;
+#if AHG7_LN_TOOLOFF_CFG
+  static const CtxSet   VvcLFNSTIdx;
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   static const CtxSet   InterLFNSTIdx;
 #endif

@@ -387,6 +387,9 @@ protected:
   unsigned  m_uiMaxMTTHierarchyDepthIChroma;
   unsigned  m_uiMaxBT[3];
   unsigned  m_uiMaxTT[3];
+#if AHG7_MTS_TOOLOFF_CFG
+  bool      m_MTSExt;
+#endif
 #if JVET_Y0152_TT_ENC_SPEEDUP
   int       m_ttFastSkip;
   double    m_ttFastSkipThr;
@@ -411,6 +414,10 @@ protected:
 #endif
 #if JVET_AI0050_SBT_LFNST
   bool      m_useSbtLFNST;
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool      m_NSPT;
+  bool      m_LFNSTExt;
 #endif
   bool      m_sbTmvpEnableFlag;
   bool      m_Affine;
@@ -504,6 +511,9 @@ protected:
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   int       m_interMTSMaxSize;
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int       m_intraMTSMaxSize;
 #endif
 #if ENABLE_DIMD
   bool      m_dimd;
@@ -1087,6 +1097,9 @@ protected:
   bool        m_forceDecodeBitstream1;
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
+#if FIXFILTER_CFG
+  bool        m_alfFixedFilter;
+#endif
   bool        m_ccalf;
   int         m_ccalfQpThreshold;
 

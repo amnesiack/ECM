@@ -6369,6 +6369,28 @@ int PU::getWideAngle( const TransformUnit &tu, const uint32_t dirMode, const Com
 }
 
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+int PU::getLFNSTMatrixDim( int width, int height, bool lfnstExtFlag )
+{
+  int dimension = 16;
+
+  if( lfnstExtFlag )
+  {
+    dimension = ( width == 8 && height == 8 ) ? 16 : ( ( ( width >= 8 ) && ( height >= 8 ) ) ? 32 : 16 );
+
+    if( ( width >= 16 ) && ( height >= 16 ) )
+    {
+      dimension = L16H;
+    }
+  }
+  else
+  {
+    dimension = ( ( width == 4 && height == 4 ) || ( width == 8 && height == 8 ) ) ? 8 : 16;
+  }
+
+  return dimension;
+}
+#else
 int PU::getLFNSTMatrixDim( int width, int height )
 {
   int dimension = ( width == 8 && height == 8 ) ? 16 : ( ( ( width >= 8 ) && ( height >= 8 ) ) ? 32 : 16 );
@@ -6380,6 +6402,7 @@ int PU::getLFNSTMatrixDim( int width, int height )
 
   return dimension;
 }
+#endif
 
 bool PU::getUseLFNST8( int width, int height )
 {
@@ -32844,7 +32867,11 @@ bool CU::isMTSAllowed(const CodingUnit &cu, const ComponentID compID)
 {
   SizeType tsMaxSize = 1 << cu.cs->sps->getLog2MaxTransformSkipBlockSize();
 #if JVET_AA0133_INTER_MTS_OPT
+#if AHG7_MTS_TOOLOFF_CFG
+  const int maxSize = CU::isIntra(cu) ? cu.cs->sps->getIntraMTSMaxSize() : cu.cs->sps->getInterMTSMaxSize();
+#else
   const int maxSize = CU::isIntra(cu) ? MTS_INTRA_MAX_CU_SIZE : cu.cs->sps->getInterMTSMaxSize();
+#endif
 #else
   const int maxSize  = CU::isIntra( cu ) ? MTS_INTRA_MAX_CU_SIZE : MTS_INTER_MAX_CU_SIZE;
 #endif
@@ -34262,7 +34289,11 @@ uint32_t PU::getNSPTIntraMode( int wideAngPredMode )
 
 bool CU::isNSPTAllowed( const TransformUnit &tu, const ComponentID compID, int width, int height, bool isIntra )
 {
+#if AHG7_LN_TOOLOFF_CFG
+  bool allowNSPT = ( isIntra && tu.cu->cs->sps->getUseNSPT() );
+#else
   bool allowNSPT = isIntra;
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   if( tu.cs->sps->getUseInterLFNST() && CU::isInter( *tu.cu ) )
@@ -34270,21 +34301,43 @@ bool CU::isNSPTAllowed( const TransformUnit &tu, const ComponentID compID, int w
   if (CU::isInter(*tu.cu))
 #endif
   {
+#if AHG7_LN_TOOLOFF_CFG
+    allowNSPT = tu.cu->cs->sps->getUseNSPT();
+#else
     allowNSPT = true;
+#endif
   }
 #endif
   if( allowNSPT )
   {
+#if AHG7_LN_TOOLOFF_CFG
+    allowNSPT = CU::isNSPTAllowed( width, height );
+#else
     allowNSPT = ( ( width == 4 && height ==  4 ) || ( width ==  8 && height == 8 ) || ( width == 4 && height ==  8 ) || ( width ==  8 && height == 4 ) ||
                   ( width == 4 && height == 16 ) || ( width == 16 && height == 4 ) || ( width == 8 && height == 16 ) || ( width == 16 && height == 8 )
 #if JVET_AE0086_LARGE_NSPT
                || ( width == 4 && height == 32 ) || ( width == 32 && height == 4 ) || ( width == 8 && height == 32 ) || ( width == 32 && height == 8 )
 #endif
                 );
+#endif
   }
 
   return allowNSPT;
 }
+
+#if AHG7_LN_TOOLOFF_CFG
+bool CU::isNSPTAllowed( int width, int height )
+{
+  bool allowNSPT = ( ( width == 4 && height == 4 ) || ( width == 8 && height == 8 ) || ( width == 4 && height == 8 ) || ( width == 8 && height == 4 ) ||
+                     ( width == 4 && height == 16 ) || ( width == 16 && height == 4 ) || ( width == 8 && height == 16 ) || ( width == 16 && height == 8 )
+#if JVET_AE0086_LARGE_NSPT
+                  || ( width == 4 && height == 32 ) || ( width == 32 && height == 4 ) || ( width == 8 && height == 32 ) || ( width == 32 && height == 8 )
+#endif
+                   );
+
+  return allowNSPT;
+}
+#endif
 
 bool CU::nsptApplyCond( const TransformUnit& tu, ComponentID compID, bool allowNSPT )
 {
