@@ -810,6 +810,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setLog2SignPredArea                                  (m_log2SignPredArea);
 #endif
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  m_cEncLib.setMTSExt                                            (m_MTSExt);
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   m_cEncLib.setIntraLFNSTISlice                                  ( m_intraLFNSTISlice );
   m_cEncLib.setIntraLFNSTPBSlice                                 ( m_intraLFNSTPBSlice );
@@ -823,6 +826,10 @@ void EncApp::xInitLibCfg()
 #endif
 #if JVET_AI0050_SBT_LFNST
   m_cEncLib.setUseSBTLFNST                                       ( m_useSbtLFNST );
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  m_cEncLib.setNSPT                                              ( m_NSPT );
+  m_cEncLib.setLFNSTExt                                          ( m_LFNSTExt );
 #endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   m_cEncLib.setUseFastInterLFNST                                 ( m_useFastInterLFNST );
@@ -940,6 +947,9 @@ void EncApp::xInitLibCfg()
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   m_cEncLib.setInterMTSMaxSize(m_interMTSMaxSize);
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  m_cEncLib.setIntraMTSMaxSize(m_intraMTSMaxSize);
 #endif
 #if ENABLE_DIMD
   m_cEncLib.setUseDimd                                           ( m_dimd );
@@ -1513,6 +1523,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setForceSingleSplitThread                            ( m_forceSplitSequential );
 #endif
   m_cEncLib.setUseALF                                            ( m_alf );
+#if FIXFILTER_CFG
+  m_cEncLib.setUseAlfFixedFilter                                 ( m_alfFixedFilter );
+#endif
   m_cEncLib.setUseCCALF                                          ( m_ccalf );
   m_cEncLib.setCCALFQpThreshold                                  ( m_ccalfQpThreshold );
   m_cEncLib.setLmcs                                              ( m_lmcsEnabled );

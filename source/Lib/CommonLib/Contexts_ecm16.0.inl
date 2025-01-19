@@ -4973,6 +4973,31 @@ const CtxSet ContextSetCfg::LFNSTIdx = ContextSetCfg::addCtxSet({
 });
 #endif
 
+#if AHG7_LN_TOOLOFF_CFG
+const CtxSet ContextSetCfg::VvcLFNSTIdx = ContextSetCfg::addCtxSet( {
+  {  52,  37,  27, },
+  {  37,  45,  27, },
+  {  28,  52,  42, },
+  { CNU, CNU, CNU, },
+  {   9,   9,  10, },
+  {   9,   9,  10, },
+  {   9,   9,  10, },
+  { DWS, DWS, DWS, },
+  { DWE, DWE, DWE, },
+  { DWE, DWE, DWE, },
+  { DWE, DWE, DWE, },
+  { DWE, DWE, DWE, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  { DWO, DWO, DWO, },
+  } );
+#endif
+
 #if JVET_AG0061_INTER_LFNST_NSPT
 const CtxSet ContextSetCfg::InterLFNSTIdx = ContextSetCfg::addCtxSet({
 // ctx 1440 to 1442
