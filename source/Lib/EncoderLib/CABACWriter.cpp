@@ -1786,9 +1786,19 @@ void CABACWriter::cu_bcw_flag(const CodingUnit& cu)
 void CABACWriter::obmc_flag(const CodingUnit& cu)
 {
   //obmc is false
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (!cu.cs->sps->getUseOBMC() || cu.predMode == MODE_INTRA
+#else
   if (!cu.cs->sps->getUseOBMC() || CU::isIBC(cu) || cu.predMode == MODE_INTRA
+#endif
 #if INTER_LIC && !JVET_AD0213_LIC_IMP
     || cu.licFlag
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    || cu.rribcFlipType != 0
+#if JVET_AC0112_IBC_LIC && !JVET_AD0213_LIC_IMP
+    || cu.ibcLicFlag
+#endif
 #endif
     || cu.lwidth() * cu.lheight() < 32
     )
@@ -1796,6 +1806,12 @@ void CABACWriter::obmc_flag(const CodingUnit& cu)
     return;
   }
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (CU::isIBC(cu))
+  {
+    return;
+  }
+#endif
   //obmc is true
   if (cu.firstPU->mergeFlag)
   {

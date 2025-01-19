@@ -2182,6 +2182,9 @@ void CABACReader::cu_pred_data( CodingUnit &cu )
     {
       bdpcm_mode(cu, ComponentID(CHANNEL_TYPE_CHROMA));
     }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    cu.obmcFlag = isLuma(cu.chType) && cu.lumaSize().area() >= 32;
+#endif
     intra_chroma_pred_modes( cu );
     return;
   }
@@ -2278,9 +2281,19 @@ void CABACReader::cu_bcw_flag(CodingUnit& cu)
 #if ENABLE_OBMC
 void CABACReader::obmc_flag(CodingUnit& cu)
 {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (!cu.cs->sps->getUseOBMC() || cu.predMode == MODE_INTRA
+#else
   if (!cu.cs->sps->getUseOBMC() || CU::isIBC(cu) || cu.predMode == MODE_INTRA
+#endif
 #if INTER_LIC && !JVET_AD0213_LIC_IMP
     || cu.licFlag
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    || cu.rribcFlipType != 0
+#if JVET_AC0112_IBC_LIC && !JVET_AD0213_LIC_IMP
+    || cu.ibcLicFlag
+#endif
 #endif
     || cu.lwidth() * cu.lheight() < 32
     )
@@ -2288,6 +2301,13 @@ void CABACReader::obmc_flag(CodingUnit& cu)
     cu.obmcFlag = false;
     return;
   }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (CU::isIBC(cu))
+  {
+    cu.obmcFlag = true;
+    return;
+  }
+#endif
   if (cu.firstPU->mergeFlag)
   {
     cu.obmcFlag = true;

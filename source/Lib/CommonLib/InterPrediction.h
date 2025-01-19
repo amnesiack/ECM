@@ -485,6 +485,10 @@ protected:
   PelStorage           m_tmpObmcBufL0;
   PelStorage           m_tmpObmcBufT0;
   PelStorage           m_tmpSubObmcBuf;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  PelStorage           m_tmpIntraObmcBufL0;
+  PelStorage           m_tmpIntraObmcBufT0;
+#endif
 #endif
 #if MULTI_PASS_DMVR
   void xPredInterBiBDMVR        ( PredictionUnit &pu, PelUnitBuf &pcYuvPred, const bool luma, const bool chroma, PelUnitBuf *yuvPredTmp = NULL );
@@ -597,11 +601,19 @@ protected:
 #endif
 #if ENABLE_OBMC
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  void xSubblockOBMC               (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc, PelUnitBuf &pcYuvBefore, std::vector<Pel>* lmcsLut, int iDir, bool bSubMotion = false, bool bIsIntra = false);
+#else
   void xSubblockOBMC               (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc, PelUnitBuf &pcYuvBefore, int iDir, bool bSubMotion = false, bool bIsIntra = false);
+#endif
 #else
   void xSubblockOBMC               (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc, int iDir, bool bSubMotion = false);
 #endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  void xSubBlockMotionCompensation (PredictionUnit &pu, PelUnitBuf &pcYuvPred, bool lumaOnly = false, std::vector<Pel>* lmcsLut = nullptr);
+#else
   void xSubBlockMotionCompensation (PredictionUnit &pu, PelUnitBuf &pcYuvPred);
+#endif
   void xSubblockOBMCBlending       (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc1, PelUnitBuf &pcYuvPredSrc2, PelUnitBuf &pcYuvPredSrc3, PelUnitBuf &pcYuvPredSrc4, bool isAboveAvail = false, bool isLeftAvail = false, bool isBelowAvail = false, bool isRightAvail = false, bool bSubMotion = false);
 #endif
 #if !BDOF_RM_CONSTRAINTS
@@ -779,13 +791,21 @@ public:
 #endif
 #if ENABLE_OBMC
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  void    subBlockOBMC        (PredictionUnit &pu, PelUnitBuf *pDst = nullptr, IntraPrediction *pcIntraPred = nullptr, bool lumaOnly = false);
+#else
   void    subBlockOBMC        (PredictionUnit &pu, PelUnitBuf *pDst = nullptr, IntraPrediction *pcIntraPred = nullptr);
+#endif
 #else
   void    subBlockOBMC        (PredictionUnit  &pu, PelUnitBuf *pDst = nullptr);
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
   bool    isSCC                   (const PredictionUnit  &pu);
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  bool    skipObmcConditionByPixel(PredictionUnit& pu, ComponentID comp, int width, int height, const Pel* src, int strideSrc, const Pel* dst, int strideDst, int bitDepth, std::vector<Pel>* lmcsLut);
+#else
   bool    skipObmcConditionByPixel(PredictionUnit& pu, ComponentID comp, int width, int height, const Pel* src, int strideSrc, const Pel* dst, int strideDst, int bitDepth);
+#endif
 #endif
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
@@ -1085,6 +1105,9 @@ public:
   void xSubblockTMOBMC          (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc,
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
     PelUnitBuf &pcYuvBefore,
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    std::vector<Pel>* lmcsLut,
 #endif
     int iDir, int iOBMCmode = 0);
 #endif
@@ -1770,11 +1793,17 @@ public:
 private:
   bool m_dimdForOBMCFilled;
   int m_modeBuf[2][MAX_CU_SIZE >> MIN_CU_LOG2];
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  bool m_intraObmcPred;
+#endif
   int m_modeGetCheck[2];
 public:
   void setDIMDForOBMC                  (bool b) { m_dimdForOBMCFilled = b; }
   void setModeGetCheck                 (int i, bool b) { m_modeGetCheck[i] = b; }
   void setClearModeBuf                 (int i) { memset(m_modeBuf[i], -1, sizeof(int) * (MAX_CU_SIZE >> MIN_CU_LOG2)); }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  void setIntraObmcPred                (bool b) { m_intraObmcPred = b; }
+#endif
 #endif
 
 #if JVET_AG0276_NLIC
@@ -1818,7 +1847,11 @@ public:
   bool deriveInterCcpMergePrediction         ( TransformUnit* tu, const PelBuf& lumaReconstruction, PelBuf& inBufCb, PelBuf& inBufCr, PelBuf& outBufCb, PelBuf& outBufCr, CCPModelCandidate interCcpMergeList[], int validNum);
 #endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  void subBlockIntraForOBMC                  (PredictionUnit &subPu, const int iSub, const bool isAbove, PelUnitBuf &cTmp, IntraPrediction *pcIntraPred, const bool lumaOnly);
+#else
   void subBlockIntraForOBMC                  (PredictionUnit &subPu, const int iSub, const bool isAbove, PelUnitBuf &cTmp, IntraPrediction *pcIntraPred);
+#endif
 #endif
 };
 
