@@ -13586,10 +13586,22 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         if (lfnstAllowed)
         {
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+          int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                        || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+          int numMode = cu.cs->sps->getUseInterMTSS() && tu.cu->geoFlag ? ( kerCandNum << 1 ) : kerCandNum;
+#else
           int numMode = cu.cs->sps->getUseInterMTSS() && tu.cu->geoFlag ? 6 : 3;
+#endif
           for (int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + numMode; i++)   // 3 or 6 lfnst
 #else
+#if AHG7_LN_TOOLOFF_CFG
+          int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                        || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+          for( int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + kerCandNum; i++ )   // 3 lfnst
+#else
           for (int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + 3; i++)   // 3 lfnst
+#endif
 #endif
           {
             {
@@ -13805,9 +13817,17 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #if JVET_AG0061_INTER_LFNST_NSPT
             tu.mtsIdx[compID]   = trModes[transformMode].first < NUM_TRAFO_MODES_MTS ? trModes[transformMode].first : 0;
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+            int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                          || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+            int factor = ( trModes[ transformMode ].first - NUM_TRAFO_MODES_MTS ) / kerCandNum;
+            tu.lfnstIdx[ compID ] = trModes[ transformMode ].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[ transformMode ].first - NUM_TRAFO_MODES_MTS - kerCandNum * factor + 1;
+            tu.lfnstIntra[ compID ] = trModes[ transformMode ].first < ( NUM_TRAFO_MODES_MTS + kerCandNum ) ? 0 : ( trModes[ transformMode ].first < ( NUM_TRAFO_MODES_MTS + ( kerCandNum << 1 ) ) ? 1 : 2 );
+#else
             int factor = (trModes[transformMode].first - NUM_TRAFO_MODES_MTS) / 3;
             tu.lfnstIdx[compID] = trModes[transformMode].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[transformMode].first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
             tu.lfnstIntra[compID] = trModes[transformMode].first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (trModes[transformMode].first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
+#endif
 #else
             tu.lfnstIdx[compID] = trModes[transformMode].first < NUM_TRAFO_MODES_MTS
                                     ? 0
@@ -13883,9 +13903,17 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
               tu.mtsIdx[compID] = trModes[0].first < NUM_TRAFO_MODES_MTS ? trModes[0].first : 0;
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+              int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                            || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+              int factor = ( trModes[ 0 ].first - NUM_TRAFO_MODES_MTS ) / kerCandNum;
+              tu.lfnstIdx[ compID ] = trModes[ 0 ].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[ 0 ].first - NUM_TRAFO_MODES_MTS - kerCandNum * factor + 1;
+              tu.lfnstIntra[ compID ] = trModes[ 0 ].first < ( NUM_TRAFO_MODES_MTS + kerCandNum ) ? 0 : ( trModes[ 0 ].first < ( NUM_TRAFO_MODES_MTS + ( kerCandNum << 1 ) ) ? 1 : 2 );
+#else
               int factor = (trModes[0].first - NUM_TRAFO_MODES_MTS) / 3;
               tu.lfnstIdx[compID] = trModes[0].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[0].first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
               tu.lfnstIntra[compID] = trModes[0].first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (trModes[0].first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
+#endif
 #else
               tu.lfnstIdx[compID] =
                 trModes[0].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[0].first - NUM_TRAFO_MODES_MTS + 1;

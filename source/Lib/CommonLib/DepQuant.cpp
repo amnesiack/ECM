@@ -2698,10 +2698,18 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
       }
       else
       {
+#if AHG7_LN_TOOLOFF_CFG
+        firstTestPos = PU::getLFNSTMatrixDim( width, height, tu.cu->cs->sps->getUseLFNSTExt() ) - 1;
+#else
         firstTestPos = PU::getLFNSTMatrixDim(width, height) - 1;
+#endif
       }
 #else
+#if AHG7_LN_TOOLOFF_CFG
+      firstTestPos = PU::getLFNSTMatrixDim( width, height, tu.cu->cs->sps->getUseLFNSTExt() ) - 1;
+#else
       firstTestPos = PU::getLFNSTMatrixDim(width, height) - 1;
+#endif
 #endif
 #else
 #if JVET_AC0130_NSPT

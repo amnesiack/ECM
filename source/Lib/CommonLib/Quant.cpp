@@ -1022,9 +1022,17 @@ void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf 
     bool allowNSPT = CU::isNSPTAllowed( tu, compID, uiWidth, uiHeight, CU::isIntra( *( tu.cu ) ) );
 #endif
 
+#if AHG7_LN_TOOLOFF_CFG
+    const int maxNumberOfCoeffs = lfnstIdx > 0 ? ( allowNSPT ? PU::getNSPTMatrixDim( uiWidth, uiHeight ) : PU::getLFNSTMatrixDim( uiWidth, uiHeight, tu.cu->cs->sps->getUseLFNSTExt() ) ) : piQCoef.area();
+#else
     const int maxNumberOfCoeffs = lfnstIdx > 0 ? ( allowNSPT ? PU::getNSPTMatrixDim( uiWidth, uiHeight ) : PU::getLFNSTMatrixDim( uiWidth, uiHeight ) ) : piQCoef.area();
+#endif
+#else
+#if AHG7_LN_TOOLOFF_CFG
+    const int maxNumberOfCoeffs = lfnstIdx > 0 ? PU::getLFNSTMatrixDim( uiWidth, uiHeight, tu.cu->cs->sps->getUseLFNSTExt() ) : piQCoef.area();
 #else
     const int maxNumberOfCoeffs = lfnstIdx > 0 ? PU::getLFNSTMatrixDim( uiWidth, uiHeight ) : piQCoef.area();
+#endif
 #endif
 #else
 #if JVET_AC0130_NSPT

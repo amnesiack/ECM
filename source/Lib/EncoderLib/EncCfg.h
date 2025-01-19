@@ -404,6 +404,9 @@ protected:
   int       m_MTSIntraMaxCand;
   int       m_MTSInterMaxCand;
   int       m_ImplicitMTS;
+#if AHG7_MTS_TOOLOFF_CFG
+  bool      m_MTSExt;
+#endif
   bool      m_SBT;                                ///< Sub-Block Transform for inter blocks
   int       m_SBTFast64WidthTh;                   ///< Enable size-64 SBT in encoder RDO check for HD and above sequences
 
@@ -419,6 +422,10 @@ protected:
 #endif
 #if JVET_AI0050_SBT_LFNST
   bool      m_useSbtLFNST;
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool      m_NSPT;
+  bool      m_LFNSTExt;
 #endif
   bool      m_useFastLFNST;
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
@@ -508,6 +515,9 @@ protected:
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   int      m_interMTSMaxSize;
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int      m_intraMTSMaxSize;
 #endif
 #if ENABLE_DIMD
   bool      m_dimd;
@@ -1082,7 +1092,9 @@ protected:
 #endif
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
-
+#if FIXFILTER_CFG
+  bool        m_alfFixedFilter;                               
+#endif
 #if JVET_V0130_INTRA_TMP
   bool        m_intraTMP;                                       ///< intra Template Matching 
   unsigned    m_intraTmpMaxSize;                               ///< max CU size for which intra TMP is allowed
@@ -1624,13 +1636,22 @@ public:
   void      setUseSBTLFNST                  ( bool b )       { m_useSbtLFNST = b; }
   bool      getUseSBTLFNST()                           const { return m_useSbtLFNST; }
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  void      setNSPT                         ( bool b )       { m_NSPT = b; }
+  bool      getNSPT()                                  const { return m_NSPT; }
+  void      setLFNSTExt                     ( bool b )       { m_LFNSTExt = b; }
+  bool      getLFNSTExt()                              const { return m_LFNSTExt; }
+#endif
   void      setUseLMChroma                  ( int n )        { m_LMChroma = n; }
   int       getUseLMChroma()                           const { return m_LMChroma; }
   void      setHorCollocatedChromaFlag( bool b )             { m_horCollocatedChromaFlag = b; }
   bool      getHorCollocatedChromaFlag()               const { return m_horCollocatedChromaFlag; }
   void      setVerCollocatedChromaFlag( bool b )             { m_verCollocatedChromaFlag = b; }
   bool      getVerCollocatedChromaFlag()               const { return m_verCollocatedChromaFlag; }
-
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setMTSExt(bool b)                              { m_MTSExt = b; }
+  bool      getMTSExt()                              const { return m_MTSExt; }
+#endif
   void setSbTmvpEnabledFlag(bool val) { m_sbTmvpEnableFlag = val; }
 
   void      setAffine                       ( bool b )       { m_Affine = b; }
@@ -1822,7 +1843,10 @@ public:
   void      setInterMTSMaxSize(int size) { m_interMTSMaxSize = size; }
   int       getInterMTSMaxSize()        const { return m_interMTSMaxSize; }
 #endif
-
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setIntraMTSMaxSize(int size) { m_intraMTSMaxSize = size; }
+  int       getIntraMTSMaxSize()        const { return m_intraMTSMaxSize; }
+#endif
 #if ENABLE_DIMD
   void      setUseDimd                   ( bool b )       { m_dimd = b; }
   bool      getUseDimd                   ()         const { return m_dimd; }
@@ -2935,6 +2959,10 @@ public:
 #endif
   void         setUseALF( bool b ) { m_alf = b; }
   bool         getUseALF()                                      const { return m_alf; }
+#if FIXFILTER_CFG  
+  void         setUseAlfFixedFilter( bool b )                         { m_alfFixedFilter = b; }
+  bool         getUseAlfFixedFilter()                           const { return m_alfFixedFilter; }
+#endif
   void         setUseCCALF( bool b )                                  { m_ccalf = b; }
   bool         getUseCCALF()                                    const { return m_ccalf; }
   void         setCCALFQpThreshold( int b )                           { m_ccalfQpThreshold = b; }

@@ -4318,12 +4318,19 @@ SPS::SPS()
 , m_verCollocatedChromaFlag   ( false )
 , m_IntraMTS                  ( false )
 , m_InterMTS                  ( false )
+#if AHG7_MTS_TOOLOFF_CFG
+, m_MTSExt                    ( false )
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
 , m_intraLFNSTISlice          ( false )
 , m_intraLFNSTPBSlice         ( false )
 , m_interLFNST                ( false )
 #else
 , m_LFNST                     ( false )
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+, m_NSPT                      ( false )
+, m_LFNSTExt                  ( false )
 #endif
 , m_Affine                    ( false )
 , m_AffineType                ( false )

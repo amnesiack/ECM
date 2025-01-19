@@ -1,4 +1,4 @@
-/* The copyright in this software is being made available under the BSD
+﻿/* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
@@ -1137,6 +1137,449 @@ static const uint16_t shuffleTab9[4][3][2][8] =
   }, //3
 };
 
+#if FIXFILTER_CFG
+template<X86_VEXT vext>
+static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &recDst,
+#if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
+  const PelUnitBuf &recBeforeDb,
+#endif
+#if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
+  const PelUnitBuf &resi,
+#endif
+  const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet,
+#if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
+  const Pel *fClipSet
+#else
+  const short *fClipSet
+#endif
+  , const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, 
+#if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
+  Pel ***fixedFilterResiResults,
+#endif
+  int fixedFilterSetIdx
+#if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
+  , Pel ***fixedFilterResultsPerCtu, bool isFixedFilterPaddedPerCtu
+#endif
+#if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+  , Pel ***gaussPic, Pel ***gaussCtu
+#endif
+#if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+  , char coeffBits
+#endif
+)
+{
+  const CPelBuf srcBuffer = recSrc.get(compId);
+  PelBuf        dstBuffer = recDst.get(compId);
+
+  const size_t srcStride = srcBuffer.stride;
+  const size_t dstStride = dstBuffer.stride;
+
+#if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+  int shift = coeffBits;
+  shift -= 1;
+  int round = 1 << (shift - 1);
+#else
+  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
+  constexpr int round = 1 << (shift - 1);
+#endif
+
+  const size_t width = blk.width;
+  const size_t height = blk.height;
+
+  constexpr size_t stepX = 8;
+  size_t stepY = isChroma(compId) ? 4 : 2;
+
+  static_assert(sizeof(*filterSet) == 2, "ALF coeffs must be 16-bit wide");
+  static_assert(sizeof(*fClipSet) == 2, "ALF clip values must be 16-bit wide");
+
+  CHECK(blk.y % stepY, "Wrong startHeight in filtering");
+  CHECK(blk.x % stepX, "Wrong startWidth in filtering");
+  CHECK(height % stepY, "Wrong endHeight in filtering");
+  CHECK(width % 4, "Wrong endWidth in filtering");
+
+  const Pel *src = srcBuffer.buf + blk.y * srcStride + blk.x;
+  Pel *      dst = dstBuffer.buf + blkDst.y * dstStride + blkDst.x;
+
+#if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
+  const __m128i mmOffset = _mm_set1_epi32(round);
+  const __m128i mmMin = _mm_set1_epi16(clpRng.min);
+  const __m128i mmMax = _mm_set1_epi16(clpRng.max);
+#endif
+
+#if USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  const bool use256BitSimd = vext >= AVX2 && blkDst.width % 16 == 0 ? true : false;
+
+  if( use256BitSimd )
+  {
+    const __m256i mmOffset = _mm256_set1_epi32(round);
+    const __m256i mmMin    = _mm256_set1_epi16(clpRng.min);
+    const __m256i mmMax    = _mm256_set1_epi16(clpRng.max);
+
+    for (size_t i = 0; i < height; i += stepY)
+    {
+      const AlfClassifier *pClass = isChroma(compId) ? nullptr : classifier[blkDst.y + i] + blkDst.x;
+      for (size_t j = 0; j < width; j += stepX * 2)
+      {
+        __m256i params[2][2][10];
+        for (int k = 0; k < 2; k++)
+        {
+          __m128i rawCoeffTmp[2][2][3], rawClipTmp[2][2][3], s0Tmp[2], s1Tmp[2], s2Tmp[2], s3Tmp[2];
+          __m256i rawCoeff[2][3], rawClip[2][3];
+
+          for (int l = 0; l < 2; l++)
+          {
+            const int transposeIdx0 = pClass ? (pClass[j + 4 * k + 2 * l + 0] & 0x3) : 0;
+            const int classIdx0     = pClass ? (pClass[j + 4 * k + 2 * l + 0] >> 2) : 0;
+
+            rawCoeffTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoeffTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawCoeffTmp[0][l][2] = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            rawClipTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
+            rawClipTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawClipTmp[0][l][2] = _mm_loadl_epi64((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            for (int m = 0; m < shuffleTime9[transposeIdx0]; m++)
+            {
+              int op0 = shuffleOp9[transposeIdx0][m][0];
+              int op1 = shuffleOp9[transposeIdx0][m][1];
+
+              s0Tmp[0] = _mm_loadu_si128((const __m128i *) shuffleTab9[transposeIdx0][m][0]);
+              s1Tmp[0] = _mm_xor_si128(s0Tmp[0], _mm_set1_epi8((char) 0x80));
+              s2Tmp[0] = _mm_loadu_si128((const __m128i *) shuffleTab9[transposeIdx0][m][1]);
+              s3Tmp[0] = _mm_xor_si128(s2Tmp[0], _mm_set1_epi8((char) 0x80));
+
+              __m128i rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawCoeffTmp[0][l][op0], s0Tmp[0]), _mm_shuffle_epi8(rawCoeffTmp[0][l][op1], s1Tmp[0]));
+              __m128i rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawCoeffTmp[0][l][op0], s2Tmp[0]), _mm_shuffle_epi8(rawCoeffTmp[0][l][op1], s3Tmp[0]));
+              rawCoeffTmp[0][l][op0] = rawTmp0;
+              rawCoeffTmp[0][l][op1] = rawTmp1;
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[0][l][op0], s0Tmp[0]), _mm_shuffle_epi8(rawClipTmp[0][l][op1], s1Tmp[0]));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[0][l][op0], s2Tmp[0]), _mm_shuffle_epi8(rawClipTmp[0][l][op1], s3Tmp[0]));
+              rawClipTmp[0][l][op0] = rawTmp0;
+              rawClipTmp[0][l][op1] = rawTmp1;
+            }
+
+            const int transposeIdx1 = pClass ? (pClass[j + 4 * k + 2 * l + 8] & 0x3) : 0;
+            const int classIdx1     = pClass ? (pClass[j + 4 * k + 2 * l + 8] >> 2) : 0;
+
+            rawCoeffTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoeffTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawCoeffTmp[1][l][2] = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 16));
+#
+            rawClipTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
+            rawClipTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawClipTmp[1][l][2] = _mm_loadl_epi64((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            for (int m = 0; m < shuffleTime9[transposeIdx1]; m++)
+            {
+              int op0 = shuffleOp9[transposeIdx1][m][0];
+              int op1 = shuffleOp9[transposeIdx1][m][1];
+
+              s0Tmp[1] = _mm_loadu_si128((const __m128i *) shuffleTab9[transposeIdx1][m][0]);
+              s1Tmp[1] = _mm_xor_si128(s0Tmp[1], _mm_set1_epi8((char) 0x80));
+              s2Tmp[1] = _mm_loadu_si128((const __m128i *) shuffleTab9[transposeIdx1][m][1]);
+              s3Tmp[1] = _mm_xor_si128(s2Tmp[1], _mm_set1_epi8((char) 0x80));
+
+              __m128i rawTmp0        = _mm_or_si128(_mm_shuffle_epi8(rawCoeffTmp[1][l][op0], s0Tmp[1]), _mm_shuffle_epi8(rawCoeffTmp[1][l][op1], s1Tmp[1]));
+              __m128i rawTmp1        = _mm_or_si128(_mm_shuffle_epi8(rawCoeffTmp[1][l][op0], s2Tmp[1]), _mm_shuffle_epi8(rawCoeffTmp[1][l][op1], s3Tmp[1]));
+              rawCoeffTmp[1][l][op0] = rawTmp0;
+              rawCoeffTmp[1][l][op1] = rawTmp1;
+
+              rawTmp0               = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[1][l][op0], s0Tmp[1]), _mm_shuffle_epi8(rawClipTmp[1][l][op1], s1Tmp[1]));
+              rawTmp1               = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[1][l][op0], s2Tmp[1]), _mm_shuffle_epi8(rawClipTmp[1][l][op1], s3Tmp[1]));
+              rawClipTmp[1][l][op0] = rawTmp0;
+              rawClipTmp[1][l][op1] = rawTmp1;
+            }
+
+            rawCoeff[l][0] = _mm256_castsi128_si256( rawCoeffTmp[0][l][0]);
+            rawCoeff[l][0] = _mm256_insertf128_si256(rawCoeff[l][0], rawCoeffTmp[1][l][0], 1);
+            rawCoeff[l][1] = _mm256_castsi128_si256(rawCoeffTmp[0][l][1]);
+            rawCoeff[l][1] = _mm256_insertf128_si256(rawCoeff[l][1], rawCoeffTmp[1][l][1], 1);
+            rawCoeff[l][2] = _mm256_castsi128_si256(rawCoeffTmp[0][l][2]);
+            rawCoeff[l][2] = _mm256_insertf128_si256(rawCoeff[l][2], rawCoeffTmp[1][l][2], 1);
+
+            rawClip[l][0] = _mm256_castsi128_si256(rawClipTmp[0][l][0]);
+            rawClip[l][0] = _mm256_insertf128_si256(rawClip[l][0], rawClipTmp[1][l][0], 1);
+            rawClip[l][1] = _mm256_castsi128_si256(rawClipTmp[0][l][1]);
+            rawClip[l][1] = _mm256_insertf128_si256(rawClip[l][1], rawClipTmp[1][l][1], 1);
+            rawClip[l][2] = _mm256_castsi128_si256(rawClipTmp[0][l][2]);
+            rawClip[l][2] = _mm256_insertf128_si256(rawClip[l][2], rawClipTmp[1][l][2], 1);
+          }
+
+          params[k][0][0] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][0], 0x00), _mm256_shuffle_epi32(rawCoeff[1][0], 0x00));
+          params[k][0][1] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][0], 0x55), _mm256_shuffle_epi32(rawCoeff[1][0], 0x55));
+          params[k][0][2] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][0], 0xaa), _mm256_shuffle_epi32(rawCoeff[1][0], 0xaa));
+          params[k][0][3] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][0], 0xff), _mm256_shuffle_epi32(rawCoeff[1][0], 0xff));
+          params[k][0][4] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][1], 0x00), _mm256_shuffle_epi32(rawCoeff[1][1], 0x00));
+          params[k][0][5] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][1], 0x55), _mm256_shuffle_epi32(rawCoeff[1][1], 0x55));
+          params[k][0][6] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][1], 0xaa), _mm256_shuffle_epi32(rawCoeff[1][1], 0xaa));
+          params[k][0][7] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][1], 0xff), _mm256_shuffle_epi32(rawCoeff[1][1], 0xff));
+          params[k][0][8] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][2], 0x00), _mm256_shuffle_epi32(rawCoeff[1][2], 0x00));
+          params[k][0][9] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoeff[0][2], 0x55), _mm256_shuffle_epi32(rawCoeff[1][2], 0x55));
+
+          params[k][1][0] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][0], 0x00), _mm256_shuffle_epi32(rawClip[1][0], 0x00));
+          params[k][1][1] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][0], 0x55), _mm256_shuffle_epi32(rawClip[1][0], 0x55));
+          params[k][1][2] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][0], 0xaa), _mm256_shuffle_epi32(rawClip[1][0], 0xaa));
+          params[k][1][3] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][0], 0xff), _mm256_shuffle_epi32(rawClip[1][0], 0xff));
+          params[k][1][4] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][1], 0x00), _mm256_shuffle_epi32(rawClip[1][1], 0x00));
+          params[k][1][5] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][1], 0x55), _mm256_shuffle_epi32(rawClip[1][1], 0x55));
+          params[k][1][6] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][1], 0xaa), _mm256_shuffle_epi32(rawClip[1][1], 0xaa));
+          params[k][1][7] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][1], 0xff), _mm256_shuffle_epi32(rawClip[1][1], 0xff));
+          params[k][1][8] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][2], 0x00), _mm256_shuffle_epi32(rawClip[1][2], 0x00));
+          params[k][1][9] = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][2], 0x55), _mm256_shuffle_epi32(rawClip[1][2], 0x55));
+        }
+
+        for (size_t ii = 0; ii < stepY; ii++)
+        {
+          const Pel *pImg0, *pImg1, *pImg2, *pImg3, *pImg4, *pImg5, *pImg6, *pImg7, *pImg8;
+
+          pImg0 = src + j + ii * srcStride;
+          pImg1 = pImg0 + srcStride;
+          pImg2 = pImg0 - srcStride;
+          pImg3 = pImg1 + srcStride;
+          pImg4 = pImg2 - srcStride;
+          pImg5 = pImg3 + srcStride;
+          pImg6 = pImg4 - srcStride;
+          pImg7 = pImg5 + srcStride;
+          pImg8 = pImg6 - srcStride;
+
+          __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+          __m256i accumA = mmOffset;
+          __m256i accumB = mmOffset;
+
+          auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
+            {
+              const __m256i val00 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr0), cur);
+              const __m256i val10 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr2), cur);
+              const __m256i val01 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr1), cur);
+              const __m256i val11 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr3), cur);
+
+              __m256i val01A = _mm256_unpacklo_epi16(val00, val10);
+              __m256i val01B = _mm256_unpackhi_epi16(val00, val10);
+              __m256i val01C = _mm256_unpacklo_epi16(val01, val11);
+              __m256i val01D = _mm256_unpackhi_epi16(val01, val11);
+
+              __m256i limit01A = params[0][1][i];
+              __m256i limit01B = params[1][1][i];
+
+              val01A = _mm256_min_epi16(val01A, limit01A);
+              val01B = _mm256_min_epi16(val01B, limit01B);
+              val01C = _mm256_min_epi16(val01C, limit01A);
+              val01D = _mm256_min_epi16(val01D, limit01B);
+
+              limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+              limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+
+              val01A = _mm256_max_epi16(val01A, limit01A);
+              val01B = _mm256_max_epi16(val01B, limit01B);
+              val01C = _mm256_max_epi16(val01C, limit01A);
+              val01D = _mm256_max_epi16(val01D, limit01B);
+
+              val01A = _mm256_add_epi16(val01A, val01C);
+              val01B = _mm256_add_epi16(val01B, val01D);
+
+              const __m256i coeff01A = params[0][0][i];
+              const __m256i coeff01B = params[1][0][i];
+
+              accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+              accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+            };
+
+          process2coeffs(0, pImg7 + 0, pImg8 + 0, pImg5 + 1, pImg6 - 1);
+          process2coeffs(1, pImg5 + 0, pImg6 + 0, pImg5 - 1, pImg6 + 1);
+          process2coeffs(2, pImg3 + 2, pImg4 - 2, pImg3 + 1, pImg4 - 1);
+          process2coeffs(3, pImg3 + 0, pImg4 + 0, pImg3 - 1, pImg4 + 1);
+          process2coeffs(4, pImg3 - 2, pImg4 + 2, pImg1 + 3, pImg2 - 3);
+          process2coeffs(5, pImg1 + 2, pImg2 - 2, pImg1 + 1, pImg2 - 1);
+          process2coeffs(6, pImg1 + 0, pImg2 + 0, pImg1 - 1, pImg2 + 1);
+          process2coeffs(7, pImg1 - 2, pImg2 + 2, pImg1 - 3, pImg2 + 3);
+          process2coeffs(8, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
+          process2coeffs(9, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+
+          accumA = _mm256_srai_epi32(accumA, shift);
+          accumB = _mm256_srai_epi32(accumB, shift);
+
+          accumA = _mm256_packs_epi32(accumA, accumB);
+          accumA = _mm256_add_epi16(accumA, cur);
+          accumA = _mm256_min_epi16(mmMax, _mm256_max_epi16(accumA, mmMin));
+
+          _mm256_storeu_si256((__m256i *) (dst + ii * dstStride + j), accumA);
+
+        }   // for (size_t ii = 0; ii < stepY; ii++)
+      } // for (size_t j = 0; j < width; j += stepX)
+      src += srcStride * stepY;
+      dst += dstStride * stepY;
+    }
+  }
+  else
+  {
+
+    const __m128i mmOffset = _mm_set1_epi32(round);
+    const __m128i mmMin = _mm_set1_epi16(clpRng.min);
+    const __m128i mmMax = _mm_set1_epi16(clpRng.max);
+#endif
+
+    for (size_t i = 0; i < height; i += stepY)
+    {
+      const AlfClassifier *pClass = isChroma(compId) ? nullptr : classifier[blkDst.y + i] + blkDst.x;
+      for (size_t j = 0; j < width; j += stepX)
+      {
+        __m128i params[2][2][10];
+        for (int k = 0; k < 2; k++)
+        {
+          __m128i rawCoeff[2][3], rawClip[2][3], s0, s1, s2, s3, rawTmp0, rawTmp1;
+
+          for (int l = 0; l < 2; l++)
+          {
+            const int transposeIdx = pClass ? (pClass[j + 4 * k + 2 * l] & 0x3 ) : 0;
+            const int classIdx = pClass ? (pClass[j + 4 * k + 2 * l] >> 2): 0;
+
+            rawCoeff[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoeff[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawCoeff[l][2] = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            rawClip[l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
+            rawClip[l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawClip[l][2] = _mm_loadl_epi64((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            for (int m = 0; m < shuffleTime9[transposeIdx]; m++)
+            {
+              int op0 = shuffleOp9[transposeIdx][m][0];
+              int op1 = shuffleOp9[transposeIdx][m][1];
+
+              s0 = _mm_loadu_si128((const __m128i *) shuffleTab9[transposeIdx][m][0]);
+              s1 = _mm_xor_si128(s0, _mm_set1_epi8((char)0x80));
+              s2 = _mm_loadu_si128((const __m128i *) shuffleTab9[transposeIdx][m][1]);
+              s3 = _mm_xor_si128(s2, _mm_set1_epi8((char)0x80));
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawCoeff[l][op0], s0), _mm_shuffle_epi8(rawCoeff[l][op1], s1));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawCoeff[l][op0], s2), _mm_shuffle_epi8(rawCoeff[l][op1], s3));
+              rawCoeff[l][op0] = rawTmp0;
+              rawCoeff[l][op1] = rawTmp1;
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawClip[l][op0], s0), _mm_shuffle_epi8(rawClip[l][op1], s1));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawClip[l][op0], s2), _mm_shuffle_epi8(rawClip[l][op1], s3));
+              rawClip[l][op0] = rawTmp0;
+              rawClip[l][op1] = rawTmp1;
+            }
+          }
+
+          params[k][0][0] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][0], 0x00), _mm_shuffle_epi32(rawCoeff[1][0], 0x00));
+          params[k][0][1] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][0], 0x55), _mm_shuffle_epi32(rawCoeff[1][0], 0x55));
+          params[k][0][2] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][0], 0xaa), _mm_shuffle_epi32(rawCoeff[1][0], 0xaa));
+          params[k][0][3] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][0], 0xff), _mm_shuffle_epi32(rawCoeff[1][0], 0xff));
+          params[k][0][4] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][1], 0x00), _mm_shuffle_epi32(rawCoeff[1][1], 0x00));
+          params[k][0][5] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][1], 0x55), _mm_shuffle_epi32(rawCoeff[1][1], 0x55));
+          params[k][0][6] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][1], 0xaa), _mm_shuffle_epi32(rawCoeff[1][1], 0xaa));
+          params[k][0][7] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][1], 0xff), _mm_shuffle_epi32(rawCoeff[1][1], 0xff));
+          params[k][0][8] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][2], 0x00), _mm_shuffle_epi32(rawCoeff[1][2], 0x00));
+          params[k][0][9] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoeff[0][2], 0x55), _mm_shuffle_epi32(rawCoeff[1][2], 0x55));
+
+          params[k][1][0] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][0], 0x00), _mm_shuffle_epi32(rawClip[1][0], 0x00));
+          params[k][1][1] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][0], 0x55), _mm_shuffle_epi32(rawClip[1][0], 0x55));
+          params[k][1][2] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][0], 0xaa), _mm_shuffle_epi32(rawClip[1][0], 0xaa));
+          params[k][1][3] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][0], 0xff), _mm_shuffle_epi32(rawClip[1][0], 0xff));
+          params[k][1][4] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][1], 0x00), _mm_shuffle_epi32(rawClip[1][1], 0x00));
+          params[k][1][5] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][1], 0x55), _mm_shuffle_epi32(rawClip[1][1], 0x55));
+          params[k][1][6] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][1], 0xaa), _mm_shuffle_epi32(rawClip[1][1], 0xaa));
+          params[k][1][7] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][1], 0xff), _mm_shuffle_epi32(rawClip[1][1], 0xff));
+          params[k][1][8] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][2], 0x00), _mm_shuffle_epi32(rawClip[1][2], 0x00));
+          params[k][1][9] = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][2], 0x55), _mm_shuffle_epi32(rawClip[1][2], 0x55));
+        }
+
+        for (size_t ii = 0; ii < stepY; ii++)
+        {
+          const Pel *pImg0, *pImg1, *pImg2, *pImg3, *pImg4, *pImg5, *pImg6, *pImg7, *pImg8;
+
+          pImg0 = src + j + ii * srcStride;
+          pImg1 = pImg0 + srcStride;
+          pImg2 = pImg0 - srcStride;
+          pImg3 = pImg1 + srcStride;
+          pImg4 = pImg2 - srcStride;
+          pImg5 = pImg3 + srcStride;
+          pImg6 = pImg4 - srcStride;
+          pImg7 = pImg5 + srcStride;
+          pImg8 = pImg6 - srcStride;
+
+          __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+          __m128i accumA = mmOffset;
+          __m128i accumB = mmOffset;
+
+          auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
+            const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
+            const __m128i val10 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr2), cur);
+            const __m128i val01 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr1), cur);
+            const __m128i val11 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr3), cur);
+
+            __m128i val01A = _mm_unpacklo_epi16(val00, val10);
+            __m128i val01B = _mm_unpackhi_epi16(val00, val10);
+            __m128i val01C = _mm_unpacklo_epi16(val01, val11);
+            __m128i val01D = _mm_unpackhi_epi16(val01, val11);
+
+            __m128i limit01A = params[0][1][i];
+            __m128i limit01B = params[1][1][i];
+
+            val01A = _mm_min_epi16(val01A, limit01A);
+            val01B = _mm_min_epi16(val01B, limit01B);
+            val01C = _mm_min_epi16(val01C, limit01A);
+            val01D = _mm_min_epi16(val01D, limit01B);
+
+            limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+            limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+
+            val01A = _mm_max_epi16(val01A, limit01A);
+            val01B = _mm_max_epi16(val01B, limit01B);
+            val01C = _mm_max_epi16(val01C, limit01A);
+            val01D = _mm_max_epi16(val01D, limit01B);
+
+            val01A = _mm_add_epi16(val01A, val01C);
+            val01B = _mm_add_epi16(val01B, val01D);
+
+            const __m128i coeff01A = params[0][0][i];
+            const __m128i coeff01B = params[1][0][i];
+
+            accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+            accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+            };
+
+          process2coeffs(0, pImg7 + 0, pImg8 + 0, pImg5 + 1, pImg6 - 1);
+          process2coeffs(1, pImg5 + 0, pImg6 + 0, pImg5 - 1, pImg6 + 1);
+          process2coeffs(2, pImg3 + 2, pImg4 - 2, pImg3 + 1, pImg4 - 1);
+          process2coeffs(3, pImg3 + 0, pImg4 + 0, pImg3 - 1, pImg4 + 1);
+          process2coeffs(4, pImg3 - 2, pImg4 + 2, pImg1 + 3, pImg2 - 3);
+          process2coeffs(5, pImg1 + 2, pImg2 - 2, pImg1 + 1, pImg2 - 1);
+          process2coeffs(6, pImg1 + 0, pImg2 + 0, pImg1 - 1, pImg2 + 1);
+          process2coeffs(7, pImg1 - 2, pImg2 + 2, pImg1 - 3, pImg2 + 3);
+          process2coeffs(8, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
+          process2coeffs(9, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+
+          accumA = _mm_srai_epi32(accumA, shift);
+          accumB = _mm_srai_epi32(accumB, shift);
+
+          accumA = _mm_packs_epi32(accumA, accumB);
+          accumA = _mm_add_epi16(accumA, cur);
+          accumA = _mm_min_epi16(mmMax, _mm_max_epi16(accumA, mmMin));
+
+          if (j + stepX <= width)
+          {
+            _mm_storeu_si128((__m128i *) (dst + ii * dstStride + j), accumA);
+          }
+          else
+          {
+            _mm_storel_epi64((__m128i *) (dst + ii * dstStride + j), accumA);
+          }
+        } //for (size_t ii = 0; ii < stepY; ii++)
+      } //for (size_t j = 0; j < width; j += stepX)
+      src += srcStride * stepY;
+      dst += dstStride * stepY;
+    }
+#if USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  }//use 256 Bit Simd
+#endif
+}
+#endif
+
 template<X86_VEXT vext>
 static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDst,
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
@@ -2120,6 +2563,52 @@ static const uint16_t shuffleTab13LongLength[4][3][2][8] =
     },
   }, //IDX = 3
 };
+#if FIXFILTER_CFG
+static const uint16_t shuffleTime13NoFixed[4] = {0, 1, 1, 1};
+static const uint16_t shuffleOp13NoFixed[4][1][2] =
+{
+  {
+    {0, 1},
+  }, //0  
+  {
+    {0, 1},
+  }, //1
+  {
+    {0, 1},
+  }, //2 
+  {
+    {0, 1},
+  }, //3
+};
+static const uint16_t shuffleTab13NoFixed[4][1][2][8] =
+{
+  {
+    {
+      { sh(0) , sh(1) , sh(2) , sh(3) , sh(4) , sh(5) , sh(6) , sh(7) },
+      { sh(8) , sh(9) , sh(10), sh(11), sh(12), sh(13), sh(14), sh(15) },
+    },
+  }, //IDX = 0
+
+  {
+    {
+      { sh(6), sh(7), sh(8) , sh(3) , sh(9) , sh(5) , sh(0) , sh(1) },
+      { sh(2), sh(4), sh(10), sh(11), sh(12), sh(13), sh(14), sh(15) },
+    },
+  }, //IDX = 1
+  {
+    {
+      { sh(0), sh(1), sh(2) , sh(5) , sh(4) , sh(3) , sh(6) , sh(7) },
+      { sh(8), sh(9), sh(10), sh(11), sh(12), sh(13), sh(14), sh(15) },
+    },
+  }, //IDX = 2
+  {
+    {
+      { sh(6), sh(7), sh(8) , sh(5) , sh(9) , sh(3) , sh(0) , sh(1) },
+      { sh(2), sh(4), sh(10), sh(11), sh(12), sh(13), sh(14), sh(15) },
+    },
+  }, //IDX = 3
+};
+#endif
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
 static const uint16_t shuffleTime13FixedBasedLongLength[4] = { 0, 4, 2, 4 };
 static const uint16_t shuffleOp13FixedBasedLongLength[4][4][2] =
@@ -6462,6 +6951,1211 @@ static void simdFilter13x13BlkExtDbResi(
   }//Use 256 Bit Simd
  #endif
 }
+#if FIXFILTER_CFG
+template<X86_VEXT vext>
+static void simdFilter13x13BlkDbResiDirect(
+  AlfClassifier * *classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi,
+  const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet,
+#if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
+  const Pel *fClipSet
+#else
+  const short *fClipSet
+#endif
+  ,const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
+#if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
+  ,Pel ***fixedFilterResultsPerCtu, bool isFixedFilterPaddedPerCtu
+#endif
+#if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+  , Pel ***gaussPic, Pel ***gaussCtu
+#endif
+#if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+  , char coeffBits
+#endif
+)
+{
+  const CPelBuf srcBuffer         = recSrc.get(compId);
+  PelBuf        dstBuffer         = recDst.get(compId);
+  const CPelBuf scrBufferBeforeDb = recBeforeDb.get(compId);
+  const CPelBuf scrBufferResi     = resi.get(compId);
+
+  const size_t srcStride         = srcBuffer.stride;
+  const size_t dstStride         = dstBuffer.stride;
+  const size_t srcBeforeDbStride = scrBufferBeforeDb.stride;
+  const size_t srcResiStride     = scrBufferResi.stride;
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  int adjustShift = coeffBits - 1;
+  const bool  bScalingCorr = isLuma(compId) && fixedFilterSetIdx < 0;
+  if ( bScalingCorr )
+  {
+    fixedFilterSetIdx = -fixedFilterSetIdx - 1;
+    adjustShift -= shiftPrecis; // add more precision
+  }
+  const int shift = adjustShift;
+#if JVET_AJ0237_INTERNAL_12BIT
+  const Pel currBase = 1 << (clpRng.bd - 1);
+#else
+  const Pel currBase = 512;
+#endif
+  int round = 1 << (shift - 1);
+
+#if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
+  __m128i curBase = _mm_set_epi16( currBase, currBase, currBase, currBase, currBase, currBase, currBase, currBase );
+#endif
+#else
+#if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+  int shift = coeffBits;
+  shift -= 1;
+  int round = 1 << (shift - 1);
+#else
+  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
+  constexpr int round = 1 << (shift - 1);
+#endif
+#endif
+
+  const size_t width  = blk.width;
+  const size_t height = blk.height;
+
+  constexpr size_t stepX = 8;
+  size_t           stepY = 1;
+
+#if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
+  const __m128i mmOffset = _mm_set1_epi32(round);
+  const __m128i mmMin    = _mm_set1_epi16(clpRng.min);
+  const __m128i mmMax    = _mm_set1_epi16(clpRng.max);
+#endif
+
+  static_assert(sizeof(*filterSet) == 2, "ALF coeffs must be 16-bit wide");
+  static_assert(sizeof(*fClipSet) == 2, "ALF clip values must be 16-bit wide");
+
+  const Pel *src         = srcBuffer.buf + blk.y * srcStride + blk.x;
+  Pel       *dst         = dstBuffer.buf + blkDst.y * dstStride + blkDst.x;
+  const Pel *srcBeforeDb = scrBufferBeforeDb.buf + blk.y * srcBeforeDbStride + blk.x;
+  const Pel *srcResi     = scrBufferResi.buf + blk.y * srcResiStride + blk.x;
+
+#if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+  const int padSizeGauss = ALF_PADDING_SIZE_GAUSS_RESULTS;
+#endif
+
+#if USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  const bool use256BitSimd = vext >= AVX2 && blkDst.width % 16 == 0 ? true : false;
+
+  if( use256BitSimd )
+  {
+    const __m256i mmOffset = _mm256_set1_epi32(round);
+    const __m256i mmMin    = _mm256_set1_epi16(clpRng.min);
+    const __m256i mmMax    = _mm256_set1_epi16(clpRng.max);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+    const __m256i curBase  = _mm256_set1_epi16(currBase);
+#endif
+
+    for (size_t i = 0; i < height; i += stepY)
+    {
+      const AlfClassifier *pClass = classifier[blkDst.y + i] + blkDst.x;
+      for (size_t j = 0; j < width; j += stepX * 2)
+      {
+        __m256i params[2][2][10];
+        for (int k = 0; k < 2; k++)
+        {
+          __m256i rawCoef[4][3], rawClip[4][3], s0, s1;
+          __m128i rawCoefTmp[2][4][3], rawClipTmp[2][4][3], s0Tmp[2], s1Tmp[2], s2Tmp[2], s3Tmp[2];
+
+          for (int l = 0; l < 4; l++)
+          {
+            const int transposeIdx0 = pClass[j + 4 * k + l + 0] & 0x3;
+            const int classIdx0     = pClass[j + 4 * k + l + 0] >> 2;
+
+            rawCoefTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoefTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawCoefTmp[0][l][2] = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            rawClipTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
+            rawClipTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawClipTmp[0][l][2] = _mm_loadl_epi64((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            for (int m = 0; m < shuffleTime13NoFixed[transposeIdx0]; m++)
+            {
+              int op0 = shuffleOp13NoFixed[transposeIdx0][m][0];
+              int op1 = shuffleOp13NoFixed[transposeIdx0][m][1];
+
+              s0Tmp[0] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx0][m][0]);
+              s1Tmp[0] = _mm_xor_si128(s0Tmp[0], _mm_set1_epi8((char) 0x80));
+              s2Tmp[0] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx0][m][1]);
+              s3Tmp[0] = _mm_xor_si128(s2Tmp[0], _mm_set1_epi8((char) 0x80));
+
+              __m128i rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[0][l][op0], s0Tmp[0]), _mm_shuffle_epi8(rawCoefTmp[0][l][op1], s1Tmp[0]));
+              __m128i rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[0][l][op0], s2Tmp[0]), _mm_shuffle_epi8(rawCoefTmp[0][l][op1], s3Tmp[0]));
+              rawCoefTmp[0][l][op0] = rawTmp0;
+              rawCoefTmp[0][l][op1] = rawTmp1;
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[0][l][op0], s0Tmp[0]), _mm_shuffle_epi8(rawClipTmp[0][l][op1], s1Tmp[0]));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[0][l][op0], s2Tmp[0]), _mm_shuffle_epi8(rawClipTmp[0][l][op1], s3Tmp[0]));
+              rawClipTmp[0][l][op0] = rawTmp0;
+              rawClipTmp[0][l][op1] = rawTmp1;
+            }
+
+            const int transposeIdx1 = pClass[j + 4 * k + l + 8] & 0x3;
+            const int classIdx1     = pClass[j + 4 * k + l + 8] >> 2;
+
+            rawCoefTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoefTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawCoefTmp[1][l][2] = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            rawClipTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
+            rawClipTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawClipTmp[1][l][2] = _mm_loadl_epi64((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            for (int m = 0; m < shuffleTime13NoFixed[transposeIdx1]; m++)
+            {
+              int op0 = shuffleOp13NoFixed[transposeIdx1][m][0];
+              int op1 = shuffleOp13NoFixed[transposeIdx1][m][1];
+
+              s0Tmp[1] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx1][m][0]);
+              s1Tmp[1] = _mm_xor_si128(s0Tmp[1], _mm_set1_epi8((char) 0x80));
+              s2Tmp[1] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx1][m][1]);
+              s3Tmp[1] = _mm_xor_si128(s2Tmp[1], _mm_set1_epi8((char) 0x80));
+
+              __m128i rawTmp0       = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[1][l][op0], s0Tmp[1]), _mm_shuffle_epi8(rawCoefTmp[1][l][op1], s1Tmp[1]));
+              __m128i rawTmp1       = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[1][l][op0], s2Tmp[1]), _mm_shuffle_epi8(rawCoefTmp[1][l][op1], s3Tmp[1]));
+              rawCoefTmp[1][l][op0] = rawTmp0;
+              rawCoefTmp[1][l][op1] = rawTmp1;
+
+              rawTmp0               = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[1][l][op0], s0Tmp[1]), _mm_shuffle_epi8(rawClipTmp[1][l][op1], s1Tmp[1]));
+              rawTmp1               = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[1][l][op0], s2Tmp[1]), _mm_shuffle_epi8(rawClipTmp[1][l][op1], s3Tmp[1]));
+              rawClipTmp[1][l][op0] = rawTmp0;
+              rawClipTmp[1][l][op1] = rawTmp1;
+            }
+
+            rawCoef[l][0] = _mm256_castsi128_si256(rawCoefTmp[0][l][0]);
+            rawCoef[l][0] = _mm256_insertf128_si256(rawCoef[l][0], rawCoefTmp[1][l][0], 1);
+            rawCoef[l][1] = _mm256_castsi128_si256(rawCoefTmp[0][l][1]);
+            rawCoef[l][1] = _mm256_insertf128_si256(rawCoef[l][1], rawCoefTmp[1][l][1], 1);
+            rawCoef[l][2] = _mm256_castsi128_si256(rawCoefTmp[0][l][2]);
+            rawCoef[l][2] = _mm256_insertf128_si256(rawCoef[l][2], rawCoefTmp[1][l][2], 1);
+           
+            rawClip[l][0] = _mm256_castsi128_si256(rawClipTmp[0][l][0]);
+            rawClip[l][0] = _mm256_insertf128_si256(rawClip[l][0], rawClipTmp[1][l][0], 1);
+            rawClip[l][1] = _mm256_castsi128_si256(rawClipTmp[0][l][1]);
+            rawClip[l][1] = _mm256_insertf128_si256(rawClip[l][1], rawClipTmp[1][l][1], 1);
+            rawClip[l][2] = _mm256_castsi128_si256(rawClipTmp[0][l][2]);
+            rawClip[l][2] = _mm256_insertf128_si256(rawClip[l][2], rawClipTmp[1][l][2], 1);
+          }   // for l
+
+          for (unsigned char l = 0; l < 3; l++)
+          {
+            int m = l << 2;
+
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0x00), _mm256_shuffle_epi32(rawCoef[1][l], 0x00));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0x00), _mm256_shuffle_epi32(rawCoef[3][l], 0x00));
+            params[k][0][0 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0x00), _mm256_shuffle_epi32(rawClip[1][l], 0x00));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0x00), _mm256_shuffle_epi32(rawClip[3][l], 0x00));
+            params[k][1][0 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0x55), _mm256_shuffle_epi32(rawCoef[1][l], 0x55));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0x55), _mm256_shuffle_epi32(rawCoef[3][l], 0x55));
+            params[k][0][1 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0x55), _mm256_shuffle_epi32(rawClip[1][l], 0x55));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0x55), _mm256_shuffle_epi32(rawClip[3][l], 0x55));
+            params[k][1][1 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+
+            if(l < 2)
+            {
+              s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0xaa), _mm256_shuffle_epi32(rawCoef[1][l], 0xaa));
+              s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0xaa), _mm256_shuffle_epi32(rawCoef[3][l], 0xaa));
+              params[k][0][2 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+              s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0xaa), _mm256_shuffle_epi32(rawClip[1][l], 0xaa));
+              s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0xaa), _mm256_shuffle_epi32(rawClip[3][l], 0xaa));
+              params[k][1][2 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+
+              s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0xff), _mm256_shuffle_epi32(rawCoef[1][l], 0xff));
+              s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0xff), _mm256_shuffle_epi32(rawCoef[3][l], 0xff));
+              params[k][0][3 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+              s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0xff), _mm256_shuffle_epi32(rawClip[1][l], 0xff));
+              s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0xff), _mm256_shuffle_epi32(rawClip[3][l], 0xff));
+              params[k][1][3 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            }
+          }   // for l
+        }     // for k
+
+        const Pel *pImg0, *pImg1, *pImg2, *pImg3, *pImg4, *pImg5, *pImg6, *pImg7, *pImg8, *pImgP0;
+
+        pImg0 = src + j;
+        pImg1 = pImg0 + srcStride;
+        pImg2 = pImg0 - srcStride;
+        pImg3 = pImg1 + srcStride;
+        pImg4 = pImg2 - srcStride;
+        pImg5 = pImg3 + srcStride;
+        pImg6 = pImg4 - srcStride;
+        pImg7 = pImg5 + srcStride;
+        pImg8 = pImg6 - srcStride;
+
+        const Pel *pImg0Gauss[NUM_GAUSS_FILTERED_SOURCE];
+        const Pel *pImg1Gauss[NUM_GAUSS_FILTERED_SOURCE], *pImg2Gauss[NUM_GAUSS_FILTERED_SOURCE];
+        const Pel *pImg3Gauss[NUM_GAUSS_FILTERED_SOURCE], *pImg4Gauss[NUM_GAUSS_FILTERED_SOURCE];
+
+        for (int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++)
+        {
+          if (isFixedFilterPaddedPerCtu)
+          {
+            pImg0Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 0] + j + padSizeGauss;
+            pImg1Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 1] + j + padSizeGauss;
+            pImg2Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss - 1] + j + padSizeGauss;
+            pImg3Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 2] + j + padSizeGauss;
+            pImg4Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss - 2] + j + padSizeGauss;
+          }
+          else
+          {
+            pImg0Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 0] + blkDst.x + j + padSizeGauss;
+            pImg1Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 1] + blkDst.x + j + padSizeGauss;
+            pImg2Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss - 1] + blkDst.x + j + padSizeGauss;
+            pImg3Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 2] + blkDst.x + j + padSizeGauss;
+            pImg4Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss - 2] + blkDst.x + j + padSizeGauss;
+          }
+        }
+        __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+        __m256i accumA = mmOffset;
+        __m256i accumB = mmOffset;
+
+        auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
+          {
+            const __m256i val00 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr0), cur);
+            const __m256i val10 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr2), cur);
+            const __m256i val01 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr1), cur);
+            const __m256i val11 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr3), cur);
+
+            __m256i val01A = _mm256_unpacklo_epi16(val00, val10);
+            __m256i val01B = _mm256_unpackhi_epi16(val00, val10);
+            __m256i val01C = _mm256_unpacklo_epi16(val01, val11);
+            __m256i val01D = _mm256_unpackhi_epi16(val01, val11);
+
+            __m256i limit01A = params[0][1][i];
+            __m256i limit01B = params[1][1][i];
+
+            val01A = _mm256_min_epi16(val01A, limit01A);
+            val01B = _mm256_min_epi16(val01B, limit01B);
+            val01C = _mm256_min_epi16(val01C, limit01A);
+            val01D = _mm256_min_epi16(val01D, limit01B);
+
+            limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+            limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+
+            val01A = _mm256_max_epi16(val01A, limit01A);
+            val01B = _mm256_max_epi16(val01B, limit01B);
+            val01C = _mm256_max_epi16(val01C, limit01A);
+            val01D = _mm256_max_epi16(val01D, limit01B);
+
+            val01A = _mm256_add_epi16(val01A, val01C);
+            val01B = _mm256_add_epi16(val01B, val01D);
+
+            const __m256i coeff01A = params[0][0][i];
+            const __m256i coeff01B = params[1][0][i];
+
+            accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+            accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+          };
+
+        process2coeffs(0, pImg7 + 0, pImg8 - 0, pImg5 + 0, pImg6 - 0);
+        process2coeffs(1, pImg3 + 0, pImg4 - 0, pImg1 + 1, pImg2 - 1);
+        process2coeffs(2, pImg1 + 0, pImg2 - 0, pImg1 - 1, pImg2 + 1);
+        process2coeffs(3, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
+        process2coeffs(4, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+        process2coeffs(5, pImg3Gauss[0] - 0, pImg4Gauss[0] + 0, pImg1Gauss[0] - 0, pImg2Gauss[0] + 0);
+        process2coeffs(6, pImg0Gauss[0] - 2, pImg0Gauss[0] + 2, pImg0Gauss[0] - 1, pImg0Gauss[0] + 1);
+
+        pImg0 = srcBeforeDb + j;
+        pImg1 = pImg0 + srcBeforeDbStride;
+        pImg2 = pImg0 - srcBeforeDbStride;
+
+        pImgP0 = srcResi + j;
+
+        process2coeffs(7, pImg1 + 0, pImg2 + 0, pImg0 + 1, pImg0 - 1);
+
+        // start prediction fixed filter
+        __m256i zero = _mm256_setzero_si256();
+        __m256i val00        = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) (pImg0)), cur);
+        __m256i val10        = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) pImgP0), zero);
+        __m256i val01A       = _mm256_unpacklo_epi16(val00, val10);
+        __m256i val01B       = _mm256_unpackhi_epi16(val00, val10);
+        __m256i limit01A = params[0][1][8];
+        __m256i limit01B = params[1][1][8];
+
+        val01A   = _mm256_min_epi16(val01A, limit01A);
+        val01B   = _mm256_min_epi16(val01B, limit01B);
+        limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+        limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+        val01A   = _mm256_max_epi16(val01A, limit01A);
+        val01B   = _mm256_max_epi16(val01B, limit01B);
+        __m256i coeff01A = params[0][0][8];
+        __m256i coeff01B = params[1][0][8];
+
+        accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+        accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+        
+        val00  = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) (pImg0Gauss[0])), cur);
+        val10  = _mm256_setzero_si256();
+        val01A = _mm256_unpacklo_epi16(val00, val10);
+        val01B = _mm256_unpackhi_epi16(val00, val10);
+        limit01A = params[0][1][9];
+        limit01B = params[1][1][9];
+
+        val01A   = _mm256_min_epi16(val01A, limit01A);
+        val01B   = _mm256_min_epi16(val01B, limit01B);
+        limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+        limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+        val01A   = _mm256_max_epi16(val01A, limit01A);
+        val01B   = _mm256_max_epi16(val01B, limit01B);
+        coeff01A = params[0][0][9];
+        coeff01B = params[1][0][9];
+        accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+        accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+
+        accumA = _mm256_srai_epi32(accumA, shift);
+        accumB = _mm256_srai_epi32(accumB, shift);
+
+        accumA = _mm256_packs_epi32(accumA, accumB);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+        if( bScalingCorr )
+        {
+          accumA = _mm256_add_epi16(accumA, curBase);
+        }
+        else
+#endif
+          accumA = _mm256_add_epi16(accumA, cur);
+        accumA = _mm256_min_epi16(mmMax, _mm256_max_epi16(accumA, mmMin));
+
+        _mm256_storeu_si256((__m256i *) (dst + j), accumA);
+      }   // for j
+      src += srcStride * stepY;
+      dst += dstStride * stepY;
+      srcBeforeDb += srcBeforeDbStride * stepY;
+      srcResi += srcResiStride * stepY;
+    }   // for i
+  }
+  else
+  {
+    const __m128i mmOffset = _mm_set1_epi32(round);
+    const __m128i mmMin    = _mm_set1_epi16(clpRng.min);
+    const __m128i mmMax    = _mm_set1_epi16(clpRng.max);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+    const __m128i curBase  = _mm_set1_epi16(currBase);
+#endif
+#endif//Use AVX2 SIMD
+    for (size_t i = 0; i < height; i += stepY)
+    {
+      const AlfClassifier *pClass = classifier[blkDst.y + i] + blkDst.x;
+      for (size_t j = 0; j < width; j += stepX)
+      {
+        __m128i params[2][2][10];
+        for (int k = 0; k < 2; k++)
+        {
+          __m128i rawCoef[4][3], rawClip[4][3], s0, s1, s2, s3, rawTmp0, rawTmp1;
+          for (int l = 0; l < 4; l++)
+          {
+            const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
+            const int classIdx     = pClass[j + 4 * k + l] >> 2;
+
+            rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawCoef[l][2] = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            rawClip[l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
+            rawClip[l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
+            rawClip[l][2] = _mm_loadl_epi64((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 16));
+
+            for (int m = 0; m < shuffleTime13NoFixed[transposeIdx]; m++)
+            {
+              int op0 = shuffleOp13NoFixed[transposeIdx][m][0];
+              int op1 = shuffleOp13NoFixed[transposeIdx][m][1];
+
+              s0 = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx][m][0]);
+              s1 = _mm_xor_si128(s0, _mm_set1_epi8((char) 0x80));
+              s2 = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx][m][1]);
+              s3 = _mm_xor_si128(s2, _mm_set1_epi8((char) 0x80));
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawCoef[l][op0], s0), _mm_shuffle_epi8(rawCoef[l][op1], s1));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawCoef[l][op0], s2), _mm_shuffle_epi8(rawCoef[l][op1], s3));
+              rawCoef[l][op0] = rawTmp0;
+              rawCoef[l][op1] = rawTmp1;
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawClip[l][op0], s0), _mm_shuffle_epi8(rawClip[l][op1], s1));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawClip[l][op0], s2), _mm_shuffle_epi8(rawClip[l][op1], s3));
+              rawClip[l][op0] = rawTmp0;
+              rawClip[l][op1] = rawTmp1;
+            }
+          }   // for l
+
+          for (unsigned char l = 0; l < 3; l++)
+          {
+            int m = l << 2;
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0x00), _mm_shuffle_epi32(rawCoef[1][l], 0x00));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0x00), _mm_shuffle_epi32(rawCoef[3][l], 0x00));
+            params[k][0][0 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0x00), _mm_shuffle_epi32(rawClip[1][l], 0x00));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0x00), _mm_shuffle_epi32(rawClip[3][l], 0x00));
+            params[k][1][0 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0x55), _mm_shuffle_epi32(rawCoef[1][l], 0x55));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0x55), _mm_shuffle_epi32(rawCoef[3][l], 0x55));
+            params[k][0][1 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0x55), _mm_shuffle_epi32(rawClip[1][l], 0x55));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0x55), _mm_shuffle_epi32(rawClip[3][l], 0x55));
+            params[k][1][1 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+
+            if (l < 2)
+            {
+              s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0xaa), _mm_shuffle_epi32(rawCoef[1][l], 0xaa));
+              s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0xaa), _mm_shuffle_epi32(rawCoef[3][l], 0xaa));
+              params[k][0][2 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+              s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0xaa), _mm_shuffle_epi32(rawClip[1][l], 0xaa));
+              s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0xaa), _mm_shuffle_epi32(rawClip[3][l], 0xaa));
+              params[k][1][2 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+
+              s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0xff), _mm_shuffle_epi32(rawCoef[1][l], 0xff));
+              s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0xff), _mm_shuffle_epi32(rawCoef[3][l], 0xff));
+              params[k][0][3 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+              s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0xff), _mm_shuffle_epi32(rawClip[1][l], 0xff));
+              s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0xff), _mm_shuffle_epi32(rawClip[3][l], 0xff));
+              params[k][1][3 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            }
+          }   // for l
+        }     // for k
+
+        const Pel *pImg0, *pImg1, *pImg2, *pImg3, *pImg4, *pImg5, *pImg6, *pImg7, *pImg8, *pImgP0;
+
+        pImg0  = src + j;
+        pImg1  = pImg0 + srcStride;
+        pImg2  = pImg0 - srcStride;
+        pImg3  = pImg1 + srcStride;
+        pImg4  = pImg2 - srcStride;
+        pImg5  = pImg3 + srcStride;
+        pImg6  = pImg4 - srcStride;
+        pImg7  = pImg5 + srcStride;
+        pImg8  = pImg6 - srcStride;
+
+        const Pel *pImg0Gauss[NUM_GAUSS_FILTERED_SOURCE];
+        const Pel *pImg1Gauss[NUM_GAUSS_FILTERED_SOURCE], *pImg2Gauss[NUM_GAUSS_FILTERED_SOURCE];
+        const Pel *pImg3Gauss[NUM_GAUSS_FILTERED_SOURCE], *pImg4Gauss[NUM_GAUSS_FILTERED_SOURCE];
+
+        for( int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++ )
+        {
+          if( isFixedFilterPaddedPerCtu )
+          {
+            pImg0Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 0] + j + padSizeGauss;
+            pImg1Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 1] + j + padSizeGauss;
+            pImg2Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss - 1] + j + padSizeGauss;
+            pImg3Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 2] + j + padSizeGauss;
+            pImg4Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss - 2] + j + padSizeGauss;
+          }
+          else
+          {
+            pImg0Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 0] + blkDst.x + j + padSizeGauss;
+            pImg1Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 1] + blkDst.x + j + padSizeGauss;
+            pImg2Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss - 1] + blkDst.x + j + padSizeGauss;
+            pImg3Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 2] + blkDst.x + j + padSizeGauss;
+            pImg4Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss - 2] + blkDst.x + j + padSizeGauss;
+          }
+        }
+
+        __m128i cur    = _mm_loadu_si128((const __m128i *) pImg0);
+        __m128i accumA = mmOffset;
+        __m128i accumB = mmOffset;
+
+        auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
+          {
+            const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
+            const __m128i val10 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr2), cur);
+            const __m128i val01 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr1), cur);
+            const __m128i val11 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr3), cur);
+
+            __m128i val01A = _mm_unpacklo_epi16(val00, val10);
+            __m128i val01B = _mm_unpackhi_epi16(val00, val10);
+            __m128i val01C = _mm_unpacklo_epi16(val01, val11);
+            __m128i val01D = _mm_unpackhi_epi16(val01, val11);
+
+            __m128i limit01A = params[0][1][i];
+            __m128i limit01B = params[1][1][i];
+
+            val01A = _mm_min_epi16(val01A, limit01A);
+            val01B = _mm_min_epi16(val01B, limit01B);
+            val01C = _mm_min_epi16(val01C, limit01A);
+            val01D = _mm_min_epi16(val01D, limit01B);
+
+            limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+            limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+
+            val01A = _mm_max_epi16(val01A, limit01A);
+            val01B = _mm_max_epi16(val01B, limit01B);
+            val01C = _mm_max_epi16(val01C, limit01A);
+            val01D = _mm_max_epi16(val01D, limit01B);
+
+            val01A = _mm_add_epi16(val01A, val01C);
+            val01B = _mm_add_epi16(val01B, val01D);
+
+            const __m128i coeff01A = params[0][0][i];
+            const __m128i coeff01B = params[1][0][i];
+
+            accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+            accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+          };
+
+        process2coeffs(0, pImg7 + 0, pImg8 - 0, pImg5 + 0, pImg6 - 0);
+        process2coeffs(1, pImg3 + 0, pImg4 - 0, pImg1 + 1, pImg2 - 1);
+        process2coeffs(2, pImg1 + 0, pImg2 - 0, pImg1 - 1, pImg2 + 1);
+        process2coeffs(3, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
+        process2coeffs(4, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+        process2coeffs(5, pImg3Gauss[0] - 0, pImg4Gauss[0] + 0, pImg1Gauss[0] - 0, pImg2Gauss[0] + 0);
+        process2coeffs(6, pImg0Gauss[0] - 2, pImg0Gauss[0] + 2, pImg0Gauss[0] - 1, pImg0Gauss[0] + 1);
+
+        pImg0 = srcBeforeDb + j;
+        pImg1 = pImg0 + srcBeforeDbStride;
+        pImg2 = pImg0 - srcBeforeDbStride;
+
+        pImgP0 = srcResi + j;
+
+        process2coeffs(7, pImg1 + 0, pImg2 + 0, pImg0 + 1, pImg0 - 1);
+
+        __m128i zero = _mm_setzero_si128();
+        __m128i val00        = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) (pImg0)), cur);
+        __m128i val10        = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) pImgP0), zero);
+        __m128i val01A       = _mm_unpacklo_epi16(val00, val10);
+        __m128i val01B       = _mm_unpackhi_epi16(val00, val10);
+        __m128i limit01A = params[0][1][8];
+        __m128i limit01B = params[1][1][8];
+
+        val01A   = _mm_min_epi16(val01A, limit01A);
+        val01B   = _mm_min_epi16(val01B, limit01B);
+        limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+        limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+        val01A   = _mm_max_epi16(val01A, limit01A);
+        val01B   = _mm_max_epi16(val01B, limit01B);
+        __m128i coeff01A = params[0][0][8];
+        __m128i coeff01B = params[1][0][8];
+
+        accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+        accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+
+        val00    = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) (pImg0Gauss[0])), cur);
+        val10    = _mm_setzero_si128();
+        val01A   = _mm_unpacklo_epi16(val00, val10);
+        val01B   = _mm_unpackhi_epi16(val00, val10);
+        limit01A = params[0][1][9];
+        limit01B = params[1][1][9];
+
+        val01A   = _mm_min_epi16(val01A, limit01A);
+        val01B   = _mm_min_epi16(val01B, limit01B);
+        limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+        limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+        val01A   = _mm_max_epi16(val01A, limit01A);
+        val01B   = _mm_max_epi16(val01B, limit01B);
+        coeff01A = params[0][0][9];
+        coeff01B = params[1][0][9];
+        accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+        accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+
+        accumA = _mm_srai_epi32(accumA, shift);
+        accumB = _mm_srai_epi32(accumB, shift);
+
+        accumA = _mm_packs_epi32(accumA, accumB);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+        if ( bScalingCorr )
+        {
+          accumA = _mm_add_epi16(accumA, curBase);
+        }
+        else
+#endif
+          accumA = _mm_add_epi16(accumA, cur);
+        accumA = _mm_min_epi16(mmMax, _mm_max_epi16(accumA, mmMin));
+
+        _mm_storeu_si128((__m128i *) (dst + j), accumA);
+      }   // for j
+      src += srcStride * stepY;
+      dst += dstStride * stepY;
+      srcBeforeDb += srcBeforeDbStride * stepY;
+      srcResi += srcResiStride * stepY;
+    }   // for i
+#if USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  }//Use 256 Bit Simd
+#endif
+}
+
+template<X86_VEXT vext>
+static void simdFilter13x13BlkDbResi(
+  AlfClassifier * *classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi,
+  const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet,
+#if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
+  const Pel *fClipSet
+#else
+  const short *fClipSet
+#endif
+  ,const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
+#if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
+  ,Pel ***fixedFilterResultsPerCtu, bool isFixedFilterPaddedPerCtu
+#endif
+#if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+  , Pel ***gaussPic, Pel ***gaussCtu
+#endif
+#if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+  , char coeffBits
+#endif
+)
+{
+  const CPelBuf srcBuffer         = recSrc.get(compId);
+  PelBuf        dstBuffer         = recDst.get(compId);
+  const CPelBuf scrBufferBeforeDb = recBeforeDb.get(compId);
+  const CPelBuf scrBufferResi     = resi.get(compId);
+
+  const size_t srcStride         = srcBuffer.stride;
+  const size_t dstStride         = dstBuffer.stride;
+  const size_t srcBeforeDbStride = scrBufferBeforeDb.stride;
+  const size_t srcResiStride     = scrBufferResi.stride;
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+  int adjustShift = coeffBits - 1;
+  const bool  bScalingCorr = isLuma(compId) && fixedFilterSetIdx < 0;
+  if ( bScalingCorr )
+  {
+    fixedFilterSetIdx = -fixedFilterSetIdx - 1;
+    adjustShift -= shiftPrecis; // add more precision
+  }
+  const int shift = adjustShift;
+#if JVET_AJ0237_INTERNAL_12BIT
+  const Pel currBase = 1 << (clpRng.bd - 1);
+#else
+  const Pel currBase = 512;
+#endif
+  int round = 1 << (shift - 1);
+
+#if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
+  __m128i curBase = _mm_set_epi16( currBase, currBase, currBase, currBase, currBase, currBase, currBase, currBase );
+#endif
+#else
+#if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+  int shift = coeffBits;
+  shift -= 1;
+  int round = 1 << (shift - 1);
+#else
+  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
+  constexpr int round = 1 << (shift - 1);
+#endif
+#endif
+
+  const size_t width  = blk.width;
+  const size_t height = blk.height;
+
+  constexpr size_t stepX = 8;
+  size_t           stepY = 1;
+
+#if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
+  const __m128i mmOffset = _mm_set1_epi32(round);
+  const __m128i mmMin    = _mm_set1_epi16(clpRng.min);
+  const __m128i mmMax    = _mm_set1_epi16(clpRng.max);
+#endif
+
+  static_assert(sizeof(*filterSet) == 2, "ALF coeffs must be 16-bit wide");
+  static_assert(sizeof(*fClipSet) == 2, "ALF clip values must be 16-bit wide");
+
+  const Pel *src         = srcBuffer.buf + blk.y * srcStride + blk.x;
+  Pel       *dst         = dstBuffer.buf + blkDst.y * dstStride + blkDst.x;
+  const Pel *srcBeforeDb = scrBufferBeforeDb.buf + blk.y * srcBeforeDbStride + blk.x;
+  const Pel *srcResi     = scrBufferResi.buf + blk.y * srcResiStride + blk.x;
+#if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+  const int padSizeGauss = ALF_PADDING_SIZE_GAUSS_RESULTS;
+#endif
+
+#if USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  const bool use256BitSimd = vext >= AVX2 && blkDst.width % 16 == 0 ? true : false;
+
+  if( use256BitSimd )
+  {
+    const __m256i mmOffset = _mm256_set1_epi32(round);
+    const __m256i mmMin    = _mm256_set1_epi16(clpRng.min);
+    const __m256i mmMax    = _mm256_set1_epi16(clpRng.max);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+    const __m256i curBase  = _mm256_set1_epi16(currBase);
+#endif
+    for (size_t i = 0; i < height; i += stepY)
+    {
+      const AlfClassifier *pClass = classifier[blkDst.y + i] + blkDst.x;
+      for (size_t j = 0; j < width; j += stepX * 2)
+      {
+        __m256i params[2][2][8];
+        for (int k = 0; k < 2; k++)
+        {
+          __m256i rawCoef[4][2], rawClip[4][2], s0, s1;
+          __m128i rawCoefTmp[2][4][2], rawClipTmp[2][4][2], s0Tmp[2], s1Tmp[2], s2Tmp[2], s3Tmp[2];
+          for (int l = 0; l < 4; l++)
+          {
+            const int transposeIdx0 = pClass[j + 4 * k + l + 0] & 0x3;
+            const int classIdx0     = pClass[j + 4 * k + l + 0] >> 2;
+
+            rawCoefTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoefTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
+
+            rawClipTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
+            rawClipTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
+
+            const int transposeIdx1 = pClass[j + 4 * k + l + 8] & 0x3;
+            const int classIdx1     = pClass[j + 4 * k + l + 8] >> 2;
+
+            rawCoefTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoefTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
+
+            rawClipTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
+            rawClipTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
+
+            for (int m = 0; m < shuffleTime13NoFixed[transposeIdx0]; m++)
+            {
+              int op0 = shuffleOp13NoFixed[transposeIdx0][m][0];
+              int op1 = shuffleOp13NoFixed[transposeIdx0][m][1];
+              s0Tmp[0] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx0][m][0]);
+              s1Tmp[0] = _mm_xor_si128(s0Tmp[0], _mm_set1_epi8((char) 0x80));
+              s2Tmp[0] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx0][m][1]);
+              s3Tmp[0] = _mm_xor_si128(s2Tmp[0], _mm_set1_epi8((char) 0x80));
+
+              __m128i rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[0][l][op0], s0Tmp[0]), _mm_shuffle_epi8(rawCoefTmp[0][l][op1], s1Tmp[0]));
+              __m128i rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[0][l][op0], s2Tmp[0]), _mm_shuffle_epi8(rawCoefTmp[0][l][op1], s3Tmp[0]));
+              rawCoefTmp[0][l][op0] = rawTmp0;
+              rawCoefTmp[0][l][op1] = rawTmp1;
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[0][l][op0], s0Tmp[0]), _mm_shuffle_epi8(rawClipTmp[0][l][op1], s1Tmp[0]));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[0][l][op0], s2Tmp[0]), _mm_shuffle_epi8(rawClipTmp[0][l][op1], s3Tmp[0]));
+              rawClipTmp[0][l][op0] = rawTmp0;
+              rawClipTmp[0][l][op1] = rawTmp1;
+            }
+
+
+            for (int m = 0; m < shuffleTime13NoFixed[transposeIdx1]; m++)
+            {
+              int op0 = shuffleOp13NoFixed[transposeIdx1][m][0];
+              int op1 = shuffleOp13NoFixed[transposeIdx1][m][1];
+              s0Tmp[1] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx1][m][0]);
+              s1Tmp[1] = _mm_xor_si128(s0Tmp[1], _mm_set1_epi8((char) 0x80));
+              s2Tmp[1] = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx1][m][1]);
+              s3Tmp[1] = _mm_xor_si128(s2Tmp[1], _mm_set1_epi8((char) 0x80));
+
+              __m128i rawTmp0       = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[1][l][op0], s0Tmp[1]), _mm_shuffle_epi8(rawCoefTmp[1][l][op1], s1Tmp[1]));
+              __m128i rawTmp1       = _mm_or_si128(_mm_shuffle_epi8(rawCoefTmp[1][l][op0], s2Tmp[1]), _mm_shuffle_epi8(rawCoefTmp[1][l][op1], s3Tmp[1]));
+              rawCoefTmp[1][l][op0] = rawTmp0;
+              rawCoefTmp[1][l][op1] = rawTmp1;
+
+              rawTmp0               = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[1][l][op0], s0Tmp[1]), _mm_shuffle_epi8(rawClipTmp[1][l][op1], s1Tmp[1]));
+              rawTmp1               = _mm_or_si128(_mm_shuffle_epi8(rawClipTmp[1][l][op0], s2Tmp[1]), _mm_shuffle_epi8(rawClipTmp[1][l][op1], s3Tmp[1]));
+              rawClipTmp[1][l][op0] = rawTmp0;
+              rawClipTmp[1][l][op1] = rawTmp1;
+            }
+
+            rawCoef[l][0] = _mm256_castsi128_si256(rawCoefTmp[0][l][0] );
+            rawCoef[l][0] = _mm256_insertf128_si256(rawCoef[l][0], rawCoefTmp[1][l][0], 1 );
+            rawCoef[l][1] = _mm256_castsi128_si256(rawCoefTmp[0][l][1]);
+            rawCoef[l][1] = _mm256_insertf128_si256(rawCoef[l][1], rawCoefTmp[1][l][1], 1);
+            
+            rawClip[l][0] = _mm256_castsi128_si256(rawClipTmp[0][l][0]);
+            rawClip[l][0] = _mm256_insertf128_si256(rawClip[l][0], rawClipTmp[1][l][0], 1);
+            rawClip[l][1] = _mm256_castsi128_si256(rawClipTmp[0][l][1]);
+            rawClip[l][1] = _mm256_insertf128_si256(rawClip[l][1], rawClipTmp[1][l][1], 1);            
+          }   // for l
+
+          for (unsigned char l = 0; l < 2; l++)
+          {
+            int m = l << 2;
+
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0x00), _mm256_shuffle_epi32(rawCoef[1][l], 0x00));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0x00), _mm256_shuffle_epi32(rawCoef[3][l], 0x00));
+            params[k][0][0 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0x00), _mm256_shuffle_epi32(rawClip[1][l], 0x00));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0x00), _mm256_shuffle_epi32(rawClip[3][l], 0x00));
+            params[k][1][0 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0x55), _mm256_shuffle_epi32(rawCoef[1][l], 0x55));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0x55), _mm256_shuffle_epi32(rawCoef[3][l], 0x55));
+            params[k][0][1 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0x55), _mm256_shuffle_epi32(rawClip[1][l], 0x55));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0x55), _mm256_shuffle_epi32(rawClip[3][l], 0x55));
+            params[k][1][1 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0xaa), _mm256_shuffle_epi32(rawCoef[1][l], 0xaa));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0xaa), _mm256_shuffle_epi32(rawCoef[3][l], 0xaa));
+            params[k][0][2 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0xaa), _mm256_shuffle_epi32(rawClip[1][l], 0xaa));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0xaa), _mm256_shuffle_epi32(rawClip[3][l], 0xaa));
+            params[k][1][2 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[0][l], 0xff), _mm256_shuffle_epi32(rawCoef[1][l], 0xff));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawCoef[2][l], 0xff), _mm256_shuffle_epi32(rawCoef[3][l], 0xff));
+            params[k][0][3 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[0][l], 0xff), _mm256_shuffle_epi32(rawClip[1][l], 0xff));
+            s1 = _mm256_unpacklo_epi64(_mm256_shuffle_epi32(rawClip[2][l], 0xff), _mm256_shuffle_epi32(rawClip[3][l], 0xff));
+            params[k][1][3 + m] = _mm256_blend_epi16(_mm256_shuffle_epi32(s0, 0x88), _mm256_shuffle_epi32(s1, 0x88), 0xf0);
+          }   // for l
+        } // for k
+
+        const Pel *pImg0, *pImg1, *pImg2, *pImg3, *pImg4, *pImg5, *pImg6, *pImg7, *pImg8, *pImgP0;
+
+        pImg0 = src + j;
+        pImg1 = pImg0 + srcStride;
+        pImg2 = pImg0 - srcStride;
+        pImg3 = pImg1 + srcStride;
+        pImg4 = pImg2 - srcStride;
+        pImg5 = pImg3 + srcStride;
+        pImg6 = pImg4 - srcStride;
+        pImg7 = pImg5 + srcStride;
+        pImg8 = pImg6 - srcStride;
+
+        const Pel *pImg0Gauss[NUM_GAUSS_FILTERED_SOURCE];
+
+        for (int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++)
+        {
+          if (isFixedFilterPaddedPerCtu)
+          {
+            pImg0Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 0] + j + padSizeGauss;
+          }
+          else
+          {
+            pImg0Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 0] + blkDst.x + j + padSizeGauss;
+          }
+        }
+        __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+        __m256i accumA = mmOffset;
+        __m256i accumB = mmOffset;
+
+        auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
+          {
+            const __m256i val00 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr0), cur);
+            const __m256i val10 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr2), cur);
+            const __m256i val01 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr1), cur);
+            const __m256i val11 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) ptr3), cur);
+
+            __m256i val01A = _mm256_unpacklo_epi16(val00, val10);
+            __m256i val01B = _mm256_unpackhi_epi16(val00, val10);
+            __m256i val01C = _mm256_unpacklo_epi16(val01, val11);
+            __m256i val01D = _mm256_unpackhi_epi16(val01, val11);
+
+            __m256i limit01A = params[0][1][i];
+            __m256i limit01B = params[1][1][i];
+
+            val01A = _mm256_min_epi16(val01A, limit01A);
+            val01B = _mm256_min_epi16(val01B, limit01B);
+            val01C = _mm256_min_epi16(val01C, limit01A);
+            val01D = _mm256_min_epi16(val01D, limit01B);
+
+            limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+            limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+
+            val01A = _mm256_max_epi16(val01A, limit01A);
+            val01B = _mm256_max_epi16(val01B, limit01B);
+            val01C = _mm256_max_epi16(val01C, limit01A);
+            val01D = _mm256_max_epi16(val01D, limit01B);
+
+            val01A = _mm256_add_epi16(val01A, val01C);
+            val01B = _mm256_add_epi16(val01B, val01D);
+
+            const __m256i coeff01A = params[0][0][i];
+            const __m256i coeff01B = params[1][0][i];
+
+            accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+            accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+          };
+
+        process2coeffs(0, pImg7 + 0, pImg8 - 0, pImg5 + 0, pImg6 - 0);
+        process2coeffs(1, pImg3 + 0, pImg4 - 0, pImg1 + 1, pImg2 - 1);
+        process2coeffs(2, pImg1 + 0, pImg2 - 0, pImg1 - 1, pImg2 + 1);
+        process2coeffs(3, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
+        process2coeffs(4, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+
+        pImg0  = srcBeforeDb + j;
+        pImg1  = pImg0 + srcBeforeDbStride;
+        pImg2  = pImg0 - srcBeforeDbStride;
+        pImgP0 = srcResi + j;
+
+        process2coeffs(5, pImg1 + 0, pImg2 + 0, pImg0 + 1, pImg0 - 1);
+
+        __m256i zero = _mm256_setzero_si256();
+        __m256i val00 =  _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) (pImg0)), cur);
+        __m256i val10 =  _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) pImgP0), zero);
+        __m256i val01A = _mm256_unpacklo_epi16(val00, val10);
+        __m256i val01B = _mm256_unpackhi_epi16(val00, val10);
+        __m256i limit01A = params[0][1][6];
+        __m256i limit01B = params[1][1][6];
+
+        val01A   = _mm256_min_epi16(val01A, limit01A);
+        val01B   = _mm256_min_epi16(val01B, limit01B);
+        limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+        limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+        val01A   = _mm256_max_epi16(val01A, limit01A);
+        val01B   = _mm256_max_epi16(val01B, limit01B);
+        __m256i coeff01A = params[0][0][6];
+        __m256i coeff01B = params[1][0][6];
+
+        accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+        accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+
+        val00 = _mm256_sub_epi16(_mm256_loadu_si256((const __m256i *) (pImg0Gauss[0])), cur);
+        val10 = _mm256_sub_epi16(cur, cur);
+
+        val01A = _mm256_unpacklo_epi16(val00, val10);
+        val01B = _mm256_unpackhi_epi16(val00, val10);
+
+        limit01A = params[0][1][7];
+        limit01B = params[1][1][7];
+        val01A   = _mm256_min_epi16(val01A, limit01A);
+        val01B   = _mm256_min_epi16(val01B, limit01B);
+        limit01A = _mm256_sub_epi16(_mm256_setzero_si256(), limit01A);
+        limit01B = _mm256_sub_epi16(_mm256_setzero_si256(), limit01B);
+        val01A   = _mm256_max_epi16(val01A, limit01A);
+        val01B   = _mm256_max_epi16(val01B, limit01B);
+        coeff01A = params[0][0][7];
+        coeff01B = params[1][0][7];
+
+        accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
+        accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+
+        accumA = _mm256_srai_epi32(accumA, shift);
+        accumB = _mm256_srai_epi32(accumB, shift);
+
+        accumA = _mm256_packs_epi32(accumA, accumB);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+        if( bScalingCorr )
+        {
+          accumA = _mm256_add_epi16(accumA, curBase);
+        }
+        else
+#endif
+          accumA = _mm256_add_epi16(accumA, cur);
+        accumA = _mm256_min_epi16(mmMax, _mm256_max_epi16(accumA, mmMin));
+
+        _mm256_storeu_si256((__m256i *) (dst + j), accumA);
+      }   // for j
+      src += srcStride * stepY;
+      dst += dstStride * stepY;
+      srcBeforeDb += srcBeforeDbStride * stepY;
+      srcResi += srcResiStride * stepY;
+    }   // for i
+  }
+  else
+  {
+    const __m128i mmOffset = _mm_set1_epi32(round);
+    const __m128i mmMin    = _mm_set1_epi16(clpRng.min);
+    const __m128i mmMax    = _mm_set1_epi16(clpRng.max);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+    const __m128i curBase  = _mm_set1_epi16(currBase);
+#endif
+#endif //Use AVX2 SIMD
+    for (size_t i = 0; i < height; i += stepY)
+    {
+      const AlfClassifier *pClass = classifier[blkDst.y + i] + blkDst.x;
+      for (size_t j = 0; j < width; j += stepX)
+      {
+        __m128i params[2][2][8];
+        for (int k = 0; k < 2; k++)
+        {
+          __m128i rawCoef[4][2], rawClip[4][2], s0, s1, s2, s3, rawTmp0, rawTmp1;
+          for (int l = 0; l < 4; l++)
+          {
+            const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
+            const int classIdx     = pClass[j + 4 * k + l] >> 2;
+
+            rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
+            rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));            
+
+            rawClip[l][0] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
+            rawClip[l][1] = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
+            for (int m = 0; m < shuffleTime13NoFixed[transposeIdx]; m++)
+            {
+              int op0 = shuffleOp13NoFixed[transposeIdx][m][0];
+              int op1 = shuffleOp13NoFixed[transposeIdx][m][1];
+              s0 = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx][m][0]);
+              s1 = _mm_xor_si128(s0, _mm_set1_epi8((char) 0x80));
+              s2 = _mm_loadu_si128((const __m128i *) shuffleTab13NoFixed[transposeIdx][m][1]);
+              s3 = _mm_xor_si128(s2, _mm_set1_epi8((char) 0x80));
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawCoef[l][op0], s0), _mm_shuffle_epi8(rawCoef[l][op1], s1));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawCoef[l][op0], s2), _mm_shuffle_epi8(rawCoef[l][op1], s3));
+              rawCoef[l][op0] = rawTmp0;
+              rawCoef[l][op1] = rawTmp1;
+
+              rawTmp0 = _mm_or_si128(_mm_shuffle_epi8(rawClip[l][op0], s0), _mm_shuffle_epi8(rawClip[l][op1], s1));
+              rawTmp1 = _mm_or_si128(_mm_shuffle_epi8(rawClip[l][op0], s2), _mm_shuffle_epi8(rawClip[l][op1], s3));
+              rawClip[l][op0] = rawTmp0;
+              rawClip[l][op1] = rawTmp1;
+            }
+          }   // for l
+          for (unsigned char l = 0; l < 2; l++)
+          {
+            int m = l << 2;
+
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0x00), _mm_shuffle_epi32(rawCoef[1][l], 0x00));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0x00), _mm_shuffle_epi32(rawCoef[3][l], 0x00));
+            params[k][0][0 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0x00), _mm_shuffle_epi32(rawClip[1][l], 0x00));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0x00), _mm_shuffle_epi32(rawClip[3][l], 0x00));
+            params[k][1][0 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0x55), _mm_shuffle_epi32(rawCoef[1][l], 0x55));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0x55), _mm_shuffle_epi32(rawCoef[3][l], 0x55));
+            params[k][0][1 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0x55), _mm_shuffle_epi32(rawClip[1][l], 0x55));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0x55), _mm_shuffle_epi32(rawClip[3][l], 0x55));
+            params[k][1][1 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0xaa), _mm_shuffle_epi32(rawCoef[1][l], 0xaa));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0xaa), _mm_shuffle_epi32(rawCoef[3][l], 0xaa));
+            params[k][0][2 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0xaa), _mm_shuffle_epi32(rawClip[1][l], 0xaa));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0xaa), _mm_shuffle_epi32(rawClip[3][l], 0xaa));
+            params[k][1][2 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[0][l], 0xff), _mm_shuffle_epi32(rawCoef[1][l], 0xff));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawCoef[2][l], 0xff), _mm_shuffle_epi32(rawCoef[3][l], 0xff));
+            params[k][0][3 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+            s0 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[0][l], 0xff), _mm_shuffle_epi32(rawClip[1][l], 0xff));
+            s1 = _mm_unpacklo_epi64(_mm_shuffle_epi32(rawClip[2][l], 0xff), _mm_shuffle_epi32(rawClip[3][l], 0xff));
+            params[k][1][3 + m] = _mm_blend_epi16(_mm_shuffle_epi32(s0, 0x88), _mm_shuffle_epi32(s1, 0x88), 0xf0);
+          }   // for l
+        }     // for k
+
+        const Pel *pImg0, *pImg1, *pImg2, *pImg3, *pImg4, *pImg5, *pImg6, *pImg7, *pImg8, *pImgP0;
+
+        pImg0  = src + j;
+        pImg1  = pImg0 + srcStride;
+        pImg2  = pImg0 - srcStride;
+        pImg3  = pImg1 + srcStride;
+        pImg4  = pImg2 - srcStride;
+        pImg5  = pImg3 + srcStride;
+        pImg6  = pImg4 - srcStride;
+        pImg7  = pImg5 + srcStride;
+        pImg8  = pImg6 - srcStride;
+
+        const Pel *pImg0Gauss[NUM_GAUSS_FILTERED_SOURCE];
+
+        for( int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++ )
+        {
+          if( isFixedFilterPaddedPerCtu )
+          {
+            pImg0Gauss[gaussIdx] = gaussCtu[gaussIdx][i + padSizeGauss + 0] + j + padSizeGauss;
+          }
+          else
+          {
+            pImg0Gauss[gaussIdx] = gaussPic[gaussIdx][blkDst.y + i + padSizeGauss + 0] + blkDst.x + j + padSizeGauss;
+          }
+        }
+        __m128i cur    = _mm_loadu_si128((const __m128i *) pImg0);
+        __m128i accumA = mmOffset;
+        __m128i accumB = mmOffset;
+
+        auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
+          {
+            const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
+            const __m128i val10 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr2), cur);
+            const __m128i val01 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr1), cur);
+            const __m128i val11 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr3), cur);
+
+            __m128i val01A = _mm_unpacklo_epi16(val00, val10);
+            __m128i val01B = _mm_unpackhi_epi16(val00, val10);
+            __m128i val01C = _mm_unpacklo_epi16(val01, val11);
+            __m128i val01D = _mm_unpackhi_epi16(val01, val11);
+
+            __m128i limit01A = params[0][1][i];
+            __m128i limit01B = params[1][1][i];
+
+            val01A = _mm_min_epi16(val01A, limit01A);
+            val01B = _mm_min_epi16(val01B, limit01B);
+            val01C = _mm_min_epi16(val01C, limit01A);
+            val01D = _mm_min_epi16(val01D, limit01B);
+
+            limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+            limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+
+            val01A = _mm_max_epi16(val01A, limit01A);
+            val01B = _mm_max_epi16(val01B, limit01B);
+            val01C = _mm_max_epi16(val01C, limit01A);
+            val01D = _mm_max_epi16(val01D, limit01B);
+
+            val01A = _mm_add_epi16(val01A, val01C);
+            val01B = _mm_add_epi16(val01B, val01D);
+
+            const __m128i coeff01A = params[0][0][i];
+            const __m128i coeff01B = params[1][0][i];
+
+            accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+            accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+          };
+        process2coeffs(0, pImg7 + 0, pImg8 - 0, pImg5 + 0, pImg6 - 0);
+        process2coeffs(1, pImg3 + 0, pImg4 - 0, pImg1 + 1, pImg2 - 1);
+        process2coeffs(2, pImg1 + 0, pImg2 - 0, pImg1 - 1, pImg2 + 1);
+        process2coeffs(3, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
+        process2coeffs(4, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+        
+        pImg0  = srcBeforeDb + j;
+        pImg1  = pImg0 + srcBeforeDbStride;
+        pImg2  = pImg0 - srcBeforeDbStride;
+        pImgP0 = srcResi + j;
+
+        process2coeffs(5, pImg1 + 0, pImg2 + 0, pImg0 + 1, pImg0 - 1);
+
+        __m128i zero = _mm_setzero_si128();
+        __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) (pImg0)), cur);
+        __m128i val10  = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) pImgP0), zero);
+        __m128i val01A = _mm_unpacklo_epi16(val00, val10);
+        __m128i val01B = _mm_unpackhi_epi16(val00, val10);
+        __m128i limit01A = params[0][1][6];
+        __m128i limit01B = params[1][1][6];
+
+        val01A   = _mm_min_epi16(val01A, limit01A);
+        val01B   = _mm_min_epi16(val01B, limit01B);
+        limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+        limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+        val01A   = _mm_max_epi16(val01A, limit01A);
+        val01B   = _mm_max_epi16(val01B, limit01B);
+        __m128i coeff01A = params[0][0][6];
+        __m128i coeff01B = params[1][0][6];
+
+        accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+        accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+
+        val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) (pImg0Gauss[0])), cur);
+        val10 = _mm_sub_epi16(cur, cur);
+        val01A = _mm_unpacklo_epi16(val00, val10);
+        val01B = _mm_unpackhi_epi16(val00, val10);
+        limit01A = params[0][1][7];
+        limit01B = params[1][1][7];
+
+        val01A   = _mm_min_epi16(val01A, limit01A);
+        val01B   = _mm_min_epi16(val01B, limit01B);
+        limit01A = _mm_sub_epi16(_mm_setzero_si128(), limit01A);
+        limit01B = _mm_sub_epi16(_mm_setzero_si128(), limit01B);
+        val01A   = _mm_max_epi16(val01A, limit01A);
+        val01B   = _mm_max_epi16(val01B, limit01B);
+        coeff01A = params[0][0][7];
+        coeff01B = params[1][0][7];
+
+        accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
+        accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+
+        accumA = _mm_srai_epi32(accumA, shift);
+        accumB = _mm_srai_epi32(accumB, shift);
+
+        accumA = _mm_packs_epi32(accumA, accumB);
+#if JVET_AI0084_ALF_RESIDUALS_SCALING
+        if ( bScalingCorr )
+        {
+          accumA = _mm_add_epi16(accumA, curBase);
+        }
+        else
+#endif
+          accumA = _mm_add_epi16(accumA, cur);
+        accumA = _mm_min_epi16(mmMax, _mm_max_epi16(accumA, mmMin));
+
+        _mm_storeu_si128((__m128i *) (dst + j), accumA);
+      }   // for j
+      src += srcStride * stepY;
+      dst += dstStride * stepY;
+      srcBeforeDb += srcBeforeDbStride * stepY;
+      srcResi += srcResiStride * stepY;
+    }   // for i
+#if USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  }//Use 256 Bit Simd
+#endif
+}
+#endif
 #endif
 
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
@@ -12500,6 +14194,9 @@ void AdaptiveLoopFilter::_initAdaptiveLoopFilterX86()
   m_filter5x5Blk = simdFilter5x5Blk<vext>;
   m_filter7x7Blk = simdFilter7x7Blk<vext>;
 #if ALF_IMPROVEMENT
+#if FIXFILTER_CFG
+  m_filter9x9BlkNoFix = simdFilter9x9BlkNoFix<vext>;
+#endif
   m_filter9x9Blk = simdFilter9x9Blk<vext>;
   m_filter9x9BlkExt = simdFilter9x9BlkExt<vext>;
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF && JVET_AA0095_ALF_LONGER_FILTER
@@ -12508,6 +14205,10 @@ void AdaptiveLoopFilter::_initAdaptiveLoopFilterX86()
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   m_filter13x13BlkExtDbResiDirect = simdFilter13x13BlkExtDbResiDirect<vext>;
   m_filter13x13BlkExtDbResi       = simdFilter13x13BlkExtDbResi<vext>;
+#if FIXFILTER_CFG
+  m_filter13x13BlkDbResiDirect = simdFilter13x13BlkDbResiDirect<vext>;
+  m_filter13x13BlkDbResi       = simdFilter13x13BlkDbResi<vext>;
+#endif
 #endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
   m_filter9x9BlkExtDb = simdFilter9x9BlkExtDb<vext>;

@@ -1806,12 +1806,19 @@ private:
   bool              m_MTS;
   bool              m_IntraMTS;                   // 18
   bool              m_InterMTS;                   // 19
+#if AHG7_MTS_TOOLOFF_CFG
+  bool              m_MTSExt;
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool              m_intraLFNSTISlice;
   bool              m_intraLFNSTPBSlice;
   bool              m_interLFNST;
 #else
   bool              m_LFNST;
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool              m_NSPT;
+  bool              m_LFNSTExt;
 #endif
   bool              m_SMVD;
   bool              m_Affine;
@@ -1930,6 +1937,9 @@ private:
 
 #if JVET_AA0133_INTER_MTS_OPT
   int               m_interMTSMaxSize;
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int              m_intraMTSMaxSize;
 #endif
 #if MULTI_HYP_PRED
   bool              m_InterMultiHyp;              // multi hypothesis inter prediction
@@ -2564,6 +2574,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getUseIntraMTS        ()                                      const     { return m_IntraMTS; }
   void      setUseInterMTS        ( bool b )                                        { m_InterMTS = b; }
   bool      getUseInterMTS        ()                                      const     { return m_InterMTS; }
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setUseMTSExt(bool b)                                                    { m_MTSExt = b; }
+  bool      getUseMTSExt()                                                const     { return m_MTSExt; }
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   void      setUseIntraLFNSTISlice  ( bool b )                                      { m_intraLFNSTISlice = b; }
   bool      getUseIntraLFNSTISlice  ()                                    const     { return m_intraLFNSTISlice; }
@@ -2574,6 +2588,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #else
   void      setUseLFNST           ( bool b )                                        { m_LFNST = b; }
   bool      getUseLFNST           ()                                      const     { return m_LFNST; }
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  void      setUseNSPT            ( bool b )                                        { m_NSPT = b; }
+  bool      getUseNSPT            ()                                      const     { return m_NSPT; }
+  void      setUseLFNSTExt        ( bool b )                                        { m_LFNSTExt = b; }
+  bool      getUseLFNSTExt        ()                                      const     { return m_LFNSTExt; }
 #endif
   void      setUseSMVD(bool b)                                                      { m_SMVD = b; }
   bool      getUseSMVD()                                                  const     { return m_SMVD; }
@@ -2592,6 +2612,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AA0133_INTER_MTS_OPT
   void      setInterMTSMaxSize(int size)                                            { m_interMTSMaxSize = size; }
   int       getInterMTSMaxSize()                                          const     { return m_interMTSMaxSize; }
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setIntraMTSMaxSize(int size)                                            { m_intraMTSMaxSize = size; }
+  int       getIntraMTSMaxSize()                                          const     { return m_intraMTSMaxSize; }
 #endif
 #if MULTI_HYP_PRED
   bool      getUseInterMultiHyp()                                      const { return m_InterMultiHyp; }

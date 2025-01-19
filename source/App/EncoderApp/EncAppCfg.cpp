@@ -1047,6 +1047,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AI0050_SBT_LFNST
   ("SbtLFNST",                                        m_useSbtLFNST,                                     true, "SBT-LFNST (0:off, 1:on)  [default: on]")
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  ( "NSPT",                                           m_NSPT,                                            true, "Enable NSPT (0:off, 1:on)  [default: on]" )
+  ( "LFNSTExt",                                       m_LFNSTExt,                                        true, "Enable LFNST extension (0:off, 1:on)  [default: on]" )
+#endif
   ("SbTMVP",                                          m_sbTmvpEnableFlag,                               false, "Enable Subblock Temporal Motion Vector Prediction (0: off, 1: on) [default: off]")
   ("MMVD",                                            m_MMVD,                                            true, "Enable Merge mode with Motion Vector Difference (0:off, 1:on)  [default: 1]")
   ("Affine",                                          m_Affine,                                         false, "Enable affine prediction (0:off, 1:on)  [default: off]")
@@ -1155,6 +1159,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
   ("InterMTSMaxSize",                                 m_interMTSMaxSize,                                   32, "InterMTSMaxSize")
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  ("IntraMTSMaxSize",                                 m_intraMTSMaxSize,                                  128, "InterMTSMaxSize")
+  ("MTSExt",                                          m_MTSExt,                                          true, "Enable extended MTS (0: 0ff, 1: on)")
 #endif
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   ("EnableTMnoninterTools",                           m_tmNoninterToolsEnableFlag,                       (bool) JVET_AE0174_NONINTER_TM_TOOLS_CONTROL,  "Enable non-inter based template matching  (0:off, 1:on) \n")
@@ -1903,6 +1911,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("DebugCTU",                                        m_debugCTU,                                  -1, "If DebugBitstream is present, load frames up to this POC from this bitstream. Starting with DebugPOC-frame at CTUline containin debug CTU.")
   ("EnsureWppBitEqual",                               m_ensureWppBitEqual,                      false, "Ensure the results are equal to results with WPP-style parallelism, even if WPP is off")
   ( "ALF",                                             m_alf,                                    true, "Adaptive Loop Filter\n" )
+#if FIXFILTER_CFG
+  ( "AlfFixedFilter",                                  m_alfFixedFilter,                             true, "Fixed Filters for Adaptive Loop Filter\n" )
+#endif
   ( "CCALF",                                           m_ccalf,                                  true, "Cross-component Adaptive Loop Filter" )
   ( "CCALFQpTh",                                       m_ccalfQpThreshold,                         37, "QP threshold above which encoder reduces CCALF usage")
 #if JVET_Q0114_ASPECT5_GCI_FLAG
@@ -3588,6 +3599,14 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   for( int i = (int)m_sMaxMTTHierarchyDepthByTid.size(); i < MAX_TLAYER; i++ )
   {
     m_maxMTTHierarchyDepthByTid[i] = m_uiMaxMTTHierarchyDepth;
+  }
+#endif
+
+#if AHG7_LN_TOOLOFF_CFG
+  if( !m_interLFNST )
+  {
+    m_useInterMTSS = false;
+    m_useSbtLFNST = false;
   }
 #endif
 
@@ -5679,6 +5698,10 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AI0050_SBT_LFNST
     msg( VERBOSE, "SbtLFNST:%d ", m_useSbtLFNST );
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+    msg( VERBOSE, "NSPT:%d ", m_NSPT );
+    msg( VERBOSE, "LFNSTExt:%d ", m_LFNSTExt );
+#endif
     msg( VERBOSE, "MMVD:%d ", m_MMVD);
     msg( VERBOSE, "Affine:%d ", m_Affine );
     if ( m_Affine )
@@ -5700,6 +5723,13 @@ void EncAppCfg::xPrintParameter()
     msg( VERBOSE, "HorCollocatedChroma:%d ", m_horCollocatedChromaFlag );
     msg( VERBOSE, "VerCollocatedChroma:%d ", m_verCollocatedChromaFlag );
     msg( VERBOSE, "MTS: %1d(intra) %1d(inter) ", m_MTS & 1, ( m_MTS >> 1 ) & 1 );
+#if AHG7_MTS_TOOLOFF_CFG
+    msg(VERBOSE, "MTSExt: %d ", m_MTSExt);
+    if (m_MTS & 1)
+    {
+      msg(VERBOSE, "IntraMTSMaxSize: %d ", m_intraMTSMaxSize);
+    }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
     if ((m_MTS >> 1) & 1)
     {

@@ -140,6 +140,9 @@ namespace CU
 #endif
 #if JVET_AC0130_NSPT
   bool  isNSPTAllowed                 ( const TransformUnit& tu, const ComponentID compID, int width, int height, bool isIntra );
+#if AHG7_LN_TOOLOFF_CFG
+  bool  isNSPTAllowed                 ( int width, int height );
+#endif
   bool  nsptApplyCond                 ( const TransformUnit& tu, ComponentID compID, bool allowNSPT );
 #endif
 
@@ -313,7 +316,11 @@ namespace PU
   uint32_t getNSPTIntraMode               ( int wideAngPredMode );
 #endif
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+  int      getLFNSTMatrixDim          ( int width, int height, bool lfnstExtFlag = true );
+#else
   int      getLFNSTMatrixDim          ( int width, int height );
+#endif
 #if JVET_AC0130_NSPT
   int      getNSPTMatrixDim           ( int width, int height );
 #endif
