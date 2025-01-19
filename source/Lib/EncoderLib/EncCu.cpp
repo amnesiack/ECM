@@ -25075,7 +25075,7 @@ void EncCu::xCalDebCost( CodingStructure &cs, Partitioner &partitioner, bool cal
     if ( leftEdgeAvai )
     {
       m_pcLoopFilter->resetFilterLengths();
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
       //No impact on CIIP buffer
       m_pcLoopFilter->xDeblockCU( *cu, EDGE_VER, false, m_ciipBuffer[0] );
 #else
@@ -25086,7 +25086,7 @@ void EncCu::xCalDebCost( CodingStructure &cs, Partitioner &partitioner, bool cal
     if (topEdgeAvai)
     {
       m_pcLoopFilter->resetFilterLengths();
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
       //No impact on CIIP buffer
       m_pcLoopFilter->xDeblockCU( *cu, EDGE_HOR, false, m_ciipBuffer[0] );
 #else

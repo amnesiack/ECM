@@ -476,6 +476,11 @@ static const int NUM_GAUSS_FILTERED_COEFF        =                  5;
 static const int NUM_GAUSS_FILTERED_SOURCE       =                  1;
 static const int ALF_PADDING_SIZE_GAUSS_RESULTS  =                  2;
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+static const int NUM_LAPLACIAN_FILTERED_COEFF        =              5;
+static const int NUM_LAPLACIAN_FILTERED_SOURCE       =              1;
+static const int ALF_PADDING_SIZE_LAPLACIAN_RESULTS  =              2;
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
 static const int NUM_DB                      =                      3;
 static const int NUM_DB_SAMPLE               =                      5;
@@ -488,7 +493,11 @@ static const int NUM_DB_PAD                  =                      1;
 
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
 #if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+static const int MAX_NUM_ALF_LUMA_COEFF      =                     11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW + NUM_RESI + 1 + NUM_GAUSS_FILTERED_COEFF + NUM_LAPLACIAN_FILTERED_COEFF;
+#else
 static const int MAX_NUM_ALF_LUMA_COEFF      =                     11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW + NUM_RESI + 1 + NUM_GAUSS_FILTERED_COEFF;
+#endif
 #elif JVET_AD0222_ALF_LONG_FIXFILTER
 static const int MAX_NUM_ALF_LUMA_COEFF = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW + NUM_RESI + 1;
 #elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER

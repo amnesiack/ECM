@@ -129,7 +129,7 @@ public:
   ~LoopFilter();
 
   /// CU-level deblocking function
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   void xDeblockCU(CodingUnit& cu, const DeblockEdgeDir edgeDir, bool storeInfo, PelUnitBuf& alfCodingInfo);
 #else
   void xDeblockCU(CodingUnit& cu, const DeblockEdgeDir edgeDir);
@@ -143,7 +143,7 @@ public:
 
   /// picture-level deblocking filter
   void loopFilterPic              ( CodingStructure& cs
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   , PelUnitBuf& alfCodingInfo, bool storeInfo
 #endif
                                     );
