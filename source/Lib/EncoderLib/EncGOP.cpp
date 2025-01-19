@@ -5073,7 +5073,7 @@ void EncGOP::printOutSummary(uint32_t uiNumAllPicCoded, bool isField, const bool
                               printMSSSIM,
 #endif
                               printHexPsnr, printRprPSNR, bitDepths, useLumaWPSNR);
-    if (g_verbosity >= DETAILS)
+    if (g_verbosity >= INFO)
     {
       std::cout << "\nWPSNR SUMMARY --------------------------------------------------------\n"
                 << header << '\n'
