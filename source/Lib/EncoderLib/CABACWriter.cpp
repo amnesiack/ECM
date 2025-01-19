@@ -2292,7 +2292,12 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
     }
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
+#if JVET_AK0061_PDP_MPM
+    const bool& enablePlanarSort = PU::determinePDPTemp(*pu);
+    if (CU::isDirectionalPlanarAvailable(cu) && !enablePlanarSort && pu->mpmFlag && pu->ipredIdx == 0)
+#else
     if (CU::isDirectionalPlanarAvailable(cu) && pu->mpmFlag && pu->ipredIdx == 0)
+#endif
     {
       m_BinEncoder.encodeBin(cu.plIdx > 0, Ctx::IntraLumaPlanarFlag(2));
       if (cu.plIdx)
@@ -2519,7 +2524,12 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
   }
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
+#if JVET_AK0061_PDP_MPM
+  const bool& enablePlanarSort = PU::determinePDPTemp(pu);
+  if (CU::isDirectionalPlanarAvailable(*pu.cu) && !enablePlanarSort && pu.mpmFlag && pu.ipredIdx == 0)
+#else
   if (CU::isDirectionalPlanarAvailable(*pu.cu) && pu.mpmFlag && pu.ipredIdx == 0)
+#endif
   {
     m_BinEncoder.encodeBin(pu.cu->plIdx > 0, Ctx::IntraLumaPlanarFlag(2));
     if (pu.cu->plIdx)

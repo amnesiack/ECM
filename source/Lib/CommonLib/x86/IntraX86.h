@@ -2674,8 +2674,14 @@ void ibcCiipBlendingSIMD( Pel *pDst, int strideDst, const Pel *pSrc0, int stride
 template< X86_VEXT vext >
 bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t modeIdx, const ClpRng& clpRng, Pel* refF, Pel* refS)
 {
+#if JVET_AK0061_PDP_MPM
+  uint32_t width = pu.lumaSize().width;
+  uint32_t height = pu.lumaSize().height;
+#else
   const uint32_t width = pDst.width;
   const uint32_t height = pDst.height;
+#endif 
+
   const int sizeKey = (width << 8) + height;
   const int sizeIdx = g_size.find( sizeKey ) != g_size.end() ? g_size[sizeKey] : -1;
 
@@ -2721,7 +2727,7 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
   int16_t*** filter = g_pdpFilters[modeIdx][sizeIdx];
 #endif
   const int addShift = 1 << 13;
-
+#if !JVET_AK0061_PDP_MPM
   const __m128i offset = _mm_set1_epi32( addShift );
 #if JVET_AJ0237_INTERNAL_12BIT
   const __m128i max = _mm_set1_epi32((1 << clpRng.bd) - 1);
@@ -2730,7 +2736,7 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
 #endif
   const __m128i zeros = _mm_setzero_si128();
   __m128i vmat[ 4 ], vcoef[ 4 ], vsrc;
-
+#endif
 #if JVET_AI0208_PDP_MIP
   bool isHeightLarge = (height == 32) && !pu.cu->mipFlag;
 #else
@@ -2743,7 +2749,102 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
   {
     pred += stride;
   }
+#if JVET_AK0061_PDP_MPM 
+  width = pDst.width;
+  height = isHeightLarge ? pu.lumaSize().height : pDst.height;
+#endif 
+#if JVET_AK0061_PDP_MPM && USE_AVX2
+  if (vext >= AVX2 && refLen >= 16) 
+  {
+    __m256i vmat[4], vcoef[4], vsrc;
+    const __m128i offset128 = _mm_set1_epi32(addShift);
+#if JVET_AJ0237_INTERNAL_12BIT
+    const __m128i max128 = _mm_set1_epi32((1 << clpRng.bd) - 1);
+#else
+    const __m128i max = _mm_set1_epi32(1023);
+#endif
+    const __m128i zeros128 = _mm_setzero_si128();
+    __m128i vmat128[4], vcoef128[4], vsrc128;
+    __m128i result;
+    const int length = (refLen >> 4) << 4;
+    for (int y = startY; y < height; y += offsetY, pred += strideOffset) 
+    {
+      for (int x = 0; x < width; x += 4) 
+      {
+        const int16_t* f0 = filter[y >> yShift][(x >> xShift) >> 2];
+        
+        vcoef[0] = _mm256_setzero_si256();
+        vcoef[1] = _mm256_setzero_si256();
+        vcoef[2] = _mm256_setzero_si256();
+        vcoef[3] = _mm256_setzero_si256();
+        result = _mm_setzero_si128();
+        int i;
+        ///< 256 bit process
+        for (i = 0; i < length; i += 16)
+        {
+          vsrc = _mm256_lddqu_si256((const __m256i*) & ref[i]);
+          vmat[0] = _mm256_set_m128i(_mm_loadu_si128((const __m128i*)(f0 + 32)), _mm_loadu_si128((const __m128i*)f0));
+          vmat[1] = _mm256_set_m128i(_mm_loadu_si128((const __m128i*)(f0 + 40)), _mm_loadu_si128((const __m128i*)(f0 + 8)));
+          vmat[2] = _mm256_set_m128i(_mm_loadu_si128((const __m128i*)(f0 + 48)), _mm_loadu_si128((const __m128i*)(f0 + 16)));
+          vmat[3] = _mm256_set_m128i(_mm_loadu_si128((const __m128i*)(f0 + 56)), _mm_loadu_si128((const __m128i*)(f0 + 24)));
 
+          vcoef[0] = _mm256_add_epi32(_mm256_madd_epi16(vsrc, vmat[0]), vcoef[0]);
+          vcoef[1] = _mm256_add_epi32(_mm256_madd_epi16(vsrc, vmat[1]), vcoef[1]);
+          vcoef[2] = _mm256_add_epi32(_mm256_madd_epi16(vsrc, vmat[2]), vcoef[2]);
+          vcoef[3] = _mm256_add_epi32(_mm256_madd_epi16(vsrc, vmat[3]), vcoef[3]);
+
+          f0 += 64;
+        }
+        vcoef[0] = _mm256_hadd_epi32(vcoef[0], vcoef[1]);
+        vcoef[2] = _mm256_hadd_epi32(vcoef[2], vcoef[3]);
+        vcoef[0] = _mm256_hadd_epi32(vcoef[0], vcoef[2]);
+        result = _mm_add_epi32(_mm256_extractf128_si256(vcoef[0], 0), _mm256_extractf128_si256(vcoef[0], 1));
+        
+        if (length != refLen) 
+        {
+          f0 = filter[y >> yShift][(x >> xShift) >> 2] + (length >> 4) * 64;
+          vcoef128[0] = _mm_setzero_si128();
+          vcoef128[1] = _mm_setzero_si128();
+          vcoef128[2] = _mm_setzero_si128();
+          vcoef128[3] = _mm_setzero_si128();
+          for (; i < refLen; i += 8)
+          {
+            vsrc128 = _mm_loadu_si128((const __m128i*) & ref[i]);
+
+            vmat128[0] = _mm_loadu_si128((const __m128i*)f0);
+            vmat128[1] = _mm_loadu_si128((const __m128i*)(f0 + 8));
+            vmat128[2] = _mm_loadu_si128((const __m128i*)(f0 + 16));
+            vmat128[3] = _mm_loadu_si128((const __m128i*)(f0 + 24));
+
+            vcoef128[0] = _mm_add_epi32(_mm_madd_epi16(vsrc128, vmat128[0]), vcoef128[0]);
+            vcoef128[1] = _mm_add_epi32(_mm_madd_epi16(vsrc128, vmat128[1]), vcoef128[1]);
+            vcoef128[2] = _mm_add_epi32(_mm_madd_epi16(vsrc128, vmat128[2]), vcoef128[2]);
+            vcoef128[3] = _mm_add_epi32(_mm_madd_epi16(vsrc128, vmat128[3]), vcoef128[3]);
+
+            f0 += 32;
+          }
+          vcoef128[0] = _mm_hadd_epi32(vcoef128[0], vcoef128[1]);
+          vcoef128[2] = _mm_hadd_epi32(vcoef128[2], vcoef128[3]);
+          vcoef128[0] = _mm_hadd_epi32(vcoef128[0], vcoef128[2]);
+          result = _mm_add_epi32(result, vcoef128[0]);
+        }
+        result = _mm_srai_epi32(_mm_add_epi32(result, offset128), 14);
+        result = _mm_min_epi32(result, max128);
+        result = _mm_max_epi32(result, zeros128);
+        *((int64_t*)&pred[x]) = _mm_cvtsi128_si64(_mm_packs_epi32(result, result));
+      }
+    }
+  }
+  else {
+#endif
+    const __m128i offset = _mm_set1_epi32(addShift);
+#if JVET_AJ0237_INTERNAL_12BIT
+    const __m128i max = _mm_set1_epi32((1 << clpRng.bd) - 1);
+#else
+    const __m128i max = _mm_set1_epi32(1023);
+#endif
+    const __m128i zeros = _mm_setzero_si128();
+    __m128i vmat[4], vcoef[4], vsrc;
   for (int y = startY; y < height; y+=offsetY, pred += strideOffset)
   {
     for (int x = 0; x < width; x+=4)
@@ -2787,19 +2888,27 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
 
     }
   }
-
+#if JVET_AK0061_PDP_MPM && USE_AVX2
+  }
+#endif
 #if JVET_AI0208_PDP_MIP
   if (sizeIdx > 12 && !pu.cu->mipFlag)
 #else
   if (sizeIdx > 12)
 #endif
   {
-    int sampFacHor = pDst.width / 16;
-    int sampFacVer = pDst.height / 16;
-
+    
     int numMRLLeft = g_sizeData[sizeIdx][5];
     int numMRLTop = g_sizeData[sizeIdx][6];
-    int strideDst = ( pDst.width << 1 ) + numMRLLeft; //fetching from g_ref always.
+#if JVET_AK0061_PDP_MPM
+    int sampFacHor = pu.lumaSize().width / 16;
+    int sampFacVer = pu.lumaSize().height / 16;
+    int strideDst = (pu.lumaSize().width << 1) + numMRLLeft; //fetching from g_ref always.
+#else
+    int sampFacHor = pDst.width / 16;
+    int sampFacVer = pDst.height / 16;
+    int strideDst = (pDst.width << 1) + numMRLLeft; //fetching from g_ref always.
+#endif
     Pel* ptrSrc = refF + ( strideDst * numMRLTop ) + numMRLLeft - 1;
     Pel* ref2 = refF + ( strideDst*( numMRLTop - 1 ) ) + numMRLLeft;
 

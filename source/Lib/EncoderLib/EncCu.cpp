@@ -3762,7 +3762,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
       g_timdMrgCost[i] = MAX_UINT64;
     }
 #endif
-
+#if JVET_AK0061_PDP_MPM
+    std::memset(m_pcIntraSearch->m_mpmIncludedPdpMode, 0, sizeof(m_pcIntraSearch->m_mpmIncludedPdpMode));
+#endif
 #if SECONDARY_MPM
 #if JVET_AD0085_MPM_SORTING
     if (PU::allowMPMSorted(pu))
@@ -3770,6 +3772,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
       m_pcIntraSearch->getMpmListSize() = PU::getIntraMPMs(pu, m_pcIntraSearch->m_intraMPM, m_pcIntraSearch->m_intraNonMPM
 #if JVET_AC0094_REF_SAMPLES_OPT
                                                          , true
+#endif
+#if JVET_AK0061_PDP_MPM
+        ,true,true
 #endif
                                                          , m_pcIntraSearch
       );
@@ -3780,6 +3785,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
       m_pcIntraSearch->getMpmListSize() = PU::getIntraMPMs(pu, m_pcIntraSearch->m_intraMPM, m_pcIntraSearch->m_intraNonMPM
 #if JVET_AC0094_REF_SAMPLES_OPT
                                                          , false
+#endif
+#if JVET_AK0061_PDP_MPM
+        , true, false , m_pcIntraSearch
 #endif
       );
 #if JVET_AD0085_MPM_SORTING
@@ -26129,6 +26137,14 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
         pu->multiRefIdx = m_pcIntraSearch->m_tmrlList[cu.tmrlListIdx].multiRefIdx;
         pu->intraDir[0] = m_pcIntraSearch->m_tmrlList[cu.tmrlListIdx].intraDir;
       }
+#if JVET_AK0061_PDP_MPM
+      if (cu.plIdx) 
+      {
+        cu.firstPU->intraDir[0] = PLANAR_IDX;
+      }
+      else
+#endif
+
 #if SECONDARY_MPM
       {
 #if JVET_AD0085_MPM_SORTING
@@ -26139,6 +26155,10 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
 #if JVET_AC0094_REF_SAMPLES_OPT
           , true
 #endif
+#if JVET_AK0061_PDP_MPM
+          , true, true
+#endif
+
           , m_pcIntraSearch
         );
       }
@@ -26149,6 +26169,10 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
 #if JVET_AC0094_REF_SAMPLES_OPT
           , false
 #endif
+#if JVET_AK0061_PDP_MPM
+          , true, false, m_pcIntraSearch
+#endif
+
         );
 #if JVET_AD0085_MPM_SORTING
       }

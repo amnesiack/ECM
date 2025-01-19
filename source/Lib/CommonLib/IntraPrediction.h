@@ -331,13 +331,19 @@ public:
   uint8_t m_intraMPM[NUM_MOST_PROBABLE_MODES];
   uint8_t m_intraNonMPM[NUM_NON_MPM_MODES];
 #endif
-
+#if JVET_AK0061_PDP_MPM
+  bool m_mpmIncludedPdpMode[NUM_LUMA_MODE] = { false };
+#endif
 #if JVET_AH0209_PDP
   Pel* m_pdpIntraPredBufIP[NUM_LUMA_MODE];
   bool m_pdpIntraPredReady[NUM_LUMA_MODE];
   Pel  m_ref[ MAX_PDP_SIZE * 6 ];
   Pel  m_refShort[ MAX_PDP_SIZE * 6 ];
   bool m_refAvailable;
+#if JVET_AK0061_PDP_MPM
+  Pel m_leftRef[256] = { 0 };
+  Pel m_leftRefShort[256] = { 0 };
+#endif
 #endif
 
 protected:
@@ -1032,7 +1038,15 @@ public:
 #endif
 #endif
 #if JVET_AD0085_MPM_SORTING
-  void deriveMPMSorted            (const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx);
+  void deriveMPMSorted            (const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx
+#if JVET_AK0061_PDP_MPM
+    , const bool& pdpRefAvailable = false, const bool& allPDPMode = false
+#endif
+  );
+#endif
+#if JVET_AK0061_PDP_MPM
+  bool determinePDPEnable(const ComponentID compId, const PredictionUnit& pu, const uint32_t  uiDirMode);
+  void xFillPDPTempReferenceSamples2(const CPelBuf& recoBuf, const CompArea& area, const CodingUnit& cu);
 #endif
 #if JVET_AG0136_INTRA_TMP_LIC
   void setBvMvFromMemory          (const CodingUnit& cu, const int idx, const bool useMR);

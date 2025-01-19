@@ -902,6 +902,11 @@ static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         256; ///<
 static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                         32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
 static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #endif
+#if JVET_AK0061_PDP_MPM
+static const int MPM_SORT_TEMPLATE_SIZE =                             1;
+static const int NUM_PDP_MODES =                                      6;
+#endif
+
 #if SECONDARY_MPM
 static const int NUM_PRIMARY_MOST_PROBABLE_MODES = 6;
 static const int NUM_SECONDARY_MOST_PROBABLE_MODES = 16;
