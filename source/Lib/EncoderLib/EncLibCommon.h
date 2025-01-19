@@ -45,6 +45,9 @@ class EncLibCommon
 {
 private:
   int                       m_apsIdStart;         ///< ALF APS id, APS id space is shared across all layers
+#if JVET_AK0065_TALF
+  int                       m_apsIdStart2;        ///< TALF APS id, APS id space is shared across all layers
+#endif
   ParameterSetMap<SPS>      m_spsMap;             ///< SPS, it is shared across all layers
   ParameterSetMap<PPS>      m_ppsMap;             ///< PPS, it is shared across all layers
   ParameterSetMap<APS>      m_apsMap;             ///< APS, it is shared across all layers
@@ -56,6 +59,9 @@ public:
   virtual ~EncLibCommon();
 
   int&                     getApsIdStart()         { return m_apsIdStart; }
+#if JVET_AK0065_TALF
+  int&                     getApsIdStart2()        { return m_apsIdStart2; }
+#endif
   PicList&                 getPictureBuffer()      { return m_cListPic;   }
   ParameterSetMap<SPS>&    getSpsMap()             { return m_spsMap;     }
   ParameterSetMap<PPS>&    getPpsMap()             { return m_ppsMap;     }

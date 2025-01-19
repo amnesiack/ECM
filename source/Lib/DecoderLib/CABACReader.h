@@ -99,6 +99,9 @@ public:
 
   void ccAlfFilterControlIdc(CodingStructure &cs, const ComponentID compID, const int curIdx, uint8_t *filterControlIdc,
                              Position lumaPos, int filterCount);
+#if JVET_AK0065_TALF
+  void readTAlfFilterControlIdc(CodingStructure &cs, const ComponentID compID, const int curIdx, TAlfCtbParam *filterControlIdc, Position lumaPos);
+#endif
 
   // coding (quad)tree (clause 7.3.8.4)
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE

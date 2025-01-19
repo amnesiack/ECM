@@ -577,13 +577,26 @@ void HLSWriter::codeAPS( APS* pcAPS )
   WRITE_CODE( (int)pcAPS->getAPSType(), 3, "aps_params_type" );
 #endif
 #if JVET_R0433
+#if JVET_AK0065_TALF
+  if (pcAPS->getAPSType() != TALF_APS)
+  {
+    WRITE_FLAG(pcAPS->chromaPresentFlag, "aps_chroma_present_flag");
+  }
+#else
   WRITE_FLAG(pcAPS->chromaPresentFlag, "aps_chroma_present_flag");
+#endif
 #endif
 
   if (pcAPS->getAPSType() == ALF_APS)
   {
     codeAlfAps(pcAPS);
   }
+#if JVET_AK0065_TALF
+  else if (pcAPS->getAPSType() == TALF_APS)
+  {
+    codeTAlfAps(pcAPS);
+  }
+#endif
   else if (pcAPS->getAPSType() == LMCS_APS)
   {
     codeLmcsAps (pcAPS);
@@ -600,6 +613,13 @@ void HLSWriter::codeAPS( APS* pcAPS )
   xWriteRbspTrailingBits();
 }
 
+#if JVET_AK0065_TALF
+void HLSWriter::codeTAlfAps(APS *pcAPS)
+{
+  auto param = pcAPS->getTAlfAPSParam();
+  codeTAlfNewFilter(param);
+}
+#endif
 void HLSWriter::codeAlfAps( APS* pcAPS )
 {
   AlfParam param = pcAPS->getAlfAPSParam();
@@ -1360,6 +1380,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   {
     WRITE_FLAG(pcSPS->getCCALFPrecisionFlag(),                                           "sps_ccalf_precision_flag" );
   }
+#endif
+#if JVET_AK0065_TALF
+  WRITE_FLAG( pcSPS->getUseTAlf(),                                                   "sps_talf_enabled_flag" );
 #endif
 #if SIGN_PREDICTION
   WRITE_CODE(pcSPS->getNumPredSigns(), 4, "num_predicted_coef_signs");
@@ -2548,6 +2571,42 @@ void HLSWriter::codePictureHeader( PicHeader* picHeader, bool writeRbspTrailingB
     picHeader->setCcAlfEnabledFlag(COMPONENT_Cr, false);
   }
 
+#if JVET_AK0065_TALF
+  if (sps->getUseTAlf())
+  {
+    if ((pps->getAlfInfoInPhFlag()))
+    {
+      TAlfControl talfControl = picHeader->getTAlfControl();
+      WRITE_FLAG(talfControl.enabledFlag, "picture_talf_enabled_flag");
+      if (talfControl.enabledFlag)
+      {
+        CHECK(talfControl.apsIds.size() < 1, "talfControl.apsIds.size() < 1");
+        WRITE_FLAG(talfControl.newFilters, "newFilters flag");
+        int numUsingMinus1 = 0;
+        if (!talfControl.newFilters)
+        {
+          numUsingMinus1 = int(talfControl.apsIds.size()) - 1;
+          WRITE_CODE(numUsingMinus1, 3, "the number of sets of talf used in slice");
+        }
+        for (int i = 0; i <= numUsingMinus1; i++)
+        {
+          int apsId = talfControl.apsIds[i];
+          CHECK(apsId < 0 || apsId >= ALF_CTB_MAX_NUM_APS, "apsId < 0 || apsId >= ALF_CTB_MAX_NUM_APS");
+          WRITE_CODE(apsId, 3, "the apsId for locating the stored coefficients");
+        }
+        bool isMv = isMvTAlf(talfControl.mode);
+        bool isBi = isBiTAlf(talfControl.mode);
+        bool isFwd = isFwdTAlf(talfControl.mode);
+        WRITE_FLAG(isMv, "isMv");
+        WRITE_FLAG(isBi, "isBi");
+        if (!isBi)
+        {
+          WRITE_FLAG(isFwd, "isFwd");
+        }
+      }
+    }
+  }
+#endif
   // luma mapping / chroma scaling controls
   if (sps->getUseLmcs())
   {
@@ -3234,6 +3293,39 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
     }
   }
 
+#if JVET_AK0065_TALF
+  if (pcSlice->getSPS()->getUseTAlf()&& !pcSlice->getPPS()->getAlfInfoInPhFlag())
+  {
+    TAlfControl talfControl = pcSlice->getTileGroupTAlfControl();
+    WRITE_FLAG(talfControl.enabledFlag, "slice_talf_enabled_flag");
+    if (talfControl.enabledFlag)
+    {
+      CHECK(talfControl.apsIds.size() < 1, "talfControl.apsIds.size() < 1");
+      WRITE_FLAG(talfControl.newFilters, "newFilters flag");
+      int numUsingMinus1 = 0;
+      if (!talfControl.newFilters)
+      {
+        numUsingMinus1 = int(talfControl.apsIds.size()) - 1;
+        WRITE_CODE(numUsingMinus1, 3, "the number of sets of talf used in slice");
+      }
+      for (int i = 0; i <= numUsingMinus1; i++)
+      {
+        int apsId = talfControl.apsIds[i];
+        CHECK(apsId < 0 || apsId >= ALF_CTB_MAX_NUM_APS, "apsId < 0 || apsId >= ALF_CTB_MAX_NUM_APS");
+        WRITE_CODE(apsId, 3, "the apsId for locating the stored coefficients");
+      }
+      bool isMv = isMvTAlf(talfControl.mode);
+      bool isBi = isBiTAlf(talfControl.mode);
+      bool isFwd = isFwdTAlf(talfControl.mode);
+      WRITE_FLAG(isMv, "isMv");
+      WRITE_FLAG(isBi, "isBi");
+      if (!isBi)
+      {
+        WRITE_FLAG(isFwd, "isFwd");
+      }
+    }
+  }
+#endif
   if (picHeader->getLmcsEnabledFlag() && !pcSlice->getPictureHeaderInSliceHeader())
   {
     WRITE_FLAG(pcSlice->getLmcsEnabledFlag(), "slice_lmcs_enabled_flag");
@@ -4480,6 +4572,47 @@ bool HLSWriter::xFindMatchingLTRP(Slice* pcSlice, uint32_t *ltrpsIndex, int ltrp
   return false;
 }
 
+#if JVET_AK0065_TALF
+void HLSWriter::codeTAlfNewFilter(const TAlfFilterParam &param)
+{
+  CHECK(param.filterCount == 0, "param.filterCount == 0");
+  int filterCountMinus1 = param.filterCount - 1;
+  WRITE_UVLC(filterCountMinus1, "filterCountMinus1");
+  WRITE_FLAG(param.shapeIdx, "param.shapeIdx");
+  const int numCoeff = NUM_TALF_COEFF;
+  for (int fIdx = 0; fIdx <= filterCountMinus1; fIdx++)
+  {
+    int k = 0;
+    int bestCost = MAX_INT;
+    for (int kCur = 0; kCur <= 1; kCur++)
+    {
+      int bits = 0;
+      for (int cIdx = 0; cIdx < numCoeff; cIdx++)
+      {
+        int coeff = param.coeff[fIdx][cIdx];
+        bits += EncAdaptiveLoopFilter::lengthGolomb(coeff, kCur);
+      }
+      if (bits < bestCost)
+      {
+        bestCost = bits;
+        k = kCur;
+      }
+    }
+    WRITE_FLAG(k, "k");
+    WRITE_CODE(param.shift[fIdx] - TALF_SCALE_BIT, 2, "param.shift[fIdx]");
+    WRITE_FLAG(param.clipFlag[fIdx], "param.clipFlag[fIdx]");
+    for (int cIdx = 0; cIdx < numCoeff; cIdx++)
+    {
+      int coeff = param.coeff[fIdx][cIdx];
+      alfGolombEncode(coeff, k);
+      if (coeff && param.clipFlag[fIdx])
+      {
+        WRITE_CODE(param.clipIdx[fIdx][cIdx], 2, "param.clipIdx[fIdx][cIdx]");
+      }
+    }
+  }
+}
+#endif
 #if JVET_W0066_CCSAO
 void HLSWriter::codeCcSao(Slice* pcSlice, PicHeader* picHeader, const SPS* sps, const CcSaoComParam& ccSaoParam)
 {

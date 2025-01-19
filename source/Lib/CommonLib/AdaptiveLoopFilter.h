@@ -141,6 +141,9 @@ public:
   void ALFProcess(CodingStructure& cs);
   void create( const int picWidth, const int picHeight, const ChromaFormat format, const int maxCUWidth, const int maxCUHeight, const int maxCUDepth, const int inputBitDepth[MAX_NUM_CHANNEL_TYPE] );
   void destroy();
+#if JVET_AK0065_TALF
+  void TAlfProcess(CodingStructure &cs);
+#endif
 #if RPR_ENABLE
   Size  getAlfSize() { return Size(m_tempBuf.get(COMPONENT_Y).width, m_tempBuf.get(COMPONENT_Y).height); }
 #endif
@@ -843,6 +846,37 @@ public:
   CcAlfFilterParam &getCcAlfFilterParam() { return m_ccAlfFilterParam; }
   uint8_t* getCcAlfControlIdc(const ComponentID compID)   { return m_ccAlfFilterControl[compID-1]; }
 
+# if JVET_AK0065_TALF
+  TAlfCtbParam*        m_tAlfCtbControl;
+  std::vector<refComb> m_refCombs;
+  TAlfCtbParam*        getTAlfControl () { return m_tAlfCtbControl; }
+  void getRefPics(const CodingStructure &cs);
+  bool getMotionOffset(const CodingStructure &cs, const Position pos, MvField* mvField, const int mode, const int shapeIdx);
+  static void setBiInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs
+    , const ComponentID compId, const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF]
+    , const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF], const Position curPos, const int shapeIdx, const int picWidth
+    , const int picHeight, const int mode, std::vector<refComb>& refCombs, MvField* mvField, const int numOfClips);
+  static void setUniInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs
+    , const ComponentID compId, const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF]
+    , const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF], const Position curPos, const int shapeIdx, const int picWidth
+    , const int picHeight, const int mode, std::vector<refComb>& refCombs, MvField* mvField, const int numOfClips);
+  static void filterBatchTAlf(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const int *filterCoeff
+    , const Position pos, PelBuf &dstBuf, PelBuf &recBuf, const int numCoeff, const int offset, const int shift
+    , const ClpRng& clpRng);
+  static int groupSumTAlf(Pel* a, Pel* b);
+  void filterBlkTAlf(CodingStructure &cs, const ComponentID compId, PelBuf &recBuf0, PelBuf &recBuf1, const UnitArea& ctu
+    , TAlfCtbParam& ctbControl, std::vector<TAlfFilterParam>& params, const TAlfControl talfControl);
+  void applyTAlfFilter(CodingStructure &cs, const ComponentID compId, PelUnitBuf &recAfterALF, PelUnitBuf &recBeforeALF
+    , std::vector<TAlfFilterParam>& params, TAlfCtbParam* tAlfControl, const TAlfControl talfControl);
+  void (*m_setTAlfInput[2])(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs
+    , const ComponentID compId, const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF]
+    , const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF], const Position curPos, const int shapeIdx, const int picWidth
+    , const int picHeight, const int mode, std::vector<refComb>& refCombs, MvField* mvField, const int numOfClips);
+  int  (*m_groupSumTAlf)(Pel *a, Pel *b);
+  void (*m_filterBatchTAlf)(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const int *filterCoeff
+    , const Position pos, PelBuf &dstBuf, PelBuf &recBuf, const int numCoeff, const int offset, const int shift
+    , const ClpRng& clpRng);
+#endif
 #ifdef TARGET_SIMD_X86  
   void initAdaptiveLoopFilterX86();
   template <X86_VEXT vext>

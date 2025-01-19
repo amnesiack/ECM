@@ -181,6 +181,13 @@ AdaptiveLoopFilter::AdaptiveLoopFilter()
   m_calcAlfLumaCodingInfoBlk = calcAlfLumaCodingInfoBlk;
 #endif
 
+#if JVET_AK0065_TALF
+  m_setTAlfInput[1] = setBiInput;
+  m_setTAlfInput[0] = setUniInput;
+  m_groupSumTAlf = groupSumTAlf;
+  m_filterBatchTAlf = filterBatchTAlf;
+#endif
+
 #if ENABLE_SIMD_OPT_ALF
 #ifdef TARGET_SIMD_X86
   initAdaptiveLoopFilterX86();
@@ -1649,6 +1656,27 @@ void AdaptiveLoopFilter::ALFProcess(CodingStructure& cs)
 
 }
 
+#if JVET_AK0065_TALF
+void AdaptiveLoopFilter::TAlfProcess(CodingStructure &cs)
+{
+  if(cs.sps->getUseTAlf())
+  {
+    getRefPics(cs);
+    const ComponentID compId = COMPONENT_Y;
+    PelUnitBuf recAfterALF  = cs.getRecoBuf();
+    PelUnitBuf recBeforeALF = m_tempBuf.getBuf(cs.area);
+    std::vector<TAlfFilterParam> params;
+    const auto talfControl = cs.slice->getTileGroupTAlfControl();
+    APS** apss = cs.slice->getTAlfAPSs();
+    for(auto apsId : talfControl.apsIds)
+    {
+      APS* aps = apss[apsId];
+      params.push_back(aps->getTAlfAPSParam());
+    }
+    applyTAlfFilter(cs, compId, recAfterALF, recBeforeALF, params, m_tAlfCtbControl, talfControl);
+  }
+}
+#endif
 void AdaptiveLoopFilter::reconstructCoeffAPSs(CodingStructure& cs, bool luma, bool chroma, bool isRdo)
 {
   //luma
@@ -2365,6 +2393,9 @@ void AdaptiveLoopFilter::create(const int picWidth, const int picHeight, const C
 
   m_ccAlfFilterControl[0] = new uint8_t[m_numCTUsInPic];
   m_ccAlfFilterControl[1] = new uint8_t[m_numCTUsInPic];
+#if JVET_AK0065_TALF
+  m_tAlfCtbControl = new TAlfCtbParam[m_numCTUsInPic];
+#endif
 }
 
 void AdaptiveLoopFilter::destroy()
@@ -2670,6 +2701,13 @@ void AdaptiveLoopFilter::destroy()
     delete [] m_ccAlfFilterControl[1];
     m_ccAlfFilterControl[1] = nullptr;
   }
+#if JVET_AK0065_TALF
+  if(m_tAlfCtbControl)
+  {
+    delete [] m_tAlfCtbControl;
+    m_tAlfCtbControl = nullptr;
+  }
+#endif
 }
 
 #if ALF_IMPROVEMENT
@@ -8601,6 +8639,7 @@ void AdaptiveLoopFilter::gaussFiltering(CodingStructure &cs, Pel ***gaussPic, co
   }//height
 }
 #endif
+
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
 void AdaptiveLoopFilter::textureClassMapping(AlfClassifier **classifier, const Area& blk, int classifierIdx, int subBlkSize, AlfClassifier **classifierCodingInfo )
 {
@@ -8737,7 +8776,380 @@ void AdaptiveLoopFilter::calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClass
 
     }
   }
+}
+#endif
 
+# if JVET_AK0065_TALF
+void AdaptiveLoopFilter::getRefPics(const CodingStructure &cs)
+{
+  m_refCombs.clear();
+  const int curPoc = cs.slice->getPOC();
+  for (int rplId = 0; rplId < (cs.slice->isInterB() ? 2 : 1); rplId++)
+  {
+    for (int refId = 0; refId < cs.slice->getNumRefIdx(RefPicList(rplId)); refId++)
+    {
+      const int refPoc = cs.slice->getRefPOC(RefPicList(rplId), refId);
+      const int absPocDiff = abs(refPoc - curPoc);
+      refComb curComb(RefPicList(rplId), refId, refPoc, absPocDiff);
+      bool bIncluded = false;
+      for(auto& cand: m_refCombs)
+      {
+        bIncluded |= (cand.poc == curComb.poc);
+      }
+      if(!bIncluded)
+      {
+        m_refCombs.push_back(curComb);
+      }
+    }
+  }
+  std::stable_sort(m_refCombs.begin(), m_refCombs.end(), [](const refComb& l, const refComb&r) { return l.absPocDiff < r.absPocDiff;} );
+}
+
+MotionInfo getMi(const CodingStructure &cs, const Position pos, const int mode)
+{
+  const int sbbSize = TALF_SBB_SIZE;
+  const int halfSbbSize = sbbSize >> 1;
+  Position posCandList[] =
+  {
+    pos.offset(halfSbbSize, halfSbbSize),
+    pos.offset(halfSbbSize, sbbSize),
+    pos.offset(halfSbbSize, -1),
+    pos.offset(sbbSize, halfSbbSize),
+    pos.offset(-1, halfSbbSize),
+    pos.offset(sbbSize, sbbSize),
+    pos.offset(-1, -1),
+    pos.offset(-1, sbbSize),
+    pos.offset(sbbSize, -1)
+  };
+
+  if (!isMvTAlf(mode))
+  {
+    const PredictionUnit pu = *cs.getPU(pos, CH_L);
+    const int mvdSimilarityThresh = PU::getTMMvdThreshold(pu);
+    bool isColPos = false;
+    for (auto curPos: posCandList)
+    {
+      const PredictionUnit* targetPu = cs.getPU(curPos, CH_L);
+      if (!targetPu)
+      {
+        continue;
+      }
+      MotionInfo mi = targetPu->getMotionInfo(curPos);
+      if (mi.isInter && !mi.isIBCmot)
+      {
+        if (mi.interDir & 1)
+        {
+          Mv mv0 = mi.mv[0];
+          isColPos |= (mv0.getAbsHor() <= mvdSimilarityThresh && mv0.getAbsVer() <= mvdSimilarityThresh);
+        }
+        if (mi.interDir > 1)
+        {
+          Mv mv1 = mi.mv[1];
+          isColPos |= (mv1.getAbsHor() <= mvdSimilarityThresh && mv1.getAbsVer() <= mvdSimilarityThresh);
+        }
+      }
+      if (isColPos)
+      {
+        return mi;
+      }
+    }
+  }
+  else
+  {
+    for (auto curPos: posCandList)
+    {
+      const PredictionUnit* targetPu = cs.getPU(curPos, CH_L);
+      if (!targetPu)
+      {
+        continue;
+      }
+      MotionInfo mi = targetPu->getMotionInfo(curPos);
+      if (mi.isInter && !mi.isIBCmot)
+      {
+        bool dirQualified = (isBiTAlf(mode) && (mi.interDir == 3)) || (isFwdTAlf(mode) && (mi.interDir & 1)) || (mode == BACKWARD_TALF_MV && (mi.interDir > 1));
+        if (!dirQualified)
+        {
+          continue;
+        }
+        return mi;
+      }
+    }
+  }
+
+  return MotionInfo();
+}
+
+bool AdaptiveLoopFilter::getMotionOffset(const CodingStructure &cs, const Position pos, MvField* mvField, const int mode, const int shapeIdx)
+{
+  const int extSize = shapeIdx > 0 ? 5 : 3;
+  const Position topLeft = pos.offset(-extSize, -extSize);
+  const Position bottomRight = pos.offset(TALF_SBB_SIZE+extSize, TALF_SBB_SIZE+extSize);
+
+  MotionInfo mi = getMi(cs, pos, mode);
+  if (mi == MotionInfo())
+  {
+    return false;
+  }
+
+  if (!isMvTAlf(mode))
+  {
+    bool posInPic = topLeft.x >= 0 && topLeft.y >= 0 && bottomRight.x <= (m_picWidth - 1) && bottomRight.y <= (m_picHeight - 1);
+    if (!isFwdTAlf(mode))
+    {
+      return posInPic && m_refCombs.size() > 1;
+    }
+    else // isFwdTAlf(mode)
+    {
+      return posInPic && m_refCombs.size() > 0;
+    }
+  }
+  else// isMvTAlf(mode)
+  {
+    if (mode == BIDIR_TALF_MV && mi.interDir == 3)
+    {
+      Mv mv0 = mi.mv[0];
+      mv0.changePrecision(MV_PRECISION_SIXTEENTH, MV_PRECISION_INT);
+      mvField[0].mv = mv0;
+      mvField[0].refIdx = mi.refIdx[0];
+      Mv mv1 = mi.mv[1];
+      mv1.changePrecision(MV_PRECISION_SIXTEENTH, MV_PRECISION_INT);
+      mvField[1].mv = mv1;
+      mvField[1].refIdx = mi.refIdx[1];
+      CHECK(mi.refIdx[0] == NOT_VALID || mi.refIdx[1] == NOT_VALID, "mi.refIdx[0] == NOT_VALID || mi.refIdx[1] == NOT_VALID");
+      const Position topLeftInPic0 = topLeft.offset(mv0.getHor(), mv0.getVer());
+      const Position bottomRightInPic0 = bottomRight.offset(mv0.getHor(), mv0.getVer());
+      bool  posInPic0 = topLeftInPic0.x >= 0 && topLeftInPic0.y >= 0 && bottomRightInPic0.x <= (m_picWidth - 1) && bottomRightInPic0.y <= (m_picHeight - 1);
+      const Position topLeftInPic1 = topLeft.offset(mv1.getHor(), mv1.getVer());
+      const Position bottomRightInPic1 = bottomRight.offset(mv1.getHor(), mv1.getVer());
+      bool  posInPic1 = topLeftInPic1.x >= 0 && topLeftInPic1.y >= 0 && bottomRightInPic1.x <= (m_picWidth - 1) && bottomRightInPic1.y <= (m_picHeight - 1);
+      return posInPic0 && posInPic1;
+    }
+    else if (mode == FORWARD_TALF_MV && (mi.interDir & 1))
+    {
+      Mv mv0 = mi.mv[0];
+      mv0.changePrecision(MV_PRECISION_SIXTEENTH, MV_PRECISION_INT);
+      mvField[0].mv = mv0;
+      mvField[0].refIdx = mi.refIdx[0];
+      CHECK(mi.refIdx[0] == NOT_VALID, "mi.refIdx[0] == NOT_VALID");
+      const Position topLeftInPic0 = topLeft.offset(mv0.getHor(), mv0.getVer());
+      const Position bottomRightInPic0 = bottomRight.offset(mv0.getHor(), mv0.getVer());
+      bool  posInPic0 = topLeftInPic0.x >= 0 && topLeftInPic0.y >= 0 && bottomRightInPic0.x <= (m_picWidth - 1) && bottomRightInPic0.y <= (m_picHeight - 1);
+      return posInPic0;
+    }
+    else if (mode == BACKWARD_TALF_MV && (mi.interDir > 1))
+    {
+      Mv mv1 = mi.mv[1];
+      mv1.changePrecision(MV_PRECISION_SIXTEENTH, MV_PRECISION_INT);
+      mvField[1].mv = mv1;
+      mvField[1].refIdx = mi.refIdx[1];
+      CHECK(mi.refIdx[1] == NOT_VALID, "mi.refIdx[1] == NOT_VALID");
+      const Position topLeftInPic1 = topLeft.offset(mv1.getHor(), mv1.getVer());
+      const Position bottomRightInPic1 = bottomRight.offset(mv1.getHor(), mv1.getVer());
+      bool  posInPic1 = topLeftInPic1.x >= 0 && topLeftInPic1.y >= 0 && bottomRightInPic1.x <= (m_picWidth - 1) && bottomRightInPic1.y <= (m_picHeight - 1);
+      return posInPic1;
+    }
+  }
+  return false;
+}
+
+void AdaptiveLoopFilter::setBiInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs, const ComponentID compId
+  , const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF], const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF]
+  , const Position curPos, const int shapeIdx, const int picWidth, const int picHeight, const int mode, std::vector<refComb>& refCombs
+  ,MvField* mvField, const int numOfClips)
+{
+  bool isMv = isMvTAlf(mode);
+  const CPelBuf& refBuf0 = isMv ? cs.slice->getRefPic(REF_PIC_LIST_0, mvField[0].refIdx)->unscaledPic->getRecoBuf(compId)
+    : cs.slice->getRefPic(refCombs[0].rplId, refCombs[0].refId)->unscaledPic->getRecoBuf(compId);
+  const CPelBuf& refBuf1 = isMv ? cs.slice->getRefPic(REF_PIC_LIST_1, mvField[1].refIdx)->unscaledPic->getRecoBuf(compId)
+    : cs.slice->getRefPic(refCombs[1].rplId, refCombs[1].refId)->unscaledPic->getRecoBuf(compId);
+  const Position posOffsetA(mvField[0].mv.getHor(), mvField[0].mv.getVer());
+  const Position posOffsetB(mvField[1].mv.getHor(), mvField[1].mv.getVer());
+  const Position* offsetTable = shapeIdx > 0 ? templateShape1 : templateShape0;
+  Pel upper[NUM_TALF_COEFF];
+  Pel lower[NUM_TALF_COEFF];
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    for(int x = 0; x < TALF_SBB_SIZE; x++)
+    {
+      Position sbbPos(curPos.offset(x, y));
+      const Pel cVal = recBuf.at(sbbPos);
+      Position refPosA(sbbPos.offset(posOffsetA));
+      Position refPosB(sbbPos.offset(posOffsetB));
+
+      for(int i = 0; i < NUM_TALF_COEFF; i++)
+      {
+        Position posA(refPosA.offset(offsetTable[i]));
+        Position posB(refPosB.offset(offsetTable[i]));
+        upper[i] = (refBuf0.at(posA) + refBuf1.at(posB)) >> 1;
+      }
+      for(int i = 1; i < NUM_TALF_COEFF; i++)
+      {
+        Position posA(refPosA - offsetTable[i]);
+        Position posB(refPosB - offsetTable[i]);
+        lower[i] = (refBuf0.at(posA) + refBuf1.at(posB)) >> 1;
+      }
+      lower[0] = cVal;
+
+      for(int i = 0; i < NUM_TALF_COEFF; i++)
+      {
+        upper[i] -= cVal;
+        lower[i] -= cVal;
+      }
+
+      // obtain four sets of clip values at encoder, one set of clip values at decoder.
+      for (int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+      {
+        for(int i = 0; i < NUM_TALF_COEFF; i++)
+        {
+          input[clipIdx][i][y][x] = Clip3<Pel>(clipMin[clipIdx][i], clipMax[clipIdx][i], upper[i])
+            + Clip3<Pel>(clipMin[clipIdx][i], clipMax[clipIdx][i], lower[i]);
+        }
+        input[clipIdx][NUM_TALF_COEFF][y][x] = cVal;
+      }
+    }
+  }
+}
+
+void AdaptiveLoopFilter::setUniInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs, const ComponentID compId
+  , const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF], const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF]
+  , const Position curPos, const int shapeIdx, const int picWidth, const int picHeight, const int mode, std::vector<refComb>& refCombs
+  , MvField* mvField, const int numOfClips)
+{
+  bool refList = isFwdTAlf(mode) ? 0 : 1;
+  bool isMv = isMvTAlf(mode);
+  const CPelBuf& refBuf = isMv ? cs.slice->getRefPic(RefPicList(refList), mvField[refList].refIdx)->unscaledPic->getRecoBuf(compId)
+    : cs.slice->getRefPic(refCombs[refList].rplId, refCombs[refList].refId)->unscaledPic->getRecoBuf(compId);
+  const Position posOffset(mvField[refList].mv.getHor(), mvField[refList].mv.getVer());
+  const Position* offsetTable = shapeIdx > 0 ? templateShape1 : templateShape0;
+  Pel upper[NUM_TALF_COEFF];
+  Pel lower[NUM_TALF_COEFF];
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    for(int x = 0; x < TALF_SBB_SIZE; x++)
+    {
+      Position sbbPos(curPos.offset(x, y));
+      Position refPos(sbbPos.offset(posOffset));
+      const Pel cVal = recBuf.at(sbbPos);
+      for(int i = 0; i < NUM_TALF_COEFF; i++)
+      {
+        Position pos0(refPos.offset(offsetTable[i]));
+        upper[i] = refBuf.at(pos0);
+      }
+      for(int i = 1; i < NUM_TALF_COEFF; i++)
+      {
+        Position pos1(refPos - offsetTable[i]);
+        lower[i] = refBuf.at(pos1);
+      }
+      lower[0] = cVal;
+      for(int i = 0; i < NUM_TALF_COEFF; i++)
+      {
+        upper[i] -= cVal;
+        lower[i] -= cVal;
+      }
+      // obtain four sets of clip values at encoder, one set of clip values at decoder.
+      for (int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+      {
+        for(int i = 0; i < NUM_TALF_COEFF; i++)
+        {
+          input[clipIdx][i][y][x] = Clip3<Pel>(clipMin[clipIdx][i], clipMax[clipIdx][i], upper[i])
+            + Clip3<Pel>(clipMin[clipIdx][i], clipMax[clipIdx][i], lower[i]);
+        }
+        input[clipIdx][NUM_TALF_COEFF][y][x] = cVal;
+      }
+    }
+  }
+}
+
+void AdaptiveLoopFilter::filterBatchTAlf(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const int* filterCoeff, const Position pos, PelBuf &dstBuf, PelBuf &recBuf
+  , const int numCoeff, const int offset, const int shift, const ClpRng& clpRng)
+{
+  for (int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    for (int x = 0; x < TALF_SBB_SIZE; x++)
+    {
+      int toAdd = 0;
+      for(int i = 0; i < numCoeff; i++)
+      {
+        toAdd += filterCoeff[i] * inputBatch[i][y][x];
+      }
+      int signAdd = toAdd < 0 ? -1 : 1;
+      toAdd = (abs(toAdd) + offset) >> shift;
+      toAdd *= signAdd;
+      dstBuf.at(pos.offset(x, y)) += toAdd;
+    }
+  }
+}
+
+void AdaptiveLoopFilter::filterBlkTAlf(CodingStructure &cs, const ComponentID compId, PelBuf &recBuf0, PelBuf &recBuf1, const UnitArea& ctu
+  , TAlfCtbParam& ctbControl, std::vector<TAlfFilterParam>& params, const TAlfControl talfControl)
+{
+  const int numCoeff = NUM_TALF_COEFF;
+  ClpRng clpRng = cs.slice->clpRng(compId);
+  clpRng.max = cs.slice->getLumaPelMax();
+  clpRng.min = cs.slice->getLumaPelMin();
+  int setIdx = ctbControl.setIdx;
+  int filterIdx = ctbControl.filterIdx;
+  const int mode = talfControl.mode;
+  const int isBiFilter = isBiTAlf(mode);
+  const int shapeIdx = params[setIdx].shapeIdx;
+  const int* filterCoeff = params[setIdx].coeff[filterIdx];
+  const int* clipIdx = params[setIdx].clipIdx[filterIdx];
+  const int shift = params[setIdx].shift[filterIdx];
+  const int offset = 1 << (shift - 1);
+  MvField mvField[2];
+  Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF];
+  Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF];
+  for(int i = 0; i < numCoeff; i++)
+  {
+    clipMax[0][i] = m_alfClippingValues[toChannelType(compId)][clipIdx[i]];
+    clipMin[0][i] = -clipMax[0][i];
+  }
+  Pel inputBatch[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE];
+  for(int y = ctu.blocks[compId].y; y < (ctu.blocks[compId].y + ctu.blocks[compId].height); y += TALF_SBB_SIZE)
+  {
+    for (int x = ctu.blocks[compId].x; x < (ctu.blocks[compId].x + ctu.blocks[compId].width); x += TALF_SBB_SIZE)
+    {
+      const Position pos(x, y);
+      if (getMotionOffset(cs, pos, mvField, mode, shapeIdx))
+      {
+        m_setTAlfInput[isBiFilter](inputBatch, cs, compId, recBuf1, clipMax, clipMin, pos, shapeIdx
+          , m_picWidth, m_picHeight, mode, m_refCombs, mvField, 1);
+        m_filterBatchTAlf(inputBatch[0], filterCoeff, pos, recBuf0, recBuf1, numCoeff, offset, shift, clpRng);
+      }
+    }
+  }
+}
+
+void AdaptiveLoopFilter::applyTAlfFilter(CodingStructure &cs, const ComponentID compId, PelUnitBuf &recAfterALF
+  , PelUnitBuf &recBeforeALF, std::vector<TAlfFilterParam>& params, TAlfCtbParam* tAlfControl, const TAlfControl talfControl)
+{
+  PelBuf recBuf0 = recAfterALF.get(compId);
+  PelBuf recBuf1 = recBeforeALF.get(compId);
+  int ctbIdx = 0;
+  for( int yPos = 0; yPos < m_picHeight; yPos += m_maxCUHeight )
+  {
+    for( int xPos = 0; xPos < m_picWidth; xPos += m_maxCUWidth )
+    {
+      auto ctbControl = tAlfControl[ctbIdx];
+      if (ctbControl.enabledFlag)
+      {
+        UnitArea ctuArea(cs.pcv->chrFormat, Area(xPos, yPos, m_maxCUWidth, m_maxCUHeight));
+        UnitArea clippedCtu = clipArea(ctuArea, *cs.slice->getPic());
+        filterBlkTAlf(cs, compId, recBuf0, recBuf1, clippedCtu, ctbControl, params, talfControl);
+      }
+      ctbIdx++;
+    }
+  }
+}
+
+int AdaptiveLoopFilter::groupSumTAlf(Pel* a, Pel* b)
+{
+  int sum = 0;
+  for(int i = 0; i < 16; i++)
+  {
+    sum += a[i] * b[i];
+  }
+  return sum;
 }
 #endif
 

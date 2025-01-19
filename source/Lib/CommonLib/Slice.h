@@ -1633,6 +1633,9 @@ private:
   int               m_alfScaleMode;
   bool              m_alfScalePrevEnabled;
 #endif
+#if JVET_AK0065_TALF
+  bool              m_talf;
+#endif
   bool              m_SBT;
 #if JVET_AI0050_INTER_MTSS
   bool              m_interMTSS; 
@@ -2680,6 +2683,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getAlfScalePrevEnabled()                                   const     { return m_alfScalePrevEnabled; }
   void      setAlfScalePrevEnabled(bool b)                                       { m_alfScalePrevEnabled = b;    }
 #endif
+#if JVET_AK0065_TALF
+  bool      getUseTAlf         ()                                      const     { return m_talf; }
+  void      setUseTAlf         ( bool b )                                        { m_talf = b; }
+#endif
   void      setUseCiip         ( bool b )                                        { m_ciip = b; }
   bool      getUseCiip         ()                                      const     { return m_ciip; }
 #if JVET_X0141_CIIP_TIMD_TM && JVET_W0123_TIMD_FUSION
@@ -3269,6 +3276,9 @@ private:
   CcAlfFilterParam       m_ccAlfAPSParam;
   bool                   m_hasPrefixNalUnitType;
 
+#if JVET_AK0065_TALF
+  TAlfFilterParam        m_talfAPSParam;
+#endif
 public:
   APS();
   virtual                ~APS();
@@ -3298,6 +3308,10 @@ public:
   bool                   getHasPrefixNalUnitType() const                                  { return m_hasPrefixNalUnitType;                }
 #if JVET_R0433
   bool chromaPresentFlag;
+#endif
+#if JVET_AK0065_TALF
+  void                   setTAlfAPSParam(TAlfFilterParam &param)                          { m_talfAPSParam = param;                }
+  TAlfFilterParam&       getTAlfAPSParam()                                                { return m_talfAPSParam;                        }
 #endif
 };
 
@@ -3425,6 +3439,9 @@ private:
   bool m_ccalfEnabledFlag[MAX_NUM_COMPONENT];
   int  m_ccalfCbApsId;
   int  m_ccalfCrApsId;
+#if JVET_AK0065_TALF
+  TAlfControl m_talfControl;
+#endif
   bool                        m_deblockingFilterOverrideFlag;                           //!< deblocking filter override controls enabled
   bool                        m_deblockingFilterDisable;                                //!< deblocking filter disabled flag
   int                         m_deblockingFilterBetaOffsetDiv2;                         //!< beta offset for deblocking filter
@@ -3610,6 +3627,10 @@ public:
   int  getCcAlfCbApsId() const { return m_ccalfCbApsId; }
   void setCcAlfCrApsId(int i) { m_ccalfCrApsId = i; }
   int  getCcAlfCrApsId() const { return m_ccalfCrApsId; }
+#if JVET_AK0065_TALF
+  void setTAlfControl(TAlfControl c) { m_talfControl = c;    }
+  TAlfControl getTAlfControl() const { return m_talfControl; }
+#endif
   void                        setDeblockingFilterOverrideFlag( bool b )                 { m_deblockingFilterOverrideFlag = b;                                                          }
   bool                        getDeblockingFilterOverrideFlag() const                   { return m_deblockingFilterOverrideFlag;                                                       }
   void                        setDeblockingFilterDisable( bool b )                      { m_deblockingFilterDisable= b;                                                                }
@@ -3895,6 +3916,9 @@ private:
   int                        m_tileGroupAlfFixedFilterSetIdx;
 #endif
 #endif
+#if JVET_AK0065_TALF
+  APS*                       m_talfApss[ALF_CTB_MAX_NUM_APS];
+#endif
   APS*                       m_alfApss[ALF_CTB_MAX_NUM_APS];
   bool                       m_tileGroupAlfEnabledFlag[MAX_NUM_COMPONENT];
   int                        m_tileGroupNumAps;
@@ -3912,6 +3936,9 @@ private:
   int                        m_idxCorrChroma[3];
 #endif
 
+#if JVET_AK0065_TALF
+  TAlfControl   m_tileGroupTAlfControl; //slice controls
+#endif
 #if JVET_AG0145_ADAPTIVE_CLIPPING
   int                        m_lumaPelMax;
   int                        m_lumaPelMin;
@@ -3965,6 +3992,10 @@ public:
 
   void                        setAlfAPSs(APS** apss)                                 { memcpy(m_alfApss, apss, sizeof(m_alfApss));                   }
   APS**                       getAlfAPSs()                                           { return m_alfApss;                                             }
+#if JVET_AK0065_TALF
+  void                        setTAlfAPSs(APS **apss)                                { memcpy(m_talfApss, apss, sizeof(m_talfApss)); }
+  APS**                       getTAlfAPSs()                                          { return m_talfApss; }
+#endif
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   bool                        getUseAlfScale()                                       { return m_useScaleAlf; }
   void                        setUseAlfScale( bool s )                               { m_useScaleAlf = s; }
@@ -4507,12 +4538,21 @@ public:
   bool getTileGroupCcAlfCrEnabledFlag() { return m_tileGroupCcAlfCrEnabledFlag; }
   int  getTileGroupCcAlfCbApsId() { return m_tileGroupCcAlfCbApsId; }
   int  getTileGroupCcAlfCrApsId() { return m_tileGroupCcAlfCrApsId; }
+#if JVET_AK0065_TALF
+  TAlfCtbParam* m_tAlfCtbControl;  // ctb controls
+  void        setTileGroupTAlfControl(TAlfControl c) { m_tileGroupTAlfControl = c;    }
+  TAlfControl getTileGroupTAlfControl() const         { return m_tileGroupTAlfControl; }
+#endif
   void                        setDisableSATDForRD(bool b) { m_disableSATDForRd = b; }
   bool                        getDisableSATDForRD() { return m_disableSATDForRd; }
   void                        setLossless(bool b) { m_isLossless = b; }
   bool                        isLossless() const { return m_isLossless; }
 #if JVET_Y0128_NON_CTC
+#if JVET_AK0065_TALF
+  bool                        scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS** apss2, APS* lmcsAps, APS* scalingListAps, const bool isDecoder );
+#else
   bool                        scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder );
+#endif
 #else
   void                        scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder );
 #endif

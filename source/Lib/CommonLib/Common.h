@@ -746,4 +746,158 @@ struct AltLMInterUnit
   }
 };
 #endif
+
+#if JVET_AK0065_TALF
+struct TAlfControl
+{
+  bool             enabledFlag;
+  std::vector<int> apsIds;
+  int              mode;
+  bool             newFilters;
+  void reset()
+  {
+    enabledFlag = false;
+    apsIds.clear();
+    mode = 0;
+    newFilters = false;
+  }
+
+  TAlfControl()
+  {
+    reset();
+  }
+};
+struct refComb
+{
+  RefPicList rplId;
+  int refId;
+  int poc;
+  int absPocDiff;
+  refComb(const RefPicList _rplId, const int _refId, const int _poc, const int _absPocDiff)
+  {
+    rplId = _rplId;
+    refId = _refId;
+    poc = _poc;
+    absPocDiff = _absPocDiff;
+  }
+  bool operator==(const refComb &other) const
+  {
+    return poc == other.poc;
+  }
+};
+
+struct TAlfFilterParam
+{
+  bool    newFlag;
+  uint8_t filterCount;
+  int     shapeIdx;
+  int     shift[MAX_NUM_TALF_FILTERS];
+  int     clipFlag[MAX_NUM_TALF_FILTERS];
+  int     coeff[MAX_NUM_TALF_FILTERS][MAX_NUM_ALF_LUMA_COEFF];
+  int     clipIdx[MAX_NUM_TALF_FILTERS][MAX_NUM_ALF_LUMA_COEFF];
+  TAlfFilterParam()
+  {
+    reset();
+  }
+  void reset()
+  {
+    newFlag     = false;
+    filterCount = 0;
+    shapeIdx    = 0;
+    std::memset( shift, 0, sizeof( shift ) );
+    std::memset( clipFlag, 0, sizeof( clipFlag ) );
+    std::memset( coeff, 0, sizeof( coeff ) );
+    std::memset( clipIdx, 0, sizeof( clipIdx ) );
+  }
+  const TAlfFilterParam& operator = ( const TAlfFilterParam& src )
+  {
+    newFlag     = src.newFlag;
+    filterCount = src.filterCount;
+    shapeIdx    = src.shapeIdx;
+    std::memcpy( shift, src.shift, sizeof( shift ) );
+    std::memcpy( clipFlag, src.clipFlag, sizeof( clipFlag ) );
+    std::memcpy( coeff, src.coeff, sizeof( coeff ) );
+    std::memcpy( clipIdx, src.clipIdx, sizeof( clipIdx ) );
+
+    return *this;
+  }
+
+  bool operator!=(const TAlfFilterParam &other)
+  {
+    if (filterCount != other.filterCount || shapeIdx != other.shapeIdx)
+    {
+      return true;
+    }
+    for (int fIdx = 0; fIdx < filterCount; fIdx++)
+    {
+      if (shift[fIdx] != other.shift[fIdx] || clipFlag[fIdx] != other.clipFlag[fIdx])
+      {
+        return true;
+      }
+      for (int cIdx = 0; cIdx < NUM_TALF_COEFF; cIdx++)
+      {
+        if (coeff[fIdx][cIdx] != other.coeff[fIdx][cIdx])
+        {
+          return true;
+        }
+        if (coeff[fIdx][cIdx] && clipIdx[fIdx][cIdx] != other.clipIdx[fIdx][cIdx])
+        {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+};
+
+struct TAlfCtbParam
+{
+  bool    enabledFlag;
+  uint8_t setIdx;
+  uint8_t filterIdx;
+
+  void reset() 
+  {
+    enabledFlag = false;
+    setIdx      = 0;
+    filterIdx   = 0;
+  }
+
+  TAlfCtbParam()
+  {
+    reset();
+  }
+
+  const TAlfCtbParam& operator = ( const TAlfCtbParam& src )
+  {
+    enabledFlag = src.enabledFlag;
+    setIdx      = src.setIdx;
+    filterIdx   = src.filterIdx;
+
+    return *this;
+  }
+};
+
+struct TAlfPosInfo
+{
+  int refIdx;
+  RefPicList refPicList;
+  Position offset;
+
+  TAlfPosInfo()
+  {
+    refIdx = -1;
+    refPicList = NUM_REF_PIC_LIST_01;
+    offset = Position();
+  }
+  TAlfPosInfo(const int _refIdx, const int _refPicList, const int _offsetX, const int _offsetY)
+  {
+    refIdx = _refIdx;
+    refPicList = RefPicList(_refPicList);
+    offset.x = _offsetX;
+    offset.y = _offsetY;
+  }
+};
+#endif
 #endif

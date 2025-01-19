@@ -6810,6 +6810,31 @@ const CtxSet ContextSetCfg::PnnLuminanceFlag = ContextSetCfg::addCtxSet
  { 108, 116, },
 });
 #endif
+#if JVET_AK0065_TALF
+const CtxSet ContextSetCfg::TAlfFilterControlFlag = ContextSetCfg::addCtxSet
+({
+ { CNU, CNU, CNU, CNU, CNU, CNU, },
+ { CNU, CNU, CNU, CNU, CNU, CNU, },
+ { CNU, CNU, CNU, CNU, CNU, CNU, },
+ { CNU, CNU, CNU, CNU, CNU, CNU, },
+ { DWS, DWS, DWS, DWS, DWS, DWS, },
+ { DWS, DWS, DWS, DWS, DWS, DWS, },
+ { DWS, DWS, DWS, DWS, DWS, DWS, },
+ { DWS, DWS, DWS, DWS, DWS, DWS, },
+ { DWE, DWE, DWE, DWE, DWE, DWE, },
+ { DWE, DWE, DWE, DWE, DWE, DWE, },
+ { DWE, DWE, DWE, DWE, DWE, DWE, },
+ { DWE, DWE, DWE, DWE, DWE, DWE, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+ { DWO, DWO, DWO, DWO, DWO, DWO, },
+});
+#endif
 // CONTEXTS WSA STOP
 #endif
 // 1630 replaced

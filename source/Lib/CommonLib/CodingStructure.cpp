@@ -2478,6 +2478,9 @@ void CodingStructure::initSubStructure( CodingStructure& subStruct, const Channe
 
   memcpy(subStruct.alfApss, alfApss, sizeof(alfApss));
 
+#if JVET_AK0065_TALF
+  memcpy(subStruct.talfApss, talfApss, sizeof(talfApss));
+#endif
   subStruct.lmcsAps = lmcsAps;
   subStruct.scalinglistAps = scalinglistAps;
 

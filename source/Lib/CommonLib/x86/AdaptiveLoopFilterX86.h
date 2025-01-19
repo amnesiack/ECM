@@ -12224,7 +12224,275 @@ static void simdCalcClass1(AlfClassifier **classifier, const Area &blkDst, const
 #endif
 }
 #endif
+#if JVET_AK0065_TALF && USE_AVX2
+static void simdSetBiInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs, const ComponentID compId
+  , const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF], const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF]
+  , const Position curPos, const int shapeIdx, const int picWidth, const int picHeight, const int mode, std::vector<refComb>& refCombs
+  , MvField* mvField, const int numOfClips)
+{
+  bool isMv = isMvTAlf(mode);
+  const CPelBuf& refBufA = isMv ? cs.slice->getRefPic(REF_PIC_LIST_0, mvField[0].refIdx)->unscaledPic->getRecoBuf(compId)
+    : cs.slice->getRefPic(refCombs[0].rplId, refCombs[0].refId)->unscaledPic->getRecoBuf(compId);
+  const CPelBuf& refBufB = isMv ? cs.slice->getRefPic(REF_PIC_LIST_1, mvField[1].refIdx)->unscaledPic->getRecoBuf(compId)
+    : cs.slice->getRefPic(refCombs[1].rplId, refCombs[1].refId)->unscaledPic->getRecoBuf(compId);
+  const Position posOffsetA(mvField[0].mv.getHor(), mvField[0].mv.getVer());
+  const Position posOffsetB(mvField[1].mv.getHor(), mvField[1].mv.getVer());
+  const Position sbbPosA(curPos.offset(posOffsetA));
+  const Position sbbPosB(curPos.offset(posOffsetB));
+  const int refAStride = refBufA.stride;
+  const int refBStride = refBufB.stride;
+  const Position* relPos = shapeIdx > 0 ? templateShape1 : templateShape0;
+  Pel buf[TALF_SBB_SIZE * TALF_SBB_SIZE];
 
+  // 1. save rec data.
+  const Pel* rec = recBuf.bufAt(curPos);
+  const int recStride = recBuf.stride;
+  Pel* recData = buf;
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    memcpy(recData, rec, sizeof(Pel) * TALF_SBB_SIZE);
+    rec += recStride;
+    recData += TALF_SBB_SIZE;
+  }
+  __m256i sub = _mm256_loadu_si256((const __m256i *) buf );
+  if (cs.pcv->isEncoder)
+  {
+    for (int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+    {
+      _mm256_storeu_si256((__m256i *) input[clipIdx][NUM_TALF_COEFF][0], sub);
+    }
+  }
+
+  // 2. save center refDataA, refDataB
+  int cIdx = 0;
+  const Pel* refACenter = refBufA.bufAt(sbbPosA);
+  Pel* refDataACenter = buf;
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    memcpy(refDataACenter, refACenter, sizeof(Pel) * TALF_SBB_SIZE);
+    refACenter += refAStride;
+    refDataACenter += TALF_SBB_SIZE;
+  }
+  __m256i refCentermmA = _mm256_loadu_si256((const __m256i *) buf );
+
+  const Pel* refBCenter = refBufB.bufAt(sbbPosB);
+  Pel* refDataBCenter = buf;
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    memcpy(refDataBCenter, refBCenter, sizeof(Pel) * TALF_SBB_SIZE);
+    refBCenter += refBStride;
+    refDataBCenter += TALF_SBB_SIZE;
+  }
+  __m256i refCentermmB = _mm256_loadu_si256((const __m256i *) buf );
+
+  __m256i refCentermm = _mm256_srai_epi16(_mm256_add_epi16(refCentermmA, refCentermmB), 1);
+  refCentermm = _mm256_sub_epi16(refCentermm, sub);
+
+  for(int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+  {
+    __m256i clipMinVal = _mm256_set1_epi16(clipMin[clipIdx][cIdx]);
+    __m256i clipMaxVal = _mm256_set1_epi16(clipMax[clipIdx][cIdx]);
+    __m256i clipCenter = _mm256_max_epi16(_mm256_min_epi16(refCentermm, clipMaxVal), clipMinVal);
+    _mm256_storeu_si256((__m256i *) input[clipIdx][cIdx][0], clipCenter);
+  }
+
+  // 3. save paired refData
+  for (cIdx = 1; cIdx < NUM_TALF_COEFF; cIdx++)
+  {
+    const Pel* refUpperA = refBufA.bufAt(sbbPosA.offset(relPos[cIdx]));
+    Pel* refDataA = buf;
+    for(int y = 0; y < TALF_SBB_SIZE; y++)
+    {
+      memcpy(refDataA, refUpperA, sizeof(Pel) * TALF_SBB_SIZE);
+      refUpperA += refAStride;
+      refDataA  += TALF_SBB_SIZE;
+    }
+    __m256i refUppermmA = _mm256_loadu_si256((const __m256i *) buf );
+
+    const Pel* refLowerA = refBufA.bufAt(sbbPosA - relPos[cIdx]);
+    refDataA = buf;
+    for(int y = 0; y < TALF_SBB_SIZE; y++)
+    {
+      memcpy(refDataA, refLowerA, sizeof(Pel) * TALF_SBB_SIZE);
+      refLowerA += refAStride;
+      refDataA  += TALF_SBB_SIZE;
+    }
+    __m256i refLowermmA = _mm256_loadu_si256((const __m256i *) buf );
+
+    const Pel* refUpperB = refBufB.bufAt(sbbPosB.offset(relPos[cIdx]));
+    Pel* refDataB = buf;
+    for(int y = 0; y < TALF_SBB_SIZE; y++)
+    {
+      memcpy(refDataB, refUpperB, sizeof(Pel) * TALF_SBB_SIZE);
+      refUpperB += refAStride;
+      refDataB  += TALF_SBB_SIZE;
+    }
+    __m256i refUppermmB = _mm256_loadu_si256((const __m256i *) buf );
+
+    const Pel* refLowerB = refBufB.bufAt(sbbPosB - relPos[cIdx]);
+    refDataB = buf;
+    for(int y = 0; y < TALF_SBB_SIZE; y++)
+    {
+      memcpy(refDataB, refLowerB, sizeof(Pel) * TALF_SBB_SIZE);
+      refLowerB += refBStride;
+      refDataB  += TALF_SBB_SIZE;
+    }
+    __m256i refLowermmB = _mm256_loadu_si256((const __m256i *) buf );
+
+    __m256i refUppermm = _mm256_srai_epi16(_mm256_add_epi16(refUppermmA, refUppermmB), 1);
+    __m256i refLowermm = _mm256_srai_epi16(_mm256_add_epi16(refLowermmA, refLowermmB), 1);
+    refUppermm = _mm256_sub_epi16(refUppermm, sub);
+    refLowermm = _mm256_sub_epi16(refLowermm, sub);
+
+    for(int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+    {
+      __m256i clipMinVal = _mm256_set1_epi16(clipMin[clipIdx][cIdx]);
+      __m256i clipMaxVal = _mm256_set1_epi16(clipMax[clipIdx][cIdx]);
+      __m256i clipUpper  = _mm256_max_epi16(_mm256_min_epi16(refUppermm, clipMaxVal), clipMinVal);
+      __m256i clipLower  = _mm256_max_epi16(_mm256_min_epi16(refLowermm, clipMaxVal), clipMinVal);
+      __m256i clipPaired = _mm256_add_epi16(clipUpper, clipLower);
+      _mm256_storeu_si256((__m256i *) input[clipIdx][cIdx][0], clipPaired);
+    }
+  }
+}
+static void simdSetUniInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs, const ComponentID compId
+  , const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF], const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF]
+  , const Position curPos, const int shapeIdx, const int picWidth, const int picHeight, const int mode, std::vector<refComb>& refCombs
+  , MvField* mvField, const int numOfClips)
+{
+  bool refList = isFwdTAlf(mode) ? 0 : 1;
+  bool isMv = isMvTAlf(mode);
+  const CPelBuf& refBuf = isMv ? cs.slice->getRefPic(RefPicList(refList), mvField[refList].refIdx)->unscaledPic->getRecoBuf(compId)
+    : cs.slice->getRefPic(refCombs[refList].rplId, refCombs[refList].refId)->unscaledPic->getRecoBuf(compId);
+  const int refStride = refBuf.stride;
+  const Position posOffset(mvField[refList].mv.getHor(), mvField[refList].mv.getVer());
+  const Position sbbPos(curPos.offset(posOffset));
+  const Position* relPos = shapeIdx > 0 ? templateShape1 : templateShape0;
+  Pel buf[TALF_SBB_SIZE * TALF_SBB_SIZE];
+
+  // 1. save rec data.
+  const Pel* rec = recBuf.bufAt(curPos);
+  const int recStride = recBuf.stride;
+  Pel* recData = buf;
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    memcpy(recData, rec, sizeof(Pel) * TALF_SBB_SIZE);
+    rec += recStride;
+    recData += TALF_SBB_SIZE;
+  }
+  __m256i sub = _mm256_loadu_si256((const __m256i *) buf );
+  if (cs.pcv->isEncoder)
+  {
+    for (int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+    {
+      _mm256_storeu_si256((__m256i *) input[clipIdx][NUM_TALF_COEFF][0], sub);
+    }
+  }
+
+  // 2. save center refData
+  int cIdx = 0;
+  const Pel* refCenter = refBuf.bufAt(sbbPos.offset(relPos[cIdx]));
+  Pel* refDataCenter = buf;
+  for(int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    memcpy(refDataCenter, refCenter, sizeof(Pel) * TALF_SBB_SIZE);
+    refCenter += refStride;
+    refDataCenter += TALF_SBB_SIZE;
+  }
+  __m256i refCentermm = _mm256_loadu_si256((const __m256i *) buf );
+  refCentermm = _mm256_sub_epi16(refCentermm, sub);
+  for(int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+  {
+    __m256i clipMinVal = _mm256_set1_epi16(clipMin[clipIdx][cIdx]);
+    __m256i clipMaxVal = _mm256_set1_epi16(clipMax[clipIdx][cIdx]);
+    __m256i clipCenter = _mm256_max_epi16(_mm256_min_epi16(refCentermm, clipMaxVal), clipMinVal);
+    _mm256_storeu_si256((__m256i *) input[clipIdx][cIdx][0], clipCenter);
+  }
+
+  // 3. save paired refData
+  for (cIdx = 1; cIdx < NUM_TALF_COEFF; cIdx++)
+  {
+    const Pel* refUpper = refBuf.bufAt(sbbPos.offset(relPos[cIdx]));
+    Pel* refData = buf;
+    for(int y = 0; y < TALF_SBB_SIZE; y++)
+    {
+      memcpy(refData, refUpper, sizeof(Pel) * TALF_SBB_SIZE);
+      refUpper += refStride;
+      refData  += TALF_SBB_SIZE;
+    }
+    __m256i refUppermm = _mm256_loadu_si256((const __m256i *) buf );
+    refUppermm = _mm256_sub_epi16(refUppermm, sub);
+
+    const Pel* refLower = refBuf.bufAt(sbbPos - relPos[cIdx]);
+    refData = buf;
+    for(int y = 0; y < TALF_SBB_SIZE; y++)
+    {
+      memcpy(refData, refLower, sizeof(Pel) * TALF_SBB_SIZE);
+      refLower += refStride;
+      refData  += TALF_SBB_SIZE;
+    }
+    __m256i refLowermm = _mm256_loadu_si256((const __m256i *) buf );
+    refLowermm = _mm256_sub_epi16(refLowermm, sub);
+    for(int clipIdx = 0; clipIdx < numOfClips; clipIdx++)
+    {
+      __m256i clipMinVal = _mm256_set1_epi16(clipMin[clipIdx][cIdx]);
+      __m256i clipMaxVal = _mm256_set1_epi16(clipMax[clipIdx][cIdx]);
+      __m256i clipUpper = _mm256_max_epi16(_mm256_min_epi16(refUppermm, clipMaxVal), clipMinVal);
+      __m256i clipLower = _mm256_max_epi16(_mm256_min_epi16(refLowermm, clipMaxVal), clipMinVal);
+      __m256i clipPaired = _mm256_add_epi16(clipUpper, clipLower);
+      _mm256_storeu_si256((__m256i *) input[clipIdx][cIdx][0], clipPaired);
+    }
+  }
+}
+static int simdGroupSumTAlf(Pel* a, Pel* b)
+{
+  __m256i vsum32 = _mm256_setzero_si256();
+  __m256i vsrc1 = _mm256_lddqu_si256((__m256i*)a);
+  __m256i vsrc2 = _mm256_lddqu_si256((__m256i*)b);
+  __m256i vsumtemp = _mm256_madd_epi16(vsrc1, vsrc2);
+  vsum32 = _mm256_add_epi32(vsum32, vsumtemp);
+  vsum32 = _mm256_hadd_epi32(vsum32, vsum32);
+  vsum32 = _mm256_hadd_epi32(vsum32, vsum32);
+  return (_mm_cvtsi128_si32(_mm256_castsi256_si128(vsum32)) + _mm_cvtsi128_si32(_mm256_castsi256_si128(_mm256_permute2x128_si256(vsum32, vsum32, 0x11))));
+}
+static void simdFilterBatchTAlf(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const int *filterCoeff,const Position pos
+  , PelBuf &dstBuf, PelBuf &recBuf, const int numCoeff, const int offset, const int shift, const ClpRng& clpRng)
+{
+  __m256i toAdd0 = _mm256_setzero_si256();
+  __m256i toAdd1 = _mm256_setzero_si256();
+  __m256i offSet = _mm256_set1_epi32(offset);
+
+  for(int i = 0; i < numCoeff; i++)
+  {
+    __m256i coef = _mm256_set1_epi32(filterCoeff[i]);
+    __m256i input0 = _mm256_cvtepi16_epi32(_mm_loadu_si128((__m128i const*)inputBatch[i][0]));
+    __m256i input1 = _mm256_cvtepi16_epi32(_mm_loadu_si128((__m128i const*)inputBatch[i][2]));
+    toAdd0 = _mm256_add_epi32(toAdd0, _mm256_mullo_epi32(coef, input0));
+    toAdd1 = _mm256_add_epi32(toAdd1, _mm256_mullo_epi32(coef, input1));
+  }
+  __m256i absToAdd0 = _mm256_srai_epi32(_mm256_add_epi32(_mm256_abs_epi32(toAdd0), offSet), shift);
+  __m256i absToAdd1 = _mm256_srai_epi32(_mm256_add_epi32(_mm256_abs_epi32(toAdd1), offSet), shift);
+  toAdd0 = _mm256_sign_epi32(absToAdd0, toAdd0);
+  toAdd1 = _mm256_sign_epi32(absToAdd1, toAdd1);
+  int talfCorr[TALF_SBB_SIZE][TALF_SBB_SIZE];
+  _mm256_storeu_si256((__m256i*)talfCorr[0], toAdd0);
+  _mm256_storeu_si256((__m256i*)talfCorr[2], toAdd1);
+  Pel* dst = dstBuf.bufAt(pos);
+  const int stride = dstBuf.stride;
+  for (int y = 0; y < TALF_SBB_SIZE; y++)
+  {
+    for (int x = 0; x < TALF_SBB_SIZE; x++)
+    {
+#if JVET_AG0145_ADAPTIVE_CLIPPING
+      dst[x] += talfCorr[y][x];
+#else
+      dst[x] = ClipPel( dst[x] + talfCorr[y][x], clpRng );
+#endif
+    }
+    dst += stride;
+  }
+}
+#endif
 
 template <X86_VEXT vext>
 void AdaptiveLoopFilter::_initAdaptiveLoopFilterX86()
@@ -12329,6 +12597,15 @@ void AdaptiveLoopFilter::_initAdaptiveLoopFilterX86()
   }
 #else
   m_deriveClassificationBlk = simdDeriveClassificationBlk<vext>;
+#endif
+#if JVET_AK0065_TALF && USE_AVX2
+  if (vext >= AVX2)
+  {
+    m_setTAlfInput[1] = simdSetBiInput;
+    m_setTAlfInput[0] = simdSetUniInput;
+    m_groupSumTAlf    = simdGroupSumTAlf;
+    m_filterBatchTAlf = simdFilterBatchTAlf;
+  }
 #endif
 }
 

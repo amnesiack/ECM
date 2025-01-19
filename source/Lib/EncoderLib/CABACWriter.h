@@ -495,6 +495,11 @@ public:
   );
   void codeCcAlfFilterControlIdc(uint8_t idcVal, CodingStructure &cs, const ComponentID compID, const int curIdx,
                                  const uint8_t *filterControlIdc, Position lumaPos, const int filterCount);
+#if JVET_AK0065_TALF
+  void codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStructure &cs, const ComponentID compID,
+                                const int curIdx, const TAlfCtbParam *filterControlIdc, Position lumaPos,
+                                const int filterCount, const int numSets, const bool newFilters);
+#endif
 
 #if INTER_LIC
   void        cu_lic_flag               ( const CodingUnit& cu );

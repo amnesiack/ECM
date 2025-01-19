@@ -354,6 +354,23 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
     }
   }
 
+#if JVET_AK0065_TALF
+  const TAlfControl talfControl = cs.slice->getTileGroupTAlfControl();
+  if (!skipAlf && talfControl.enabledFlag)
+  {
+    const int            ry = ctuRsAddr / cs.pcv->widthInCtus;
+    const int            rx = ctuRsAddr % cs.pcv->widthInCtus;
+    const Position lumaPos(rx * cs.pcv->maxCUWidth, ry * cs.pcv->maxCUHeight);
+    const auto talfControl = cs.slice->getTileGroupTAlfControl();
+    const int apsId = talfControl.apsIds[cs.slice->m_tAlfCtbControl[ctuRsAddr].setIdx];
+    const int filterCount = cs.slice->getTAlfAPSs()[apsId]->getTAlfAPSParam().filterCount;
+    const int numSets = int(talfControl.apsIds.size());
+    const bool newFilters = talfControl.newFilters;
+    codeTAlfFilterControlIdc(cs.slice->m_tAlfCtbControl[ctuRsAddr], cs, COMPONENT_Y,
+                             ctuRsAddr, cs.slice->m_tAlfCtbControl, lumaPos, filterCount,
+                             numSets, newFilters);
+  }
+#endif
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   cs.setLumaPointers( cs );
 
@@ -11177,6 +11194,44 @@ void CABACWriter::interCcpMerge(const TransformUnit& tu)
     m_BinEncoder.encodeBin(tu.interCcpMerge > 0 ? 1 : 0, Ctx::InterCcpMergeFlag(0));
 #endif
     DTRACE(g_trace_ctx, D_SYNTAX, "inter_ccp_merge() pos=(%d,%d) inter_ccp_merge_flag=%d\n", tu.blocks[tu.chType].x, tu.blocks[tu.chType].y, tu.interCcpMerge > 0 ? 1 : 0);
+  }
+}
+#endif
+#if JVET_AK0065_TALF
+void CABACWriter::codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStructure &cs, const ComponentID compID, const int curIdx
+  , const TAlfCtbParam *filterControlIdc, Position lumaPos, const int filterCount, const int numSets, const bool newFilters)
+{
+  CHECK(curControl.filterIdx >= filterCount, "curControl.filterIdx >= filterCount");
+  const uint32_t curSliceIdx = cs.slice->getIndependentSliceIdx();
+  const uint32_t curTileIdx = cs.pps->getTileIdx(lumaPos);
+  Position       leftLumaPos = lumaPos.offset(-(int)cs.pcv->maxCUWidth, 0);
+  Position       aboveLumaPos = lumaPos.offset(0, -(int)cs.pcv->maxCUWidth);
+  bool           leftAvail = cs.getCURestricted(leftLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L) ? true : false;
+  bool           aboveAvail = cs.getCURestricted(aboveLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L) ? true : false;
+  int            ctxId = 0;
+  if (leftAvail)
+  {
+    ctxId += (filterControlIdc[curIdx - 1].enabledFlag ? 1 : 0);
+  }
+  if (aboveAvail)
+  {
+    ctxId += (filterControlIdc[curIdx - cs.pcv->widthInCtus].enabledFlag ? 1 : 0);
+  }
+  if (newFilters)
+  {
+    ctxId += 3;
+  }
+  m_BinEncoder.encodeBin(curControl.enabledFlag, Ctx::TAlfFilterControlFlag(ctxId)); // ON/OFF flag is context coded
+  if (curControl.enabledFlag)
+  {
+    if (numSets > 1 && !newFilters)
+    {
+      unary_max_eqprob(curControl.setIdx, numSets - 1);
+    }
+    if (filterCount > 1)
+    {
+      unary_max_eqprob(curControl.filterIdx, filterCount - 1);
+    }
   }
 }
 #endif

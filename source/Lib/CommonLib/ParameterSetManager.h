@@ -160,6 +160,12 @@ public:
       {
         CHECK( samePU && sameNalUnitType && aps->getScalingList() != existedAPS->getScalingList(), "All APS NAL units with a particular value of nal_unit_type, a particular value of aps_adaptation_parameter_set_id, and a particular value of aps_params_type within a PU shall have the same content" );
       }
+#if JVET_AK0065_TALF
+      else if (aps->getAPSType() == TALF_APS)
+      {
+        CHECK( samePU && sameNalUnitType && aps->getTAlfAPSParam() != existedAPS->getTAlfAPSParam(), "All APS NAL units with a particular value of nal_unit_type, a particular value of aps_adaptation_parameter_set_id, and a particular value of aps_params_type within a PU shall have the same content" );
+      }
+#endif
       else
       {
         CHECK( true, "Wrong APS type" );
@@ -259,6 +265,9 @@ public:
   // returns true, if activation is successful
   bool           activatePPS(int ppsId, bool isIRAP);
 
+#if JVET_AK0065_TALF
+  APS**          getAPSs2() { return &m_apss2[0]; }
+#endif
   APS**          getAPSs() { return &m_apss[0]; }
   ParameterSetMap<APS>* getApsMap() { return &m_apsMap; }
   // store adaptation parameter set and take ownership of it
@@ -279,6 +288,9 @@ protected:
   ParameterSetMap<APS> m_apsMap;
   ParameterSetMap<VPS> m_vpsMap;
 
+#if JVET_AK0065_TALF
+  APS* m_apss2[ALF_CTB_MAX_NUM_APS];
+#endif
   APS* m_apss[ALF_CTB_MAX_NUM_APS];
   int m_activeSPSId; // -1 for nothing active
   int m_activeVPSId; // -1 for nothing active

@@ -1574,6 +1574,13 @@ void getTemporalBv(const PredictionUnit &pu, std::vector<MotionInfo>& temporalMi
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP
 inline bool use2x2EdgeOperator(const Size& sz) { return sz.area() <= DIMD_SMALL_BLOCK_THR ? true : false; };
 #endif 
+
+#if JVET_AK0065_TALF
+bool isBiTAlf(const int tAlfMode);
+bool isMvTAlf(const int tAlfMode);
+bool isFwdTAlf(const int tAlfMode);
+#endif
+
 #if JVET_AG0061_INTER_LFNST_NSPT
 int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP
