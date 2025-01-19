@@ -92,6 +92,9 @@ static const int size_ALF_FILTER_13_EXT_DB = -6;
 static const int size_ALF_FILTER_13_EXT_DB_RESI_DIRECT = -7;
 static const int size_ALF_FILTER_13_EXT_DB_RESI        = -8;
 #endif
+#if JVET_AK0065_TALF
+static const int size_TALF = -100;
+#endif
 const int alfTypeToSize[ALF_NUM_OF_FILTER_TYPES] = { 5, 7, size_CC_ALF, 9, size_ALF_FILTER_9_EXT, size_ALF_FILTER_EXT, size_ALF_FILTER_13_EXT, size_ALF_FILTER_9_EXT_DB, size_ALF_FILTER_13_EXT_DB 
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
                                                      ,size_ALF_FILTER_13_EXT_DB_RESI_DIRECT, size_ALF_FILTER_13_EXT_DB_RESI
@@ -512,6 +515,12 @@ struct AlfFilterShape
 #endif
       filterType   = CC_ALF;
     }
+#if JVET_AK0065_TALF
+    else if (size <= size_TALF)
+    {
+      numCoeff = abs(size - size_TALF);
+    }
+#endif
     else
     {
       filterType = ALF_NUM_OF_FILTER_TYPES;
@@ -1071,6 +1080,17 @@ struct CcSaoPrvParam
   }
 };
 #endif
+#endif
+
+#if JVET_AK0065_TALF
+const Position templateShape0[NUM_TALF_COEFF] = { 
+  Position( 0, 0), Position( 1, 0), Position( 0, 1), Position( 1, 1), Position(-1, 1), Position( 2, 0), Position( 0, 2),
+  Position(-2, 1), Position( 2, 1), Position(-1, 2), Position( 1, 2), Position( 3, 0), Position( 0, 3)
+};
+const Position templateShape1[NUM_TALF_COEFF] = { 
+  Position( 0, 0), Position( 1, 0), Position( 0, 1), Position( 1, 1), Position(-1, 1), Position( 2, 0), Position( 0, 2),
+  Position( 3, 0), Position( 0, 3), Position( 4, 0), Position( 0, 4), Position( 5, 0), Position( 0, 5)
+};
 #endif
 //! \}
 

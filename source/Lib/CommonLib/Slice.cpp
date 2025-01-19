@@ -193,6 +193,9 @@ Slice::Slice()
 #endif
 
   memset(m_alfApss, 0, sizeof(m_alfApss));
+#if JVET_AK0065_TALF
+  memset(m_talfApss, 0, sizeof(m_talfApss));
+#endif
   m_ccAlfFilterParam.reset();
   resetTileGroupAlfEnabledFlag();
   resetTileGroupCcAlCbfEnabledFlag();
@@ -204,6 +207,9 @@ Slice::Slice()
   m_idxCorrChroma[0] = 0;
   m_idxCorrChroma[1] = 0;
   m_idxCorrChroma[2] = 0;
+#endif
+#if JVET_AK0065_TALF
+  m_tileGroupTAlfControl.reset();
 #endif
 }
 
@@ -282,6 +288,9 @@ void Slice::initSlice()
   m_idxCorrChroma[0] = 0;
   m_idxCorrChroma[1] = 0;
   m_idxCorrChroma[2] = 0;
+#endif
+#if JVET_AK0065_TALF
+  m_tileGroupTAlfControl.reset();
 #endif
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   m_separateTreeEnabled           = false;
@@ -637,6 +646,9 @@ void Slice::inheritFromPicHeader( PicHeader *picHeader, const PPS *pps, const SP
   setTileGroupCcAlfCrApsId(picHeader->getCcAlfCrApsId());
   m_ccAlfFilterParam.ccAlfFilterEnabled[COMPONENT_Cb - 1] = picHeader->getCcAlfEnabledFlag(COMPONENT_Cb);
   m_ccAlfFilterParam.ccAlfFilterEnabled[COMPONENT_Cr - 1] = picHeader->getCcAlfEnabledFlag(COMPONENT_Cr);
+#if JVET_AK0065_TALF
+  setTileGroupTAlfControl(picHeader->getTAlfControl());
+#endif
 }
 
 void Slice::setNumSubstream(const SPS* sps, const PPS* pps)
@@ -2133,6 +2145,9 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
 #endif
 
   memcpy(m_alfApss, pSrc->m_alfApss, sizeof(m_alfApss)); // this might be quite unsafe
+#if JVET_AK0065_TALF
+  memcpy(m_talfApss, pSrc->m_talfApss, sizeof(m_talfApss)); // this might be quite unsafe
+#endif
 #if ALF_IMPROVEMENT
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   memcpy( m_tileGroupAlfFixedFilterSetIdx, pSrc->m_tileGroupAlfFixedFilterSetIdx, sizeof(m_tileGroupAlfFixedFilterSetIdx));
@@ -2176,6 +2191,10 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
   {
     m_idxCorrChroma[c]                      = pSrc->m_idxCorrChroma[c];
   }
+#endif
+#if JVET_AK0065_TALF
+  m_tAlfCtbControl     = pSrc->m_tAlfCtbControl;
+  m_tileGroupTAlfControl = pSrc->m_tileGroupTAlfControl;
 #endif
 }
 
@@ -3934,6 +3953,9 @@ PicHeader::PicHeader()
   m_alfApsId.resize(0);
 
   resetWpScaling();
+#if JVET_AK0065_TALF
+  m_talfControl.reset();
+#endif
 }
 
 PicHeader::~PicHeader()
@@ -4204,6 +4226,9 @@ SPS::SPS()
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
 , m_alfScaleMode              ( 0 )
 , m_alfScalePrevEnabled       ( false )
+#endif
+#if JVET_AK0065_TALF
+, m_talf                      ( false )
 #endif
 , m_SBT                       ( false )
 , m_ISP                       ( false )
@@ -5841,7 +5866,11 @@ uint32_t PreCalcValues::getMinQtSize( const Slice &slice, const ChannelType chTy
 }
 
 #if JVET_Y0128_NON_CTC
+#if JVET_AK0065_TALF
+bool Slice::scaleRefPicList( Picture* scaledRefPic[ ], PicHeader* picHeader, APS** apss, APS** apss2, APS* lmcsAps, APS* scalingListAps, const bool isDecoder )
+#else
 bool Slice::scaleRefPicList( Picture* scaledRefPic[ ], PicHeader* picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder )
+#endif
 #else
 void Slice::scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder )
 #endif
@@ -5943,7 +5972,11 @@ void Slice::scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS
             scaledRefPic[j]->reconstructed = false;
             scaledRefPic[j]->referenced = true;
 
+#if JVET_AK0065_TALF
+            scaledRefPic[j]->finalInit( m_pcPic->cs->vps, *sps, *pps, picHeader, apss, apss2, lmcsAps, scalingListAps );
+#else
             scaledRefPic[j]->finalInit( m_pcPic->cs->vps, *sps, *pps, picHeader, apss, lmcsAps, scalingListAps );
+#endif
 
             scaledRefPic[j]->poc = NOT_VALID;
 

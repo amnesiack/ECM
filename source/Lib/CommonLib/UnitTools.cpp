@@ -36788,6 +36788,7 @@ bool CU::isAffineAllowed(const CodingUnit& cu)
   return false;
 }
 
+#endif
 bool CU::affineCtxInc(const CodingUnit& cu)
 {
   if (!(cu.lumaSize().width >= 8 && cu.lumaSize().height >= 8 && (cu.lumaSize().width * cu.lumaSize().height >= 128)) && !cu.slice->getCheckLDB())
@@ -36795,5 +36796,19 @@ bool CU::affineCtxInc(const CodingUnit& cu)
     return true;
   }
   return false;
+}
+
+#if JVET_AK0065_TALF
+bool isBiTAlf(const int tAlfMode)
+{
+  return tAlfMode == BIDIR_TALF || tAlfMode == BIDIR_TALF_MV;
+}
+bool isMvTAlf(const int tAlfMode)
+{
+  return tAlfMode < FORWARD_TALF;
+}
+bool isFwdTAlf(const int tAlfMode)
+{
+  return tAlfMode == FORWARD_TALF || tAlfMode == FORWARD_TALF_MV;
 }
 #endif

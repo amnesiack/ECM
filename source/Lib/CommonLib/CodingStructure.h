@@ -97,6 +97,9 @@ public:
   const SPS *sps;
   const PPS *pps;
   PicHeader *picHeader;
+#if JVET_AK0065_TALF
+  APS*       talfApss[ALF_CTB_MAX_NUM_APS];
+#endif
   APS*       alfApss[ALF_CTB_MAX_NUM_APS];
   APS *      lmcsAps;
   APS *      scalinglistAps;

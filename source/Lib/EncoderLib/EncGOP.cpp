@@ -3266,11 +3266,19 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     {
       PicHeader *picHeader = new PicHeader;
       *picHeader = *pcPic->cs->picHeader;
+#if JVET_AK0065_TALF
+      bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, picHeader, m_pcEncLib->getApss(), m_pcEncLib->getApss2(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#else
       bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, picHeader, m_pcEncLib->getApss(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#endif
     }
     else
     {
+#if JVET_AK0065_TALF
+      bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, pcPic->cs->picHeader, m_pcEncLib->getApss(), m_pcEncLib->getApss2(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#else
       bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, pcPic->cs->picHeader, m_pcEncLib->getApss(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#endif
     }
 #else
     bool  bDisableTMVP = pcSlice->scaleRefPicList( scaledRefPic, pcPic->cs->picHeader, m_pcEncLib->getApss(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false );
@@ -4091,6 +4099,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           if( s < uiNumSliceSegments - 1 )
           {
             pcPic->slices[s]->setAlfAPSs(cs.slice->getAlfAPSs());
+#if JVET_AK0065_TALF
+            pcPic->slices[s]->setTAlfAPSs(cs.slice->getTAlfAPSs());
+#endif
           }
           pcPic->slices[s]->setTileGroupApsIdChroma(cs.slice->getTileGroupApsIdChroma());
           pcPic->slices[s]->setTileGroupCcAlfCbApsId(cs.slice->getTileGroupCcAlfCbApsId());
@@ -4102,6 +4113,10 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           pcPic->slices[s]->m_ccAlfFilterParam      = m_pcALF->getCcAlfFilterParam();
           pcPic->slices[s]->m_ccAlfFilterControl[0] = m_pcALF->getCcAlfControlIdc(COMPONENT_Cb);
           pcPic->slices[s]->m_ccAlfFilterControl[1] = m_pcALF->getCcAlfControlIdc(COMPONENT_Cr);
+#if JVET_AK0065_TALF
+          pcPic->slices[s]->setTileGroupTAlfControl(cs.slice->getTileGroupTAlfControl());
+          pcPic->slices[s]->m_tAlfCtbControl       = m_pcALF->getTAlfControl();
+#endif
         }
         m_pcALF->destroy(true);
       }
@@ -4203,7 +4218,13 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         // This does not need to be run even if BIF=1.
         m_pcSAO->disabledRate( *pcPic->cs, pcPic->getSAO(1), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma());
       }
+#if JVET_AK0065_TALF
+      const TAlfControl talfControl = pcSlice->getTileGroupTAlfControl();
+      if ((pcSlice->getSPS()->getALFEnabledFlag() && (pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) || pcSlice->getTileGroupCcAlfCbEnabledFlag() || pcSlice->getTileGroupCcAlfCrEnabledFlag()))
+          || (pcSlice->getSPS()->getUseTAlf() && talfControl.enabledFlag))  // ALF or TALF enabled.
+#else
       if (pcSlice->getSPS()->getALFEnabledFlag() && (pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) || pcSlice->getTileGroupCcAlfCbEnabledFlag() || pcSlice->getTileGroupCcAlfCrEnabledFlag()))
+#endif
       {
         // IRAP AU: reset APS map
         {
@@ -4231,7 +4252,11 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
                 // Luma
                 for( int i = 0; i < sliceApsIdsLuma.size(); i++ )
                 {
+#if JVET_AK0065_TALF
+                  if( aps->getAPSId() == sliceApsIdsLuma[i] && pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) )
+#else
                   if( aps->getAPSId() == sliceApsIdsLuma[i] )
+#endif
                   {
                     activeAps = true;
                     break;
@@ -4256,6 +4281,28 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
                 }
               }
             }
+#if JVET_AK0065_TALF
+            m_pcALF->setApsIdStart2( ALF_CTB_MAX_NUM_APS );
+            for( int apsId = 0; apsId < ALF_CTB_MAX_NUM_APS; apsId++ )
+            {
+              int psId = ( apsId << NUM_APS_TYPE_LEN ) + TALF_APS;
+              APS* aps = apsMap->getPS( psId );
+              if( aps )
+              {
+                // Check if this APS is currently the active one (used in current slice)
+                bool activeApsTAlf = false;
+                for (int i = 0; i < talfControl.apsIds.size(); i++)
+                {
+                  activeApsTAlf |= (talfControl.enabledFlag && talfControl.apsIds[i] == aps->getAPSId());
+                }
+                if( !activeApsTAlf)
+                {
+                  apsMap->clearChangedFlag( psId );
+                  aps->getTAlfAPSParam().reset();
+                }
+              }
+            }
+#endif
           }
         }
 
@@ -4279,6 +4326,32 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
         if( changedApsId >= 0 )
           m_pcALF->setApsIdStart( changedApsId );
+
+#if JVET_AK0065_TALF
+        int changedApsId2 = -1;
+        for( int apsId = ALF_CTB_MAX_NUM_APS - 1; apsId >= 0; apsId-- )
+        {
+          ParameterSetMap<APS>* apsMap = m_pcEncLib->getApsMap();
+          int psId = ( apsId << NUM_APS_TYPE_LEN ) + TALF_APS;
+          APS* aps = apsMap->getPS( psId );
+          if( aps )
+          {
+            // In slice, replace the old APS (from decoder map) with the APS from encoder map due to later checks while bitstream writing
+            if( pcSlice->getTAlfAPSs() && pcSlice->getTAlfAPSs()[apsId] )
+            {
+              pcSlice->getTAlfAPSs()[apsId] = aps;
+            }
+            if (apsMap->getChangedFlag(psId))
+            {
+              changedApsId2 = apsId;
+            }
+          }
+        }
+        if (changedApsId2 >= 0)
+        {
+          m_pcALF->setApsIdStart2(changedApsId2);
+        }
+#endif
       }
     }
 
@@ -4452,6 +4525,39 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
       }
 
+#if JVET_AK0065_TALF  // Write TALF APS.
+      const TAlfControl talfControl = pcSlice->getTileGroupTAlfControl();
+      if (pcSlice->getSPS()->getUseTAlf() && talfControl.enabledFlag)
+      {
+        for (int apsId = 0; apsId < ALF_CTB_MAX_NUM_APS; apsId++)
+        {
+          ParameterSetMap<APS> *apsMap = m_pcEncLib->getApsMap();
+          APS *aps      = apsMap->getPS((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          bool writeAPS = aps && apsMap->getChangedFlag((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          if (!aps && pcSlice->getTAlfAPSs() && pcSlice->getTAlfAPSs()[apsId])
+          {
+            writeAPS = true;
+            aps      = pcSlice->getTAlfAPSs()[apsId];                             // use asp from slice header
+            *apsMap->allocatePS((apsId << NUM_APS_TYPE_LEN) + TALF_APS) = *aps;   // allocate and cpy
+            m_pcALF->setApsIdStart2(apsId);
+          }
+#if JVET_Z0118_GDR // note : insert APS at every GDR picture
+          if (aps && apsId >= 0)
+          {
+            writeAPS |= (pcSlice->isInterGDR());
+          }
+#endif
+          if (writeAPS )
+          {
+#if JVET_R0433
+            aps->chromaPresentFlag = pcSlice->getSPS()->getChromaFormatIdc() != CHROMA_400;
+#endif
+            actualTotalBits += xWriteAPS( accessUnit, aps, m_pcEncLib->getLayerId(), true );
+            apsMap->clearChangedFlag((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          }
+        }
+      }
+#endif
       // reset presence of BP SEI indication
       m_bufferingPeriodSEIPresentInAU = false;
       // create prefix SEI associated with a picture
@@ -4567,6 +4673,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
             picHeader->setCcAlfEnabledFlag(COMPONENT_Cr, pcSlice->getTileGroupCcAlfCrEnabledFlag());
             picHeader->setCcAlfCbApsId(pcSlice->getTileGroupCcAlfCbApsId());
             picHeader->setCcAlfCrApsId(pcSlice->getTileGroupCcAlfCrApsId());
+#if JVET_AK0065_TALF
+            picHeader->setTAlfControl(pcSlice->getTileGroupTAlfControl());
+#endif
           }
 
           // code WP parameters in picture header or slice headers

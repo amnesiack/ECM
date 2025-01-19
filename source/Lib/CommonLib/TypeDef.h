@@ -508,6 +508,7 @@
 #define JVET_AI0166_CCALF_CHROMA_SAO_INPUT                1 // JVET-AI0166: CCALF with Chroma inputs
 #define JVET_AJ0188_CODING_INFO_CLASSIFICATION            1 // JVET-AJ0188: Coding Information based Classification for ALF
 #define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
+#define JVET_AK0065_TALF                                  1 // JVET-AK0065: Temporal ALF
 
 // SIMD optimizations
 #if IF_12TAP
@@ -910,6 +911,18 @@ typedef       uint64_t        Distortion;        ///< distortion measurement
 // Enumeration
 // ====================================================================================================================
 
+#if JVET_AK0065_TALF
+enum TAlfFilterMode
+{
+  FORWARD_TALF_MV,
+  BACKWARD_TALF_MV,
+  BIDIR_TALF_MV,
+  FORWARD_TALF,
+  BACKWARD_TALF,
+  BIDIR_TALF,
+  NUM_TALF_MODE
+};
+#endif
 #if JVET_AA0096_MC_BOUNDARY_PADDING
 enum PadDirection
 {
@@ -935,6 +948,9 @@ enum ApsType
   ALF_APS = 0,
   LMCS_APS = 1,
   SCALING_LIST_APS = 2,
+#if JVET_AK0065_TALF
+  TALF_APS = 3,
+#endif
 };
 
 enum QuantFlags

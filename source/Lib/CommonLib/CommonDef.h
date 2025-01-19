@@ -608,6 +608,14 @@ static const int NUM_FIXED_FILTER_SETS       =                     16;
 static const int NUM_TOTAL_FILTER_SETS       =                     NUM_FIXED_FILTER_SETS + ALF_CTB_MAX_NUM_APS;
 #endif
 
+#if JVET_AK0065_TALF
+static const int MAX_NUM_TALF_FILTERS =                             8;
+static const int MAX_TALF_FILTER_SHAPE =                            2;
+static const int NUM_TALF_COEFF =                                  13;
+static const int TALF_SCALE_BIT =                                   6;
+static const int TALF_SBB_SIZE =                                    4;
+static const int NUM_TALF_REUSE_CANDS =                             3;
+#endif
 #if JVET_Z0139_HIST_AFF
 static const int MAX_NUM_AFFHMVP_ENTRIES_ONELIST = 5;
 static const int MAX_NUM_AFFHMVP_ENTRIES = MAX_NUM_AFFHMVP_ENTRIES_ONELIST * 2;

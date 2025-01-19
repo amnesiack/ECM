@@ -6726,6 +6726,7 @@ const CtxSet ContextSetCfg::SeparateTree = ContextSetCfg::addCtxSet
   { DWO, DWO, DWO },
   });
 #endif
+
 #if JVET_AJ0274_REGRESSION_GPM_TM
 const CtxSet ContextSetCfg::GeoBlendTMFlag = ContextSetCfg::addCtxSet
 ({
@@ -6799,7 +6800,7 @@ const CtxSet ContextSetCfg::PnnLuminanceFlag = ContextSetCfg::addCtxSet
   { 119, 130 },
   { 124, 116 },
   { 116, 115 }
-});
+  });
 #endif
 // CONTEXTS WSA STOP
 #endif

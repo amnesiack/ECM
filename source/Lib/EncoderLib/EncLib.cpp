@@ -58,7 +58,11 @@
 
 EncLib::EncLib( EncLibCommon* encLibCommon )
   : m_cListPic( encLibCommon->getPictureBuffer() )
+#if JVET_AK0065_TALF
+   , m_cEncALF( encLibCommon->getApsIdStart(), encLibCommon->getApsIdStart2() )
+#else
   , m_cEncALF( encLibCommon->getApsIdStart() )
+#endif
   , m_spsMap( encLibCommon->getSpsMap() )
   , m_ppsMap( encLibCommon->getPpsMap() )
   , m_apsMap( encLibCommon->getApsMap() )
@@ -87,6 +91,9 @@ EncLib::EncLib( EncLibCommon* encLibCommon )
 
   memset(m_apss, 0, sizeof(m_apss));
 
+#if JVET_AK0065_TALF
+  memset(m_apss2, 0, sizeof(m_apss2));
+#endif
   m_layerId = NOT_VALID;
   m_picIdInGOP = NOT_VALID;
 }
@@ -810,7 +817,11 @@ void EncLib::init( bool isFieldCoding, AUWriterIf* auWriterIf )
 
     picBg->getRecoBuf().fill(0);
 
+#if JVET_AK0065_TALF
+    picBg->finalInit( m_vps, sps0, pps0, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS );
+#else
     picBg->finalInit( m_vps, sps0, pps0, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
 
     picBg->allocateNewSlice();
@@ -958,7 +969,11 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
 
     picCurr->M_BUFS( 0, PIC_ORIGINAL ).copyFrom( m_cGOPEncoder.getPicBg()->getRecoBuf() );
 
+#if JVET_AK0065_TALF
+    picCurr->finalInit(m_vps, *sps, *pps, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS);
+#else
     picCurr->finalInit( m_vps, *sps, *pps, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
     picCurr->poc = m_iPOCLast - 1;
     m_iPOCLast -= 2;
@@ -1185,7 +1200,11 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
       pcPicCurr->M_BUFS( 0, PIC_ORIGINAL ).swap( *pcPicYuvOrg );
     }
 
+#if JVET_AK0065_TALF
+    pcPicCurr->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS );
+#else
     pcPicCurr->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
     pcPicCurr->poc = m_iPOCLast;
 
@@ -1323,7 +1342,11 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
       const PPS *pPPS = ( ppsID < 0 ) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS( ppsID );
       const SPS *pSPS = m_spsMap.getPS( pPPS->getSPSId() );
 
+#if JVET_AK0065_TALF
+      pcField->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS );
+#else
       pcField->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
       pcField->poc = m_iPOCLast;
       pcField->reconstructed = false;
@@ -2321,6 +2344,9 @@ void EncLib::xInitSPS( SPS& sps )
   {
     sps.setAlfScaleMode( 1 );
   }
+#endif
+#if JVET_AK0065_TALF
+  sps.setUseTAlf(true);
 #endif
 
   if (sps.getVuiParametersPresentFlag())
