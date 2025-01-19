@@ -3807,7 +3807,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         m_pcALF->copyResiData(cs);
       }
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
       m_pcALF->callCodingInfoBuf( cs ).fill( 0 );
 #endif
       // create SAO object based on the picture size
@@ -3903,7 +3903,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       }
 #endif
 
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
       const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
       PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
       m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
@@ -5183,7 +5183,7 @@ uint64_t EncGOP::preLoopFilterPicAndCalcDist( Picture* pcPic )
   } 
 #endif
 
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   const bool storeCodingInfo = false;
   PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
   m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );

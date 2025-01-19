@@ -1421,7 +1421,7 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #endif
   const CPelBuf &resiLuma = resiYuv.get(COMPONENT_Y);
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   PelUnitBuf recYuvCodingInfo = m_tempBufCodingInfo.getBuf( cs.area );
 #endif
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
@@ -1486,7 +1486,7 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
             buf.extendBorderPel( MAX_ALF_PADDING_SIZE );
 #endif
             buf = buf.subBuf( UnitArea( cs.area.chromaFormat, Area( clipL ? 0 : MAX_ALF_PADDING_SIZE, clipT ? 0 : MAX_ALF_PADDING_SIZE, w, h ) ) );
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
             PelUnitBuf bufCodingInfo = m_tempBufCodingInfo2.subBuf( UnitArea( CHROMA_400, Area( 0, 0, wBuf, hBuf ) ) );
             bufCodingInfo.copyFrom( recYuvCodingInfo.subBuf( UnitArea( CHROMA_400, Area( xStart - ( clipL ? 0 : MAX_ALF_PADDING_SIZE ), yStart - ( clipT ? 0 : MAX_ALF_PADDING_SIZE ), wBuf, hBuf ) ) ) );
             // pad top-left unavailable samples for raster slice
@@ -1584,6 +1584,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
             deriveGaussResults( bufDb.get( COMPONENT_Y ), blkDst, blkSrc, cs, 0, 0 );
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+            deriveLaplacianResults( buf.get( COMPONENT_Y ), blkDst, blkSrc, cs, 0, 0, bufCodingInfo.get( COMPONENT_Y ) );
+#endif
             xStart = xEnd;
           }
 
@@ -1621,6 +1624,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
         deriveGaussResults( recLumaBeforeDb, blk, blk, cs, 0, 0 );
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+        deriveLaplacianResults( recLuma, blk, blk, cs, 0, 0, recYuvCodingInfo.get( COMPONENT_Y ) );
+#endif
       }
     }
   }
@@ -1638,6 +1644,12 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
   for(int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++ )
   {
     paddingGaussResultsPic(m_gaussPic, gaussIdx);
+  }
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++ )
+  {
+    paddingLaplacianResultsPic(m_laplacianPic, laplacianIdx);
   }
 #endif
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
@@ -4174,6 +4186,15 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
               }
             }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+            if( m_isFixedFilterPaddedPerCtu )
+            {
+              for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+              {
+                paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, Area(xStart, yStart, w, h));
+              }
+            }
+#endif
             for( int compIdx = 0; compIdx < numberOfComponents; compIdx++ )
             {
               const ComponentID compID = ComponentID( compIdx );
@@ -4383,6 +4404,15 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
           for(int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++)
           {
             paddingGaussResultsCtu(m_gaussPic, m_gaussCtu, gaussIdx, Area( xPos, yPos, width, height ));
+          }
+        }
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+        if( m_isFixedFilterPaddedPerCtu )
+        {
+          for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+          {
+            paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, Area( xPos, yPos, width, height ));
           }
         }
 #endif
@@ -4920,6 +4950,9 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
   int padSizeGauss = ALF_PADDING_SIZE_GAUSS_RESULTS;
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  int padSizeLaplacian = ALF_PADDING_SIZE_LAPLACIAN_RESULTS;
+#endif
 #if JVET_AA0095_ALF_LONGER_FILTER
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
   if( shape.filterType == ALF_FILTER_13_EXT || shape.filterType == ALF_FILTER_13_EXT_DB 
@@ -5293,6 +5326,31 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
       pImg3Gauss[gaussIdx] = &m_gaussPic[gaussIdx][posDst.y + padSizeGauss + 2][posDst.x + padSizeGauss];
       pImg4Gauss[gaussIdx] = &m_gaussPic[gaussIdx][posDst.y + padSizeGauss - 2][posDst.x + padSizeGauss];
 
+    }
+  }
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  Pel *pImg0Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE];
+  Pel *pImg1Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE], *pImg2Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE];
+  Pel *pImg3Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE], *pImg4Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE];
+
+  for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++ )
+  {
+    if( m_isFixedFilterPaddedPerCtu )
+    {
+      pImg0Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian + 0][posInCtu.x + padSizeLaplacian];
+      pImg1Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian + 1][posInCtu.x + padSizeLaplacian];
+      pImg2Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian - 1][posInCtu.x + padSizeLaplacian];
+      pImg3Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian + 2][posInCtu.x + padSizeLaplacian];
+      pImg4Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian - 2][posInCtu.x + padSizeLaplacian];
+    }
+    else
+    {
+      pImg0Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian + 0][posDst.x + padSizeLaplacian];
+      pImg1Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian + 1][posDst.x + padSizeLaplacian];
+      pImg2Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian - 1][posDst.x + padSizeLaplacian];
+      pImg3Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian + 2][posDst.x + padSizeLaplacian];
+      pImg4Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian - 2][posDst.x + padSizeLaplacian];
     }
   }
 #endif
@@ -5737,6 +5795,23 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
     for (int b = 0; b < numBins; b++)
     {
 #if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+      ELocal[28][b] += clipALF(clip[b],    0, pImg3Laplacian[0][+0], pImg4Laplacian[0][-0]);
+      ELocal[29][b] += clipALF(clip[b],    0, pImg1Laplacian[0][+0], pImg2Laplacian[0][-0]);
+      ELocal[30][b] += clipALF(clip[b],    0, pImg0Laplacian[0][+2], pImg0Laplacian[0][-2]);
+      ELocal[31][b] += clipALF(clip[b],    0, pImg0Laplacian[0][+1], pImg0Laplacian[0][-1]);
+      
+      ELocal[32][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[33][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[34][b] += clipALF(clip[b], curr, fixedFitlerResults[0 + fixedFilterSetIdx][posDst.y + padSize][posDst.x + padSize]);
+      ELocal[35][b] += clipALF(clip[b], curr, fixedFitlerResults[2 + fixedFilterSetIdx][posDst.y + padSize][posDst.x + padSize]);
+      ELocal[36][b] += clipALF(clip[b],    0, fixedFitlerResiResults[0 + 1 - fixedFilterSetIdx][pos.y][pos.x]);
+      ELocal[37][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[38][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
+      ELocal[39][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+      ELocal[40][b] += clipALF(clip[b],    0, pImg0Laplacian[0][+0] );
+#else
       ELocal[28][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
       ELocal[29][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
 
@@ -5746,6 +5821,7 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
       ELocal[33][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
       ELocal[34][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
       ELocal[35][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+#endif
 #elif JVET_AD0222_ALF_LONG_FIXFILTER
       ELocal[28][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
       ELocal[29][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
@@ -7637,6 +7713,15 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
                   }
                 }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                if( m_isFixedFilterPaddedPerCtu )
+                {
+                  for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+                  {
+                    paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, blkDst);
+                  }
+                }
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
                 PelUnitBuf bufDb = m_tempBufBeforeDb2.subBuf( UnitArea ( CHROMA_400, Area( 0, 0, wBuf, hBuf ) ) );
 #if JVET_AA0095_ALF_LONGER_FILTER
@@ -7703,9 +7788,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, coeffBits);
+#else
                 alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, coeffBits);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
                 alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7785,9 +7878,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, m_NUM_BITS_CHROMA);
+#else
                 alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_NUM_BITS_CHROMA);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
                 alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7896,6 +7997,15 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
             }
           }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          if( m_isFixedFilterPaddedPerCtu )
+          {
+            for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+            {
+              paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, blk);
+            }
+          }
+#endif
 #if JVET_X0071_ALF_BAND_CLASSIFIER
           int classifierIdx = m_classifierIdxApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS][alt_num];
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7912,9 +8022,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, coeffBits);
+#else
           alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, coeffBits);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
           alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7998,9 +8116,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, m_NUM_BITS_CHROMA); 
+#else
           alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_NUM_BITS_CHROMA);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
           alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION

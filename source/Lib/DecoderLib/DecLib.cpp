@@ -815,7 +815,7 @@ void DecLib::executeLoopFilters()
     m_cALF.copyResiData(cs);
   }
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   m_cALF.callCodingInfoBuf( cs ).fill( 0 );
 #endif
 
@@ -845,7 +845,7 @@ void DecLib::executeLoopFilters()
   }  
 #endif
 
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
   PelUnitBuf codingInfoBuf = storeCodingInfo ? m_cALF.callCodingInfoBuf( cs ) : PelUnitBuf();
   m_cLoopFilter.loopFilterPic( cs, codingInfoBuf, storeCodingInfo );

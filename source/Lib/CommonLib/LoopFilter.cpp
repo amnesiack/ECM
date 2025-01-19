@@ -151,7 +151,7 @@ void LoopFilter::destroy()
  \param  pcPic   picture class (Pic) pointer
  */
 void LoopFilter::loopFilterPic( CodingStructure& cs
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   , PelUnitBuf& alfCodingInfo, bool storeInfo
 #endif
                                 )
@@ -196,7 +196,7 @@ void LoopFilter::loopFilterPic( CodingStructure& cs
           continue;
         }
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
         xDeblockCU( currCU, EDGE_VER, storeInfo, alfCodingInfo );
 #else
         xDeblockCU( currCU, EDGE_VER );
@@ -222,7 +222,7 @@ void LoopFilter::loopFilterPic( CodingStructure& cs
             continue;
           }
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
           xDeblockCU( currCU, EDGE_VER, storeInfo, alfCodingInfo );
 #else
           xDeblockCU( currCU, EDGE_VER );
@@ -256,7 +256,7 @@ void LoopFilter::loopFilterPic( CodingStructure& cs
           continue;
         }
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
         xDeblockCU( currCU, EDGE_HOR, storeInfo, alfCodingInfo );
 #else
         xDeblockCU( currCU, EDGE_HOR );
@@ -281,7 +281,7 @@ void LoopFilter::loopFilterPic( CodingStructure& cs
             continue;
           }
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
           xDeblockCU( currCU, EDGE_HOR, storeInfo, alfCodingInfo );
 #else
           xDeblockCU( currCU, EDGE_HOR );
@@ -318,7 +318,7 @@ void LoopFilter::resetFilterLengths()
  \param cu               the CU to be deblocked
  \param edgeDir          the direction of the edge in block boundary (horizontal/vertical), which is added newly
 */
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
 void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir, bool storeInfo, PelUnitBuf& alfCodingInfo )
 #else
 void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
@@ -448,7 +448,7 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
   }
 
   const unsigned uiPelsInPart = pcv.minCUWidth;
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   auto storeBoundaryInfo = [this, cu, uiPelsInPart, edgeDir]( char bs, Position pos, ComponentID comp, PelUnitBuf& bsBuf) -> void
   {
     Size sz;
@@ -505,7 +505,7 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
 #endif
         {
           bS |= xGetBoundaryStrengthSingle( cu, edgeDir, localPos, CHANNEL_TYPE_LUMA );
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
           if( cu.blocks[COMPONENT_Y].valid() && storeInfo )
           {
             storeBoundaryInfo(bS, Position(area.x + x, area.y + y), COMPONENT_Y, alfCodingInfo);

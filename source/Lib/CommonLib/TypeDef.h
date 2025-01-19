@@ -506,6 +506,7 @@
 #define JVET_AI0058_ALF_RELAXED_RDO_LUMA                  1 // JVET-AI0058: Relaxed ALF Luma RDO
 #define JVET_AI0166_CCALF_CHROMA_SAO_INPUT                1 // JVET-AI0166: CCALF with Chroma inputs
 #define JVET_AJ0188_CODING_INFO_CLASSIFICATION            1 // JVET-AJ0188: Coding Information based Classification for ALF
+#define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
 
 // SIMD optimizations
 #if IF_12TAP
