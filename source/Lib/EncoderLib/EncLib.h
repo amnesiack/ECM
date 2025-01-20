@@ -156,6 +156,9 @@ private:
   CacheModel                m_cacheModel;
 #endif
 
+#if JVET_AK0065_TALF
+  APS*                      m_apss2[ALF_CTB_MAX_NUM_APS];
+#endif
   APS*                      m_apss[ALF_CTB_MAX_NUM_APS];
 
   APS*                      m_lmcsAPS;
@@ -174,6 +177,9 @@ private:
 public:
   SPS*                      getSPS( int spsId ) { return m_spsMap.getPS( spsId ); };
   APS**                     getApss() { return m_apss; }
+#if JVET_AK0065_TALF
+  APS**                     getApss2() { return m_apss2; }
+#endif
   Ctx                       m_entropyCodingSyncContextState;      ///< leave in addition to vector for compatibility
   PLTBuf                    m_palettePredictorSyncState;
 #if JVET_AC0096 || JVET_AG0116

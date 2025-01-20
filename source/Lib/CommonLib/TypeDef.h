@@ -234,6 +234,7 @@
 #if JVET_AH0209_PDP
 #define JVET_AI0208_PDP_MIP                               1 // JVET_AI0208: Modifications to Matrix-based intra prediction
 #endif
+#define JVET_AK0061_PDP_MPM                               1 // JVET-AK0061: On MPM with matrix-based position dependent intra prediction
 #define JVET_AI0136_ADAPTIVE_DUAL_TREE                    1 // JVET-AI0136: Adaptive dual tree in inter slices
 #define JVET_AJ0057_HL_INTRA_METHOD_CONTROL               1 // JVET-AJ0057: High-level control of intra prediction methods
 
@@ -275,6 +276,7 @@
 #define JVET_AI0082_TEMPORAL_BV                           1 // JVET-AI0081: Temporal BV for IBC merge list construction
 #define JVET_AJ0096_SATD_REORDER_INTRA                    1 // JVET-AJ0096: SATD-based reordering for intra coding
 #define JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA               1 // JVET-AJ0172: Unified reference area of IBC and IntraTMP
+#define JVET_AK0076_EXTENDED_OBMC_IBC                     1 // JVET-AK0076: Extended OBMC for non-inter blocks
 
 #if JVET_AC0071_DBV && JVET_V0130_INTRA_TMP
 #define JVET_AF0066_ENABLE_DBV_4_SINGLE_TREE              1 // JVET-AF0066: Enable DBV mode in single tree configuration
@@ -460,6 +462,7 @@
 #define JVET_AI0050_INTER_MTSS                            1 // JVET-AI0050: Multiple LFNST/NSPT kernel set selection for GPM coded block
 #define JVET_AI0050_SBT_LFNST                             1 // JVET-AI0050: Enable LFNST/NSPT for SBT coded block
 #define JVET_AJ0260_SBT_CORNER_MODE                       1 // JVET-AJ0260: Corner mode for SBT
+#define JVET_AK0064_CCP_LFNST_NSPT                        1 // JVET-AK0064: LFNST/NSPT set derivation for CCP coded block
 
 // Entropy Coding
 #define EC_HIGH_PRECISION                                 1 // CABAC high precision
@@ -473,7 +476,8 @@
 #define JVET_AG0117_CABAC_SPATIAL_TUNING                  1 // JVET-AG0117 5.3: spatial CABAC tuning
 #define JVET_AH0176_LOW_DELAY_B_CTX                       1 // JVET-AH0176 6.1: context initialization for B-slice
 #define JVET_AI0281_CABAC_RETRAIN                         1 // JVET-AI0281: context initialization training
-
+#define JVET_AK0135_CABAC_RETRAIN                         1 // JVET-AK0135: context initialization training
+							    //
 // Loop filters
 #define ALF_IMPROVEMENT                                   1 // ALF improvement
 #define EMBEDDED_APS                                      1 // Embed APS into picture header
@@ -507,6 +511,8 @@
 #define JVET_AI0058_ALF_RELAXED_RDO_LUMA                  1 // JVET-AI0058: Relaxed ALF Luma RDO
 #define JVET_AI0166_CCALF_CHROMA_SAO_INPUT                1 // JVET-AI0166: CCALF with Chroma inputs
 #define JVET_AJ0188_CODING_INFO_CLASSIFICATION            1 // JVET-AJ0188: Coding Information based Classification for ALF
+#define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
+#define JVET_AK0065_TALF                                  1 // JVET-AK0065: Temporal ALF
 
 // SIMD optimizations
 #if IF_12TAP
@@ -909,6 +915,18 @@ typedef       uint64_t        Distortion;        ///< distortion measurement
 // Enumeration
 // ====================================================================================================================
 
+#if JVET_AK0065_TALF
+enum TAlfFilterMode
+{
+  FORWARD_TALF_MV,
+  BACKWARD_TALF_MV,
+  BIDIR_TALF_MV,
+  FORWARD_TALF,
+  BACKWARD_TALF,
+  BIDIR_TALF,
+  NUM_TALF_MODE
+};
+#endif
 #if JVET_AA0096_MC_BOUNDARY_PADDING
 enum PadDirection
 {
@@ -934,6 +952,9 @@ enum ApsType
   ALF_APS = 0,
   LMCS_APS = 1,
   SCALING_LIST_APS = 2,
+#if JVET_AK0065_TALF
+  TALF_APS = 3,
+#endif
 };
 
 enum QuantFlags

@@ -830,6 +830,9 @@ public:
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   static const CtxSet   InterCcpMergeZeroRootCbfIdc;
 #endif
+#if JVET_AK0065_TALF
+  static const CtxSet   TAlfFilterControlFlag;
+#endif
   static const unsigned NumberOfContexts;
 
   // combined sets for less complex copying

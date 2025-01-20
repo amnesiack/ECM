@@ -495,6 +495,13 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           pu->intraDir[0] = m_pcIntraPred->m_tmrlList[currCU.tmrlListIdx].intraDir;
         }
 #endif
+#if JVET_AK0061_PDP_MPM
+        else if (currCU.plIdx) 
+        {
+          currCU.firstPU->intraDir[0] = PLANAR_IDX;
+        }
+#endif
+
         else if (currCU.firstPU->parseLumaMode)
         {
           const CompArea &area = currCU.Y();
@@ -508,13 +515,23 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           uint8_t* mpmPred = m_pcIntraPred->m_intraMPM;  // mpm_idx / rem_intra_luma_pred_mode
           uint8_t* nonMpmPred = m_pcIntraPred->m_intraNonMPM;
 #if JVET_AD0085_MPM_SORTING
+#if JVET_AK0061_PDP_MPM
+          bool enablePlanarSort = false;
+          enablePlanarSort = PU::determinePDPTemp(*currCU.firstPU);
+          if (PU::allowMPMSorted(*currCU.firstPU) && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0 && !enablePlanarSort))
+#else
           if (PU::allowMPMSorted(*currCU.firstPU) && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0))
+#endif
           {
             PU::getIntraMPMs(*currCU.firstPU, mpmPred, nonMpmPred
 #if JVET_AC0094_REF_SAMPLES_OPT
-                           , true
+              , true
+              , true
+              , true
 #endif
-                           , m_pcIntraPred
+
+
+              , m_pcIntraPred
             );
           }
           else
@@ -523,6 +540,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           PU::getIntraMPMs( *currCU.firstPU, mpmPred, nonMpmPred
 #if JVET_AC0094_REF_SAMPLES_OPT
                            , false
+#endif
+#if JVET_AK0061_PDP_MPM
+            , true, false, m_pcIntraPred
 #endif
           );
 #if JVET_AD0085_MPM_SORTING
@@ -1143,6 +1163,10 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #endif
   if( compID != COMPONENT_Y && PU::isLMCMode( uiChFinalMode ) )
   {
+#if JVET_AK0064_CCP_LFNST_NSPT
+    if (compID == COMPONENT_Cb)
+    {
+#endif
 #if JVET_AD0188_CCP_MERGE
     PredictionUnit& pu = *tu.cu->firstPU;
 #else
@@ -1150,6 +1174,16 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #endif
     m_pcIntraPred->xGetLumaRecPixels( pu, area );
     m_pcIntraPred->predIntraChromaLM( compID, piPred, pu, area, uiChFinalMode );
+#if JVET_AK0064_CCP_LFNST_NSPT
+      {
+        CompArea areaCr = pu.Cr();
+        m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
+        PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+        m_pcIntraPred->xGetLumaRecPixels(pu, areaCr);
+        m_pcIntraPred->predIntraChromaLM(COMPONENT_Cr, predCr, pu, areaCr, uiChFinalMode);
+      }
+    }
+#endif
   }
   else
   {
@@ -1272,6 +1306,10 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
             else
             {
               piPred.linearTransform(arrayLicParams[1], arrayLicParams[0], arrayLicParams[2], true, (tu.cu)->cs->slice->clpRng(COMPONENT_Y));
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+              pu.cu->licScale[0][COMPONENT_Y] = arrayLicParams[1];
+              pu.cu->licOffset[0][COMPONENT_Y] = arrayLicParams[2];
+#endif
             }
           }
         }
@@ -1308,6 +1346,19 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #else
       m_pcIntraPred->generateTMPrediction(piPred.buf, piPred.stride, pu.lwidth(), pu.lheight(), foundCandiNum);
 #endif
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      PU::spanMotionInfo(pu);
+      if (pu.cu->obmcFlag)
+      {
+        pu.cu->isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+        m_pcInterPred->subBlockOBMC(pu, nullptr, m_pcIntraPred, true);
+#else
+        m_pcInterPred->subBlockOBMC(pu, nullptr, true);
+#endif
+        pu.cu->isobmcMC = false;
+      }
 #endif
 		  assert(foundCandiNum >= 1);
 	  }
@@ -1419,6 +1470,8 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     }
   }
 #if SIGN_PREDICTION
+#if JVET_AK0064_CCP_LFNST_NSPT
+  if (isJCCR && compID == COMPONENT_Cb && !PU::isLMCMode(uiChFinalMode))
 #if JVET_AA0057_CCCM
 #if JVET_AD0188_CCP_MERGE
   if (isJCCR && compID == COMPONENT_Cb && !pu.cccmFlag && !pu.idxNonLocalCCP
@@ -1439,6 +1492,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     && !pu.decoderDerivedCcpMode
 #endif
     )
+#endif
 #endif
   {
     m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
@@ -1491,6 +1545,16 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       }
     }
   }
+  }
+#endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  if (compID != COMPONENT_Y)
+  {
+    if (compID == COMPONENT_Cb && PU::isLMCMode(uiChFinalMode) && tu.cu->lfnstIdx)
+    {
+      PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+      IntraPrediction::deriveChromaIpmForTransform(piPred, predCr, *pu.cu);
+    }
   }
 #endif
   const Slice           &slice = *cs.slice;
@@ -1866,16 +1930,22 @@ void DecCu::xReconIntraQT( CodingUnit &cu )
     }
   }
 #if JVET_W0123_TIMD_FUSION
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (cu.blocks[CHANNEL_TYPE_LUMA].valid() && !cu.tmpFlag)
+#else
   if (cu.blocks[CHANNEL_TYPE_LUMA].valid())
+#endif
   {
     PU::spanIpmInfoIntra(*cu.firstPU);
   }
 #endif
 #if JVET_AB0061_ITMP_BV_FOR_IBC
+#if !JVET_AK0076_EXTENDED_OBMC_IBC
   if (cu.blocks[CHANNEL_TYPE_LUMA].valid() && cu.tmpFlag)
   {
     PU::spanMotionInfo(*cu.firstPU);
   }
+#endif
 #endif
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
@@ -2289,15 +2359,28 @@ void DecCu::xReconInter(CodingUnit &cu)
     }
 #endif
 #if JVET_AD0213_LIC_IMP
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    if (cu.licFlag || cu.ibcLicFlag)
+#else
     if (cu.licFlag)
+#endif
     {
       Slice* slice = cu.slice;
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      bool disCond = (!CU::isIBC(cu) && cu.firstPU->ciipFlag && !(((slice->getPOC() - slice->getRefPOC(REF_PIC_LIST_0, 0)) == 1) && slice->getCheckLDC()))
+        || (CU::isIBC(cu) && (cu.firstPU->ibcCiipFlag || cu.firstPU->ibcGpmFlag || cu.ibcFilterFlag));
+#else
       bool disCond = cu.firstPU->ciipFlag && !(((slice->getPOC() - slice->getRefPOC(REF_PIC_LIST_0, 0)) == 1) && slice->getCheckLDC());
+#endif
       for (int list = 0; list < 2; list++)
       {
         if (cu.firstPU->refIdx[list] >= 0)
         {
+#if JVET_AC0112_IBC_LIC && JVET_AK0076_EXTENDED_OBMC_IBC
+          for (int comp = 0; comp < (chroma ? MAX_NUM_COMPONENT : 1); comp++)
+#else
           for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+#endif
           {
             if (disCond)
             {
@@ -2387,6 +2470,15 @@ void DecCu::xReconInter(CodingUnit &cu)
 #if JVET_AC0112_IBC_CIIP
     if (CU::isIBC(cu) && cu.firstPU->ibcCiipFlag)
     {
+#if ENABLE_OBMC && JVET_AK0076_EXTENDED_OBMC_IBC
+      cu.isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      m_pcInterPred->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraPred, !(isChromaEnabled(cu.chromaFormat) && cu.Cb().valid()));
+#else
+      m_pcInterPred->subBlockOBMC(*cu.firstPU, nullptr, !(isChromaEnabled(cu.chromaFormat) && cu.Cb().valid()));
+#endif
+      cu.isobmcMC = false;
+#endif
       const UnitArea localUnitArea( cu.cs->area.chromaFormat, Area( 0, 0, cu.Y().width, cu.Y().height ) );
       m_pcIntraPred->geneWeightedPred( COMPONENT_Y, cu.cs->getPredBuf( *cu.firstPU ).Y(), *cu.firstPU, cu.cs->getPredBuf( *cu.firstPU ).Y(), m_ciipBuffer.getBuf( localUnitArea.Y() ) );
 #if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
@@ -2478,7 +2570,12 @@ void DecCu::xReconInter(CodingUnit &cu)
   cu.isobmcMC = true;
 #if JVET_X0090_CIIP_FIX
 #if JVET_Y0065_GPM_INTRA
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  bool isIbcGpmIntra = cu.firstPU->ibcGpmFlag && (cu.firstPU->ibcGpmMergeIdx0 >= IBC_GPM_MAX_NUM_UNI_CANDS || cu.firstPU->ibcGpmMergeIdx1 >= IBC_GPM_MAX_NUM_UNI_CANDS);
+  if (!cu.firstPU->ciipFlag && !cu.firstPU->gpmIntraFlag && !cu.firstPU->ibcCiipFlag && !isIbcGpmIntra
+#else
   if (!cu.firstPU->ciipFlag && !cu.firstPU->gpmIntraFlag
+#endif
 #if JVET_AG0164_AFFINE_GPM
     && (!cu.firstPU->affineGPM[0] && !cu.firstPU->affineGPM[1])
 #endif
@@ -2488,7 +2585,11 @@ void DecCu::xReconInter(CodingUnit &cu)
 #endif
   {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    m_pcInterPred->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraPred, !(isChromaEnabled(cu.chromaFormat) && cu.Cb().valid()));
+#else
     m_pcInterPred->subBlockOBMC(*cu.firstPU, nullptr, m_pcIntraPred);
+#endif
 #else
     m_pcInterPred->subBlockOBMC(*cu.firstPU);
 #endif
@@ -4267,8 +4368,15 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
                 auto mrgCandIdx = pu.mergeIdx;
                 PU::getIBCMergeCandidates(pu, mrgCtx);
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+                bool tmpGpm = pu.ibcGpmFlag;
+                pu.ibcGpmFlag = false;
+#endif
                 m_pcInterPred->adjustIBCMergeCandidates(pu, mrgCtx, 0, IBC_MRG_MAX_NUM_CANDS_MEM);
 
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+                pu.ibcGpmFlag = tmpGpm;
+#endif
 #if JVET_AE0169_BIPREDICTIVE_IBC
                 if (pu.ibcMergeIdx1 != MAX_INT)
                 {

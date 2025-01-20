@@ -333,6 +333,12 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   dimdChromaModeSecond = other.dimdChromaModeSecond;
 #endif
 #endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  for (int i = 0; i < 4; i++)
+  {
+    ccpChromaDimdMode[i] = other.ccpChromaDimdMode[i];
+  }
+#endif
 #if JVET_AB0157_INTRA_FUSION
   for( int i = 0; i < DIMD_FUSION_NUM-1; i++ )
   {
@@ -683,6 +689,12 @@ void CodingUnit::initData()
 #if JVET_AC0094_REF_SAMPLES_OPT
   dimdChromaModeSecond = -1;
 #endif
+#endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  for (int i = 0; i < 4; i++)
+  {
+    ccpChromaDimdMode[i] = -1;
+  }
 #endif
 #if JVET_AB0157_INTRA_FUSION
   for( int i = 0; i < DIMD_FUSION_NUM-1; i++ )

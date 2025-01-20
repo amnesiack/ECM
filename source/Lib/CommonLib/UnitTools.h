@@ -257,6 +257,10 @@ namespace PU
 #if JVET_AC0094_REF_SAMPLES_OPT
                  , const bool &isForcedValid
 #endif
+#if JVET_AK0061_PDP_MPM
+    , const bool& enableNonSortPDP = false
+    , const bool& mpmSort = false
+#endif
 #if JVET_AD0085_MPM_SORTING
                  , IntraPrediction* pIntraPred = nullptr
 #endif
@@ -265,6 +269,10 @@ namespace PU
 #else
   int  getIntraMPMs(const PredictionUnit &pu, unsigned *mpm, const ChannelType &channelType = CHANNEL_TYPE_LUMA);
 #endif
+#if JVET_AK0061_PDP_MPM
+  bool determinePDPTemp(const PredictionUnit& pu);
+#endif
+
 #if JVET_Y0065_GPM_INTRA
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitDir, uint8_t shape, bool doInit, bool doInitAL = true, bool doInitA = true, bool doInitL = true);
@@ -1526,12 +1534,31 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
                 , const bool& isForcedValid
 #endif
                 , bool extPrecision = false
+#if JVET_AK0061_PDP_MPM
+  , const bool& pdpRefAvailable = false
+#endif
 #if JVET_AD0085_MPM_SORTING
+#if JVET_AK0061_PDP_MPM
+  , const bool& mpmSort = false
+#endif
+
                 , IntraPrediction* pIntraPred = nullptr
 #endif
 );
-void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, const int numCand, bool extPrecision = false);
-void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm);
+void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, const int numCand, bool extPrecision = false
+#if JVET_AK0061_PDP_MPM
+  , const bool& pdpRefAvailable = false
+#endif
+);
+void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
+#if JVET_AK0061_PDP_MPM
+  , const PredictionUnit& pu, const bool& pdpRefAvailable = false
+#endif
+
+);
+#endif
+#if JVET_AK0061_PDP_MPM
+int getPDPPredMode(const SizeType& width, const SizeType& height, const uint8_t& uiMode, const bool includedMode[]);
 #endif
 
 #if JVET_AG0058_EIP
@@ -1554,6 +1581,13 @@ void getTemporalBv(const PredictionUnit &pu, std::vector<MotionInfo>& temporalMi
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP
 inline bool use2x2EdgeOperator(const Size& sz) { return sz.area() <= DIMD_SMALL_BLOCK_THR ? true : false; };
 #endif 
+
+#if JVET_AK0065_TALF
+bool isBiTAlf(const int tAlfMode);
+bool isMvTAlf(const int tAlfMode);
+bool isFwdTAlf(const int tAlfMode);
+#endif
+
 #if JVET_AG0061_INTER_LFNST_NSPT
 int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP

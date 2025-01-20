@@ -133,6 +133,9 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
   cs.pps              = slice->getPPS();
   memcpy(cs.alfApss, slice->getAlfAPSs(), sizeof(cs.alfApss));
 
+#if JVET_AK0065_TALF
+  memcpy(cs.talfApss, slice->getTAlfAPSs(), sizeof(cs.talfApss));
+#endif
   cs.lmcsAps          = slice->getPicHeader()->getLmcsAPS();
   cs.scalinglistAps   = slice->getPicHeader()->getScalingListAPS();
 

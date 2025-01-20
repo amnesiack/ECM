@@ -657,6 +657,12 @@ private:
 #endif
 #if JVET_AH0209_PDP
   Pel* m_pdpIntraPredBuf[NUM_LUMA_MODE];
+#if JVET_AK0061_PDP_MPM
+  static_vector<ModeInfo, NUM_MOST_PROBABLE_MODES> m_mpmSavedPdpModeList;
+  static_vector<double, NUM_MOST_PROBABLE_MODES> m_mpmSavedPdpRdList;
+  std::pair<ModeInfo, double> m_timdMergeRdModeList;
+  
+#endif
 #endif
 #if JVET_AG0058_EIP
   Pel* m_eipPredBuf[NUM_DERIVED_EIP];

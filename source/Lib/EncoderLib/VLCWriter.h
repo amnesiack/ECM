@@ -132,6 +132,9 @@ public:
 #else
   void  codeAPS                 ( APS* pcAPS );
 #endif
+#if JVET_AK0065_TALF
+  void codeTAlfAps              ( APS *pcAPS );
+#endif
   void  codeAlfAps              ( APS* pcAPS );
   void  codeLmcsAps             ( APS* pcAPS );
   void  codeScalingListAps      ( APS* pcAPS );
@@ -166,6 +169,9 @@ public:
 #endif
 #if JVET_W0066_CCSAO
   void codeCcSao                ( Slice* pcSlice, PicHeader* picHeader, const SPS* sps, const CcSaoComParam& ccSaoParam );
+#endif
+#if JVET_AK0065_TALF
+  void codeTAlfNewFilter        ( const TAlfFilterParam &param );
 #endif
 #if ALF_IMPROVEMENT
   void alfFilter( const AlfParam& alfParam, const bool isChroma, const int altIdx, int order0, int order1 );

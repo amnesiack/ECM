@@ -476,6 +476,11 @@ static const int NUM_GAUSS_FILTERED_COEFF        =                  5;
 static const int NUM_GAUSS_FILTERED_SOURCE       =                  1;
 static const int ALF_PADDING_SIZE_GAUSS_RESULTS  =                  2;
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+static const int NUM_LAPLACIAN_FILTERED_COEFF        =              5;
+static const int NUM_LAPLACIAN_FILTERED_SOURCE       =              1;
+static const int ALF_PADDING_SIZE_LAPLACIAN_RESULTS  =              2;
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
 static const int NUM_DB                      =                      3;
 static const int NUM_DB_SAMPLE               =                      5;
@@ -488,7 +493,11 @@ static const int NUM_DB_PAD                  =                      1;
 
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
 #if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+static const int MAX_NUM_ALF_LUMA_COEFF      =                     11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW + NUM_RESI + 1 + NUM_GAUSS_FILTERED_COEFF + NUM_LAPLACIAN_FILTERED_COEFF;
+#else
 static const int MAX_NUM_ALF_LUMA_COEFF      =                     11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW + NUM_RESI + 1 + NUM_GAUSS_FILTERED_COEFF;
+#endif
 #elif JVET_AD0222_ALF_LONG_FIXFILTER
 static const int MAX_NUM_ALF_LUMA_COEFF = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW + NUM_RESI + 1;
 #elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
@@ -599,6 +608,14 @@ static const int NUM_FIXED_FILTER_SETS       =                     16;
 static const int NUM_TOTAL_FILTER_SETS       =                     NUM_FIXED_FILTER_SETS + ALF_CTB_MAX_NUM_APS;
 #endif
 
+#if JVET_AK0065_TALF
+static const int MAX_NUM_TALF_FILTERS =                             8;
+static const int MAX_TALF_FILTER_SHAPE =                            2;
+static const int NUM_TALF_COEFF =                                  13;
+static const int TALF_SCALE_BIT =                                   6;
+static const int TALF_SBB_SIZE =                                    4;
+static const int NUM_TALF_REUSE_CANDS =                             3;
+#endif
 #if JVET_Z0139_HIST_AFF
 static const int MAX_NUM_AFFHMVP_ENTRIES_ONELIST = 5;
 static const int MAX_NUM_AFFHMVP_ENTRIES = MAX_NUM_AFFHMVP_ENTRIES_ONELIST * 2;
@@ -902,6 +919,11 @@ static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         256; ///<
 static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                         32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
 static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #endif
+#if JVET_AK0061_PDP_MPM
+static const int MPM_SORT_TEMPLATE_SIZE =                             1;
+static const int NUM_PDP_MODES =                                      6;
+#endif
+
 #if SECONDARY_MPM
 static const int NUM_PRIMARY_MOST_PROBABLE_MODES = 6;
 static const int NUM_SECONDARY_MOST_PROBABLE_MODES = 16;

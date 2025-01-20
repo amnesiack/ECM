@@ -331,6 +331,18 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
       }
     }
   }
+
+#if JVET_AK0065_TALF
+  const TAlfControl talfControl = cs.slice->getTileGroupTAlfControl();
+  if (cs.sps->getUseTAlf() && talfControl.enabledFlag)
+  {
+    const int    ry = ctuRsAddr / cs.pcv->widthInCtus;
+    const int    rx = ctuRsAddr % cs.pcv->widthInCtus;
+    const Position lumaPos(rx * cs.pcv->maxCUWidth, ry * cs.pcv->maxCUHeight);
+    readTAlfFilterControlIdc(cs, COMPONENT_Y, ctuRsAddr, cs.slice->m_tAlfCtbControl, lumaPos);
+  }
+#endif
+
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   /*bool isLast =*/ coding_tree( cs, partitioner, cuCtx, qps );
   cs.setLumaPointers( cs );
@@ -450,7 +462,50 @@ void CABACReader::ccAlfFilterControlIdc(CodingStructure &cs, const ComponentID c
   DTRACE(g_trace_ctx, D_SYNTAX, "cc_alf_filter_control_idc() compID=%d pos=(%d,%d) ctxt=%d, filterCount=%d, idcVal=%d\n",
          compID, lumaPos.x, lumaPos.y, ctxt, filterCount, idcVal);
 }
+#if JVET_AK0065_TALF
+void CABACReader::readTAlfFilterControlIdc(CodingStructure &cs, const ComponentID compID, const int curIdx,  TAlfCtbParam *filterControlIdc, Position lumaPos)
+{
+  RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__CROSS_COMPONENT_ALF_BLOCK_LEVEL_IDC );
 
+  Position       leftLumaPos    = lumaPos.offset(-(int)cs.pcv->maxCUWidth, 0);
+  Position       aboveLumaPos   = lumaPos.offset(0, -(int)cs.pcv->maxCUWidth);
+  const uint32_t curSliceIdx    = cs.slice->getIndependentSliceIdx();
+  const uint32_t curTileIdx     = cs.pps->getTileIdx( lumaPos );
+  bool           leftAvail      = cs.getCURestricted( leftLumaPos,  lumaPos, curSliceIdx, curTileIdx, CH_L ) ? true : false;
+  bool           aboveAvail     = cs.getCURestricted( aboveLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L ) ? true : false;
+  int            ctxId           = 0;
+
+  if (leftAvail)
+  {
+    ctxId += ( filterControlIdc[curIdx - 1].enabledFlag ) ? 1 : 0;
+  }
+  if (aboveAvail)
+  {
+    ctxId += ( filterControlIdc[curIdx - cs.pcv->widthInCtus].enabledFlag ) ? 1 : 0;
+  }
+  auto talfControl = cs.slice->getTileGroupTAlfControl();
+  if (talfControl.newFilters)
+  {
+    ctxId += 3;
+  }
+  filterControlIdc[curIdx].reset();
+  filterControlIdc[curIdx].enabledFlag = m_BinDecoder.decodeBin( Ctx::TAlfFilterControlFlag( ctxId ) );
+  if (filterControlIdc[curIdx].enabledFlag)
+  {
+    int      numSets = int(talfControl.apsIds.size());
+    if (numSets > 1 && !talfControl.newFilters)
+    {
+      filterControlIdc[curIdx].setIdx = unary_max_eqprob(numSets - 1);
+    }
+    int       apsId       = talfControl.apsIds[filterControlIdc[curIdx].setIdx];
+    const int filterCount = cs.slice->getTAlfAPSs()[apsId]->getTAlfAPSParam().filterCount;
+    if (filterCount > 1)
+    {
+      filterControlIdc[curIdx].filterIdx = unary_max_eqprob(filterCount - 1);
+    }
+  }
+}
+#endif
 //================================================================================
 //  clause 7.3.8.3
 //--------------------------------------------------------------------------------
@@ -2182,6 +2237,9 @@ void CABACReader::cu_pred_data( CodingUnit &cu )
     {
       bdpcm_mode(cu, ComponentID(CHANNEL_TYPE_CHROMA));
     }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    cu.obmcFlag = isLuma(cu.chType) && cu.lumaSize().area() >= 32;
+#endif
     intra_chroma_pred_modes( cu );
     return;
   }
@@ -2278,9 +2336,19 @@ void CABACReader::cu_bcw_flag(CodingUnit& cu)
 #if ENABLE_OBMC
 void CABACReader::obmc_flag(CodingUnit& cu)
 {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (!cu.cs->sps->getUseOBMC() || cu.predMode == MODE_INTRA
+#else
   if (!cu.cs->sps->getUseOBMC() || CU::isIBC(cu) || cu.predMode == MODE_INTRA
+#endif
 #if INTER_LIC && !JVET_AD0213_LIC_IMP
     || cu.licFlag
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+    || cu.rribcFlipType != 0
+#if JVET_AC0112_IBC_LIC && !JVET_AD0213_LIC_IMP
+    || cu.ibcLicFlag
+#endif
 #endif
     || cu.lwidth() * cu.lheight() < 32
     )
@@ -2288,6 +2356,13 @@ void CABACReader::obmc_flag(CodingUnit& cu)
     cu.obmcFlag = false;
     return;
   }
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if (CU::isIBC(cu))
+  {
+    cu.obmcFlag = true;
+    return;
+  }
+#endif
   if (cu.firstPU->mergeFlag)
   {
     cu.obmcFlag = true;
@@ -2721,13 +2796,21 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     }
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
+#if JVET_AK0061_PDP_MPM
+    const bool& enablePlanarSort = PU::determinePDPTemp(*pu);
+    if (CU::isDirectionalPlanarAvailable(cu) && !enablePlanarSort && pu->ipredIdx == 0 && mpmFlag[k])
+#else
     if (CU::isDirectionalPlanarAvailable(cu) && pu->ipredIdx == 0 && mpmFlag[k])
+#endif
     {
       uint8_t plIdx = 0;
       plIdx         = m_BinDecoder.decodeBin(Ctx::IntraLumaPlanarFlag(2));
       if (plIdx)
       {
         plIdx += m_BinDecoder.decodeBin(Ctx::IntraLumaPlanarFlag(3));
+#if JVET_AK0061_PDP_MPM
+        pu->parseLumaMode = false;
+#endif
       }
       cu.plIdx = plIdx;
       DTRACE(g_trace_ctx, D_SYNTAX, "intra_luma_pred_modes() idx=%d pos=(%d,%d) pl_idx=%d\n", k, pu->lumaPos().x, pu->lumaPos().y, cu.plIdx);

@@ -997,9 +997,18 @@ void HLSyntaxReader::parseAPS( APS* aps )
   aps->setAPSType( ApsType(code) );
 #endif
 #if JVET_R0433
+#if JVET_AK0065_TALF
+  if (aps->getAPSType() != TALF_APS)
+  {
+    uint32_t codeApsChromaPresentFlag;
+    READ_FLAG(codeApsChromaPresentFlag, "aps_chroma_present_flag");
+    aps->chromaPresentFlag = codeApsChromaPresentFlag;
+  }
+#else
   uint32_t codeApsChromaPresentFlag;
   READ_FLAG(codeApsChromaPresentFlag, "aps_chroma_present_flag");
   aps->chromaPresentFlag = codeApsChromaPresentFlag;
+#endif
 #endif
 
   const ApsType apsType = aps->getAPSType();
@@ -1008,6 +1017,12 @@ void HLSyntaxReader::parseAPS( APS* aps )
   {
     parseAlfAps( aps );
   }
+#if JVET_AK0065_TALF
+  else if (apsType == TALF_APS)
+  {
+    parseTAlfAps(aps);
+  }
+#endif
   else if (apsType == LMCS_APS)
   {
     parseLmcsAps( aps );
@@ -1031,6 +1046,16 @@ void HLSyntaxReader::parseAPS( APS* aps )
   xReadRbspTrailingBits();
 }
 
+#if JVET_AK0065_TALF
+void HLSyntaxReader::parseTAlfAps(APS *aps)
+{
+  auto param = aps->getTAlfAPSParam();
+  param.reset();
+  param.newFlag = true;
+  decodeTAlfNewFilter(param);
+  aps->setTAlfAPSParam(param);
+}
+#endif
 void HLSyntaxReader::parseAlfAps( APS* aps )
 {
   uint32_t  code;
@@ -2250,6 +2275,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   {
     pcSPS->setCCALFPrecisionFlag(false);
   }
+#endif
+#if JVET_AK0065_TALF
+  READ_FLAG( uiCode, "sps_talf_enabled_flag ");
+  pcSPS->setUseTAlf(uiCode);
 #endif
 #if SIGN_PREDICTION
   READ_CODE(4, uiCode, "num_predicted_coef_signs");
@@ -3855,6 +3884,51 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
     picHeader->setAlfEnabledFlag(COMPONENT_Cb, false);
     picHeader->setAlfEnabledFlag(COMPONENT_Cr, false);
   }
+#if JVET_AK0065_TALF
+  TAlfControl talfControl;
+  if (sps->getUseTAlf() && pps->getAlfInfoInPhFlag())
+  {
+    READ_FLAG(uiCode, "slice_talf_enabled_flag");
+    talfControl.enabledFlag = uiCode;
+    if (talfControl.enabledFlag)
+    {
+      READ_FLAG(uiCode, "newFilters flag");
+      talfControl.newFilters = uiCode;
+      int numUsingMinus1 = 0;
+      if (!talfControl.newFilters)
+      {
+        READ_CODE(3, uiCode, "the number of sets of talf used in slice");
+        numUsingMinus1 = uiCode;
+        talfControl.apsIds.resize(numUsingMinus1 + 1);
+      }
+      else
+      {
+        talfControl.apsIds.resize(1);
+      }
+      for (int i = 0; i <= numUsingMinus1; i++)
+      {
+        READ_CODE(3, uiCode, "the apsId for locating the stored coefficients");
+        talfControl.apsIds[i] = uiCode;
+      }
+      uint32_t isMv  = 0;
+      uint32_t isBi  = 0;
+      uint32_t isFwd = 0;
+      READ_FLAG(isMv, "isMv");
+      READ_FLAG(isBi, "isBi");
+      if (!isBi)
+      {
+        READ_FLAG(isFwd, "isFwd");
+      }
+      talfControl.mode += (isMv ? 0 : (NUM_TALF_MODE >> 1));
+      talfControl.mode += (isBi ? BIDIR_TALF_MV : 0);
+      if (!isBi)
+      {
+        talfControl.mode += (isFwd ? FORWARD_TALF_MV : BACKWARD_TALF_MV);
+      }
+    }
+  }
+  picHeader->setTAlfControl(talfControl);
+#endif
   // luma mapping / chroma scaling controls
   if (sps->getUseLmcs())
   {
@@ -5204,6 +5278,51 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     parseScaleAlf( pcSlice, sps, parameterSetManager, alfCbUsedFlag, alfCrUsedFlag );
 #endif
   }
+#if JVET_AK0065_TALF
+  TAlfControl talfControl;
+  if (sps->getUseTAlf() && !pps->getAlfInfoInPhFlag())
+  {
+    READ_FLAG(uiCode, "slice_talf_enabled_flag");
+    talfControl.enabledFlag = uiCode;
+    if (talfControl.enabledFlag)
+    {
+      READ_FLAG(uiCode, "newFilters flag");
+      talfControl.newFilters = uiCode;
+      int numUsingMinus1 = 0;
+      if (!talfControl.newFilters)
+      {
+        READ_CODE(3, uiCode, "the number of sets of talf used in slice");
+        numUsingMinus1 = uiCode;
+        talfControl.apsIds.resize(numUsingMinus1 + 1);
+      }
+      else
+      {
+        talfControl.apsIds.resize(1);
+      }
+      for (int i = 0; i <= numUsingMinus1; i++)
+      {
+        READ_CODE(3, uiCode, "the apsId for locating the stored coefficients");
+        talfControl.apsIds[i] = uiCode;
+      }
+      uint32_t isMv  = 0;
+      uint32_t isBi  = 0;
+      uint32_t isFwd = 0;
+      READ_FLAG(isMv, "isMv");
+      READ_FLAG(isBi, "isBi");
+      if (!isBi)
+      {
+        READ_FLAG(isFwd, "isFwd");
+      }
+      talfControl.mode += (isMv ? 0 : (NUM_TALF_MODE >> 1));
+      talfControl.mode += (isBi ? BIDIR_TALF_MV : 0);
+      if (!isBi)
+      {
+        talfControl.mode += (isFwd ? FORWARD_TALF_MV : BACKWARD_TALF_MV);
+      }
+    }
+  }
+  pcSlice->setTileGroupTAlfControl(talfControl);
+#endif
   if (picHeader->getLmcsEnabledFlag() && !pcSlice->getPictureHeaderInSliceHeader())
   {
     READ_FLAG(uiCode, "slice_lmcs_enabled_flag");
@@ -7071,6 +7190,39 @@ bool HLSyntaxReader::xMoreRbspData()
   return (cnt>0);
 }
 
+#if JVET_AK0065_TALF
+void HLSyntaxReader::decodeTAlfNewFilter( TAlfFilterParam &param )
+{
+  uint32_t filterCountMinus1      = 0;
+  READ_UVLC(filterCountMinus1, "filterCountMinus1");
+  param.filterCount = filterCountMinus1 + 1;
+  uint32_t shapeIdx = 0;
+  READ_FLAG(shapeIdx, "param.shapeIdx");
+  param.shapeIdx = shapeIdx;
+  const int numCoeff = NUM_TALF_COEFF;
+  for (int fIdx = 0; fIdx <= filterCountMinus1; fIdx++)
+  {
+    uint32_t k = 0;
+    READ_FLAG(k, "k");
+    uint32_t shift = 0;
+    READ_CODE(2, shift, "param.shift[fIdx]");
+    param.shift[fIdx] = shift + TALF_SCALE_BIT;
+    uint32_t clipFlag = 0;
+    READ_FLAG(clipFlag, "param.clipFlag[fIdx]");
+    param.clipFlag[fIdx] = clipFlag;
+    for (int cIdx = 0; cIdx < numCoeff; cIdx++)
+    {
+      param.coeff[fIdx][cIdx] = alfGolombDecode(k);
+      if (param.coeff[fIdx][cIdx] && param.clipFlag[fIdx])
+      {
+        uint32_t clipIdx = 0;
+        READ_CODE(2, clipIdx, "tAlfParam.param.clipIdx[fIdx][cIdx]");
+        param.clipIdx[fIdx][cIdx] = clipIdx;
+      }
+    }
+  }
+}
+#endif
 #if JVET_W0066_CCSAO
 void HLSyntaxReader::parseCcSao( Slice* pcSlice, PicHeader* picHeader, const SPS* sps, CcSaoComParam& ccSaoParam )
 {

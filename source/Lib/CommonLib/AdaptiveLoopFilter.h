@@ -145,6 +145,9 @@ public:
   void create( const int picWidth, const int picHeight, const ChromaFormat format, const int maxCUWidth, const int maxCUHeight, const int maxCUDepth, const int inputBitDepth[MAX_NUM_CHANNEL_TYPE] );
 #endif
   void destroy();
+#if JVET_AK0065_TALF
+  void TAlfProcess(CodingStructure &cs);
+#endif
 #if RPR_ENABLE
   Size  getAlfSize() { return Size(m_tempBuf.get(COMPONENT_Y).width, m_tempBuf.get(COMPONENT_Y).height); }
 #endif
@@ -271,7 +274,17 @@ public:
   static void calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
   void(  *m_calcAlfLumaCodingInfoBlk )( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  void paddingLaplacianResultsPic(Pel ***laplacianPic, const int storeIdx);
+  void paddingLaplacianResultsCtu(Pel ***laplacianPic, Pel ***laplacianCtu, const int storeIdx, const Area &blkDst);
+  void deriveLaplacianResultsCtuBoundary(Pel*** laplacianPic, const CPelBuf &srcLuma, const Area &blkDst, CodingStructure& cs, const ClpRng &clpRng, const Pel clippingValues[4], uint8_t* ctuEnableFlagLuma, uint8_t* ctuEnableOnlineLuma, int ctuIdx, const int filterSetIdx, const int storeIdx, const CPelBuf &srcCodingInfo);
+  void deriveLaplacianResultsBlk( Pel*** laplacianPic, const CPelBuf &srcLuma, const Area &blkDst, const Area &blk, CodingStructure& cs, const ClpRng &clpRng, const Pel clippingValues[4], int filterSetIdx, const int storeIdx, const CPelBuf &srcCodingInfo );
+  void deriveLaplacianResults(const CPelBuf& srcLuma, const Area& blkDst, const Area& blk, CodingStructure &cs, const int filterSetIdx, const int storeIdx, const CPelBuf &srcCodingInfo);
 
+  static void laplacianFiltering(CodingStructure &cs, Pel ***laplacianPic, const CPelBuf &srcLuma, const Area &blkDst, const Area &blk, const ClpRng &clpRng, const Pel clippingValues[4], int filterSetIdx, int storeIdx, const CPelBuf &srcCodingInfo);
+  void(*m_laplacianFiltering)   (CodingStructure &cs, Pel ***laplacianPic, const CPelBuf &srcLuma, const Area &blkDst, const Area &blk, const ClpRng &clpRng, const Pel clippingValues[4], int filterSetIdx, int storeIdx, const CPelBuf &srcCodingInfo);
+  static void localGaussianFiltering(CodingStructure &cs, const Pel* srcPtrGauss, int strideSrc, int i , int j, const ClpRng &clpRng, const Pel clippingValues[4], Pel gaussOutput[], int gaussOutputLoc);
+#endif
   int assignAct(int avg_varPrec, int shift, int noAct);
   static void calcClass(AlfClassifier **classifier, const Area &blkDst, const Area &cu, int dirWindSize, int classDir, int noDir, int noAct, int bitDepth, int subBlkSize, int mappingDir[NUM_DIR_FIX][NUM_DIR_FIX], uint32_t **laplacian[NUM_DIRECTIONS]);
   static void deriveClassificationLaplacianBig(const Area &curBlk, uint32_t **laplacian[NUM_DIRECTIONS]);
@@ -461,6 +474,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+    , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -486,6 +502,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                          , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                         , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -497,6 +516,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                          , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                         , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -507,6 +529,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                    , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                   , Pel*** laplacianPic, Pel*** laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
@@ -532,6 +557,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                          , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                         , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -542,6 +570,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                          , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                         , Pel*** laplacianPic, Pel*** laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
@@ -554,6 +585,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                          , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                         , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -564,6 +598,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                         , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                        , Pel*** laplacianPic, Pel*** laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
@@ -577,6 +614,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                        , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                       , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -587,6 +627,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                        , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                       , Pel*** laplacianPic, Pel*** laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
@@ -600,6 +643,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                        , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                       , Pel*** laplacianPic, Pel*** laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -612,6 +658,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , Pel ***laplacianPic, Pel ***laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -622,6 +671,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , Pel ***laplacianPic, Pel ***laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
@@ -634,6 +686,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , Pel ***laplacianPic, Pel ***laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -645,6 +700,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
                        , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                       , Pel*** laplacianPic, Pel*** laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
@@ -847,6 +905,37 @@ public:
   CcAlfFilterParam &getCcAlfFilterParam() { return m_ccAlfFilterParam; }
   uint8_t* getCcAlfControlIdc(const ComponentID compID)   { return m_ccAlfFilterControl[compID-1]; }
 
+# if JVET_AK0065_TALF
+  TAlfCtbParam*        m_tAlfCtbControl;
+  std::vector<refComb> m_refCombs;
+  TAlfCtbParam*        getTAlfControl () { return m_tAlfCtbControl; }
+  void getRefPics(const CodingStructure &cs);
+  bool getMotionOffset(const CodingStructure &cs, const Position pos, MvField* mvField, const int mode, const int shapeIdx);
+  static void setBiInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs
+    , const ComponentID compId, const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF]
+    , const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF], const Position curPos, const int shapeIdx, const int picWidth
+    , const int picHeight, const int mode, std::vector<refComb>& refCombs, MvField* mvField, const int numOfClips);
+  static void setUniInput(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs
+    , const ComponentID compId, const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF]
+    , const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF], const Position curPos, const int shapeIdx, const int picWidth
+    , const int picHeight, const int mode, std::vector<refComb>& refCombs, MvField* mvField, const int numOfClips);
+  static void filterBatchTAlf(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const int *filterCoeff
+    , const Position pos, PelBuf &dstBuf, PelBuf &recBuf, const int numCoeff, const int offset, const int shift
+    , const ClpRng& clpRng);
+  static int groupSumTAlf(Pel* a, Pel* b);
+  void filterBlkTAlf(CodingStructure &cs, const ComponentID compId, PelBuf &recBuf0, PelBuf &recBuf1, const UnitArea& ctu
+    , TAlfCtbParam& ctbControl, std::vector<TAlfFilterParam>& params, const TAlfControl talfControl);
+  void applyTAlfFilter(CodingStructure &cs, const ComponentID compId, PelUnitBuf &recAfterALF, PelUnitBuf &recBeforeALF
+    , std::vector<TAlfFilterParam>& params, TAlfCtbParam* tAlfControl, const TAlfControl talfControl);
+  void (*m_setTAlfInput[2])(Pel input[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const CodingStructure& cs
+    , const ComponentID compId, const CPelBuf& recBuf, const Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF]
+    , const Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF], const Position curPos, const int shapeIdx, const int picWidth
+    , const int picHeight, const int mode, std::vector<refComb>& refCombs, MvField* mvField, const int numOfClips);
+  int  (*m_groupSumTAlf)(Pel *a, Pel *b);
+  void (*m_filterBatchTAlf)(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE], const int *filterCoeff
+    , const Position pos, PelBuf &dstBuf, PelBuf &recBuf, const int numCoeff, const int offset, const int shift
+    , const ClpRng& clpRng);
+#endif
 #ifdef TARGET_SIMD_X86  
   void initAdaptiveLoopFilterX86();
   template <X86_VEXT vext>
@@ -951,6 +1040,10 @@ protected:
   Pel***                       m_gaussPic;
   Pel***                       m_gaussCtu;
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  Pel***                       m_laplacianPic;
+  Pel***                       m_laplacianCtu;
+#endif
   const int                    usedWindowIdx[NUM_CLASSIFIER] = { 1, 5 };
   int                          m_mappingDir[NUM_DIR_FIX][NUM_DIR_FIX];
   uint32_t**                   m_laplacian[NUM_DIRECTIONS];
@@ -980,7 +1073,7 @@ protected:
   PelStorage                   m_tempBufSAO;
   PelStorage                   m_tempBufSAO2;
 #endif
-#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   PelStorage                   m_tempBufCodingInfo;
   PelStorage                   m_tempBufCodingInfo2;
 #endif

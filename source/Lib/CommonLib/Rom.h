@@ -60,6 +60,10 @@ void         destroyROM();
 // ====================================================================================================================
 // Data structure related table & variable
 // ====================================================================================================================
+#if JVET_AK0061_PDP_MPM
+extern const bool g_sBlkPdpMode[NUM_LUMA_MODE];
+extern const bool g_bBlkPdpMode[NUM_LUMA_MODE];
+#endif
 
 #if JVET_AH0209_PDP
 extern const int g_sizeData[PDP_NUM_SIZES][11];

@@ -548,7 +548,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
     if( PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
 #endif
     {
+#if JVET_AK0064_CCP_LFNST_NSPT
+      intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+#else
       intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
       if (intraMode == PNN_IDX)
       {
@@ -923,7 +927,11 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
     if( PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
 #endif
     {
+#if JVET_AK0064_CCP_LFNST_NSPT
+      intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+#else
       intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
       if (intraMode == PNN_IDX)
       {
@@ -3414,7 +3422,11 @@ int TrQuant::getLfnstIdx(const TransformUnit &tu, ComponentID compID)
   if (PU::isLMCMode(tu.cs->getPU(area.pos(), toChannelType(compID))->intraDir[toChannelType(compID)]))
 #endif
   {
+#if JVET_AK0064_CCP_LFNST_NSPT
+    intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+#else
     intraMode = PU::getCoLocatedIntraLumaMode(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+#endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
     if (intraMode == PNN_IDX)
     {
