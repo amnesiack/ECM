@@ -3366,6 +3366,9 @@ void  AdaptiveLoopFilter::alfFiltering( AlfClassifier **classifier, const PelUni
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
       , gaussPic, gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , laplacianPic, laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
       , coeffBits
 #endif
@@ -3380,6 +3383,9 @@ void  AdaptiveLoopFilter::alfFiltering( AlfClassifier **classifier, const PelUni
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
       , gaussPic, gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , laplacianPic, laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
       , coeffBits
 #endif
@@ -3393,6 +3399,9 @@ void  AdaptiveLoopFilter::alfFiltering( AlfClassifier **classifier, const PelUni
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
       , gaussPic, gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , laplacianPic, laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
       , coeffBits
