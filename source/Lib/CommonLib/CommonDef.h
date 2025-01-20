@@ -2468,4 +2468,14 @@ static const int SGPM_NUM_BVS = 6; // maximum BVs to be considered into the list
 static const int SGPM_BV_START_IDX = NUM_LUMA_MODE;
 #endif
 
+
+#if JVET_AK0185_TMVP_SELECTION
+static const int COLLECT_REF_FIRST = 4;
+static const int COLLECT_POS_FIRST = 8;
+
+static const int COLLECT_TMVP_REF  = 1;
+static const int COLLECT_TMVP_POS  = 2;
+static const int COLLECT_TMVP_BOTH = (COLLECT_TMVP_REF | COLLECT_TMVP_POS);
+#endif
+
 #endif // end of #ifndef  __COMMONDEF__

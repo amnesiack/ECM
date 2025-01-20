@@ -10993,6 +10993,49 @@ void PU::getInterMergeCandidates( const PredictionUnit &pu, MergeCtx& mrgCtx,
       }
     }
 
+#if JVET_AK0185_TMVP_SELECTION
+      Area     picArea = pu.cs->picture->Y();
+      bool     avaC1 = picArea.contains(posC1);
+
+      std::vector<Position> posList = { posC0,     posC1 };
+      std::vector<bool> availList = { isC0Avail, avaC1 };
+
+      bool found = collectTMVP(
+        pu,
+        posList,
+        availList,
+        slice.getCheckLDC() == true ? 0 : -3,
+        0,
+
+        mrgCtx,
+        mrgCandIdx,
+        cnt,
+
+        slice,
+        maxNumMergeCand,
+        mvdSimilarityThresh,
+
+        nullptr, // tmpMrgCtx
+        nullptr, // tmpMrgCtxCnt
+
+        // tmvpFlag
+        slice.getCheckLDC() ? COLLECT_POS_FIRST | COLLECT_TMVP_POS : COLLECT_REF_FIRST | COLLECT_TMVP_REF,
+
+        false,   // useNullRefIdx
+        false,   // checkBiPred
+
+        true,                  // checkValidMergeMvCand,
+        useAmvpMergeMode,      // useAmvpMergeMode,
+        amvpMergeCtxMergeDir,  // amvpMergeCtxMergeDir,
+        amvpRefList            // amvpRefList
+      );
+
+      if (found)
+      {
+        return;
+      }
+
+#else
     Mv        cColMv;
 #if JVET_AI0183_MVP_EXTENSION
     int       iRefIdxControl = slice.getCheckLDC() == true ? 0 : -3;
@@ -11126,6 +11169,7 @@ void PU::getInterMergeCandidates( const PredictionUnit &pu, MergeCtx& mrgCtx,
 #endif
         }
       }
+#endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM
     }
     else if (tmvpMrgCtx->numValidMergeCand > 0)
@@ -14436,6 +14480,39 @@ void PU::getInterBMCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx,
       }
     }
 
+#if JVET_AK0185_TMVP_SELECTION
+    Area     picArea = pu.cs->picture->Y();
+    bool     avaC1 = picArea.contains(posC1);
+     
+    std::vector<Position> posList = { posC0,     posC1}; 
+    std::vector<bool> availList   = { isC0Avail, avaC1};             
+    
+    collectTMVP(
+      pu, 
+      posList, 
+      availList, 
+      0,
+      0,
+
+      mrgCtx,
+      mrgCandIdx,
+      cnt,
+
+      slice, 
+      maxNumMergeCand,
+      mvThreshod,
+
+      nullptr, // tmpMrgCtx
+      nullptr, // tmpMrgCtxCnt
+
+      // tmvpFlag
+      slice.getCheckLDC() ? COLLECT_POS_FIRST | COLLECT_TMVP_POS : COLLECT_REF_FIRST | COLLECT_TMVP_REF,
+
+      true,    // useNullRefIdx
+      true     // checkBiPred
+      ); 
+
+#else
     Mv        cColMv;
     int       iRefIdx = 0;
     int       dir = 0;
@@ -14520,6 +14597,7 @@ void PU::getInterBMCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx,
       }
 #endif
     }
+#endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM
     }
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
@@ -15035,10 +15113,12 @@ void PU::getTmvpBMCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
     Position posC0;
     Position posC1;
 
+#if !JVET_AK0185_TMVP_SELECTION
     int       iRefIdx = 0;
     bool      bExistMV0, bExistMV1;
     Mv        cColMv0, cColMv1;
     int       dir;
+#endif
 
     int offsetX0 = 0, offsetX1 = 0, offsetX2 = 0, offsetX3 = pu.Y().width >> 1;
     int offsetY0 = 0, offsetY1 = 0, offsetY2 = 0, offsetY3 = pu.Y().height >> 1;
@@ -15127,6 +15207,38 @@ void PU::getTmvpBMCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
           }
         }
 
+#if JVET_AK0185_TMVP_SELECTION
+        bool     avaC1 = isC1Avail; 
+        
+        std::vector<Position> posList = { posC0,     posC1}; 
+        std::vector<bool> availList   = { isC0Avail, avaC1}; 
+                                                
+        collectTMVP(
+          pu, 
+          posList, 
+          availList, 
+          0,
+          0,
+
+          mrgCtx,
+          -1,
+          cnt,
+
+          slice, 
+          maxNumMergeCand,
+          mvThreshod,
+
+          nullptr, // tmpMrgCtx
+          nullptr, // tmpMrgCtxCnt
+          
+          // tmvpFlag
+          slice.getCheckLDC() ? COLLECT_POS_FIRST | COLLECT_TMVP_POS : COLLECT_REF_FIRST | COLLECT_TMVP_REF,
+
+          true,    // useNullRefIdx
+          true    // checkBiPred
+        ); 
+
+#else
         bExistMV0 = bExistMV1 = false;
 
         // Candidate with L0 and L1
@@ -15228,6 +15340,7 @@ void PU::getTmvpBMCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
           }
 #endif
         }
+#endif
       }
     }
 }
@@ -15554,9 +15667,11 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
 #else
     int       iRefIdx = 0;
 #endif
+#if !JVET_AK0185_TMVP_SELECTION
     bool      bExistMV0, bExistMV1;
     Mv        cColMv0, cColMv1;
     int       dir;
+#endif
 
     int offsetX0 = 0, offsetX1 = 0, offsetX2 = 0, offsetX3 = pu.Y().width >> 1;
     int offsetY0 = 0, offsetY1 = 0, offsetY2 = 0, offsetY3 = pu.Y().height >> 1;
@@ -15653,6 +15768,39 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
           }
         }
 
+#if JVET_AK0185_TMVP_SELECTION
+        bool     avaC1 = isC1Avail; 
+
+        std::vector<Position> posList = { posC0,     posC1}; 
+        std::vector<bool> availList   = { isC0Avail, avaC1};                
+        iRefIdx = (refIdxControl == 0) ? -3 : 0;
+
+        collectTMVP(
+          pu, 
+          posList, 
+          availList, 
+          iRefIdx,
+          0,
+
+          mrgCtx,
+          -1,
+          cnt,
+
+          slice, 
+          maxNumMergeCand,
+          mvdSimilarityThresh,
+
+          nullptr, // tmpMrgCtx
+          nullptr, // tmpMrgCtxCnt
+
+          // tmvpFlag
+          slice.getCheckLDC() ? COLLECT_POS_FIRST | COLLECT_TMVP_POS : COLLECT_REF_FIRST | COLLECT_TMVP_REF,
+
+          false,   // useNullRefIdx
+          false   // checkBiPred
+          ); 
+        
+#else        
         bExistMV0 = bExistMV1 = false;
 
 #if JVET_AI0183_MVP_EXTENSION
@@ -15842,6 +15990,7 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
 #endif
           }
         }
+#endif
       }
 #if JVET_AI0183_MVP_EXTENSION
       }
@@ -15935,6 +16084,38 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
             }
           }
 
+#if JVET_AK0185_TMVP_SELECTION
+          bool     avaC1 = isC1Avail; 
+
+          std::vector<Position> posList = { posC0,     posC1}; 
+          std::vector<bool> availList   = { isC0Avail, avaC1};           
+                 
+          collectTMVP(
+            pu, 
+            posList, 
+            availList, 
+            iRefIdx,
+            slice.getCheckLDC(),
+
+            mrgCtx,
+            -1,
+            cnt,
+
+            slice, 
+            maxNumMergeCand + 1,
+            mvdSimilarityThresh,
+
+            nullptr, // tmpMrgCtx
+            nullptr, // tmpMrgCtxCnt
+
+            // tmvpFlag
+            slice.getCheckLDC() ? COLLECT_POS_FIRST | COLLECT_TMVP_POS : COLLECT_REF_FIRST | COLLECT_TMVP_REF,
+
+            false,   // useNullRefIdx
+            false    // checkBiPred
+            ); 
+
+#else 
           bExistMV0 = bExistMV1 = false;
 
           // Candidate with L0 and L1
@@ -16097,6 +16278,7 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
 #endif
             }
           }
+#endif
         }
       }
     }
@@ -20454,6 +20636,19 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
             }
             for (int colIdx = 1; colIdx < (pu.cu->slice->isInterB() ? 2 : 1); colIdx++)
             {
+#if JVET_AK0185_TMVP_SELECTION
+              Area     picArea = pu.cs->picture->Y();
+              bool     avaC1 = picArea.contains(posC1);
+             
+              std::vector<Position> posList = { posC0,     posC1}; 
+              std::vector<bool> availList   = { isC0Avail, avaC1};               
+
+              addTmvp2AMVP(pu, eRefPicList, posList, availList, cColMv, refIdxCol, colIdx, pInfo, 
+
+                // oneTmvpFlag
+                pu.cs->slice->getCheckLDC() ? false : true
+                );
+#else
               if ((isC0Avail && getColocatedMVP(pu, eRefPicList, posC0, cColMv, refIdxCol, false, colIdx)) || getColocatedMVP(pu, eRefPicList, posC1, cColMv, refIdxCol, false, colIdx))
               {
                 cColMv.roundTransPrecInternal2Amvr(pu.cu->imv);
@@ -20467,6 +20662,7 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
                 pInfo->mvCand[pInfo->numCand++] = cColMv;
 #endif
               }
+#endif
             }
           }
         }
@@ -20505,6 +20701,18 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
         }
         for (int colIdx = 0; colIdx < (pu.cu->slice->isInterB() ? 2 : 1); colIdx++)
         {
+#if JVET_AK0185_TMVP_SELECTION
+          Area     picArea = pu.cs->picture->Y();
+          bool     avaC1 = picArea.contains(posC1);
+ 
+          std::vector<Position> posList = { posC0,     posC1}; 
+          std::vector<bool> availList   = { isC0Avail, avaC1}; 
+
+          addTmvp2AMVP(pu, eRefPicList, posList, availList, cColMv, refIdxCol, colIdx, pInfo, 
+            // oneTmvpFlag
+            pu.cs->slice->getCheckLDC() ? false : true
+            );
+#else
           if ((isC0Avail && getColocatedMVP(pu, eRefPicList, posC0, cColMv, refIdxCol, false, colIdx)) || getColocatedMVP(pu, eRefPicList, posC1, cColMv, refIdxCol, false, colIdx))
           {
             cColMv.roundTransPrecInternal2Amvr(pu.cu->imv);
@@ -20518,6 +20726,7 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
             pInfo->mvCand[pInfo->numCand++] = cColMv;
 #endif
           }
+#endif
         }
       }
     }
@@ -20555,6 +20764,18 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
       }
       for (int colIdx = 0; colIdx < (pu.cu->slice->isInterB() ? 2 : 1); colIdx++)
       {
+#if JVET_AK0185_TMVP_SELECTION
+        Area     picArea = pu.cs->picture->Y();
+        bool     avaC1 = picArea.contains(posC1);
+
+        std::vector<Position> posList = { posC0,     posC1}; 
+        std::vector<bool> availList   = { isC0Avail, avaC1}; 
+
+        addTmvp2AMVP(pu, eRefPicList, posList, availList, cColMv, refIdxCol, colIdx, pInfo, 
+          // oneTmvpFlag
+          pu.cs->slice->getCheckLDC() ? false : true
+          );
+#else
         if ((isC0Avail && getColocatedMVP(pu, eRefPicList, posC0, cColMv, refIdxCol, false, colIdx)) || getColocatedMVP(pu, eRefPicList, posC1, cColMv, refIdxCol, false, colIdx))
         {
           cColMv.roundTransPrecInternal2Amvr(pu.cu->imv);
@@ -20568,6 +20789,7 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
           pInfo->mvCand[pInfo->numCand++] = cColMv;
 #endif
         }
+#endif
       }
     }
     if (!isSaved)
@@ -22642,6 +22864,18 @@ void PU::fillAffineMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, co
           bC0Avail = true;
         }
       }
+#if JVET_AK0185_TMVP_SELECTION
+      Area     picArea = pu.cs->picture->Y();
+      bool     avaC1 = picArea.contains(posC1);
+
+      std::vector<Position> posList = { posC0,    posC1}; 
+      std::vector<bool> availList   = { bC0Avail, avaC1}; 
+
+      addTmvp2AffineAMVP(pu, eRefPicList, posList, availList, cColMv, refIdxCol, affiAMVPInfo, 
+        // oneTmvpFlag
+        pu.cs->slice->getCheckLDC() ? false : true
+        );                  
+#else
         if ((bC0Avail && getColocatedMVP(pu, eRefPicList, posC0, cColMv, refIdxCol, false)) || getColocatedMVP(pu, eRefPicList, posC1, cColMv, refIdxCol, false))
         {
           cColMv.roundAffinePrecInternal2Amvr(pu.cu->imv);
@@ -22653,6 +22887,7 @@ void PU::fillAffineMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, co
 #endif
             affiAMVPInfo.numCand++;
         }
+#endif
     }
 
 #if JVET_Z0139_NA_AFF
@@ -36863,5 +37098,435 @@ bool isMvTAlf(const int tAlfMode)
 bool isFwdTAlf(const int tAlfMode)
 {
   return tAlfMode == FORWARD_TALF || tAlfMode == FORWARD_TALF_MV;
+}
+#endif
+
+#if JVET_AK0185_TMVP_SELECTION
+void PU::addTmvp2AMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, int colIdx, AMVPInfo* pInfo, bool oneTmvpFlag)
+{  
+  for (size_t i = 0; i < availList.size(); i++)
+  {       
+    if (!availList[i])
+    {
+      continue;  
+    }
+
+    bool bExistMV = getColocatedMVP(pu, eRefPicList, posList[i], cColMv, refIdxCol, false, colIdx);
+
+    if (bExistMV)
+    {
+      cColMv.roundTransPrecInternal2Amvr(pu.cu->imv);
+
+#if TM_AMVP
+      pInfo->mvCand[pInfo->numCand] = cColMv;
+      if (!pInfo->xCheckSimilarMotion(pInfo->numCand))
+      {
+        pInfo->numCand++;
+
+        // If oneTmvpFlag is true, stop after adding the first valid TMVP
+        if (oneTmvpFlag)
+        {
+          return;
+        }
+      }
+      else
+      {
+        if (oneTmvpFlag)
+        {
+          return;
+        }
+      }
+#else
+      pInfo->mvCand[pInfo->numCand++] = cColMv;
+#endif
+    }
+  }
+}
+#endif
+
+
+#if JVET_AK0185_TMVP_SELECTION
+void PU::addTmvp2AffineAMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, AffineAMVPInfo& affiAMVPInfo, bool oneTmvpFlag)
+{    
+  for (size_t i = 0; i < availList.size(); i++)
+  {       
+    if (!availList[i])
+    {
+      continue;  
+    }
+
+    bool bExistMV = getColocatedMVP(pu, eRefPicList, posList[i], cColMv, refIdxCol, false);
+
+    if (bExistMV)
+    {
+      cColMv.roundAffinePrecInternal2Amvr(pu.cu->imv);
+      affiAMVPInfo.mvCandLT[affiAMVPInfo.numCand] = cColMv;
+      affiAMVPInfo.mvCandRT[affiAMVPInfo.numCand] = cColMv;
+      affiAMVPInfo.mvCandLB[affiAMVPInfo.numCand] = cColMv;
+
+#if JVET_Z0139_HIST_AFF
+      if (checkLastAffineAMVPCandRedundancy(pu, affiAMVPInfo))
+#endif
+      {
+        affiAMVPInfo.numCand++;
+
+        if (oneTmvpFlag)
+        {
+          return;
+        }
+      }
+      else
+      {
+        if (oneTmvpFlag)
+        {
+          return;
+        }
+      }
+    }
+  }
+}
+#endif
+
+#if JVET_AK0185_TMVP_SELECTION
+bool PU::collectTMVP(
+  const PredictionUnit &pu,
+  const std::vector<Position> &posList,
+  const std::vector<bool> &availList,
+  int iRefIdx,
+  int col,
+
+  MergeCtx &mrgCtx,
+  int mrgCandIdx,
+  int &cnt,
+
+  const Slice &slice,
+  int maxNumMergeCand,
+  int mvdThreshold,
+
+  MergeCtx *tmpMrgCtx,
+  int *tmpMrgCtxcnt,
+
+  int  tmvpFlag,
+  bool useNullRefIdx,
+
+  bool checkBiPredFromDifferentDirEqDistPoc,
+
+  bool checkValidMergeMvCand,
+  bool useAmvpMergeMode,
+  int  amvpMergeCtxMergeDir,
+  int  amvpRefList  
+)
+{
+
+  Mv cColMvL0, cColMvL1;
+  int refIdx[NUM_REF_PIC_LIST_01] = {0, 0};       
+  bool bExistMVL0 = false;
+  bool bExistMVL1 = false;
+
+
+  auto insertCandidate = [&](int dir, const Mv& mvL0, const Mv& mvL1, int8_t refIdxL0, int8_t refIdxL1) 
+    {
+      if (cnt >= maxNumMergeCand)
+      {
+        return false;
+      }
+
+      auto setMrgCtx = [](int dir, int cnt, MergeCtx &mrgCtx) 
+        {
+        mrgCtx.interDirNeighbours[cnt] = dir;
+        mrgCtx.bcwIdx[cnt] = BCW_DEFAULT;
+        mrgCtx.licFlags[cnt] = false;
+        mrgCtx.setDefaultLICParamToCtx(cnt);
+        mrgCtx.useAltHpelIf[cnt] = false;
+        mrgCtx.addHypNeighbours[cnt].clear();
+        mrgCtx.candtype[cnt] = 2;
+        };
+      
+      mrgCtx.mvFieldNeighbours[2 * cnt + 0].setMvField(Mv(), NOT_VALID);
+      mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(Mv(), NOT_VALID);
+
+      setMrgCtx(dir, cnt, mrgCtx);
+      
+      if (dir & 1) 
+      {
+        mrgCtx.mvFieldNeighbours[2 * cnt + 0].setMvField(mvL0, refIdxL0);
+      }
+      if (dir & 2) 
+      {
+        mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(mvL1, refIdxL1);
+      }
+            
+      // Check if the merge candidate is valid      
+      if (checkValidMergeMvCand) 
+      {
+        int8_t tempRefIdx[2] = { refIdxL0, refIdxL1 };
+        bool isValidAmMode = checkIsValidMergeMvCand(pu, tempRefIdx);
+        if (!(isValidAmMode && dir != 0))
+        {
+          mrgCtx.initMrgCand(cnt);          
+        }
+
+        if (useAmvpMergeMode)
+        {
+          mrgCtx.interDirNeighbours[cnt] = amvpMergeCtxMergeDir;
+          mrgCtx.mvFieldNeighbours[(cnt << 1) + amvpRefList].setMvField(Mv(), -1);
+        }        
+
+        if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+        {
+          if (mrgCandIdx == cnt)
+          {
+            return true;
+          }
+
+          cnt++;
+        }
+        else
+        {
+          mrgCtx.initMrgCand(cnt);
+        }      
+
+        return false;
+      }      
+
+      // Apply bi-prediction check if enabled
+      if (dir != 0 && checkBiPredFromDifferentDirEqDistPoc) 
+      {
+        bool addTMVP = isBiPredFromDifferentDirEqDistPoc(pu, refIdxL0, refIdxL1);
+        if (addTMVP)
+        {
+          if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+          {       
+            if (cnt == mrgCandIdx)
+            {
+              return true;
+            }
+            cnt++;        
+            mrgCtx.numValidMergeCand = cnt;
+          }
+          else
+          {
+            mrgCtx.initMrgCand(cnt);
+          }          
+        }
+        else if (*tmpMrgCtxcnt < NUM_MERGE_CANDS)
+        {
+          tmpMrgCtx->interDirNeighbours[*tmpMrgCtxcnt] = dir;
+          tmpMrgCtx->useAltHpelIf[*tmpMrgCtxcnt] = false;
+          tmpMrgCtx->mvFieldNeighbours[*tmpMrgCtxcnt << 1] = mrgCtx.mvFieldNeighbours[cnt << 1];
+          tmpMrgCtx->mvFieldNeighbours[(*tmpMrgCtxcnt << 1) + 1] = mrgCtx.mvFieldNeighbours[(cnt << 1) + 1];
+          tmpMrgCtx->bcwIdx[*tmpMrgCtxcnt] = BCW_DEFAULT;
+          tmpMrgCtx->addHypNeighbours[*tmpMrgCtxcnt].clear();
+
+          if (!tmpMrgCtx->xCheckSimilarMotion(*tmpMrgCtxcnt, mvdThreshold))
+          {
+            (*tmpMrgCtxcnt)++;
+          }
+          else
+          {
+            tmpMrgCtx->initMrgCand(*tmpMrgCtxcnt);
+          }
+
+          tmpMrgCtx->numValidMergeCand = *tmpMrgCtxcnt;
+        }                
+
+        return false;
+      }
+      
+      if (dir != 0)
+      {
+        if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+        {
+          if (cnt == mrgCandIdx)
+          {
+            return true;
+          }
+          cnt++;
+          if (cnt == maxNumMergeCand)
+          {
+            return false;
+          }
+        }
+        else
+        {
+          mrgCtx.initMrgCand(cnt);
+        }
+      }
+
+      if (!slice.getCheckLDC() && (bExistMVL0) && (bExistMVL1) )
+      {
+        // Candidate without L1
+        dir = 0;
+
+        dir |= 1;
+        mrgCtx.mvFieldNeighbours[2 * cnt].setMvField(mvL0, refIdxL0);
+        mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(Mv(), NOT_VALID);
+        if (dir != 0)
+        {
+          setMrgCtx(dir, cnt, mrgCtx);
+
+          if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+          {
+            if (cnt == mrgCandIdx)
+            {
+              return true;
+            }
+            cnt++;
+            if (cnt == maxNumMergeCand)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            mrgCtx.initMrgCand(cnt);
+          }
+        }
+
+        // Candidate without L0
+        dir = 0;
+        mrgCtx.mvFieldNeighbours[2 * cnt].setMvField(Mv(), NOT_VALID);
+        dir |= 2;
+        mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(mvL1, refIdxL1);
+        if (dir != 0)
+        {
+          setMrgCtx(dir, cnt, mrgCtx);
+
+          if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+          {
+            if (cnt == mrgCandIdx)
+            {
+              return true;
+            }
+            cnt++;
+            if (cnt == maxNumMergeCand)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            mrgCtx.initMrgCand(cnt);
+          }
+        }
+      }        
+
+      return false;
+    };
+     
+
+  
+    auto refFirst = [&]() -> bool      
+      {
+        // Step 1: Check (L0, posC0)
+        for (int i = 0; i < availList.size(); i++)
+        {
+          int idx = iRefIdx;
+          if (!bExistMVL0 && availList[i])
+          {
+            bExistMVL0 = getColocatedMVP(
+              pu, REF_PIC_LIST_0, posList[i], cColMvL0, idx, false,
+              col,
+              useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_0]);
+          }
+        }
+
+        // Step 3: Check (L1, posC0)
+        for (int i = 0; i < availList.size(); i++)
+        {
+          int idx = iRefIdx;
+          if (!bExistMVL1 && availList[i] && slice.isInterB())
+          {
+            bExistMVL1 = getColocatedMVP(
+              pu, REF_PIC_LIST_1, posList[i], cColMvL1, idx, false,
+              col,
+              useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_1]);
+          }
+        }
+
+        int dir = 0;
+        dir |= (bExistMVL0) ? 1 : 0;
+        dir |= (bExistMVL1) ? 2 : 0;
+
+        if (dir == 0)
+        {
+          return false;
+        }
+
+        bool found = insertCandidate(dir, cColMvL0, cColMvL1, refIdx[REF_PIC_LIST_0], refIdx[REF_PIC_LIST_1]);
+        if (found)
+        {
+          return true;
+        }
+
+        return false;
+      };
+  
+  auto posFirst = [&]() -> bool
+    {
+      for (int i = 0; i < availList.size(); i++)
+      {
+        if (availList[i])
+        {
+          int idx = iRefIdx;
+          bExistMVL0 = getColocatedMVP(
+            pu, REF_PIC_LIST_0, posList[i], cColMvL0, idx, false,
+            col,
+            useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_0]);
+        }
+
+        if (availList[i] && slice.isInterB())
+        {
+          int idx = iRefIdx;
+          bExistMVL1 = getColocatedMVP(
+            pu, REF_PIC_LIST_1, posList[i], cColMvL1, idx, false,
+            col,
+            useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_1]);
+        }
+
+        int dir = 0;
+        dir |= (bExistMVL0) ? 1 : 0;
+        dir |= (bExistMVL1) ? 2 : 0;
+
+        if (dir == 0)
+        {
+          continue;
+        }
+
+        bool found = insertCandidate(dir, cColMvL0, cColMvL1, refIdx[REF_PIC_LIST_0], refIdx[REF_PIC_LIST_1]);
+        if (found)
+        {
+          return true;
+        }
+      }
+
+      return false;
+    };
+  
+  bool ret = false;
+  if (tmvpFlag & COLLECT_REF_FIRST)
+  {    
+    if (tmvpFlag & COLLECT_TMVP_REF)
+    {
+      ret = refFirst();    
+    }
+    if (tmvpFlag & COLLECT_TMVP_POS)
+    {
+      ret = posFirst() || ret;
+    }    
+  }
+  else if (tmvpFlag & COLLECT_POS_FIRST)
+  {   
+    if (tmvpFlag & COLLECT_TMVP_POS)
+    {
+      ret = posFirst();   
+    }
+    if (tmvpFlag & COLLECT_TMVP_REF)
+    {
+      ret = refFirst() || ret;
+    }    
+  }
+
+  return ret;
 }
 #endif
