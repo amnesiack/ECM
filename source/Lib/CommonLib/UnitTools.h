@@ -451,6 +451,41 @@ namespace PU
                          , bool checkAllRefValid = false
   );
 #endif
+  
+#if JVET_AK0185_TMVP_SELECTION
+  bool collectTMVP(
+    const PredictionUnit& pu,
+    const std::vector<Position>& posList,
+    const std::vector<bool>& availList,
+    int iRefIdx,
+    int col,
+
+    MergeCtx& mrgCtx,
+    int mrgCandIdx,
+    int& cnt,
+
+    const Slice& slice,
+    int maxNumMergeCand,
+    int mvdThreshold,
+
+    MergeCtx* tmpMrgCtx,
+    int* tmpMrgCtxcnt,
+
+    int  tmvpFlag,
+    bool useNullRefIdx,
+
+    bool checkBiPredFromDifferentDirEqDistPoc = false,
+
+    bool checkValidMergeMvCand = false,
+    bool useAmvpMergeMode = false,
+    int  amvpMergeCtxMergeDir = -1,
+    int  amvpRefList = -1
+  );
+
+  void addTmvp2AMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, int colIdx, AMVPInfo* pInfo, bool oneTmvpFlag = false);
+  void addTmvp2AffineAMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, AffineAMVPInfo& affiAMVPInfo, bool oneTmvpFlag = false);
+#endif
+
 #if JVET_AE0159_FIBC
   bool checkIsIBCFilterCandidateValid(const PredictionUnit &pu, const MotionInfo miNeighbor, int  filterIdx = 0, bool isRefTemplate = false, bool isRefAbove = false);
 #endif
