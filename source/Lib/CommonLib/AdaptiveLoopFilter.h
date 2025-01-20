@@ -658,6 +658,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , Pel ***laplacianPic, Pel ***laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -669,6 +672,9 @@ public:
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , Pel ***laplacianPic, Pel ***laplacianCtu
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
@@ -679,6 +685,9 @@ public:
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
     , Pel*** gaussPic, Pel*** gaussCtu
+#endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                                 , Pel ***laplacianPic, Pel ***laplacianCtu
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
