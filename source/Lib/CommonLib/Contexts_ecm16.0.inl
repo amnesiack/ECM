@@ -6860,6 +6860,31 @@ const CtxSet ContextSetCfg::TAlfFilterControlFlag = ContextSetCfg::addCtxSet
  { DWO, DWO, DWO, DWO, DWO, DWO, },
 });
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+const CtxSet ContextSetCfg::GeoBlendIntraFlag = ContextSetCfg::addCtxSet
+({
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+});
+#endif
 // CONTEXTS WSA STOP
 #endif
 // 1630 replaced

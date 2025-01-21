@@ -84,7 +84,11 @@ struct BMSubBlkInfo : Area
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
 class TplMatchingBuffers
 {
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  static const int nbCandMax = GEO_MAX_NUM_UNI_CANDS + GEO_BLEND_MAX_NUM_INTRA_CANDS;
+#else
   static const int nbCandMax = GEO_MAX_NUM_UNI_CANDS;
+#endif
   std::vector<Pel> m_acYuvRefAMLTemplate[nbCandMax][2];   // [idxCand][0: top, 1: left]  predicted samples
   bool  m_availRec;
   bool  m_availPred[nbCandMax];
@@ -156,6 +160,13 @@ public:
       return m_acYuvRefAMLTemplate[idxCand][iTopLeft].data();
     }
   }
+
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  int getIdxCand(int idx)
+  {
+    return m_idxCand[idx];
+  }
+#endif
 };
 #endif
 
@@ -865,9 +876,17 @@ public:
                               , Mv(&subMvBuf)[MRG_MAX_NUM_CANDS << 1][MAX_NUM_SUBCU_DMVR]
                               , Mv(&subBdofBuf)[MRG_MAX_NUM_CANDS][BDOF_SUBPU_MAX_NUM]
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+                              , IntraPrediction* pcIntraPred
+                              , std::vector<Pel>* reshapeLUT
+#endif
     );
 
   TplMatchingBuffers  m_tplBuffers;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  std::pair<int8_t, int8_t> getGeoBlendIntraCandIndexes(const int idxCand, std::vector<int8_t>& intraCandList, std::vector<int8_t>& interCandList, int8_t* nbZscanPairList = 0);
+  bool    getGeoBlendIntraCand(const CodingUnit& cu, IntraPrediction* pcIntraPred, MergeCtx& geoMrgCtx, const int idxCand, GeoBlendInfo& geoBIdst, uint8_t* mpmList, const int mpmNum, GeoBlendInfo* geoBlendInfoList = nullptr, int* numGeoBlendInfoList = nullptr);
+#endif
 #endif
 
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
@@ -1253,6 +1272,14 @@ public:
                                     , int offsetA[2], int offsetB[2]
 #endif
   );
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  Distortion deriveBcwBlendingBiDirIntra(PredictionUnit& pu, IntraPrediction* pcIntraPred, MvField mvfld[2]
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+    , bool isLic, int scale[2], int offset[2]
+#endif
+    , bool isIntra[2], uint8_t intraMode
+  );
+#endif
 #endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
 #if JVET_AI0187_TMVP_FOR_CMVP

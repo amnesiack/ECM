@@ -2771,6 +2771,13 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
       {
         pcSPS->setMaxNumGeoCand(2);
       }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      if (pcSPS->getUseGeoBlend())
+      {
+        READ_FLAG(uiCode, "sps_gpm_blend_intra_flag");
+        pcSPS->setUseGeoBlendIntra(uiCode != 0);
+      }
+#endif
 
 #if JVET_AG0164_AFFINE_GPM
       if (pcSPS->getUseAffine() && pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)

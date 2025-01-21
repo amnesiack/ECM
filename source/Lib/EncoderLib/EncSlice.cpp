@@ -1990,6 +1990,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     if ( cs.sps->getUseGeoBlend() && (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) ) // ensure sequential and parallel simulation generate same output
     {
       spsTmp->setUseGeoBlend(!isSCC);
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      spsTmp->setUseGeoBlendIntra(!isSCC);
+#endif
     }
 #endif
 #if JVET_AG0164_AFFINE_GPM

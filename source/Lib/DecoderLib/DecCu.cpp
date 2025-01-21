@@ -2129,6 +2129,10 @@ void DecCu::xReconInter(CodingUnit &cu)
       , m_mvBufBDMVR
       , m_mvBufBDOF4GPM
   #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      , m_pcIntraPred
+      , (cu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag()) ? &m_pcReshape->getFwdLUT() : nullptr
+#endif
     );
   }
   else
@@ -2581,6 +2585,9 @@ void DecCu::xReconInter(CodingUnit &cu)
 #endif
 #if JVET_AG0164_AFFINE_GPM
     && (!cu.firstPU->affineGPM[0] && !cu.firstPU->affineGPM[1])
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+    && (!cu.firstPU->geoBlendIntraFlag)
 #endif
     )
 #else

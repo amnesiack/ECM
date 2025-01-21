@@ -1625,6 +1625,9 @@ private:
 #endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   bool              m_useGeoBlend;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool              m_useGeoBlendIntra;
+#endif
 #endif
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   bool              m_enableMaxMttIncrease;
@@ -2705,6 +2708,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   bool      getUseGeoBlend     ()                                      const     { return m_useGeoBlend; }
   void      setUseGeoBlend     ( bool b )                                        { m_useGeoBlend = b; }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool      getUseGeoBlendIntra()                                      const     { return m_useGeoBlendIntra; }
+  void      setUseGeoBlendIntra(bool b)                                          { m_useGeoBlendIntra = b; }
+#endif
 #endif
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   bool      getEnableMaxMttIncrease()                                  const     { return m_enableMaxMttIncrease; }
