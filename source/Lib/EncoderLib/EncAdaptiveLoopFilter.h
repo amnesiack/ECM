@@ -483,6 +483,9 @@ public:
   void         alfCorrection( CodingStructure& cs, const PelUnitBuf& origBuf, const PelUnitBuf& recExtBuf, bool mode=false );
   void         alfCorrectionChroma( CodingStructure& cs, PelUnitBuf& recYuvSao );
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool calcOffsetRefinementOnOff( CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& src2, int& refineIdx );
+#endif
 
   void ALFProcess(CodingStructure& cs, const double *lambdas
 #if ENABLE_QPA

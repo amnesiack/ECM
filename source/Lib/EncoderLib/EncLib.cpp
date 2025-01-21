@@ -2296,6 +2296,10 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   sps.setAlfLumaFixedFilterAdjust( m_intraPeriod < 0 ? false : true );
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  sps.setInloopOffsetRefineFlag( m_intraPeriod < 0 ? false : true );
+  sps.setInloopOffsetRefineFunc( m_intraPeriod < 0 ? ( getBaseQP() < 30 ? 1 : 0 ) : 0 );
+#endif
   sps.setJointCbCrEnabledFlag( m_JointCbCrMode );
   sps.setMaxTLayers( m_maxTempLayer );
   sps.setTemporalIdNestingFlag( ( m_maxTempLayer == 1 ) ? true : false );
