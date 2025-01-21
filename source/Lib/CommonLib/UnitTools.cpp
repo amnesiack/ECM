@@ -232,6 +232,21 @@ bool CU::checkGeoBlendTmAvail(const CodingUnit& currCU, const CodingStructure* b
 }
 #endif
 
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+bool CU::checkGeoBlendIntraAvail(const CodingUnit& currCU, const CodingStructure* bestCS)
+{
+  const CodingUnit* bestCUTest = bestCS->getCU(CHANNEL_TYPE_LUMA);
+  bool skipGeoBlendIntra = false;
+  if (bestCUTest->skip && !bestCUTest->geoFlag && !bestCUTest->affine && !bestCUTest->mmvdSkip && !bestCUTest->firstPU->mmvdMergeFlag && !bestCUTest->firstPU->tmMergeFlag
+    && !bestCUTest->firstPU->geoMMVDFlag0 && !bestCUTest->firstPU->geoMMVDFlag1 && !bestCUTest->firstPU->gpmIntraFlag && !bestCUTest->firstPU->affineGPM[0] && !bestCUTest->firstPU->affineGPM[1]
+    && !bestCUTest->firstPU->gpmInterIbcFlag && !bestCUTest->geoBlendFlag)
+  {
+    skipGeoBlendIntra = true;
+  }
+  return skipGeoBlendIntra;
+}
+#endif
+
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
 bool CU::isPartitionerOnCtuBottom( const CodingUnit& cu, const Partitioner& partitioner )
 {
@@ -31523,7 +31538,9 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
   if ( pu.cu->geoBlendFlag )
   {
     bool bTest = tmFlag0 || mmvdFlag0 || tmFlag1 || mmvdFlag1 || splitDir != 0 || bldIdx != 0 ;
+#if !JVET_AK0101_REGRESSION_GPM_INTRA
     bTest |=  pu.gpmIntraFlag || (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) || (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS);
+#endif
 #if JVET_AG0164_AFFINE_GPM
     bTest |= pu.affineGPM[0] || pu.affineGPM[1];
 #endif
@@ -31557,7 +31574,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 
 #if JVET_AE0046_BI_GPM
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  int interDirIdx0 = (pu.geoBlendIntraFlag && (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS)) ? -1 : ((mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx0->interDirNeighbours[mergeIdx0]);
+#else
   int interDirIdx0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx0->interDirNeighbours[mergeIdx0];
+#endif
 #else
   int interDirIdx0 = (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) ? -1 : mergeCtx0->interDirNeighbours[mergeIdx0];
 #endif
@@ -31572,7 +31593,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
     }
   }
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  int interDirIdx1 = (pu.geoBlendIntraFlag && (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS)) ? -1 : ((mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx1->interDirNeighbours[mergeIdx1]);
+#else
   int interDirIdx1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx1->interDirNeighbours[mergeIdx1];
+#endif
 #else
   int interDirIdx1 = (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS) ? -1 : mergeCtx1->interDirNeighbours[mergeIdx1];
 #endif
@@ -31956,11 +31981,22 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool isIntra0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) && !pu.geoBlendIntraFlag;
+  bool isIntra1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) && !pu.geoBlendIntraFlag;
+  bool isBlendIntra0 = (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) && pu.geoBlendIntraFlag;
+  bool isBlendIntra1 = (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS) && pu.geoBlendIntraFlag;
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  bool isIbc0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS) && !pu.geoBlendIntraFlag;
+  bool isIbc1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS) && !pu.geoBlendIntraFlag;
+#endif
+#else
   bool isIntra0 = mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS;
   bool isIntra1 = mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS;
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool isIbc0 = mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
   bool isIbc1 = mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
+#endif
 #endif
 #else
   bool isIntra0 = mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS;
@@ -32097,7 +32133,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
       else
 #endif
       tpmMask = motionIdx <= 0 ? (1 - isFlip) : isFlip;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      if (tpmMask == 0 && (isIntra0 || isBlendIntra0))
+#else
       if (tpmMask == 0 && isIntra0)
+#endif
       {
 #if JVET_AI0082_GPM_WITH_INTER_IBC
         if (isIbc0)
@@ -32197,7 +32237,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #endif
       }
 #if JVET_Y0065_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      else if (tpmMask == 1 && (isIntra1 || isBlendIntra1))
+#else
       else if (tpmMask == 1 && isIntra1)
+#endif
       {
 #if JVET_AI0082_GPM_WITH_INTER_IBC
         if (isIbc1)
@@ -32298,18 +32342,31 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #if JVET_W0123_TIMD_FUSION
   IpmBuf ib = pu.getIpmBuf();
 #if JVET_Y0065_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  if (pu.gpmIntraFlag || pu.geoBlendIntraFlag)
+#else
   if (pu.gpmIntraFlag)
+#endif
   {
     const unsigned scale = 4 * std::max<int>(1, 4 * AMVP_DECIMATION_FACTOR / 4);
     const unsigned mask = ~(scale - 1);
     uint8_t* ii = ib.buf;
     int geoIpm[3];
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+    geoIpm[0] = isIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS] : (isBlendIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1);
+    geoIpm[1] = isIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS] : (isBlendIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_NUM_UNI_CANDS] : -1);
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+    geoIpm[0] = isIntra0 ? (isIbc0 ? PLANAR_IDX : intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS]) : (isBlendIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1);
+    geoIpm[1] = isIntra1 ? (isIbc1 ? PLANAR_IDX : intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS]) : (isBlendIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_NUM_UNI_CANDS] : -1);
+#endif
+#else
     geoIpm[0] = isIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS] : -1;
     geoIpm[1] = isIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS] : -1;
 #if JVET_AI0082_GPM_WITH_INTER_IBC
     geoIpm[0] = isIntra0 ? (isIbc0 ? PLANAR_IDX : intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS]) : -1;
     geoIpm[1] = isIntra1 ? (isIbc1 ? PLANAR_IDX : intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS]) : -1;
+#endif
 #endif
 #else
     geoIpm[0] = isIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1;
@@ -32320,6 +32377,9 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #endif
 #endif
     geoIpm[2] = (isIntra0 && isIntra1) ? ((mergeIdx1 < mergeIdx0) ? geoIpm[1] : geoIpm[0]) : isIntra0 ? geoIpm[0] : geoIpm[1];
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+    geoIpm[2] = pu.geoBlendIntraFlag ? (isBlendIntra0 ? geoIpm[0] : geoIpm[1]) : geoIpm[2];
+#endif
 
     for (int y = 0; y < mb.height; y++)
     {
@@ -32327,6 +32387,18 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
       for (int x = 0; x < mb.width; x++)
       {
         motionIdx = (((4 * x + offsetX) << 1) + 5) * g_dis[distanceX] + lookUpY;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AE0046_BI_GPM
+        Position samplePos(x << MIN_CU_LOG2, y << MIN_CU_LOG2);
+#endif
+        if (pu.geoBlendIntraFlag)
+        {
+          int iWeight = blendModel.compute(samplePos.x, samplePos.y);
+          int weight0 = one - iWeight;
+          tpmMask = (weight0 < half) ? 1 : 0;
+        }
+        else
+#endif
         tpmMask = motionIdx <= 0 ? (1 - isFlip) : isFlip;
         uint8_t ipm;
         if (geoIpm[tpmMask] >= 0)
@@ -34580,6 +34652,12 @@ bool CU::isGeoBlendAvailable( const CodingUnit& cu )
 {
   return cu.slice->getSPS()->getUseGeoBlend(); 
 }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+bool CU::isGeoBlendIntraAvailable(const CodingUnit& cu)
+{
+  return cu.slice->getSPS()->getUseGeoBlendIntra();
+}
+#endif
 #endif
 
 #if JVET_AC0130_NSPT

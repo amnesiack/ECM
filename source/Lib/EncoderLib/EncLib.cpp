@@ -2140,6 +2140,9 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setUseGeo                ( m_Geo );
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   sps.setUseGeoBlend           ( m_Geo && m_tmToolsEnableFlag );
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  sps.setUseGeoBlendIntra      ( m_Geo && m_tmToolsEnableFlag && m_geoBlendIntra && getBaseQP() < 37);
+#endif
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   sps.setUseGeoInterIbc        ( m_Geo ? m_geoInterIbc : false );

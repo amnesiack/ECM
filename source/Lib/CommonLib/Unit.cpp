@@ -1308,6 +1308,9 @@ void PredictionUnit::initData()
 #if JVET_Y0065_GPM_INTRA
   gpmIntraFlag = false;
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  geoBlendIntraFlag = false;
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   gpmInterIbcFlag = false;
 #endif
@@ -1541,6 +1544,9 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   geoMergeIdx1 = predData.geoMergeIdx1;
 #if JVET_Y0065_GPM_INTRA
   gpmIntraFlag = predData.gpmIntraFlag;
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  geoBlendIntraFlag = predData.geoBlendIntraFlag;
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   gpmInterIbcFlag = predData.gpmInterIbcFlag;
@@ -1784,6 +1790,9 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   geoMergeIdx1 = other.geoMergeIdx1;
 #if JVET_Y0065_GPM_INTRA
   gpmIntraFlag = other.gpmIntraFlag;
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  geoBlendIntraFlag = other.geoBlendIntraFlag;
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   gpmInterIbcFlag = other.gpmInterIbcFlag;

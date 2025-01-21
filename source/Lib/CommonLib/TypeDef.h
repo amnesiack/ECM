@@ -365,6 +365,7 @@
 #define JVET_AF0057                                       1 // JVET-AF0057: Encoder only. DMVR with robust MV derivation.
 #define JVET_AG0112_REGRESSION_BASED_GPM_BLENDING         1 // JVET-AG0112: Regression-based GPM blending
 #define JVET_AJ0274_REGRESSION_GPM_TM                     1 // JVET-AJ0274: Regression-based GPM with TM extension
+#define JVET_AK0101_REGRESSION_GPM_INTRA                  1 // JVET-AK0101: Regression-based GPM with intra and inter prediction
 #define JVET_AG0135_AFFINE_CIIP                           1 // JVET-AG0135: CIIP with affine prediction 
 #define JVET_AG0164_AFFINE_GPM                            1 // JVET-AG0164: GPM with affine prediction
 #if JVET_AG0164_AFFINE_GPM

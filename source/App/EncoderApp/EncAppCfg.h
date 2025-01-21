@@ -568,6 +568,9 @@ protected:
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool      m_geoInterIbc;
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool      m_geoBlendIntra;
+#endif
   bool      m_HashME;
   bool      m_allowDisFracMMVD;
   bool      m_AffineAmvr;

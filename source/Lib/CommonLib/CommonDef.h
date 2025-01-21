@@ -1641,6 +1641,9 @@ static const int GEO_NUM_INTRA_RDO_BUFFER =                         23;
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
 static const int GEO_BLEND_MAX_NUM_CANDS =                        ((GEO_MAX_NUM_UNI_CANDS + 1) >> 1) * ((GEO_MAX_NUM_UNI_CANDS + 1) >> 1) / 2;
 static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_UNI_CANDS + 67 + 1 + 1;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+static const int GEO_BLEND_MAX_NUM_INTRA_CANDS =                    6;
+#endif
 #else
 #if JVET_AC0112_IBC_CIIP || JVET_AC0112_IBC_GPM
 static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_UNI_CANDS + 67;

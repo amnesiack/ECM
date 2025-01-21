@@ -572,6 +572,9 @@ protected:
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool      m_geoInterIbc;
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool      m_geoBlendIntra;
+#endif
   bool      m_allowDisFracMMVD;
   bool      m_AffineAmvr;
   bool      m_HashME;
@@ -1922,6 +1925,10 @@ public:
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   void      setUseGeoInterIbc               ( bool b )       { m_geoInterIbc = b; }
   bool      getUseGeoInterIbc               ()         const { return m_geoInterIbc; }
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  void      setUseGeoBlendIntra             ( bool b )       { m_geoBlendIntra = b; }
+  bool      getUseGeoBlendIntra             ()         const { return m_geoBlendIntra; }
 #endif
   void      setAllowDisFracMMVD             ( bool b )       { m_allowDisFracMMVD = b;    }
   bool      getAllowDisFracMMVD             ()         const { return m_allowDisFracMMVD; }

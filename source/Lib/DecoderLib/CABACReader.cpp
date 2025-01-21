@@ -6212,6 +6212,9 @@ void CABACReader::merge_data( PredictionUnit& pu )
 #if JVET_AJ0274_REGRESSION_GPM_TM
         pu.geoBlendTmFlag = false;
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+        pu.geoBlendIntraFlag = false;
+#endif
 #endif
 #if JVET_AE0046_BI_GPM
         PU::setGpmDirMode(pu);
@@ -6336,6 +6339,12 @@ void CABACReader::merge_idx( PredictionUnit& pu )
 #endif
 #if JVET_AJ0274_REGRESSION_GPM_TM
         pu.geoBlendTmFlag = m_BinDecoder.decodeBin(Ctx::GeoBlendTMFlag());
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+        if (!pu.geoBlendTmFlag && CU::isGeoBlendIntraAvailable(*pu.cu))
+        {
+          pu.geoBlendIntraFlag = m_BinDecoder.decodeBin(Ctx::GeoBlendIntraFlag());
+        }
 #endif
         return;
       }
