@@ -165,6 +165,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
     {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
       m_pcInterPred->setDIMDForOBMC(false);
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+      m_pcInterPred->setIntraObmcPred(false);
+#endif
       m_pcInterPred->setModeGetCheck(0, false);
       m_pcInterPred->setModeGetCheck(1, false);
       m_pcInterPred->setClearModeBuf(0);

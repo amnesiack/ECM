@@ -5264,8 +5264,8 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AK0076_EXTENDED_OBMC_IBC
       if (cu.tmpLicFlag)
       {
-         cu.licScale[0][COMPONENT_Y] = bestTmpLicParam[0];
-         cu.licOffset[0][COMPONENT_Y] = bestTmpLicParam[1];
+        cu.licScale[0][COMPONENT_Y] = bestTmpLicParam[0];
+        cu.licOffset[0][COMPONENT_Y] = bestTmpLicParam[1];
       }
       else
       {
