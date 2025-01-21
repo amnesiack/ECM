@@ -998,6 +998,10 @@ public:
   int16_t licScale[AFFINE_MRG_MAX_NUM_CANDS_ALL][2][3];
   int16_t licOffset[AFFINE_MRG_MAX_NUM_CANDS_ALL][2][3];
 #endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  int16_t licScaleBuf[AFFINE_MRG_MAX_NUM_CANDS_ALL][2][3];
+  int16_t licOffsetBuf[AFFINE_MRG_MAX_NUM_CANDS_ALL][2][3];
+#endif
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
   bool obmcFlags[AFFINE_MRG_MAX_NUM_CANDS_ALL];
@@ -1194,7 +1198,11 @@ public:
 
 namespace DeriveCtx
 {
-void     CtxSplit     ( const CodingStructure& cs, Partitioner& partitioner, unsigned& ctxSpl, unsigned& ctxQt, unsigned& ctxHv, unsigned& ctxHorBt, unsigned& ctxVerBt, bool* canSplit = nullptr );
+void     CtxSplit     ( const CodingStructure& cs, Partitioner& partitioner, unsigned& ctxSpl, unsigned& ctxQt, unsigned& ctxHv, unsigned& ctxHorBt, unsigned& ctxVerBt, bool* canSplit = nullptr 
+#if JVET_AI0087_BTCUS_RESTRICTION
+  ,bool disableBTV = false, bool disableBTH = false
+#endif
+);
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
 unsigned CtxModeConsFlag( const CodingStructure& cs, Partitioner& partitioner );
 #endif
@@ -1228,6 +1236,9 @@ unsigned CtxTmpFusionFlag( const CodingUnit& cu );
 #endif
 #if JVET_V0130_INTRA_TMP
 unsigned CtxTmpFlag(const CodingUnit& cu);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+uint16_t CtxPnnLuminanceFlag(const CodingUnit& cu);
 #endif
 unsigned CtxPltCopyFlag( const unsigned prevRunType, const unsigned dist );
 #if ENABLE_DIMD

@@ -70,6 +70,10 @@ public:
   const BinStoreVector *getBinBuffer()             const { return m_BinDecoder.getBinBuffer(); }
   void                  updateCtxs  (BinStoreVector *bb) { m_BinDecoder.updateCtxs(bb);        }
 #endif
+#if JVET_AI0087_BTCUS_RESTRICTION
+  bool         isLumaNonBoundaryCu      (const Partitioner& partitioner, SizeType picWidth, SizeType picHeight);
+  void         setBtFirstPart           (const Partitioner& partitioner, SizeType blockSize, CodingStructure& cs, PartSplit setValue);
+#endif
 
 public:
   // slice segment data (clause 7.3.8.1)
@@ -95,6 +99,9 @@ public:
 
   void ccAlfFilterControlIdc(CodingStructure &cs, const ComponentID compID, const int curIdx, uint8_t *filterControlIdc,
                              Position lumaPos, int filterCount);
+#if JVET_AK0065_TALF
+  void readTAlfFilterControlIdc(CodingStructure &cs, const ComponentID compID, const int curIdx, TAlfCtbParam *filterControlIdc, Position lumaPos);
+#endif
 
   // coding (quad)tree (clause 7.3.8.4)
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
@@ -124,12 +131,18 @@ public:
   void        intra_luma_pred_modes     ( CodingUnit&                   cu );
 #if JVET_W0123_TIMD_FUSION
   void        cu_timd_flag              ( CodingUnit&                   cu );
+#if JVET_AJ0061_TIMD_MERGE
+  void        cu_timd_merge_flag        ( CodingUnit&                   cu );
+#endif
 #endif
 #if JVET_AB0155_SGPM
   void        sgpm_flag                 ( CodingUnit&                   cu );
 #endif
 #if JVET_AB0157_TMRL
   void        cuTmrlFlag                ( CodingUnit&                   cu );
+#if JVET_AJ0081_CHROMA_TMRL
+  void        intraChromaTmrl           ( PredictionUnit&               pu );
+#endif
 #endif
   void        intra_chroma_pred_modes   ( CodingUnit&                   cu );
   bool        intra_chroma_lmc_mode     ( PredictionUnit&               pu );
@@ -148,6 +161,9 @@ public:
 #endif
 #if JVET_AD0120_LBCCP
   void        ccInsideFilterFlag(PredictionUnit &pu);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void cu_pnn_flag(CodingUnit& cu);
 #endif
 #if ENABLE_DIMD
   void        cu_dimd_flag              (CodingUnit&                   cu);

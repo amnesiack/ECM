@@ -312,10 +312,18 @@ void Picture::createTempBuffers( const unsigned _maxCUSize, bool useFilterFrame,
 #endif
     if (!decoder)
     {
+#if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT && !KEEP_PRED_AND_RESI_SIGNALS
       M_BUFS(jId, PIC_TRUE_ORIGINAL).create(chromaFormat, aOld, _maxCUSize);
+#else
+      M_BUFS(jId, PIC_TRUE_ORIGINAL).create(chromaFormat, a, _maxCUSize);
+#endif
       if (useFilterFrame)
       {
+#if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT && !KEEP_PRED_AND_RESI_SIGNALS
         M_BUFS(jId, PIC_FILTERED_ORIGINAL).create(chromaFormat, aOld, _maxCUSize);
+#else
+        M_BUFS(jId, PIC_FILTERED_ORIGINAL).create(chromaFormat, a, _maxCUSize);
+#endif
       }
       if (resChange)
       {
@@ -446,7 +454,11 @@ const CPelUnitBuf Picture::getRecoBuf(const UnitArea &unit, bool wrap)     const
 const CPelUnitBuf Picture::getRecoBuf(bool wrap)                           const { return M_BUFS(scheduler.getSplitPicId(), wrap ? PIC_RECON_WRAP : PIC_RECONSTRUCTION); }
 #endif
 
+#if JVET_AK0065_TALF
+void Picture::finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHeader *picHeader, APS** alfApss, APS** alfApss2, APS* lmcsAps, APS* scalingListAps )
+#else
 void Picture::finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHeader *picHeader, APS** alfApss, APS* lmcsAps, APS* scalingListAps )
+#endif
 {
   for( auto &sei : SEIs )
   {
@@ -509,6 +521,9 @@ void Picture::finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHead
 
   memcpy(cs->alfApss, alfApss, sizeof(cs->alfApss));
 
+#if JVET_AK0065_TALF
+  memcpy(cs->talfApss, alfApss2, sizeof(cs->talfApss));
+#endif
   cs->lmcsAps = lmcsAps;
   cs->scalinglistAps = scalingListAps;
   cs->pcv     = pps.pcv;
@@ -529,6 +544,9 @@ void Picture::allocateNewSlice()
   Slice& slice = *slices.back();
   memcpy(slice.getAlfAPSs(), cs->alfApss, sizeof(cs->alfApss));
 
+#if JVET_AK0065_TALF
+  memcpy(slice.getTAlfAPSs(), cs->talfApss, sizeof(cs->talfApss));
+#endif
   slice.setPPS( cs->pps);
   slice.setSPS( cs->sps);
   slice.setVPS( cs->vps);
@@ -573,6 +591,10 @@ Slice *Picture::swapSliceObject(Slice * p, uint32_t i)
   pTmp->setPPS(0);
   pTmp->setVPS(0);
   memset(pTmp->getAlfAPSs(), 0, sizeof(*pTmp->getAlfAPSs())*ALF_CTB_MAX_NUM_APS);
+#if JVET_AK0065_TALF
+  p->setTAlfAPSs(cs->talfApss);
+  memset(pTmp->getTAlfAPSs(), 0, sizeof(*pTmp->getTAlfAPSs()) * ALF_CTB_MAX_NUM_APS);
+#endif
 
   return pTmp;
 }
@@ -1778,5 +1800,109 @@ void Picture::copyCleanCurPicture()
 
     picBuf1.copyFrom(picBuf0);
   }
+}
+#endif
+
+#if JVET_AG0145_ADAPTIVE_CLIPPING
+void Picture::calcLumaClpParams()
+{
+  int pelMax = getLumaClpRng().max;
+  int pelMin = getLumaClpRng().min;
+#if JVET_AI0096_ADAPTIVE_CLIPPING_BIT_DEPTH_FIX
+  int targetMin = 16 * (1 << (cs->sps->getBitDepth(toChannelType(COMPONENT_Y)) - 8));
+  int targetMax = 235 * (1 << (cs->sps->getBitDepth(toChannelType(COMPONENT_Y)) - 8));
+#else
+  int targetMin = 64, targetMax = 940;
+#endif
+  if (cs->slice->getSliceType() != I_SLICE)
+  {
+    const Picture *const pColPic = cs->slice->getRefPic(RefPicList(1 - cs->slice->getColFromL0Flag()), cs->slice->getColRefIdx())->unscaledPic;
+    ClpRng colLumaClpRng = pColPic->getLumaClpRng();
+    targetMin            = colLumaClpRng.min;
+    targetMax            = colLumaClpRng.max;
+  }
+  int clipDeltaShift = 0;
+  if (cs->slice->getSliceType() != I_SLICE && cs->slice->getCheckLDC())
+  {
+    clipDeltaShift = ADAPTIVE_CLIP_SHIFT_DELTA_VALUE_1;
+    cs->slice->setAdaptiveClipQuant(true);
+  }
+  else
+  {
+    clipDeltaShift = ADAPTIVE_CLIP_SHIFT_DELTA_VALUE_0;
+    cs->slice->setAdaptiveClipQuant(false);
+  }
+#if JVET_AJ0237_INTERNAL_12BIT
+  clipDeltaShift += std::max(0, cs->sps->getBitDepth(toChannelType(COMPONENT_Y)) - 10);
+#endif
+  int       pelMaxOF  = 0;
+  int       pelMinOF  = (1 << cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1;
+  const int orgPelMin = pelMin;
+  {
+    int deltaMinToSignal = (pelMin - targetMin);
+    if (deltaMinToSignal < 0)
+    {
+      int absDelta = ((targetMin - pelMin) >> clipDeltaShift) << clipDeltaShift;
+      pelMin       = targetMin - absDelta;
+      while (pelMin > orgPelMin)
+      {
+        pelMin -= (1 << clipDeltaShift);
+      }
+      while (pelMin < 0)
+      {
+        pelMinOF = pelMin;
+        pelMin   = 0;
+      }
+      CHECK(pelMin < 0, "this is not possible");
+    }
+    else if (deltaMinToSignal > 0)
+    {
+      int absDelta = (deltaMinToSignal >> clipDeltaShift) << clipDeltaShift;
+      pelMin       = targetMin + absDelta;
+      CHECK(pelMin > orgPelMin, "this is not possible");
+      CHECK(pelMin < 0, "this is not possible");
+    }
+    else
+    {
+      CHECK(pelMin != targetMin, "this is not possible");
+    }
+  }
+
+  const int orgPelMax = pelMax;
+  {
+    int deltaMaxToSignal = (pelMax - targetMax);
+    if (deltaMaxToSignal < 0)
+    {
+      int absDelta = ((targetMax - pelMax) >> clipDeltaShift) << clipDeltaShift;
+      pelMax       = targetMax - absDelta;
+      CHECK(pelMax < orgPelMax, "this is not possible");
+      CHECK(pelMax > (1 << cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1, "this is not possible");
+    }
+    else if (deltaMaxToSignal > 0)
+    {
+      int absDelta = (deltaMaxToSignal >> clipDeltaShift) << clipDeltaShift;
+      pelMax       = targetMax + absDelta;
+      while (pelMax < orgPelMax)
+      {
+        pelMax += (1 << clipDeltaShift);
+      }
+      while (pelMax >= (1 << cs->sps->getBitDepth(toChannelType(COMPONENT_Y))))
+      {
+        pelMaxOF = pelMax;
+        pelMax   = (1 << cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1;
+      }
+      CHECK(pelMax > (1 << cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1, "this is not possible");
+    }
+    else
+    {
+      CHECK(pelMax != targetMax, "this is not possible");
+    }
+  }
+  cs->slice->setLumaPelMax(pelMax);
+  cs->slice->setLumaPelMin(pelMin);
+  lumaClpRng.min         = pelMin;
+  lumaClpRng.max         = pelMax;
+  lumaClpRngforQuant.min = std::min(pelMin, pelMinOF);
+  lumaClpRngforQuant.max = std::max(pelMax, pelMaxOF);
 }
 #endif

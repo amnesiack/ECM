@@ -40,6 +40,9 @@
 
 EncLibCommon::EncLibCommon()
   : m_apsIdStart( ALF_CTB_MAX_NUM_APS )
+#if JVET_AK0065_TALF
+  , m_apsIdStart2( ALF_CTB_MAX_NUM_APS )
+#endif
   , m_spsMap( MAX_NUM_SPS )
   , m_ppsMap( MAX_NUM_PPS )
   , m_apsMap( MAX_NUM_APS * MAX_NUM_APS_TYPE )

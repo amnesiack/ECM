@@ -1746,7 +1746,13 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 void CodingStructure::addEmptyTUs( Partitioner &partitioner )
 {
   const UnitArea& area    = partitioner.currArea();
-  bool            split   = partitioner.canSplit(TU_MAX_TR_SPLIT, *this);
+  bool            split   = partitioner.canSplit(TU_MAX_TR_SPLIT, *this
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif  
+  );
+
+
   const unsigned  trDepth = partitioner.currTrDepth;
 
   if( split )
@@ -2472,6 +2478,9 @@ void CodingStructure::initSubStructure( CodingStructure& subStruct, const Channe
 
   memcpy(subStruct.alfApss, alfApss, sizeof(alfApss));
 
+#if JVET_AK0065_TALF
+  memcpy(subStruct.talfApss, talfApss, sizeof(talfApss));
+#endif
   subStruct.lmcsAps = lmcsAps;
   subStruct.scalinglistAps = scalinglistAps;
 

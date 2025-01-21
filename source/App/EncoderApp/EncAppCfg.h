@@ -387,6 +387,9 @@ protected:
   unsigned  m_uiMaxMTTHierarchyDepthIChroma;
   unsigned  m_uiMaxBT[3];
   unsigned  m_uiMaxTT[3];
+#if AHG7_MTS_TOOLOFF_CFG
+  bool      m_MTSExt;
+#endif
 #if JVET_Y0152_TT_ENC_SPEEDUP
   int       m_ttFastSkip;
   double    m_ttFastSkipThr;
@@ -412,11 +415,18 @@ protected:
 #if JVET_AI0050_SBT_LFNST
   bool      m_useSbtLFNST;
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool      m_NSPT;
+  bool      m_LFNSTExt;
+#endif
   bool      m_sbTmvpEnableFlag;
   bool      m_Affine;
   bool      m_AffineType;
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   bool      m_useAltCost;
+#endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  bool      m_useExtAmvp;
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool      m_useAffineTM;
@@ -502,11 +512,17 @@ protected:
 #if JVET_AA0133_INTER_MTS_OPT
   int       m_interMTSMaxSize;
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int       m_intraMTSMaxSize;
+#endif
 #if ENABLE_DIMD
   bool      m_dimd;
 #endif
 #if JVET_W0123_TIMD_FUSION
   bool      m_timd;
+#if JVET_AJ0061_TIMD_MERGE
+  bool      m_timdMrg;
+#endif
 #endif
 #if JVET_AB0155_SGPM
   bool      m_sgpm;
@@ -546,6 +562,9 @@ protected:
   bool      m_ciipTimd;
 #endif
   bool      m_Geo;
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  bool      m_geoShapeAdapt;
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool      m_geoInterIbc;
 #endif
@@ -620,7 +639,9 @@ protected:
   bool      m_itmpLicExtension;
   bool      m_itmpLicMode;
 #endif
-
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  int       m_intraToolControlMode;
+#endif
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   bool      m_rribc;
   bool      m_tmibc;
@@ -684,6 +705,9 @@ protected:
   bool      m_scaledMvExtTmvp;
   bool      m_scaledMvExtBiTmvp;
 #endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  bool      m_sbTmvpMvExt;
+#endif
   
   // ADD_NEW_TOOL : (encoder app) add tool enabling flags and associated parameters here
   bool      m_virtualBoundariesEnabledFlag;
@@ -704,7 +728,7 @@ protected:
   unsigned  m_uiMaxCUWidth;                                   ///< max. CU width in pixel
   unsigned  m_uiMaxCUHeight;                                  ///< max. CU height in pixel
   unsigned m_log2MinCuSize;                                   ///< min. CU size log2
-#if JVET_AE0057_MTT_ET
+#if JVET_AJ0226_MTT_SKIP
   bool m_useMttSkip;
 #endif
 
@@ -756,6 +780,13 @@ protected:
 #endif
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   bool      m_ccalfPrecision;
+#endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  bool      m_alfLumaFixedFilterAdjust;
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool      m_inloopOffsetRefineFlag;
+  bool      m_inloopOffsetRefineFunc;
 #endif
   bool      m_bTestSAODisableAtPictureLevel;
   double    m_saoEncodingRate;                                ///< When >0 SAO early picture termination is enabled for luma and chroma
@@ -984,6 +1015,9 @@ protected:
   uint32_t      m_maxNumGeoCand;
 #if JVET_AG0164_AFFINE_GPM
   uint32_t      m_maxNumGpmAffCand;
+#if JVET_AJ0274_GPM_AFFINE_TM
+  uint32_t      m_maxNumGpmAffTmCand;
+#endif
 #endif
   uint32_t      m_maxNumIBCMergeCand;                             ///< Max number of IBC merge candidates
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
@@ -1067,6 +1101,9 @@ protected:
   bool        m_forceDecodeBitstream1;
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
+#if FIXFILTER_CFG
+  bool        m_alfFixedFilter;
+#endif
   bool        m_ccalf;
   int         m_ccalfQpThreshold;
 
@@ -1149,6 +1186,9 @@ protected:
   CfgVPSParameters m_cfgVPSParameters;
   Level::Name m_levelPtl[MAX_NUM_OLSS];
   int         m_olsPtlIdx[MAX_NUM_OLSS];
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool m_intraNN;
+#endif
 
 #if EXTENSION_360_VIDEO
   TExt360AppEncCfg m_ext360;

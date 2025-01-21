@@ -140,8 +140,10 @@ private:
   PicList*                m_pcListPic;
 
   HLSWriter*              m_HLSWriter;
+#if !JVET_AJ0237_INTERNAL_12BIT
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
   BilateralFilter         m_cBilateralFilter;
+#endif
 #endif
   LoopFilter*             m_pcLoopFilter;
 
@@ -214,6 +216,12 @@ private:
 #endif
 
 public:
+#if JVET_AJ0237_INTERNAL_12BIT
+#if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
+  BilateralFilter         m_cBilateralFilter;
+#endif
+#endif
+
   EncGOP();
   virtual ~EncGOP();
 
@@ -307,7 +315,7 @@ protected:
 #endif
 
   void xCalculateAddPSNRs(const bool isField, const bool isFieldTopFieldFirst, const int iGOPid, Picture *pcPic,
-                          const AccessUnit &accessUnit, PicList &rcListPic, int64_t dEncTime,
+                          const AccessUnit &accessUnit, PicList &rcListPic, double dEncTime,
                           const InputColourSpaceConversion snr_conversion, const bool printFrameMSE,
 #if MSSIM_UNIFORM_METRICS_LOG
                           const bool printMSSSIM,

@@ -52,7 +52,11 @@
 #define IF_FILTER_PREC    6 ///< Log2 of sum of filter taps
 #endif
 #define IF_INTERNAL_OFFS (1<<(IF_INTERNAL_PREC-1)) ///< Offset used internally
+#if JVET_AJ0237_INTERNAL_12BIT
+#define IF_INTERNAL_PREC_BILINEAR(bd) std::min(IF_INTERNAL_PREC, int(bd))
+#else
 #define IF_INTERNAL_PREC_BILINEAR 10 ///< Number of bits for internal precision
+#endif
 #define IF_FILTER_PREC_BILINEAR   4  ///< Bilinear filter coeff precision so that intermediate value will not exceed 16 bit for SIMD - bit exact
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
 #define IF_INTERNAL_FRAC_BITS(bd) std::max(2, IF_INTERNAL_PREC - int(bd))
@@ -62,6 +66,10 @@
  */
 class InterpolationFilter
 {
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+public:
+  static const TFilterCoeff m_lumaFilter64[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS * 4][12];
+#endif
 #if IF_12TAP
   static const TFilterCoeff m_lumaFilter4x4[LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][8];
 #else
@@ -166,7 +174,11 @@ public:
   template<int N, bool isVertical, bool isFirst, bool isLast>
   static void filter(const ClpRng& clpRng, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, TFilterCoeff const *coeff, bool biMCForDMVR);
 
-  void filter4x4( const ClpRng& clpRng, Pel const *src, int srcStride, Pel *dst, int dstStride, int xFrac, int yFrac, bool isLast);
+  void filter4x4( const ClpRng& clpRng, Pel const *src, int srcStride, Pel *dst, int dstStride, int xFrac, int yFrac, bool isLast
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  , bool useHighPrec = false
+#endif
+  );
 
   template<int N>
   void filterHor(const ClpRng& clpRng, Pel const* src, int srcStride, Pel *dst, int dstStride, int width, int height, bool isLast, TFilterCoeff const *coeff, bool biMCForDMVR);

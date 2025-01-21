@@ -291,6 +291,10 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #endif
 #endif
   lfnstIdx          = other.lfnstIdx;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  indicesRepresentationPnn = other.indicesRepresentationPnn;
+  lfnstSecFlag = other.lfnstSecFlag;
+#endif
   tileIdx           = other.tileIdx;
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = other.plIdx;
@@ -328,6 +332,12 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_AC0094_REF_SAMPLES_OPT
   dimdChromaModeSecond = other.dimdChromaModeSecond;
 #endif
+#endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  for (int i = 0; i < 4; i++)
+  {
+    ccpChromaDimdMode[i] = other.ccpChromaDimdMode[i];
+  }
 #endif
 #if JVET_AB0157_INTRA_FUSION
   for( int i = 0; i < DIMD_FUSION_NUM-1; i++ )
@@ -407,6 +417,47 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   timdFusionWeight[0] = other.timdFusionWeight[0];
   timdFusionWeight[1] = other.timdFusionWeight[1];
 #endif
+#if JVET_AJ0146_TIMDSAD
+  timdSad              = other.timdSad;
+  timdModeSad          = other.timdModeSad;
+  timdModeSecondarySad = other.timdModeSecondarySad;
+#if JVET_AC0094_REF_SAMPLES_OPT
+  timdModeCheckWASad          = other.timdModeCheckWASad;
+  timdModeSecondaryCheckWASad = other.timdModeSecondaryCheckWASad;
+#endif
+  timdIsBlendedSad     = other.timdIsBlendedSad;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  timdModeNonAngSad    = other.timdModeNonAngSad  ;
+  for( int i = 0; i < TIMD_FUSION_NUM; i++ )
+  {
+    timdFusionWeightSad[i] = other.timdFusionWeightSad[i];
+    timdLocDepSad[i]       = other.timdLocDepSad[i];
+  }
+#else
+  timdFusionWeightSad[0] = other.timdFusionWeightSad[0];
+  timdFusionWeightSad[1] = other.timdFusionWeightSad[1];
+#endif
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+  timdMrg = other.timdMrg;
+  for (int i = 0; i <= NUM_TIMD_MERGE_MODES; i++)
+  {
+    timdmTrType[i][0] = other.timdmTrType[i][0];
+    timdmTrType[i][1] = other.timdmTrType[i][1];
+  }
+  for (int i = 0; i < NUM_TIMD_MERGE_MODES; i++)
+  {
+    timdMrgIsBlended[i] = other.timdMrgIsBlended[i];
+    for (int j = 0; j < TIMD_FUSION_NUM; j++)
+    {
+      timdMrgList[i][j] = other.timdMrgList[i][j];
+      timdMrgFusionWeight[i][j] = other.timdMrgFusionWeight[i][j];
+      timdMrgModeCheckWA[i][j] = other.timdMrgModeCheckWA[i][j];
+      timdMrgLocDep[i][j] = other.timdMrgLocDep[i][j];
+    }
+  }
+  timdMrgCand = other.timdMrgCand;
+#endif
 #endif
 #if JVET_AB0155_SGPM
   timdHor      = other.timdHor;
@@ -425,6 +476,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   eipFlag = other.eipFlag;
   eipMerge = other.eipMerge;
   eipModel = other.eipModel;
+#if JVET_AJ0082_MM_EIP
+  eipMmFlag = other.eipMmFlag;
+#endif
 #endif
 #if ENABLE_OBMC
   obmcFlag          = other.obmcFlag;
@@ -452,6 +506,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   mipFlag           = other.mipFlag;
 #if JVET_AB0067_MIP_DIMD_LFNST
   mipDimdMode       = other.mipDimdMode;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  sgpmDimdMode = other.sgpmDimdMode;
 #endif
 #if JVET_V0130_INTRA_TMP
   tmpFlag           = other.tmpFlag;
@@ -588,6 +645,13 @@ void CodingUnit::initData()
 #endif
 #endif
   lfnstIdx          = 0;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  for (auto it{indicesRepresentationPnn.begin()}; it != indicesRepresentationPnn.end(); it++)
+  {
+    std::fill(it->begin(), it->end(), MAX_INT);
+  }
+  lfnstSecFlag = false;
+#endif
   tileIdx           = 0;
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = 0;
@@ -625,6 +689,12 @@ void CodingUnit::initData()
 #if JVET_AC0094_REF_SAMPLES_OPT
   dimdChromaModeSecond = -1;
 #endif
+#endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  for (int i = 0; i < 4; i++)
+  {
+    ccpChromaDimdMode[i] = -1;
+  }
 #endif
 #if JVET_AB0157_INTRA_FUSION
   for( int i = 0; i < DIMD_FUSION_NUM-1; i++ )
@@ -707,6 +777,50 @@ void CodingUnit::initData()
   timdFusionWeight[0] = -1;
   timdFusionWeight[1] = -1;
 #endif
+#if JVET_AJ0146_TIMDSAD
+  timdSad                     = false;
+#if JVET_AC0094_REF_SAMPLES_OPT 
+  timdModeSad                 = INVALID_TIMD_IDX;
+  timdModeSecondarySad        = INVALID_TIMD_IDX;
+  timdModeCheckWASad          = true;
+  timdModeSecondaryCheckWASad = true;
+#else
+  timdModeSad                 = -1;
+  timdModeSecondarySad        = -1;
+#endif
+  timdIsBlendedSad     = false;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  timdModeNonAngSad    = INVALID_TIMD_IDX;
+  for( int i = 0; i < TIMD_FUSION_NUM; i++ )
+  {
+    timdFusionWeightSad[i] = -1;
+    timdLocDepSad[i]       = 0;
+  }
+#else
+  timdFusionWeightSad[0] = -1;
+  timdFusionWeightSad[1] = -1;
+#endif
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+  timdMrg = 0;
+  for (int i = 0; i <= NUM_TIMD_MERGE_MODES; i++)
+  {
+    timdmTrType[i][0] = TransType::DCT2;
+    timdmTrType[i][1] = TransType::DCT2;
+  }
+  for (int i = 0; i < NUM_TIMD_MERGE_MODES; i++)
+  {
+    timdMrgIsBlended[i] = false;
+    for (int j = 0; j < TIMD_FUSION_NUM; j++)
+    {
+      timdMrgList[i][j] = INVALID_TIMD_IDX;
+      timdMrgFusionWeight[i][j] = -1;
+      timdMrgModeCheckWA[i][j] = true;
+      timdMrgLocDep[i][j] = 0;
+    }
+  }
+  timdMrgCand = -1;
+#endif
 #endif
 #if JVET_AB0155_SGPM
   timdHor      = -1;
@@ -724,6 +838,9 @@ void CodingUnit::initData()
 #if JVET_AG0058_EIP
   eipFlag = false;
   eipMerge = false;
+#if JVET_AJ0082_MM_EIP
+  eipMmFlag = false;
+#endif
 #endif
 #if ENABLE_OBMC
   obmcFlag          = true;
@@ -739,6 +856,9 @@ void CodingUnit::initData()
   mipFlag           = false;
 #if JVET_AB0067_MIP_DIMD_LFNST
   mipDimdMode       = 0;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  sgpmDimdMode = 0;
 #endif
 #if JVET_V0130_INTRA_TMP
   tmpFlag = false;
@@ -982,8 +1102,8 @@ const uint8_t CodingUnit::checkAllowedSbt() const
   uint8_t sbtAllowed = 0;
   int cuWidth  = lwidth();
   int cuHeight = lheight();
-  bool allow_type[NUMBER_SBT_IDX];
-  memset( allow_type, false, NUMBER_SBT_IDX * sizeof( bool ) );
+  bool allowType[NUMBER_SBT_IDX];
+  memset( allowType, false, NUMBER_SBT_IDX * sizeof( bool ) );
 
   //parameter
   int maxSbtCUSize = cs->sps->getMaxTbSize();
@@ -995,14 +1115,18 @@ const uint8_t CodingUnit::checkAllowedSbt() const
     return 0;
   }
 
-  allow_type[SBT_VER_HALF] = cuWidth  >= minSbtCUSize;
-  allow_type[SBT_HOR_HALF] = cuHeight >= minSbtCUSize;
-  allow_type[SBT_VER_QUAD] = cuWidth  >= ( minSbtCUSize << 1 );
-  allow_type[SBT_HOR_QUAD] = cuHeight >= ( minSbtCUSize << 1 );
+  allowType[SBT_VER_HALF] = cuWidth  >= minSbtCUSize;
+  allowType[SBT_HOR_HALF] = cuHeight >= minSbtCUSize;
+  allowType[SBT_VER_QUAD] = cuWidth  >= ( minSbtCUSize << 1 );
+  allowType[SBT_HOR_QUAD] = cuHeight >= ( minSbtCUSize << 1 );
+#if JVET_AJ0260_SBT_CORNER_MODE
+  allowType[ SBT_QUAD ]    = cuWidth >= minSbtCUSize && cuHeight >= minSbtCUSize && cuWidth >= SBT_QUAD_MIN_BLOCK_SIZE    && cuHeight >= SBT_QUAD_MIN_BLOCK_SIZE;
+  allowType[ SBT_QUARTER ] = cuWidth >= minSbtCUSize && cuHeight >= minSbtCUSize && cuWidth >= SBT_QUARTER_MIN_BLOCK_SIZE && cuHeight >= SBT_QUARTER_MIN_BLOCK_SIZE;
+#endif
 
   for( int i = 0; i < NUMBER_SBT_IDX; i++ )
   {
-    sbtAllowed += (uint8_t)allow_type[i] << i;
+    sbtAllowed += (uint8_t)allowType[i] << i;
   }
 
   return sbtAllowed;
@@ -1018,12 +1142,68 @@ uint8_t CodingUnit::getSbtTuSplit() const
   case SBT_HOR_HALF: sbtTuSplitType = ( getSbtPos() == SBT_POS0 ? 0 : 1 ) + SBT_HOR_HALF_POS0_SPLIT; break;
   case SBT_VER_QUAD: sbtTuSplitType = ( getSbtPos() == SBT_POS0 ? 0 : 1 ) + SBT_VER_QUAD_POS0_SPLIT; break;
   case SBT_HOR_QUAD: sbtTuSplitType = ( getSbtPos() == SBT_POS0 ? 0 : 1 ) + SBT_HOR_QUAD_POS0_SPLIT; break;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD:     sbtTuSplitType = getSbtPos() + SBT_QUAD_POSTL_SPLIT;    break;
+  case SBT_QUARTER:  sbtTuSplitType = getSbtPos() + SBT_QUARTER_POSTL_SPLIT; break;
+#endif
   default: assert( 0 );  break;
   }
 
+#if JVET_AJ0260_SBT_CORNER_MODE
+  CHECK( sbtTuSplitType < SBT_VER_HALF_POS0_SPLIT || sbtTuSplitType >= NUM_PART_SPLIT, "Wrong SBT split type" );
+#else
   assert( sbtTuSplitType <= SBT_HOR_QUAD_POS1_SPLIT && sbtTuSplitType >= SBT_VER_HALF_POS0_SPLIT );
+#endif
   return sbtTuSplitType;
 }
+
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+int CodingUnit::getSbtTuIdx() const
+{
+  int idx = 0;
+
+  if( sbtInfo )
+  {
+    const int sbtIdx = getSbtIdx();
+    const int sbtPos = getSbtPos();
+
+    if( sbtIdx == SBT_QUAD )
+    {
+      idx = sbtPos;
+    }
+    else if( sbtIdx == SBT_QUARTER )
+    {
+      if( sbtPos == 0 )
+      {
+        idx = 0;
+      }
+      else if( sbtPos == 1 )
+      {
+        idx = 3;
+      }
+      else if( sbtPos == 2 )
+      {
+        idx = 12;
+      }
+      else if( sbtPos == 3 )
+      {
+        idx = 15;
+      }
+      else
+      {
+        CHECK( true, "Wrong SBT position" );
+      }
+    }
+    else
+    {
+      idx = sbtPos;
+    }
+  }
+
+  return idx;
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // prediction unit method definitions
@@ -1055,7 +1235,7 @@ void PredictionUnit::initData()
   decoderDerivedCcpMode = 0;
   ddNonLocalCCPFusion = 0;
 #endif
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   parseLumaMode = false;
   candId = -1;
   parseChromaMode = false;
@@ -1102,6 +1282,11 @@ void PredictionUnit::initData()
   ccpMergeFusionFlag = 0;
   ccpMergeFusionType = 0;
 #endif
+#if JVET_AJ0081_CHROMA_TMRL
+  chromaMrlIdx = 0;
+  chromaTmrlFlag = false;
+  chromaTmrlIdx = 0;
+#endif
   // inter data
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   colIdx = 0;
@@ -1135,6 +1320,9 @@ void PredictionUnit::initData()
   geoTmFlag0 = false;
   geoTmFlag1 = false;
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  geoBlendTmFlag = false;
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = MAX_UCHAR;
@@ -1278,7 +1466,7 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   decoderDerivedCcpMode = predData.decoderDerivedCcpMode;
   ddNonLocalCCPFusion = predData.ddNonLocalCCPFusion;
 #endif
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   parseLumaMode = predData.parseLumaMode;
   candId = predData.candId;
   parseChromaMode = predData.parseChromaMode;
@@ -1324,6 +1512,11 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   ccpMergeFusionFlag = predData.ccpMergeFusionFlag;
   ccpMergeFusionType = predData.ccpMergeFusionType;
 #endif
+#if JVET_AJ0081_CHROMA_TMRL
+  chromaMrlIdx = predData.chromaMrlIdx;
+  chromaTmrlFlag = predData.chromaTmrlFlag;
+  chromaTmrlIdx = predData.chromaTmrlIdx;
+#endif
   return *this;
 }
 
@@ -1361,6 +1554,9 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   geoTmFlag0 = predData.geoTmFlag0;
   geoTmFlag1 = predData.geoTmFlag1;
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  geoBlendTmFlag = predData.geoBlendTmFlag;
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = predData.geoBldIdx;
@@ -1556,6 +1752,11 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   ccpMergeFusionFlag = other.ccpMergeFusionFlag;
   ccpMergeFusionType = other.ccpMergeFusionType;
 #endif
+#if JVET_AJ0081_CHROMA_TMRL
+  chromaMrlIdx = other.chromaMrlIdx;
+  chromaTmrlFlag = other.chromaTmrlFlag;
+  chromaTmrlIdx = other.chromaTmrlIdx;
+#endif
   mergeFlag   = other.mergeFlag;
 #if JVET_AG0276_LIC_FLAG_SIGNALING
   mergeOppositeLic = other.mergeOppositeLic;
@@ -1567,7 +1768,7 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   colIdx = other.colIdx;
 #endif
   mergeIdx    = other.mergeIdx;
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AJ0249_NEURAL_NETWORK_BASED
   parseLumaMode = other.parseLumaMode;
   candId = other.candId;
   parseChromaMode = other.parseChromaMode;
@@ -1596,6 +1797,9 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   geoTmFlag0 = other.geoTmFlag0;
   geoTmFlag1 = other.geoTmFlag1;
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  geoBlendTmFlag = other.geoBlendTmFlag;
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = other.geoBldIdx;
@@ -2288,6 +2492,35 @@ void TransformUnit::checkTuNoResidual( unsigned idx )
   {
     noResidual = true;
   }
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( CU::getSbtIdx( cu->sbtInfo ) == SBT_QUAD )
+  {
+    noResidual = CU::getSbtPos( cu->sbtInfo ) != idx ? true : false;
+  }
+  else if( CU::getSbtIdx( cu->sbtInfo ) == SBT_QUARTER )
+  {
+    if( CU::getSbtPos( cu->sbtInfo ) == 0 && idx == 0 )
+    {
+      noResidual = false;
+    }
+    else if( CU::getSbtPos( cu->sbtInfo ) == 1 && idx == 3 )
+    {
+      noResidual = false;
+    }
+    else if( CU::getSbtPos( cu->sbtInfo ) == 2 && idx == 12 )
+    {
+      noResidual = false;
+    }
+    else if( CU::getSbtPos( cu->sbtInfo ) == 3 && idx == 15 )
+    {
+      noResidual = false;
+    }
+    else
+    {
+      noResidual = true;
+    }
+  }
+#endif
 }
 
 int TransformUnit::getTbAreaAfterCoefZeroOut(ComponentID compID) const

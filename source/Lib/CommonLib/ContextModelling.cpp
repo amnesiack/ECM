@@ -237,7 +237,12 @@ unsigned DeriveCtx::CtxModeConsFlag( const CodingStructure& cs, Partitioner& par
 }
 #endif
 
-void DeriveCtx::CtxSplit( const CodingStructure& cs, Partitioner& partitioner, unsigned& ctxSpl, unsigned& ctxQt, unsigned& ctxHv, unsigned& ctxHorBt, unsigned& ctxVerBt, bool* _canSplit /*= nullptr */ )
+void DeriveCtx::CtxSplit( const CodingStructure& cs, Partitioner& partitioner, unsigned& ctxSpl, unsigned& ctxQt, unsigned& ctxHv, unsigned& ctxHorBt, unsigned& ctxVerBt, bool* _canSplit 
+#if JVET_AI0087_BTCUS_RESTRICTION
+  , bool disableBTV, bool disableBTH
+#endif
+
+/*= nullptr */ )
 {
   const Position pos         = partitioner.currArea().blocks[partitioner.chType];
   const unsigned curSliceIdx = cs.slice->getIndependentSliceIdx();
@@ -255,9 +260,17 @@ void DeriveCtx::CtxSplit( const CodingStructure& cs, Partitioner& partitioner, u
   {
 #if JVET_AH0135_TEMPORAL_PARTITIONING
     unsigned maxMtt;
-    partitioner.canSplit(cs, canSplit[0], canSplit[1], canSplit[2], canSplit[3], canSplit[4], canSplit[5], maxMtt);
+    partitioner.canSplit(cs, canSplit[0], canSplit[1], canSplit[2], canSplit[3], canSplit[4], canSplit[5], maxMtt
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    );
 #else
-    partitioner.canSplit( cs, canSplit[0], canSplit[1], canSplit[2], canSplit[3], canSplit[4], canSplit[5] );
+    partitioner.canSplit( cs, canSplit[0], canSplit[1], canSplit[2], canSplit[3], canSplit[4], canSplit[5]
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    );
 #endif
   }
   else
@@ -312,6 +325,13 @@ void DeriveCtx::CtxSplit( const CodingStructure& cs, Partitioner& partitioner, u
   }
 
   ctxSpl += 3 * ( numSplit >> 1 );
+
+#if JVET_AI0087_BTCUS_RESTRICTION
+  if ((disableBTV || disableBTH) && partitioner.chType == CHANNEL_TYPE_LUMA)
+  {
+    ctxSpl = 9;
+  }
+#endif
 
   //////////////////////////
   // CTX is qt split (0-5)
@@ -2438,6 +2458,14 @@ void MergeCtx::setGeoMrgDuplicate( const PredictionUnit& pu )
   {
     int mrgList        = mvFieldNeighbours[(mergeCand << 1) + 0].refIdx == -1 ? 1 : 0;
     int mrgRefIdx      = mvFieldNeighbours[(mergeCand << 1) + mrgList].refIdx;
+#if JVET_AJ0274_REGRESSION_GPM_TM
+    if (mrgRefIdx < 0 || mrgRefIdx > MAX_NUM_REF)
+    {
+      mrgDuplicated[mergeCand] = true;
+      pocMrg[mergeCand] = -1;
+      continue;
+    }
+#endif
     pocMrg[mergeCand]  = slice->getRefPic((RefPicList)mrgList, mrgRefIdx)->getPOC();
     mrgMv[mergeCand]   = mvFieldNeighbours[(mergeCand << 1) + mrgList].mv;
     mrgDuplicated[mergeCand] = false;
@@ -3324,6 +3352,32 @@ unsigned DeriveCtx::CtxMipFlag( const CodingUnit& cu )
 
   return ctxId;
 }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+uint16_t DeriveCtx::CtxPnnLuminanceFlag(const CodingUnit& cu)
+{
+  const CodingStructure* const cs = cu.cs;
+  uint16_t ctxId = 0;
+  const CodingUnit* const cuLeft = cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CHANNEL_TYPE_LUMA);
+  if (cuLeft)
+  {
+    const uint32_t indexModeLeft = PU::getFinalIntraMode(*cuLeft->firstPU, CHANNEL_TYPE_LUMA);
+    if (indexModeLeft == PNN_IDX)
+    {
+      return 1;
+    }
+  }
+  const CodingUnit* const cuAbove = cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CHANNEL_TYPE_LUMA);
+  if (cuAbove)
+  {
+    const uint32_t indexModeAbove = PU::getFinalIntraMode(*cuAbove->firstPU, CHANNEL_TYPE_LUMA);
+    if (indexModeAbove == PNN_IDX)
+    {
+      ctxId = 1;
+    }
+  }
+  return ctxId;
+}
+#endif
 
 unsigned DeriveCtx::CtxPltCopyFlag( const unsigned prevRunType, const unsigned dist )
 {

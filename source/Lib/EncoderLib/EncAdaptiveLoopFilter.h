@@ -43,6 +43,25 @@
 
 #include "CABACWriter.h"
 #include "EncCfg.h"
+#if JVET_AK0065_TALF
+#include "RdCost.h"
+
+struct CandTALF
+{
+  double                       rate;
+  TAlfControl                  talfControl;
+  std::vector<TAlfCtbParam>    talfCtbParam;
+  std::vector<TAlfFilterParam> params;
+  
+  CandTALF()
+  {
+    rate = 0;
+    talfControl.reset();
+    talfCtbParam.clear();
+    params.clear();
+  }
+};
+#endif
 
 struct AlfCovariance
 {
@@ -387,6 +406,9 @@ private:
   short                  m_filterIndices[MAX_NUM_ALF_CLASSES][MAX_NUM_ALF_CLASSES];
   unsigned               m_bitsNewFilter[MAX_NUM_CHANNEL_TYPE];
   int&                   m_apsIdStart;
+#if JVET_AK0065_TALF
+  int&                   m_apsIdStart2;
+#endif
   double                 *m_ctbDistortionUnfilter[MAX_NUM_COMPONENT];
   double                 m_unFiltDistCompnent[MAX_NUM_COMPONENT];
 #if ALF_IMPROVEMENT
@@ -435,7 +457,11 @@ private:
 #endif
 
 public:
+#if JVET_AK0065_TALF
+  EncAdaptiveLoopFilter( int& apsIdStart, int& apsIdStart2 );
+#else
   EncAdaptiveLoopFilter( int& apsIdStart );
+#endif
   virtual ~EncAdaptiveLoopFilter() {}
 
   template<bool alfWSSD>
@@ -457,6 +483,9 @@ public:
   void         alfCorrection( CodingStructure& cs, const PelUnitBuf& origBuf, const PelUnitBuf& recExtBuf, bool mode=false );
   void         alfCorrectionChroma( CodingStructure& cs, PelUnitBuf& recYuvSao );
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool calcOffsetRefinementOnOff( CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& src2, int& refineIdx );
+#endif
 
   void ALFProcess(CodingStructure& cs, const double *lambdas
 #if ENABLE_QPA
@@ -475,6 +504,9 @@ public:
   void create( const EncCfg* encCfg, const int picWidth, const int picHeight, const ChromaFormat chromaFormatIDC, const int maxCUWidth, const int maxCUHeight, const int maxCUDepth, const int inputBitDepth[MAX_NUM_CHANNEL_TYPE], const int internalBitDepth[MAX_NUM_CHANNEL_TYPE], bool createEncData = false );
   void destroy( bool destroyEncData = false );
   void setApsIdStart( int i) { m_apsIdStart = i; }
+#if JVET_AK0065_TALF
+  void setApsIdStart2(int i) { m_apsIdStart2 = i; }
+#endif
 #if ALF_IMPROVEMENT
   static int lengthGolomb(int coeffVal, int k, bool signed_coeff = true);
 #endif
@@ -755,6 +787,43 @@ private:
   void countChromaSampleValueNearMidPoint(const Pel* chroma, int chromaStride, int height, int width, int log2BlockWidth, int log2BlockHeight, uint64_t* chromaSampleCountNearMidPoint, int chromaSampleCountNearMidPointStride);
   void getFrameStatsCcalf(ComponentID compIdx, int filterIdc);
   void initDistortionCcalf(int comp);
+
+#if JVET_AK0065_TALF
+  AlfCovariance* m_alfCovarianceTALF[MAX_TALF_FILTER_SHAPE][NUM_TALF_MODE];           // [ctbAddr]
+  AlfCovariance  m_alfCovarianceFrameTALF[MAX_TALF_FILTER_SHAPE][NUM_TALF_MODE];
+  Pel            m_ELocalStorage[4][NUM_TALF_COEFF + 1][MAX_CU_SIZE * MAX_CU_SIZE];
+  Pel            m_yLocalStorage[MAX_CU_SIZE * MAX_CU_SIZE];
+  RdCost*        m_sseCost;
+  uint64_t*      m_talfDistortion[ALF_CTB_MAX_NUM_APS][MAX_NUM_TALF_FILTERS];   // for current block size
+  PelStorage     m_tempSaveTALF[2];
+
+  void determineCtuFlag(CodingStructure &cs, const ComponentID compId, double **unfilteredDistortion
+    , uint64_t *trainingDistortion[MAX_NUM_TALF_FILTERS], std::vector<TAlfCtbParam>& filterControl
+    , uint64_t &curTotalDistortion, double &curTotalRate, const int filterCount, uint8_t* trainingControl);
+  bool determineCtuFlagReuse(CodingStructure &cs, const ComponentID compID, double **unfilteredDistortion
+    , uint64_t *trainingDistortion[ALF_CTB_MAX_NUM_APS][MAX_NUM_TALF_FILTERS], TAlfCtbParam *filterControl
+    , std::vector<int>& apsIds, std::vector<TAlfFilterParam>& params, uint64_t &curTotalDistortion
+    , double &curTotalRate);
+  CandTALF deriveTAlfNewFilter(CodingStructure &cs, ComponentID compId, const int mode, const int shapeIdx);
+  void deriveTAlfReuseFilter(CodingStructure &cs, ComponentID compId, const int mode
+    , static_vector<CandTALF, NUM_TALF_REUSE_CANDS>& reuseCandList);
+  void deriveTAlfFilter(CodingStructure &cs, ComponentID compId, std::vector<CandTALF>& talfCandList);
+  void deriveStatsForTAlfFilter(CodingStructure &cs, ComponentID compID, const PelUnitBuf &orgYuv
+    , const PelUnitBuf &recBeforeALF);
+  void getBlkStatsTAlf(AlfCovariance &alfCovariance, const CPelBuf &orgYuv, const CPelBuf &recBeforeALF
+    , CodingStructure &cs, const UnitArea& clippedCtu, const ComponentID compId, const int shapeIdx
+    , const int mode);
+  void getFrameStatsTAlf(const int filterIdc, AlfCovariance* covar, AlfCovariance& covarFrame);
+  void deriveCoeffTAlf(const ComponentID compId, const AlfFilterShape& alfFilterShape, const AlfCovariance& covarFrame
+    , int filterCoeffQuant[MAX_NUM_ALF_LUMA_COEFF], int filterClipIdx[MAX_NUM_ALF_LUMA_COEFF], const int nonLinearFlag
+    , const int bitDepth);
+  double getRecoDist(const PelUnitBuf &orgYuv, PelUnitBuf &recYuv, const ComponentID compId, const CodingStructure& cs);
+  int  getOneTAlfRate(int nonLinearFlag, int coeff[MAX_NUM_ALF_LUMA_COEFF]);
+  int  getSetTAlfRate(uint8_t filterCount, int bestCoeff[MAX_NUM_TALF_FILTERS][MAX_NUM_ALF_LUMA_COEFF]
+    , int coeff[MAX_NUM_ALF_LUMA_COEFF], int bestNonLinearFlag[MAX_NUM_TALF_FILTERS], int nonLinearFlag);
+  void setTAlfAPS(CodingStructure& cs, CandTALF& cand);
+  std::vector<int> getAvailableTAlfApsIds(CodingStructure &cs, int& newApsId);
+#endif
 };
 
 #endif

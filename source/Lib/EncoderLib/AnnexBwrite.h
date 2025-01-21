@@ -52,14 +52,17 @@ uint32_t writeAnnexBNalUnit(std::ostream& out, const NALUnitEBSP& nalu, bool use
   if (useLongStartcode)
   {
     out.write(reinterpret_cast<const char*>(startCodePrefix), 4);
+    checkWriteError(out);
     size += 4;
   }
   else
   {
     out.write(reinterpret_cast<const char*>(startCodePrefix+1), 3);
+    checkWriteError(out);
     size += 3;
   }
   out << nalu.m_nalUnitData.str();
+  checkWriteError(out);
   size += uint32_t(nalu.m_nalUnitData.str().size());
 
   return size;
@@ -101,11 +104,13 @@ static std::vector<uint32_t> writeAnnexB(std::ostream& out, const AccessUnit& au
        *    7.4.1.2.3.
        */
       out.write(reinterpret_cast<const char*>(start_code_prefix), 4);
+      checkWriteError(out);
       size += 4;
     }
     else
     {
       out.write(reinterpret_cast<const char*>(start_code_prefix+1), 3);
+      checkWriteError(out);
       size += 3;
     }
     out << nalu.m_nalUnitData.str();

@@ -166,11 +166,16 @@ void create(
 
   void extendPicBorder( const PPS *pps );
   void extendWrapBorder( const PPS *pps );
+#if JVET_AK0065_TALF
+  void finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHeader *picHeader, APS** alfApss, APS** alfApss2, APS* lmcsAps, APS* scalingListAps );
+#else
   void finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHeader *picHeader, APS** alfApss, APS* lmcsAps, APS* scalingListAps );
+#endif
 
   int  getPOC()                               const { return poc; }
 #if JVET_AG0145_ADAPTIVE_CLIPPING
   ClpRng getLumaClpRng()                      const { return lumaClpRng; }
+  void calcLumaClpParams();
 #endif
   int  getDecodingOrderNumber()               const { return m_decodingOrderNumber; }
   void setDecodingOrderNumber(const int val)        { m_decodingOrderNumber = val;  }

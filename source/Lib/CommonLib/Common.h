@@ -629,12 +629,20 @@ struct LutCCP
   // Postions for future extensions
 };
 #endif
+
 #if JVET_AG0058_EIP
 struct EipModelCandidate
 {
   int64_t params[EIP_FILTER_TAP] = { 0 };
   int     filterShape            = 0;
+#if JVET_AJ0082_MM_EIP
+  bool    bMm                     = false;
+  int64_t params1[EIP_FILTER_TAP] = { 0 };
+  Pel     eipMmThrd               = 0;
+  int     eipDimdMode             = -1;
+#else
   int     eipDimdMode            = PLANAR_IDX;
+#endif
 
   inline bool isTheSameParams(const EipModelCandidate& p) const
   {
@@ -642,6 +650,26 @@ struct EipModelCandidate
     {
       return false;
     }
+#if JVET_AJ0082_MM_EIP
+    if (bMm != p.bMm)
+    {
+      return false;
+    }
+    if (bMm)
+    {
+      if (eipMmThrd != p.eipMmThrd)
+      {
+        return false;
+      }
+      for (int i = 0; i < EIP_FILTER_TAP; ++i)
+      {
+        if (params1[i] != p.params1[i])
+        {
+          return false;
+        }
+      }
+    }
+#endif
     for (int i = 0; i < EIP_FILTER_TAP; ++i)
     {
       if (params[i] != p.params[i])
@@ -662,18 +690,16 @@ struct EipModelCandidate
   }
 };
 
-#if JVET_AG0058_EIP
 struct LutEIP
 {
 #if JVET_Z0118_GDR  
   static_vector<EipModelCandidate, MAX_NUM_HEIP_CANDS> lutEip0;
   static_vector<EipModelCandidate, MAX_NUM_HEIP_CANDS> lutEip1;
 #else
-  static_vector<CccmModel, MAX_NUM_HEIP_CANDS> lutEip;
+  static_vector<EipModelCandidate, MAX_NUM_HEIP_CANDS> lutEip;
 #endif
   // Postions for future extensions
 };
-#endif
 #endif
 
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
@@ -717,6 +743,160 @@ struct AltLMInterUnit
       offset[comp] = other.offset[comp];
     }
     return *this;
+  }
+};
+#endif
+
+#if JVET_AK0065_TALF
+struct TAlfControl
+{
+  bool             enabledFlag;
+  std::vector<int> apsIds;
+  int              mode;
+  bool             newFilters;
+  void reset()
+  {
+    enabledFlag = false;
+    apsIds.clear();
+    mode = 0;
+    newFilters = false;
+  }
+
+  TAlfControl()
+  {
+    reset();
+  }
+};
+struct refComb
+{
+  RefPicList rplId;
+  int refId;
+  int poc;
+  int absPocDiff;
+  refComb(const RefPicList _rplId, const int _refId, const int _poc, const int _absPocDiff)
+  {
+    rplId = _rplId;
+    refId = _refId;
+    poc = _poc;
+    absPocDiff = _absPocDiff;
+  }
+  bool operator==(const refComb &other) const
+  {
+    return poc == other.poc;
+  }
+};
+
+struct TAlfFilterParam
+{
+  bool    newFlag;
+  uint8_t filterCount;
+  int     shapeIdx;
+  int     shift[MAX_NUM_TALF_FILTERS];
+  int     clipFlag[MAX_NUM_TALF_FILTERS];
+  int     coeff[MAX_NUM_TALF_FILTERS][MAX_NUM_ALF_LUMA_COEFF];
+  int     clipIdx[MAX_NUM_TALF_FILTERS][MAX_NUM_ALF_LUMA_COEFF];
+  TAlfFilterParam()
+  {
+    reset();
+  }
+  void reset()
+  {
+    newFlag     = false;
+    filterCount = 0;
+    shapeIdx    = 0;
+    std::memset( shift, 0, sizeof( shift ) );
+    std::memset( clipFlag, 0, sizeof( clipFlag ) );
+    std::memset( coeff, 0, sizeof( coeff ) );
+    std::memset( clipIdx, 0, sizeof( clipIdx ) );
+  }
+  const TAlfFilterParam& operator = ( const TAlfFilterParam& src )
+  {
+    newFlag     = src.newFlag;
+    filterCount = src.filterCount;
+    shapeIdx    = src.shapeIdx;
+    std::memcpy( shift, src.shift, sizeof( shift ) );
+    std::memcpy( clipFlag, src.clipFlag, sizeof( clipFlag ) );
+    std::memcpy( coeff, src.coeff, sizeof( coeff ) );
+    std::memcpy( clipIdx, src.clipIdx, sizeof( clipIdx ) );
+
+    return *this;
+  }
+
+  bool operator!=(const TAlfFilterParam &other)
+  {
+    if (filterCount != other.filterCount || shapeIdx != other.shapeIdx)
+    {
+      return true;
+    }
+    for (int fIdx = 0; fIdx < filterCount; fIdx++)
+    {
+      if (shift[fIdx] != other.shift[fIdx] || clipFlag[fIdx] != other.clipFlag[fIdx])
+      {
+        return true;
+      }
+      for (int cIdx = 0; cIdx < NUM_TALF_COEFF; cIdx++)
+      {
+        if (coeff[fIdx][cIdx] != other.coeff[fIdx][cIdx])
+        {
+          return true;
+        }
+        if (coeff[fIdx][cIdx] && clipIdx[fIdx][cIdx] != other.clipIdx[fIdx][cIdx])
+        {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+};
+
+struct TAlfCtbParam
+{
+  bool    enabledFlag;
+  uint8_t setIdx;
+  uint8_t filterIdx;
+
+  void reset() 
+  {
+    enabledFlag = false;
+    setIdx      = 0;
+    filterIdx   = 0;
+  }
+
+  TAlfCtbParam()
+  {
+    reset();
+  }
+
+  const TAlfCtbParam& operator = ( const TAlfCtbParam& src )
+  {
+    enabledFlag = src.enabledFlag;
+    setIdx      = src.setIdx;
+    filterIdx   = src.filterIdx;
+
+    return *this;
+  }
+};
+
+struct TAlfPosInfo
+{
+  int refIdx;
+  RefPicList refPicList;
+  Position offset;
+
+  TAlfPosInfo()
+  {
+    refIdx = -1;
+    refPicList = NUM_REF_PIC_LIST_01;
+    offset = Position();
+  }
+  TAlfPosInfo(const int _refIdx, const int _refPicList, const int _offsetX, const int _offsetY)
+  {
+    refIdx = _refIdx;
+    refPicList = RefPicList(_refPicList);
+    offset.x = _offsetX;
+    offset.y = _offsetY;
   }
 };
 #endif

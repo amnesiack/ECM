@@ -290,10 +290,19 @@ void QTBTPartitioner::initCtu( const UnitArea& ctuArea, const ChannelType _chTyp
 
 void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructure& cs )
 {
-  CHECKD( !canSplit( split, cs ), "Trying to apply a prohibited split!" );
+
+#if JVET_AI0087_BTCUS_RESTRICTION
+  CHECKD(!canSplit(split, cs, false, false), "Trying to apply a prohibited split!");
+#else
+  CHECKD(!canSplit(split, cs), "Trying to apply a prohibited split!");
+#endif
 
   bool isImplicit = isSplitImplicit( split, cs );
-  bool canQtSplit = canSplit( CU_QUAD_SPLIT, cs );
+  bool canQtSplit = canSplit( CU_QUAD_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  );
   bool qgEnable = currQgEnable();
   bool qgChromaEnable = currQgChromaEnable();
 
@@ -330,6 +339,16 @@ void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructur
   case SBT_VER_QUAD_POS1_SPLIT:
   case SBT_HOR_QUAD_POS0_SPLIT:
   case SBT_HOR_QUAD_POS1_SPLIT:
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD_POSTL_SPLIT:
+  case SBT_QUAD_POSTR_SPLIT:
+  case SBT_QUAD_POSBL_SPLIT:
+  case SBT_QUAD_POSBR_SPLIT:
+  case SBT_QUARTER_POSTL_SPLIT:
+  case SBT_QUARTER_POSTR_SPLIT:
+  case SBT_QUARTER_POSBL_SPLIT:
+  case SBT_QUARTER_POSBR_SPLIT:
+#endif
     m_partStack.push_back( PartLevel( split, PartitionerImpl::getSbtTuTiling( currArea(), cs, split ) ) );
     break;
   default:
@@ -347,7 +366,12 @@ void QTBTPartitioner::splitCurrArea( const PartSplit split, const CodingStructur
   {
     currTrDepth++;
   }
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( split >= SBT_VER_HALF_POS0_SPLIT && split < NUM_PART_SPLIT )
+#else
   else if( split >= SBT_VER_HALF_POS0_SPLIT && split <= SBT_HOR_QUAD_POS1_SPLIT )
+#endif
   {
     currTrDepth++;
   }
@@ -393,6 +417,9 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   , unsigned& maxMtt
 #endif
+#if JVET_AI0087_BTCUS_RESTRICTION
+  , bool disableBTV, bool disableBTH
+#endif
 )
 {
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
@@ -419,7 +446,7 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
 
   maxMtt = maxBTD;
 
-  if ((!cs.slice->isIntra() && pColPic != NULL && pColPic->cs->slice != NULL)
+  if ((!cs.slice->isIntra() && pColPic != NULL && !pColPic->isRefScaled(cs.pps) && pColPic->cs->slice != NULL)
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
     && (cs.area.blocks[chType].contains(currArea().blocks[chType].pos().offset((currArea().blocks[chType].size().width) >> 1,
       ((currArea().blocks[chType].size().height) >> 1)))
@@ -614,6 +641,18 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
     canBh = canBv = false;
   }
 
+#if JVET_AI0087_BTCUS_RESTRICTION
+  if (disableBTV && (chType == CHANNEL_TYPE_LUMA))
+  {
+    canBv = false;
+  }
+
+  if (disableBTH && (chType == CHANNEL_TYPE_LUMA))
+  {
+    canBh = false;
+  }
+#endif
+
   // specific check for BT splits
   if( area.height <= minBtSize )                            canBh = false;
 #if !REMOVE_VPDU || CTU_256
@@ -666,7 +705,11 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
 #endif
 }
 
-bool QTBTPartitioner::canSplit( const PartSplit split, const CodingStructure &cs )
+bool QTBTPartitioner::canSplit( const PartSplit split, const CodingStructure &cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+  ,bool disableBTV, bool disableBTH
+#endif
+)
 {
   const CompArea area       = currArea().Y();
   const unsigned maxTrSize  = cs.sps->getMaxTbSize();
@@ -675,9 +718,17 @@ bool QTBTPartitioner::canSplit( const PartSplit split, const CodingStructure &cs
 
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   unsigned maxMtt;
-  canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv, maxMtt );
+  canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv, maxMtt 
+#if JVET_AI0087_BTCUS_RESTRICTION
+   , disableBTV, disableBTH
+#endif
+  );
 #else
-  canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv );
+  canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , disableBTV, disableBTH
+#endif
+  );
 #endif
   switch( split )
   {
@@ -696,6 +747,16 @@ bool QTBTPartitioner::canSplit( const PartSplit split, const CodingStructure &cs
   case SBT_VER_QUAD_POS1_SPLIT:
   case SBT_HOR_QUAD_POS0_SPLIT:
   case SBT_HOR_QUAD_POS1_SPLIT:
+#if JVET_AJ0260_SBT_CORNER_MODE
+  case SBT_QUAD_POSTL_SPLIT:
+  case SBT_QUAD_POSTR_SPLIT:
+  case SBT_QUAD_POSBL_SPLIT:
+  case SBT_QUAD_POSBR_SPLIT:
+  case SBT_QUARTER_POSTL_SPLIT:
+  case SBT_QUARTER_POSTR_SPLIT:
+  case SBT_QUARTER_POSBL_SPLIT:
+  case SBT_QUARTER_POSBR_SPLIT:
+#endif
     return currTrDepth == 0;
     break;
   case CU_QUAD_SPLIT:
@@ -830,7 +891,12 @@ void QTBTPartitioner::exitCurrSplit()
     CHECK( currTrDepth == 0, "TR depth is '0', although a TU split was performed" );
     currTrDepth--;
   }
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  else if( currSplit >= SBT_VER_HALF_POS0_SPLIT && currSplit < NUM_PART_SPLIT )
+#else
   else if( currSplit >= SBT_VER_HALF_POS0_SPLIT && currSplit <= SBT_HOR_QUAD_POS1_SPLIT )
+#endif
   {
     CHECK( currTrDepth == 0, "TR depth is '0', although a TU split was performed" );
     currTrDepth--;
@@ -964,7 +1030,11 @@ bool TUIntraSubPartitioner::hasNextPart()
   return ( ( m_partStack.back().idx + 1 ) < m_partStack.back().parts.size() );
 }
 
-bool TUIntraSubPartitioner::canSplit( const PartSplit split, const CodingStructure &cs )
+bool TUIntraSubPartitioner::canSplit( const PartSplit split, const CodingStructure &cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+  , bool disableBTV, bool disableBTH
+#endif
+)
 {
   //const PartSplit implicitSplit = getImplicitSplit(cs);
   const UnitArea &area = currArea();
@@ -1325,6 +1395,71 @@ Partitioning PartitionerImpl::getSbtTuTiling( const UnitArea& cuArea, const Codi
   Partitioning ret;
   int numTiles = 2;
   int widthFactor, heightFactor, xOffsetFactor, yOffsetFactor; // y = (x * factor) >> 2;
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  CHECK( splitType < SBT_VER_HALF_POS0_SPLIT || splitType >= NUM_PART_SPLIT, "Wrong SBT split" );
+
+  if( splitType >= SBT_QUAD_POSTL_SPLIT && splitType <= SBT_QUAD_POSBR_SPLIT )
+  {
+    // SBT QUAD restriction
+    CHECK( cuArea.lwidth() < SBT_QUAD_MIN_BLOCK_SIZE, "Width must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+    CHECK( cuArea.lheight() < SBT_QUAD_MIN_BLOCK_SIZE, "Height must be SBT_QUAD_MIN_BLOCK_SIZE or larger for SBT QUAD" );
+
+    numTiles = 4;
+    ret.resize( numTiles, cuArea );
+    for( int i = 0; i < numTiles; i++ )
+    {
+      widthFactor = heightFactor = 2;
+      xOffsetFactor = ( i % 2 ) * 2;
+      yOffsetFactor = ( i / 2 ) * 2;
+
+      UnitArea& tile = ret[ i ];
+      for( CompArea& comp : tile.blocks )
+      {
+        if( !comp.valid() )
+        {
+          continue;
+        }
+
+        comp.x += ( comp.width * xOffsetFactor ) >> 2;
+        comp.y += ( comp.height * yOffsetFactor ) >> 2;
+        comp.width = ( comp.width * widthFactor ) >> 2;
+        comp.height = ( comp.height * heightFactor ) >> 2;
+      }
+    }
+    return ret;
+  }
+  else if( splitType >= SBT_QUARTER_POSTL_SPLIT && splitType <= SBT_QUARTER_POSBR_SPLIT )
+  {
+    // SBT QUARTER restriction
+    CHECK( cuArea.lwidth() < SBT_QUARTER_MIN_BLOCK_SIZE, "Width must be SBT_QUARTER_MIN_BLOCK_SIZE or larger for SBT QUARTER" );
+    CHECK( cuArea.lheight() < SBT_QUARTER_MIN_BLOCK_SIZE, "Height must be SBT_QUARTER_MIN_BLOCK_SIZE or larger for SBT QUARTER" );
+
+    numTiles = 16;
+    ret.resize( numTiles, cuArea );
+    for( int i = 0; i < numTiles; i++ )
+    {
+      const int x = i % 4;
+      const int y = i / 4;
+
+      UnitArea& tile = ret[ i ];
+      for( CompArea& comp : tile.blocks )
+      {
+        if( !comp.valid() )
+        {
+          continue;
+        }
+
+        comp.x += ( comp.width * x ) >> 2;
+        comp.y += ( comp.height * y ) >> 2;
+        comp.width = comp.width  >> 2;
+        comp.height = comp.height >> 2;
+      }
+    }
+    return ret;
+  }
+#endif
+
   assert( splitType >= SBT_VER_HALF_POS0_SPLIT && splitType <= SBT_HOR_QUAD_POS1_SPLIT );
 
   ret.resize( numTiles, cuArea );

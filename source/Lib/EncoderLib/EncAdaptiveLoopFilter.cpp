@@ -53,7 +53,17 @@ struct FilterIdxCount
 
 bool compareCounts(FilterIdxCount a, FilterIdxCount b) { return a.count > b.count; }
 #endif
+#if JVET_AK0065_TALF
+struct ParamApsIdAndCount
+{
 
+  TAlfFilterParam param;
+  int apsId;
+  int count;
+};
+
+bool compareCountsTALF(ParamApsIdAndCount a, ParamApsIdAndCount b) { return a.count > b.count; }
+#endif
 void AlfCovariance::getClipMax(const AlfFilterShape& alfShape, int *clip_max) const
 {
   for( int k = 0; k < numCoeff-1; ++k )
@@ -570,9 +580,16 @@ int AlfCovariance::gnsSolveByChol( TE LHS, double* rhs, double *x, int numEq ) c
 }
 //////////////////////////////////////////////////////////////////////////////////////////
 
+#if JVET_AK0065_TALF
+EncAdaptiveLoopFilter::EncAdaptiveLoopFilter( int& apsIdStart, int& apsIdStart2 )
+#else
 EncAdaptiveLoopFilter::EncAdaptiveLoopFilter( int& apsIdStart )
+#endif
   : m_CABACEstimator( nullptr )
   , m_apsIdStart( apsIdStart )
+#if JVET_AK0065_TALF
+  , m_apsIdStart2( apsIdStart2 )
+#endif
 {
   for( int i = 0; i < MAX_NUM_COMPONENT; i++ )
   {
@@ -591,13 +608,26 @@ EncAdaptiveLoopFilter::EncAdaptiveLoopFilter( int& apsIdStart )
   m_alfCovarianceCcAlf = nullptr;
   m_alfCovarianceFrameCcAlf = nullptr;
 
+#if JVET_AK0065_TALF
+  for(int shapeIdx = 0; shapeIdx < MAX_TALF_FILTER_SHAPE; shapeIdx++)
+  {
+    for(int tAlfMode = 0; tAlfMode < NUM_TALF_MODE; tAlfMode++)
+    {
+      m_alfCovarianceTALF[shapeIdx][tAlfMode] = nullptr;
+    }
+  }
+#endif
 }
 
 void EncAdaptiveLoopFilter::create( const EncCfg* encCfg, const int picWidth, const int picHeight, const ChromaFormat chromaFormatIDC, const int maxCUWidth, const int maxCUHeight, const int maxCUDepth, const int inputBitDepth[MAX_NUM_CHANNEL_TYPE], const int internalBitDepth[MAX_NUM_CHANNEL_TYPE], bool createEncData )
 {
   if( !createEncData )
   {
+#if FIXFILTER_CFG
+    AdaptiveLoopFilter::create( picWidth, picHeight, chromaFormatIDC, maxCUWidth, maxCUHeight, maxCUDepth, inputBitDepth, encCfg->getUseAlfFixedFilter() );
+#else
     AdaptiveLoopFilter::create( picWidth, picHeight, chromaFormatIDC, maxCUWidth, maxCUHeight, maxCUDepth, inputBitDepth );
+#endif
     return;
   }
 
@@ -607,28 +637,88 @@ void EncAdaptiveLoopFilter::create( const EncCfg* encCfg, const int picWidth, co
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   if( encCfg->getIntraPeriod() == 1 )   // all intra
   {
+#if FIXFILTER_CFG
+    if( encCfg->getUseAlfFixedFilter() )
+    {
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI] = false;
+#endif
     m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI_DIRECT] = true;
     m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] = false;
+#if FIXFILTER_CFG
+    }
+    else
+    {
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI_DIRECT] = true;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] = false;
+    }
+#endif
 #if JVET_AD0222_ALF_RESI_CLASS
     m_enableLessClip = false;
 #endif
   }
   else if( encCfg->getIntraPeriod() > 1 )   // random access
   {
+#if FIXFILTER_CFG
+    if( encCfg->getUseAlfFixedFilter() )
+    {
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI] = false;
+#endif
     m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI_DIRECT] = false;
     m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] = true;
+#if FIXFILTER_CFG
+    }
+    else
+    {
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI] = true;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] = false;
+    }
+#endif
 #if JVET_AD0222_ALF_RESI_CLASS
     m_enableLessClip = true;
 #endif
   }
   else if( encCfg->getIntraPeriod() == -1 )   // low delay
   {
+#if FIXFILTER_CFG
+    if( encCfg->getUseAlfFixedFilter() )
+    {
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI] = false;
+#endif
     m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI_DIRECT] = false;
     m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] = true;
+#if FIXFILTER_CFG
+    }
+    else
+    {
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_DB_RESI] = true;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI_DIRECT] = false;
+      m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] = false;
+    }
+#endif
 #if JVET_AD0222_ALF_RESI_CLASS
     m_enableLessClip = true;
 #endif
   }
+#if FIXFILTER_CFG
+  if( encCfg->getUseAlfFixedFilter() )
+  {
+    m_filterTypeTest[CHANNEL_TYPE_CHROMA][ALF_FILTER_9_NO_FIX] = false;
+    m_filterTypeTest[CHANNEL_TYPE_CHROMA][ALF_FILTER_9] = true;
+  }
+  else
+  {
+    m_filterTypeTest[CHANNEL_TYPE_CHROMA][ALF_FILTER_9_NO_FIX] = true;
+    m_filterTypeTest[CHANNEL_TYPE_CHROMA][ALF_FILTER_9] = false;
+  }
+#endif
 #endif
 #if JVET_AF0197_LUMA_RESIDUAL_TAP_IN_CCALF
   m_isLowDelayConfig = encCfg->getIntraPeriod() == -1 ? true : false;
@@ -871,6 +961,34 @@ void EncAdaptiveLoopFilter::create( const EncCfg* encCfg, const int picWidth, co
   m_buf                   = new PelBuf( m_bufOrigin, picWidth >> getComponentScaleX(COMPONENT_Cb,chromaFormatIDC), picWidth >> getComponentScaleX(COMPONENT_Cb,chromaFormatIDC), picHeight >> getComponentScaleY(COMPONENT_Cb,chromaFormatIDC) );
   m_lumaSwingGreaterThanThresholdCount = new uint64_t[m_numCTUsInPic];
   m_chromaSampleCountNearMidPoint = new uint64_t[m_numCTUsInPic];
+#if JVET_AK0065_TALF
+  for (int j = 0; j < ALF_CTB_MAX_NUM_APS; j++)
+  {
+    for ( int i = 0; i < MAX_NUM_TALF_FILTERS; i++ )
+    {
+      m_talfDistortion[j][i] = new uint64_t[m_numCTUsInPic];
+    }
+  }
+  for(int shapeIdx = 0; shapeIdx < MAX_TALF_FILTER_SHAPE; shapeIdx++)
+  {
+    for(int tAlfMode = 0; tAlfMode < NUM_TALF_MODE; tAlfMode++)
+    {
+      const int numCoeff = NUM_TALF_COEFF + 1;
+      m_alfCovarianceFrameTALF[shapeIdx][tAlfMode].create(numCoeff, numBinsLuma);
+      m_alfCovarianceTALF[shapeIdx][tAlfMode] = new AlfCovariance[m_numCTUsInPic];
+      for (int j = 0; j < m_numCTUsInPic; j++)
+      {
+        m_alfCovarianceTALF[shapeIdx][tAlfMode][j].create(numCoeff, numBinsLuma);
+      }
+    }
+  }
+  m_sseCost = new RdCost;
+  for(int i = 0; i < 2; i++)
+  {
+    m_tempSaveTALF[i].destroy();
+    m_tempSaveTALF[i].create(chromaFormatIDC, Area(0, 0, picWidth, picHeight));
+  }
+#endif
 }
 
 void EncAdaptiveLoopFilter::destroy( bool destroyEncData )
@@ -1195,6 +1313,43 @@ void EncAdaptiveLoopFilter::destroy( bool destroyEncData )
     delete[] m_chromaSampleCountNearMidPoint;
     m_chromaSampleCountNearMidPoint = nullptr;
   }
+#if JVET_AK0065_TALF
+  for (int j = 0; j < ALF_CTB_MAX_NUM_APS; j++)
+  {
+    for ( int i = 0; i < MAX_NUM_TALF_FILTERS; i++ )
+    {
+      if ( m_talfDistortion[j][i] )
+      {
+        delete[] m_talfDistortion[j][i];
+        m_talfDistortion[j][i] = nullptr;
+      }
+    }
+  }
+  for(int shapeIdx = 0; shapeIdx < MAX_TALF_FILTER_SHAPE; shapeIdx++)
+  {
+    for(int tAlfMode = 0; tAlfMode < NUM_TALF_MODE; tAlfMode++)
+    {
+      m_alfCovarianceFrameTALF[shapeIdx][tAlfMode].destroy();
+      if (m_alfCovarianceTALF[shapeIdx][tAlfMode])
+      {
+        for (int k = 0; k < m_numCTUsInPic; k++)
+        {
+          m_alfCovarianceTALF[shapeIdx][tAlfMode][k].destroy();
+        }
+        delete[] m_alfCovarianceTALF[shapeIdx][tAlfMode];
+        m_alfCovarianceTALF[shapeIdx][tAlfMode] = nullptr;
+      }
+    }
+  }
+  if(m_sseCost)
+  {
+    m_sseCost = nullptr;
+  }
+  for(int i = 0; i < 2; i++)
+  {
+    m_tempSaveTALF[i].destroy();
+  }
+#endif
 }
 
 void EncAdaptiveLoopFilter::initCABACEstimator( CABACEncoder* cabacEncoder, CtxCache* ctxCache, Slice* pcSlice
@@ -1311,6 +1466,20 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
         alfAPS = nullptr;
       }
     }
+#if JVET_AK0065_TALF
+    memset(cs.slice->getTAlfAPSs(), 0, sizeof(*cs.slice->getTAlfAPSs()) * ALF_CTB_MAX_NUM_APS);
+    m_apsIdStart2 = ALF_CTB_MAX_NUM_APS;
+    for(int i = 0; i < ALF_CTB_MAX_NUM_APS; i++)
+    {
+      APS* talfAPS = m_apsMap->getPS((i << NUM_APS_TYPE_LEN) + TALF_APS);
+      m_apsMap->clearChangedFlag((i << NUM_APS_TYPE_LEN) + TALF_APS);
+      if(talfAPS)
+      {
+        talfAPS->getTAlfAPSParam().reset();
+        talfAPS = nullptr;
+      }
+    }
+#endif
   }
 
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
@@ -1331,6 +1500,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
   const TempCtx  ctxStart( m_ctxCache, AlfCtx( m_CABACEstimator->getCtx() ) );
 
   const TempCtx ctxStartCcAlf( m_ctxCache, SubCtx( Ctx::CcAlfFilterControlFlag, m_CABACEstimator->getCtx() ) );
+#if JVET_AK0065_TALF
+  const TempCtx ctxStartTAlf(m_ctxCache, SubCtx( Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx() ) );
+#endif
 
   // set available filter shapes
   alfParam.filterShapes = m_filterShapes;
@@ -1421,6 +1593,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #endif
   const CPelBuf &resiLuma = resiYuv.get(COMPONENT_Y);
 #endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  PelUnitBuf recYuvCodingInfo = m_tempBufCodingInfo.getBuf( cs.area );
+#endif
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
   m_tempBufSAO.copyFrom(cs.getRecoBuf());
   PelUnitBuf recYuvSAO = m_tempBufSAO.getBuf(cs.area);
@@ -1437,6 +1612,10 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   setAlfScaleMode( cs.sps->getAlfScaleMode() );
   cs.slice->resetAlfScale();
+#endif
+
+#if FIXFILTER_CFG
+  bool useFixedFilter = m_encCfg->getUseAlfFixedFilter();
 #endif
 
   for( int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight )
@@ -1483,7 +1662,23 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
             buf.extendBorderPel( MAX_ALF_PADDING_SIZE );
 #endif
             buf = buf.subBuf( UnitArea( cs.area.chromaFormat, Area( clipL ? 0 : MAX_ALF_PADDING_SIZE, clipT ? 0 : MAX_ALF_PADDING_SIZE, w, h ) ) );
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+            PelUnitBuf bufCodingInfo = m_tempBufCodingInfo2.subBuf( UnitArea( CHROMA_400, Area( 0, 0, wBuf, hBuf ) ) );
+            bufCodingInfo.copyFrom( recYuvCodingInfo.subBuf( UnitArea( CHROMA_400, Area( xStart - ( clipL ? 0 : MAX_ALF_PADDING_SIZE ), yStart - ( clipT ? 0 : MAX_ALF_PADDING_SIZE ), wBuf, hBuf ) ) ) );
+            // pad top-left unavailable samples for raster slice
+            if( xStart == xPos && yStart == yPos && ( rasterSliceAlfPad & 1 ) )
+            {
+              bufCodingInfo.padBorderPel( MAX_ALF_PADDING_SIZE, 1 );
+            }
 
+            // pad bottom-right unavailable samples for raster slice
+            if( xEnd == xPos + width && yEnd == yPos + height && ( rasterSliceAlfPad & 2 ) )
+            {
+              bufCodingInfo.padBorderPel( MAX_ALF_PADDING_SIZE, 2 );
+            }
+            mirroredPaddingForAlf(cs, bufCodingInfo, MAX_ALF_PADDING_SIZE, true, false);
+            bufCodingInfo = bufCodingInfo.subBuf( UnitArea( CHROMA_400, Area( clipL ? 0 : MAX_ALF_PADDING_SIZE, clipT ? 0 : MAX_ALF_PADDING_SIZE, w, h ) ) );
+#endif
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
             PelUnitBuf bufResi = m_tempBufResi2.subBuf(UnitArea(cs.area.chromaFormat, Area(0, 0, wBuf, hBuf)));
             bufResi.copyFrom(resiYuv.subBuf(
@@ -1537,14 +1732,27 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
             const Area blkSrc( 0, 0, w, h );
             const Area blkDst( xStart, yStart, w, h );
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
+#if FIXFILTER_CFG
+            if(useFixedFilter)
+            {
+#endif
             int scaleX = getChannelTypeScaleX(CHANNEL_TYPE_CHROMA, m_chromaFormat);
             int scaleY = getChannelTypeScaleY(CHANNEL_TYPE_CHROMA, m_chromaFormat);
             const Area blkSrcChroma(0, 0, w >> scaleX, h >> scaleY);
             const Area blkDstChroma( xStart >> scaleX, yStart >> scaleY, w >> scaleX, h >> scaleY );
             deriveFixedFilterChroma( m_classifier, buf, bufDb, blkDstChroma, blkSrcChroma, cs, -1, MAX_NUM_COMPONENT );
+#if FIXFILTER_CFG
+            }
+#endif
+#endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+            calcAlfLumaCodingInfoBlk(cs, m_classifierCodingInfo[0], blkDst, blkSrc, buf.get(COMPONENT_Y), 2, 2, m_inputBitDepth[CHANNEL_TYPE_LUMA], bufResi.get(COMPONENT_Y), m_laplacian[0], bufCodingInfo.get(COMPONENT_Y) );
 #endif
 #if JVET_X0071_ALF_BAND_CLASSIFIER
             deriveClassification( m_classifier, buf.get( COMPONENT_Y ),
+#if FIXFILTER_CFG
+                  useFixedFilter,
+#endif
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
                                  m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] == true, bufResi.get(COMPONENT_Y),
 #endif
@@ -1562,6 +1770,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
             deriveGaussResults( bufDb.get( COMPONENT_Y ), blkDst, blkSrc, cs, 0, 0 );
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+            deriveLaplacianResults( buf.get( COMPONENT_Y ), blkDst, blkSrc, cs, 0, 0, bufCodingInfo.get( COMPONENT_Y ) );
+#endif
             xStart = xEnd;
           }
 
@@ -1572,13 +1783,26 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
       {
         Area blk( xPos, yPos, width, height );
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
+#if FIXFILTER_CFG
+        if(useFixedFilter)
+        {
+#endif
         int scaleX = getChannelTypeScaleX(CHANNEL_TYPE_CHROMA, m_chromaFormat);
         int scaleY = getChannelTypeScaleY(CHANNEL_TYPE_CHROMA, m_chromaFormat);
         Area blkChroma(xPos >> scaleX, yPos >> scaleY, width >> scaleX, height >> scaleY);
         deriveFixedFilterChroma( m_classifier, recYuv, recYuvBeforeDb, blkChroma, blkChroma, cs, -1, MAX_NUM_COMPONENT );
+#if FIXFILTER_CFG
+        }
+#endif
+#endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+        calcAlfLumaCodingInfoBlk(cs, m_classifierCodingInfo[0], blk, blk, recYuv.get(COMPONENT_Y), 2, 2, m_inputBitDepth[CHANNEL_TYPE_LUMA], resiYuv.get(COMPONENT_Y), m_laplacian[0], recYuvCodingInfo.get(COMPONENT_Y) );
 #endif
 #if JVET_X0071_ALF_BAND_CLASSIFIER
         deriveClassification( m_classifier, recLuma,
+#if FIXFILTER_CFG
+                          useFixedFilter,
+#endif
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
                              m_filterTypeTest[CHANNEL_TYPE_LUMA][ALF_FILTER_13_EXT_DB_RESI] == true, resiLuma,
 #endif
@@ -1596,10 +1820,17 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
         deriveGaussResults( recLumaBeforeDb, blk, blk, cs, 0, 0 );
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+        deriveLaplacianResults( recLuma, blk, blk, cs, 0, 0, recYuvCodingInfo.get( COMPONENT_Y ) );
+#endif
       }
     }
   }
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
+#if FIXFILTER_CFG
+  if(useFixedFilter)
+  {
+#endif
   for(int fixedFilterSetIdx = 0; fixedFilterSetIdx < NUM_FIXED_FILTER_SETS; fixedFilterSetIdx++)
   {
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
@@ -1608,6 +1839,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
     paddingFixedFilterResultsPic(m_fixFilterResult, fixedFilterSetIdx);
 #endif
   }
+#if FIXFILTER_CFG
+  }
+#endif
 #endif
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
   for(int gaussIdx = 0; gaussIdx < NUM_GAUSS_FILTERED_SOURCE; gaussIdx++ )
@@ -1615,7 +1849,17 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
     paddingGaussResultsPic(m_gaussPic, gaussIdx);
   }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++ )
+  {
+    paddingLaplacianResultsPic(m_laplacianPic, laplacianIdx);
+  }
+#endif
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
+#if FIXFILTER_CFG
+  if(useFixedFilter)
+  {
+#endif
   for( int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight )
   {
     for( int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth )
@@ -1695,6 +1939,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
   {
     paddingFixedFilterResultsPic( m_fixFilterResult, fixedFilterSetIdx, COMPONENT_Cb );
     paddingFixedFilterResultsPic( m_fixFilterResult, fixedFilterSetIdx, COMPONENT_Cr );
+  }
+#endif
+#if FIXFILTER_CFG
   }
 #endif
 #endif
@@ -1837,6 +2084,46 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
     storeAlfScalePrev(cs, *cs.slice);
   }
   alfCorrectionChroma( cs, recYuvSao );
+#endif
+
+#if JVET_AK0065_TALF
+  for(int i = 0; i < m_numCTUsInPic; i++)
+  {
+    m_tAlfCtbControl[i].reset();
+  }
+  TAlfControl talfControl;
+  cs.slice->setTileGroupTAlfControl(talfControl);
+  if( cs.sps->getUseTAlf() && !cs.slice->isIntra() && !cs.sps->getRprEnabledFlag())
+  {
+    getRefPics(cs);
+    const ComponentID compId = COMPONENT_Y;
+    PelUnitBuf bestRec = m_tempSaveTALF[0].getBuf( cs.area );
+    PelUnitBuf recTALF = m_tempSaveTALF[1].getBuf( cs.area );
+    bestRec.get(compId).copyFrom(cs.getRecoBuf(compId));
+    deriveStatsForTAlfFilter(cs, compId, orgYuv, recYuv);
+    double bestCost = getRecoDist(orgYuv, bestRec, compId, cs);
+    std::vector<CandTALF> talfCandList;
+    CandTALF bestCand;
+    m_CABACEstimator->getCtx() = SubCtx(Ctx::TAlfFilterControlFlag, ctxStartTAlf);
+    deriveTAlfFilter(cs, compId, talfCandList);
+    for (CandTALF cand: talfCandList)
+    {
+      recTALF.get(compId).copyFrom(cs.getRecoBuf(compId));
+      applyTAlfFilter(cs, compId, recTALF, recYuv, cand.params, cand.talfCtbParam.data(), cand.talfControl);
+      double cost = getRecoDist(orgYuv, recTALF, compId, cs) + cand.rate * m_lambda[compId];
+      if (cost < bestCost)
+      {
+        bestCost = cost;
+        bestCand = cand;
+        bestRec.get(compId).copyFrom(recTALF.get(compId));
+      }
+    }
+    setTAlfAPS( cs, bestCand );
+    if(bestCand.talfControl.enabledFlag)
+    {
+      cs.getRecoBuf(compId).copyFrom(bestRec.get(compId));
+    }
+  }
 #endif
 }
 
@@ -2065,6 +2352,12 @@ void EncAdaptiveLoopFilter::alfEncoder( CodingStructure& cs, AlfParam& alfParam,
     }
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF || JVET_AA0095_ALF_LONGER_FILTER || JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
     int numFixedFilterSet = numFixedFilters( alfFilterShape[iShapeIdx].filterType );
+#if FIXFILTER_CFG
+    if(m_encCfg->getUseAlfFixedFilter() == false)
+    {
+      numFixedFilterSet = 1;
+    }
+#endif
 #else
     int numFixedFilterSet = ( alfFilterShape[iShapeIdx].filterType == ALF_FILTER_EXT || alfFilterShape[iShapeIdx].filterType == ALF_FILTER_9_EXT ) ? 2 : 1;
 #endif
@@ -2159,6 +2452,7 @@ void EncAdaptiveLoopFilter::alfEncoder( CodingStructure& cs, AlfParam& alfParam,
           , fixedFilterSetIdx
 #endif
           );
+
           if( cost < costMin )
           {
 #if ALF_IMPROVEMENT
@@ -4000,6 +4294,12 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
         continue;
       }
       int numFixedFilterSet = numFixedFilters( m_filterShapes[toChannelType(compID)][shape].filterType );
+#if FIXFILTER_CFG
+      if( m_encCfg->getUseAlfFixedFilter() == false )
+      {
+        numFixedFilterSet = 1;
+      }
+#endif
 #else
       int numFixedFilterSet = ( m_filterShapes[toChannelType(compID)][shape].filterType == ALF_FILTER_EXT || m_filterShapes[toChannelType(compID)][shape].filterType == ALF_FILTER_9_EXT ) ? 2 : 1;
 #endif
@@ -4149,6 +4449,15 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
               }
             }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+            if( m_isFixedFilterPaddedPerCtu )
+            {
+              for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+              {
+                paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, Area(xStart, yStart, w, h));
+              }
+            }
+#endif
             for( int compIdx = 0; compIdx < numberOfComponents; compIdx++ )
             {
               const ComponentID compID = ComponentID( compIdx );
@@ -4213,7 +4522,11 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
                 }
 #endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF || JVET_AA0095_ALF_LONGER_FILTER || JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
+#if FIXFILTER_CFG
+                for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < ( m_encCfg->getUseAlfFixedFilter() ? numFixedFilters(m_filterShapes[chType][shape].filterType) : 1); fixedFilterSetIdx++)
+#else
               for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < numFixedFilters( m_filterShapes[chType][shape].filterType ); fixedFilterSetIdx++)
+#endif
 #else
               for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < ((m_filterShapes[chType][shape].filterType == ALF_FILTER_EXT || m_filterShapes[chType][shape].filterType == ALF_FILTER_9_EXT) ? 2 : 1); fixedFilterSetIdx++)
 #endif
@@ -4361,6 +4674,15 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
           }
         }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+        if( m_isFixedFilterPaddedPerCtu )
+        {
+          for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+          {
+            paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, Area( xPos, yPos, width, height ));
+          }
+        }
+#endif
         for( int compIdx = 0; compIdx < numberOfComponents; compIdx++ )
         {
           const ComponentID compID = ComponentID( compIdx );
@@ -4391,7 +4713,11 @@ void EncAdaptiveLoopFilter::deriveStatsForFiltering( PelUnitBuf& orgYuv, PelUnit
               continue;
             }
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF || JVET_AA0095_ALF_LONGER_FILTER || JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
+#if FIXFILTER_CFG
+            for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < ( m_encCfg->getUseAlfFixedFilter() ? numFixedFilters(m_filterShapes[chType][shape].filterType) : 1); fixedFilterSetIdx++)
+#else
             for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < numFixedFilters(m_filterShapes[chType][shape].filterType); fixedFilterSetIdx++)
+#endif
 #else
             for( int fixedFilterSetIdx = 0; fixedFilterSetIdx < ((m_filterShapes[chType][shape].filterType == ALF_FILTER_EXT || m_filterShapes[chType][shape].filterType == ALF_FILTER_9_EXT) ? 2 : 1); fixedFilterSetIdx++ )
 #endif
@@ -4895,12 +5221,19 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
   int padSizeGauss = ALF_PADDING_SIZE_GAUSS_RESULTS;
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  int padSizeLaplacian = ALF_PADDING_SIZE_LAPLACIAN_RESULTS;
+#endif
 #if JVET_AA0095_ALF_LONGER_FILTER
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
   if( shape.filterType == ALF_FILTER_13_EXT || shape.filterType == ALF_FILTER_13_EXT_DB 
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
       || shape.filterType == ALF_FILTER_13_EXT_DB_RESI
       || shape.filterType == ALF_FILTER_13_EXT_DB_RESI_DIRECT
+#if FIXFILTER_CFG
+      || shape.filterType == ALF_FILTER_13_DB_RESI
+      || shape.filterType == ALF_FILTER_13_DB_RESI_DIRECT
+#endif
 #endif
     )
 #else
@@ -5271,9 +5604,38 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
     }
   }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  Pel *pImg0Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE];
+  Pel *pImg1Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE], *pImg2Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE];
+  Pel *pImg3Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE], *pImg4Laplacian[NUM_LAPLACIAN_FILTERED_SOURCE];
+
+  for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++ )
+  {
+    if( m_isFixedFilterPaddedPerCtu )
+    {
+      pImg0Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian + 0][posInCtu.x + padSizeLaplacian];
+      pImg1Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian + 1][posInCtu.x + padSizeLaplacian];
+      pImg2Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian - 1][posInCtu.x + padSizeLaplacian];
+      pImg3Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian + 2][posInCtu.x + padSizeLaplacian];
+      pImg4Laplacian[laplacianIdx] = &m_laplacianCtu[laplacianIdx][posInCtu.y + padSizeLaplacian - 2][posInCtu.x + padSizeLaplacian];
+    }
+    else
+    {
+      pImg0Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian + 0][posDst.x + padSizeLaplacian];
+      pImg1Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian + 1][posDst.x + padSizeLaplacian];
+      pImg2Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian - 1][posDst.x + padSizeLaplacian];
+      pImg3Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian + 2][posDst.x + padSizeLaplacian];
+      pImg4Laplacian[laplacianIdx] = &m_laplacianPic[laplacianIdx][posDst.y + padSizeLaplacian - 2][posDst.x + padSizeLaplacian];
+    }
+  }
+#endif
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
 #if JVET_AD0222_ALF_LONG_FIXFILTER
+#if FIXFILTER_CFG
+  if (shape.filterType >= ALF_FILTER_13_EXT && shape.filterType != ALF_FILTER_9_EXT_DB && shape.filterType != ALF_FILTER_13_DB_RESI && shape.filterType != ALF_FILTER_13_DB_RESI_DIRECT && shape.filterType != ALF_FILTER_9_NO_FIX)
+#else
   if (shape.filterType >= ALF_FILTER_13_EXT && shape.filterType != ALF_FILTER_9_EXT_DB)
+#endif
   {
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
     int filterSetIdx = 2 + fixedFilterSetIdx;
@@ -5413,7 +5775,11 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
   }
   else
 #endif
-  if( shape.filterType >= ALF_FILTER_9_EXT && shape.filterType != ALF_FILTER_EXT )
+  if( shape.filterType >= ALF_FILTER_9_EXT && shape.filterType != ALF_FILTER_EXT
+#if FIXFILTER_CFG
+    && shape.filterType != ALF_FILTER_13_DB_RESI && shape.filterType != ALF_FILTER_13_DB_RESI_DIRECT && shape.filterType != ALF_FILTER_9_NO_FIX
+#endif
+    )
   {
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
     int filterSetIdx = 2 + fixedFilterSetIdx;
@@ -5638,6 +6004,103 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
     }
   }
 #endif
+#if FIXFILTER_CFG
+  else if (shape.filterType == ALF_FILTER_13_DB_RESI_DIRECT)
+  {
+    const Pel *pRecDbTmp0 = recBeforeDb;
+    const Pel *pRecDbTmp1 = recBeforeDb + recBeforeDbStride;
+    const Pel *pRecDbTmp2 = recBeforeDb - recBeforeDbStride;
+
+    const Pel *pResiTmp0 = resi;
+
+    for (int b = 0; b < numBins; b++)
+    {
+#if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      ELocal[10][b] += clipALF(clip[b], curr, pImg3Gauss[0][+0], pImg4Gauss[0][-0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pImg1Gauss[0][+0], pImg2Gauss[0][-0]);
+      ELocal[12][b] += clipALF(clip[b], curr, pImg0Gauss[0][+2], pImg0Gauss[0][-2]);
+      ELocal[13][b] += clipALF(clip[b], curr, pImg0Gauss[0][+1], pImg0Gauss[0][-1]);
+
+      ELocal[14][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[15][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[16][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[17][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
+      ELocal[18][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+#elif JVET_AD0222_ALF_LONG_FIXFILTER
+      ELocal[10][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+      ELocal[12][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[13][b] += clipALF(clip[b], 0, pResiTmp0[+0]);
+#elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      ELocal[10][b] += clipALF(clip[b], curr, pImg3Gauss[0][+0], pImg4Gauss[0][-0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pImg1Gauss[0][+0], pImg2Gauss[0][-0]);
+      ELocal[12][b] += clipALF(clip[b], curr, pImg0Gauss[0][+2], pImg0Gauss[0][-2]);
+      ELocal[13][b] += clipALF(clip[b], curr, pImg0Gauss[0][+1], pImg0Gauss[0][-1]);
+
+      ELocal[14][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[15][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[16][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[17][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
+      ELocal[18][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+#else
+      ELocal[10][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[12][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[13][b] += clipALF(clip[b], 0, pResiTmp0[+0]);
+#endif
+    }
+    for (int b = 0; b < numBins; b++)
+    {
+      ELocal[shape.numCoeff - 1][b] += curr;
+    }
+  }
+  else if (shape.filterType == ALF_FILTER_13_DB_RESI)
+  {
+    const Pel *pRecDbTmp0 = recBeforeDb;
+    const Pel *pRecDbTmp1 = recBeforeDb + recBeforeDbStride;
+    const Pel *pRecDbTmp2 = recBeforeDb - recBeforeDbStride;
+
+    const Pel *pResiTmp0 = resi;
+
+    for (int b = 0; b < numBins; b++)
+    {
+#if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      ELocal[10][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[12][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[13][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
+      ELocal[14][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+#elif JVET_AD0222_ALF_LONG_FIXFILTER
+      ELocal[10][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[12][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[13][b] += clipALF(clip[b], 0, pResiTmp0[+0]);
+#elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      ELocal[10][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[12][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[13][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
+      ELocal[14][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+#else
+      ELocal[10][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[11][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[12][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[13][b] += clipALF(clip[b], 0, pResiTmp0[+0]);
+#endif
+    }
+    for (int b = 0; b < numBins; b++)
+    {
+      ELocal[shape.numCoeff - 1][b] += curr;
+    }
+  }
+#endif
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   else if (shape.filterType == ALF_FILTER_13_EXT_DB_RESI_DIRECT)
   {
@@ -5712,6 +6175,23 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
     for (int b = 0; b < numBins; b++)
     {
 #if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+      ELocal[28][b] += clipALF(clip[b],    0, pImg3Laplacian[0][+0], pImg4Laplacian[0][-0]);
+      ELocal[29][b] += clipALF(clip[b],    0, pImg1Laplacian[0][+0], pImg2Laplacian[0][-0]);
+      ELocal[30][b] += clipALF(clip[b],    0, pImg0Laplacian[0][+2], pImg0Laplacian[0][-2]);
+      ELocal[31][b] += clipALF(clip[b],    0, pImg0Laplacian[0][+1], pImg0Laplacian[0][-1]);
+      
+      ELocal[32][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
+      ELocal[33][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
+
+      ELocal[34][b] += clipALF(clip[b], curr, fixedFitlerResults[0 + fixedFilterSetIdx][posDst.y + padSize][posDst.x + padSize]);
+      ELocal[35][b] += clipALF(clip[b], curr, fixedFitlerResults[2 + fixedFilterSetIdx][posDst.y + padSize][posDst.x + padSize]);
+      ELocal[36][b] += clipALF(clip[b],    0, fixedFitlerResiResults[0 + 1 - fixedFilterSetIdx][pos.y][pos.x]);
+      ELocal[37][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
+      ELocal[38][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
+      ELocal[39][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+      ELocal[40][b] += clipALF(clip[b],    0, pImg0Laplacian[0][+0] );
+#else
       ELocal[28][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
       ELocal[29][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
 
@@ -5721,6 +6201,7 @@ void EncAdaptiveLoopFilter::calcCovariance( int ELocal[MAX_NUM_ALF_LUMA_COEFF][M
       ELocal[33][b] += clipALF(clip[b], curr, pRecDbTmp0[+0]);
       ELocal[34][b] += clipALF(clip[b],    0, pResiTmp0[+0]);
       ELocal[35][b] += clipALF(clip[b], curr, pImg0Gauss[0][+0] );
+#endif
 #elif JVET_AD0222_ALF_LONG_FIXFILTER
       ELocal[28][b] += clipALF(clip[b], curr, pRecDbTmp2[+0], pRecDbTmp1[+0]);
       ELocal[29][b] += clipALF(clip[b], curr, pRecDbTmp0[-1], pRecDbTmp0[+1]);
@@ -5943,6 +6424,10 @@ void  EncAdaptiveLoopFilter::initDistortion(
   }
 
 #if ALF_IMPROVEMENT
+#if FIXFILTER_CFG
+  if( m_encCfg->getUseAlfFixedFilter() )
+  {
+#endif
 #if ALF_SAO_TRUE_ORG
   PelUnitBuf orgYuv = cs.getTrueOrgBuf();
 #else
@@ -6004,6 +6489,9 @@ void  EncAdaptiveLoopFilter::initDistortion(
       ctbIdx++;
     }
   }
+#if FIXFILTER_CFG
+  }
+#endif
 #else
   for( int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++ )
   {
@@ -6211,7 +6699,11 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
   AlfFilterType filterTypeNewFilter = ALF_NUM_OF_FILTER_TYPES;
   int numAlfLumaNew = alfParamNewFilters.numAlternativesLuma;
   int bestFixedFilterSetIdx = -1;
+#if FIXFILTER_CFG
+  for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < (m_encCfg->getUseAlfFixedFilter() ? 2 : 1); fixedFilterSetIdx++)
+#else
   for (int fixedFilterSetIdx = 0; fixedFilterSetIdx < 2; fixedFilterSetIdx++)
+#endif
   {
 #endif
     for (int useNewFilter = 0; useNewFilter < numLoops; useNewFilter++)
@@ -6377,7 +6869,7 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
             }
           }
 
-          m_CABACEstimator->getCtx() = ctxStart;
+          m_CABACEstimator->getCtx() = AlfCtx(ctxStart);
 
           for (int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
           {
@@ -6395,6 +6887,12 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
             for (int filterSetIdx = 0; filterSetIdx < numFilterSet; filterSetIdx++)  // to select best APS index / fixed filter index
             {
 #if ALF_IMPROVEMENT
+#if FIXFILTER_CFG
+              if(m_encCfg->getUseAlfFixedFilter() == false && filterSetIdx < NUM_FIXED_FILTER_SETS)
+              {
+                continue;
+              }
+#endif
               int iterAltLuma = 1;
               if (filterSetIdx >= NUM_FIXED_FILTER_SETS)
               {
@@ -6655,7 +7153,11 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
         continue;
       }
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
+#if FIXFILTER_CFG
+      for( int fixedFilterSetIdx = 0; fixedFilterSetIdx < (m_encCfg->getUseAlfFixedFilter()  ? 2 : 1); fixedFilterSetIdx++)
+#else
       for( int fixedFilterSetIdx = 0; fixedFilterSetIdx < 2; fixedFilterSetIdx++ )
+#endif
       {
 #endif
         double curCost = m_lambda[CHANNEL_TYPE_CHROMA] * 3;
@@ -6978,7 +7480,6 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
   const int offsetN = adjustOffCorr;
   const int offsetP = offsetN - 1;
 
-  bool  alfLumaEnabled = false;
   int numAlfLumaEnabled[ALF_CTB_MAX_NUM_APS];
   memset( numAlfLumaEnabled, 0, sizeof(int) * ALF_CTB_MAX_NUM_APS );
 
@@ -6996,7 +7497,6 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
       {
         ctuEnableFlag |= m_ctuEnableFlag[compIdx][ctuIdx] > 0;
       }
-      alfLumaEnabled |= m_ctuEnableFlag[COMPONENT_Y][ctuIdx] > 0;
 
       int rasterSliceAlfPad = 0;
       bool  nok = ctuEnableFlag && isCrossedByVirtualBoundaries(cs, xPos, yPos, width, height, clipTop, clipBottom, clipLeft, clipRight, numHorVirBndry, numVerVirBndry, horVirBndryPos, verVirBndryPos, rasterSliceAlfPad);
@@ -7028,7 +7528,11 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
           {
             curScaleAlfEncParam.reset();
 
+#if JVET_AJ0237_INTERNAL_12BIT
+            curScaleAlfParam.init(filterSetIndex, alt_num, classifierIdx, cs.slice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
             curScaleAlfParam.init( filterSetIndex, alt_num, classifierIdx );
+#endif
             curScaleAlfParam.setMinMax( cs.slice->getLumaPelMin(), cs.slice->getLumaPelMax() );
 
             const int apsIdx = cs.slice->getTileGroupApsIdLuma()[filterSetIndex - NUM_FIXED_FILTER_SETS];
@@ -7038,7 +7542,11 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
           CHECK( curScaleAlfParam.classifierIdx != classifierIdx || curScaleAlfParam.filterSetIndex != filterSetIndex || curScaleAlfParam.alt_num != alt_num, "alfCorrection() failed.");
 
           char coeffBits = m_coeffBitsApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS][alt_num];
+#if JVET_AJ0237_INTERNAL_12BIT
+          const Pel currBase = 1 << (curScaleAlfParam.bitDepth - 1);
+#else
           const Pel currBase = 512; // 10-bits
+#endif
 
           if ( !bModeAnalysis )
           {
@@ -7097,7 +7605,6 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
     return;
   }
 
-  int       sumBestSadDiff = 0;
   int64_t   sumBestMseDiff = 0;
 
   cs.slice->setUseAlfScale(false);
@@ -7118,8 +7625,6 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
     gScaleAlf[i] = nullptr;
   }
   int cptAps = 0;
-
-  double estCostBest = 0;
 
   for (int f = 0; f < cs.slice->getTileGroupNumAps(); f++)
   {
@@ -7148,7 +7653,6 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
         // init best idxCorr as s=0 :
         std::vector<int>  bestGroupIdxCorr;
         bestGroupIdxCorr.resize(MAX_NUM_ALF_CLASSES, 0);
-        int bestGroupSad = 0;
         int64_t   bestGroupMse = 0;
 
         uint64_t  sumBestMse0 = 0;
@@ -7290,15 +7794,12 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
           }
         }
 
-        sumBestSadDiff += bestGroupSad;
         sumBestMseDiff += bestGroupMse;
 
         if ( !curScaleAlfParam.usePrev )
         {
           curScaleAlfParam.fillIdxCorr();
         }
-
-        estCostBest += estCostBestApsAlt;
 
         cptAps++;
 
@@ -7613,6 +8114,15 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
                   }
                 }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                if( m_isFixedFilterPaddedPerCtu )
+                {
+                  for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+                  {
+                    paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, blkDst);
+                  }
+                }
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
                 PelUnitBuf bufDb = m_tempBufBeforeDb2.subBuf( UnitArea ( CHROMA_400, Area( 0, 0, wBuf, hBuf ) ) );
 #if JVET_AA0095_ALF_LONGER_FILTER
@@ -7679,9 +8189,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, coeffBits);
+#else
                 alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, coeffBits);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
                 alfFiltering(m_classifier[classifierIdx], recBuf, bufDb, bufResi, buf, blkDst, blkSrc, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7761,9 +8279,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, m_NUM_BITS_CHROMA);
+#else
                 alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_NUM_BITS_CHROMA);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+                alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
                 alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, buf, blkDst, blkSrc, compID, m_chromaCoeffFinal[alt_num], m_chromaClippFinal[alt_num], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compID], nullptr, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7872,6 +8398,15 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
             }
           }
 #endif
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          if( m_isFixedFilterPaddedPerCtu )
+          {
+            for(int laplacianIdx = 0; laplacianIdx < NUM_LAPLACIAN_FILTERED_SOURCE; laplacianIdx++)
+            {
+              paddingLaplacianResultsCtu(m_laplacianPic, m_laplacianCtu, laplacianIdx, blk);
+            }
+          }
+#endif
 #if JVET_X0071_ALF_BAND_CLASSIFIER
           int classifierIdx = m_classifierIdxApsLuma[filterSetIndex - NUM_FIXED_FILTER_SETS][alt_num];
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7888,9 +8423,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, coeffBits);
+#else
           alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, coeffBits);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
           alfFiltering(m_classifier[classifierIdx], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, COMPONENT_Y, coeff, clip, m_clpRngs.comp[COMPONENT_Y], cs, filterTypeCtb, m_fixFilterResult[COMPONENT_Y], m_fixFilterResiResult, fixedFilterSetIdx, m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -7974,9 +8517,17 @@ void EncAdaptiveLoopFilter::alfReconstructor(CodingStructure& cs, const PelUnitB
 #if JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu, m_NUM_BITS_CHROMA); 
+#else
           alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_NUM_BITS_CHROMA);
+#endif
+#else
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+          alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu, m_laplacianPic, m_laplacianCtu);
 #else
           alfFiltering(m_classifier[0], recBuf, tmpYuvBeforeDb, tmpYuvResi, recExtBuf, blk, blk, compID, m_chromaCoeffFinal[altNum], m_chromaClippFinal[altNum], m_clpRngs.comp[compIdx], cs, m_filterTypeApsChroma, m_fixFilterResult[compIdx], m_fixFilterResiResult, fixedFilterSetIdxChroma[compIdx - 1], m_fixedFilterResultPerCtu, m_isFixedFilterPaddedPerCtu, m_gaussPic, m_gaussCtu);
+#endif
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
@@ -8293,7 +8844,7 @@ void EncAdaptiveLoopFilter::determineControlIdcValues(CodingStructure &cs, const
       const uint32_t numberOfChromaSamples = std::min<int>(buf->height - yCtu, ctuHeightC) * std::min<int>(buf->width - xCtu, ctuWidthC);
       const uint32_t thresholdC = (numberOfChromaSamples >> 2);
 
-      m_CABACEstimator->getCtx() = ctxBest;
+      m_CABACEstimator->getCtx() = SubCtx(Ctx::CcAlfFilterControlFlag,ctxBest);
       ctxStart                   = SubCtx(Ctx::CcAlfFilterControlFlag, m_CABACEstimator->getCtx());
 
       for (int filterIdx = 0; filterIdx <= MAX_NUM_CC_ALF_FILTERS; filterIdx++)
@@ -8312,7 +8863,7 @@ void EncAdaptiveLoopFilter::determineControlIdcValues(CodingStructure &cs, const
         {
           ssd = trainingDistortion[filterIdx][ctuIdx];
         }
-        m_CABACEstimator->getCtx() = ctxStart;
+        m_CABACEstimator->getCtx() = SubCtx(Ctx::CcAlfFilterControlFlag,ctxStart);
         m_CABACEstimator->resetBits();
         const Position lumaPos = Position({ xCtu << getComponentScaleX(compID, cs.pcv->chrFormat),
           yCtu << getComponentScaleY(compID, cs.pcv->chrFormat) });
@@ -8379,7 +8930,7 @@ void EncAdaptiveLoopFilter::determineControlIdcValues(CodingStructure &cs, const
     }
 
     curTotalRate = prevRate;
-    m_CABACEstimator->getCtx() = ctxInitial;
+    m_CABACEstimator->getCtx() = SubCtx(Ctx::CcAlfFilterControlFlag,ctxInitial);
     m_CABACEstimator->resetBits();
     int ctuIdx = 0;
     for (int y = 0; y < buf->height; y += ctuHeightC)
@@ -8403,7 +8954,7 @@ void EncAdaptiveLoopFilter::determineControlIdcValues(CodingStructure &cs, const
 #endif
 
   // restore for next iteration
-  m_CABACEstimator->getCtx() = ctxInitial;
+  m_CABACEstimator->getCtx() = SubCtx(Ctx::CcAlfFilterControlFlag,ctxInitial);
 }
 
 std::vector<int> EncAdaptiveLoopFilter::getAvailableCcAlfApsIds(CodingStructure& cs, ComponentID compID)
@@ -8664,7 +9215,7 @@ void EncAdaptiveLoopFilter::deriveCcAlfFilter( CodingStructure& cs, ComponentID 
           }
         }
 
-        m_CABACEstimator->getCtx() = ctxStartCcAlfFilterControlFlag;
+        m_CABACEstimator->getCtx() = SubCtx(Ctx::CcAlfFilterControlFlag,ctxStartCcAlfFilterControlFlag);
 
         uint64_t curTotalDistortion = 0;
         double curTotalRate = 0;
@@ -9447,7 +9998,11 @@ void EncAdaptiveLoopFilter::countLumaSwingGreaterThanThreshold(const Pel* luma, 
 void EncAdaptiveLoopFilter::countChromaSampleValueNearMidPoint(const Pel* chroma, int chromaStride, int height, int width, int log2BlockWidth, int log2BlockHeight, uint64_t* chromaSampleCountNearMidPoint, int chromaSampleCountNearMidPointStride)
 {
   const int midPoint  = (1 << m_inputBitDepth[CH_C]) >> 1;
+#if JVET_AJ0237_INTERNAL_12BIT
+  const int threshold = 16 << std::max(0, m_inputBitDepth[CH_C] - 10);
+#else
   const int threshold = 16;
+#endif
 
   for (int y = 0; y < height; y += (1 << log2BlockHeight))
   {
@@ -9476,3 +10031,823 @@ void EncAdaptiveLoopFilter::countChromaSampleValueNearMidPoint(const Pel* chroma
   }
 }
 
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+bool EncAdaptiveLoopFilter::calcOffsetRefinementOnOff(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& src2, int& refineIdx )
+{
+  const PreCalcValues& pcv = *cs.pcv;
+
+  PelUnitBuf org = cs.getTrueOrgBuf();
+
+  double dist0 = 0.0, dist1 = 0.0, dist2 = 0.0;
+
+  int ctuIdx = 0;
+
+  for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
+  {
+    for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
+    {
+      const int width = (xPos + pcv.maxCUWidth > pcv.lumaWidth) ? (pcv.lumaWidth - xPos) : pcv.maxCUWidth;
+      const int height = (yPos + pcv.maxCUHeight > pcv.lumaHeight) ? (pcv.lumaHeight - yPos) : pcv.maxCUHeight;
+
+      Area blk(xPos, yPos, width, height);
+
+      const int src0Stride = src0.get(COMPONENT_Y).stride;
+      const int src1Stride = src1.get(COMPONENT_Y).stride;
+      const int src2Stride = src2.get(COMPONENT_Y).stride;
+
+      const int orgStride = org.get(COMPONENT_Y).stride;
+      Pel* src0Ptr = src0.get(COMPONENT_Y).buf + blk.y * src0Stride + blk.x;
+      Pel* src1Ptr = src1.get(COMPONENT_Y).buf + blk.y * src1Stride + blk.x;
+      Pel* src2Ptr = src2.get(COMPONENT_Y).buf + blk.y * src2Stride + blk.x;
+
+      Pel* orgPtr = org.get(COMPONENT_Y).buf + blk.y * orgStride + blk.x;
+
+      for(int y = 0; y < blk.height; y++)
+      {
+        for(int x = 0; x < blk.width; x++)
+        {
+          int diff0 = orgPtr[x] - src0Ptr[x];
+          int diff1 = orgPtr[x] - src1Ptr[x];
+          int diff2 = orgPtr[x] - src2Ptr[x];
+
+          dist0 += diff0 * diff0;
+          dist1 += diff1 * diff1;
+          dist2 += diff2 * diff2;
+        }
+        src0Ptr += src0Stride;
+        src1Ptr += src1Stride;
+        src2Ptr += src2Stride;
+        orgPtr += orgStride;
+      }
+      ctuIdx++;
+    }
+  }
+
+  //src0 = disable, src1 = enable index 0, src2 = enable index 1
+
+  double lambda = cs.slice->getLambdas()[COMPONENT_Y];
+  dist0 += 1 * lambda;
+  dist1 += 2 * lambda;
+  dist2 += 2 * lambda;
+  refineIdx = dist1 <= dist2 ? 0 : 1;
+  double distMinEnable = refineIdx == 0 ? dist1 : dist2;
+  bool enableOffsetRefinement = distMinEnable < dist0 ? true : false;
+
+  return enableOffsetRefinement;
+}
+#endif
+#if JVET_AK0065_TALF
+std::vector<std::vector<int>> getCombMap(int k, std::vector<int>& apsIds)
+{
+  int n = (int)apsIds.size();
+  std::string bitmask(k, 1);
+  bitmask.resize(n, 0);
+  std::vector<std::vector<int>> combMap;
+
+  do
+  {
+    std::vector<int> comb;
+    for (int i = 0; i < n; ++i)
+    {
+      if (bitmask[i])
+      {
+        comb.push_back(apsIds[i]);
+      }
+    }
+    combMap.push_back(comb);
+  }
+  while (std::prev_permutation(bitmask.begin(), bitmask.end()));
+
+  return combMap;
+}
+
+void EncAdaptiveLoopFilter::determineCtuFlag(CodingStructure &cs, const ComponentID compId, double **unfilteredDistortion
+  , uint64_t *trainingDistortion[MAX_NUM_TALF_FILTERS], std::vector<TAlfCtbParam>& filterControl
+  , uint64_t &curTotalDist, double &curTotalRate, const int filterCount, uint8_t* trainingControl)
+{
+  TempCtx ctxInitial(m_ctxCache);
+  TempCtx ctxBest(m_ctxCache);
+  TempCtx ctxStart(m_ctxCache);
+  ctxInitial = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+  ctxBest = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+
+  int ctbIdx = 0;
+  for (int yCtu = 0; yCtu < m_picHeight; yCtu += m_maxCUHeight)
+  {
+    for (int xCtu = 0; xCtu < m_picWidth; xCtu += m_maxCUWidth)
+    {
+      uint64_t ctbDist      = MAX_UINT64;
+      double   ctbRate      = MAX_DOUBLE;
+      double   ctbCost      = MAX_DOUBLE;
+      m_CABACEstimator->getCtx() = ctxBest;
+      ctxStart                   = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+      for (int filterIdc = 0; filterIdc <= filterCount; filterIdc++)
+      {
+        TAlfCtbParam curControl;
+        curControl.enabledFlag = (filterIdc != 0);
+        curControl.filterIdx = curControl.enabledFlag ? (filterIdc - 1) : 0;
+        uint64_t dist = curControl.enabledFlag ? uint64_t(trainingDistortion[curControl.filterIdx][ctbIdx])
+            : uint64_t(unfilteredDistortion[compId][ctbIdx]);
+        m_CABACEstimator->getCtx() = ctxStart;
+        m_CABACEstimator->resetBits();
+        const Position lumaPos( xCtu, yCtu );
+        m_CABACEstimator->codeTAlfFilterControlIdc(curControl, cs, compId, ctbIdx, filterControl.data(), lumaPos, filterCount, 1, true);
+        double rate = FRAC_BITS_SCALE * m_CABACEstimator->getEstFracBits();
+        double cost = rate * m_lambda[COMPONENT_Y] + dist;
+
+        if ( cost < ctbCost )
+        {
+          ctbCost = cost;
+          ctbRate = rate;
+          ctbDist = dist;
+          ctxBest = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+          filterControl[ctbIdx]   = curControl;
+          trainingControl[ctbIdx] = filterIdc;
+        }
+      }
+      curTotalDist += ctbDist;
+      curTotalRate += ctbRate;
+      ctbIdx++;
+    } // ctu x address
+  } // ctu y address
+
+  m_CABACEstimator->getCtx() = ctxInitial;
+}
+
+bool EncAdaptiveLoopFilter::determineCtuFlagReuse(CodingStructure &cs, const ComponentID compID, double **unfilteredDistortion
+  , uint64_t *trainingDistortion[ALF_CTB_MAX_NUM_APS][MAX_NUM_TALF_FILTERS], TAlfCtbParam *filterControl
+  , std::vector<int>& apsIds, std::vector<TAlfFilterParam>& params, uint64_t &curTotalDistortion, double &curTotalRate)
+{
+  const int ctuWidth              = cs.pcv->maxCUWidth;
+  const int ctuHeight             = cs.pcv->maxCUHeight;
+  const int picWidth              = cs.pcv->lumaWidth;
+  const int picHeight             = cs.pcv->lumaHeight;
+  TempCtx ctxInitial(m_ctxCache);
+  TempCtx ctxBest(m_ctxCache);
+  TempCtx ctxStart(m_ctxCache);
+  ctxInitial = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+  ctxBest    = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+  const int numSets = int(params.size());
+  // estimate on/off on each CTB
+  if (numSets > 1)
+  {
+    std::vector<ParamApsIdAndCount> paramApsIdAndCount;
+    for(int setId = 0; setId < numSets; setId++)
+    {
+      ParamApsIdAndCount p;
+      p.param = params[setId];
+      p.apsId = apsIds[setId];
+      p.count = 0;
+      paramApsIdAndCount.push_back(p);
+    }
+    for (uint32_t ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+    {
+      double   bestCost      = MAX_DOUBLE;
+      uint32_t bestSetId     = MAX_UINT;
+      for(uint32_t setId = 0; setId < numSets; setId++)
+      {
+        const int filterCount = params[setId].filterCount;
+        const int apsId = apsIds[setId];
+        for (int filterIdc =  1; filterIdc <= filterCount; filterIdc++)
+        {
+          int filterIdx = filterIdc - 1;
+          double cost = std::min(filterIdc, filterCount - 1) * m_lambda[COMPONENT_Y]
+            + double(trainingDistortion[apsId][filterIdx][ctbIdx]);
+          if ( cost < bestCost )
+          {
+            bestCost = cost;
+            bestSetId = setId;
+          }
+        }
+      }
+      paramApsIdAndCount[bestSetId].count++;
+    }
+    std::stable_sort(paramApsIdAndCount.begin(), paramApsIdAndCount.end(), compareCountsTALF);
+    params.clear();
+    apsIds.clear();
+    for(auto p: paramApsIdAndCount)
+    {
+      if (p.count > 0)
+      {
+        params.push_back(p.param);
+        apsIds.push_back(p.apsId);
+      }
+    }
+  }
+
+  // early termination because the combination is tested.
+  if (int(params.size()) != numSets)
+  {
+    return false;
+  }
+
+  bool anyCtbOn = false;
+  int ctbIdx = 0;
+  for (int yCtu = 0; yCtu < picHeight; yCtu += ctuHeight)
+  {
+    for (int xCtu = 0; xCtu < picWidth; xCtu += ctuWidth)
+    {
+      double   bestRate = MAX_DOUBLE;
+      uint64_t bestDist = MAX_UINT64;
+      double   bestCost = MAX_DOUBLE;
+      m_CABACEstimator->getCtx() = ctxBest;
+      ctxStart                   = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+      for (int setId = 0; setId < numSets; setId++)
+      {
+        const TAlfFilterParam param = params[setId];
+        const int       filterCount = param.filterCount;
+        for (int filterIdc = 0; filterIdc <= filterCount; filterIdc++)
+        {
+          if (setId > 0 && filterIdc == 0)
+          {
+            continue;
+          }
+          m_CABACEstimator->getCtx() = ctxStart;
+          m_CABACEstimator->resetBits();
+          const Position lumaPos( xCtu, yCtu );
+          TAlfCtbParam curControl;
+          curControl.enabledFlag = (filterIdc != 0);
+          curControl.filterIdx   = curControl.enabledFlag ? (filterIdc - 1) : 0;
+          curControl.setIdx      = setId;
+          m_CABACEstimator->codeTAlfFilterControlIdc(curControl, cs, compID, ctbIdx, filterControl, lumaPos, filterCount, numSets, false);
+          double rate = FRAC_BITS_SCALE * m_CABACEstimator->getEstFracBits();
+          uint64_t dist = curControl.enabledFlag ? uint64_t(trainingDistortion[apsIds[setId]][curControl.filterIdx][ctbIdx]) : uint64_t(unfilteredDistortion[compID][ctbIdx]);
+          double cost = rate * m_lambda[COMPONENT_Y] + dist;
+          if ( cost < bestCost )
+          {
+            bestCost = cost;
+            bestDist = dist;
+            bestRate = rate;
+            ctxBest = SubCtx(Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx());
+            filterControl[ctbIdx] = curControl;
+          }
+        }
+      }
+      anyCtbOn |= filterControl[ctbIdx].enabledFlag;
+      curTotalDistortion += bestDist;
+      curTotalRate       += bestRate;
+      ctbIdx++;
+    }
+  }
+  m_CABACEstimator->getCtx() = ctxInitial;
+
+  return anyCtbOn;
+}
+
+CandTALF EncAdaptiveLoopFilter::deriveTAlfNewFilter(CodingStructure &cs, ComponentID compId, const int mode, const int shapeIdx)
+{
+  const TempCtx ctxStartTAlfFilterControlFlag ( m_ctxCache, SubCtx( Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx() ) );
+  const int nonLinearFlagMax = m_encCfg->getUseNonLinearAlfLuma() ? 2 : 1;
+
+  const int numCoeff         = NUM_TALF_COEFF + 1;
+  AlfFilterShape alfFilterShape(size_TALF - numCoeff);
+  int newApsId = -1;
+  std::vector<int> apsIds = getAvailableTAlfApsIds(cs, newApsId);
+
+  double   globalMinCost = MAX_DOUBLE;
+  CandTALF bestTalfCand;
+
+  TAlfFilterParam talfParam;
+  talfParam.newFlag  = true;
+  talfParam.shapeIdx = shapeIdx;
+  std::vector<TAlfCtbParam> filtControl;
+  filtControl.resize(m_numCTUsInPic);
+  std::vector<TAlfCtbParam> tmpBestControl;
+  tmpBestControl.resize(m_numCTUsInPic);
+  std::vector<TAlfCtbParam> bestControl;
+  bestControl.resize(m_numCTUsInPic);
+  for (int filterCount = 1; filterCount <= MAX_NUM_TALF_FILTERS; filterCount++)
+  {
+    const int filterIdx = filterCount - 1;
+    double bestCostCurFilter = MAX_DOUBLE;
+    for( int nonLinearFlag = 0; nonLinearFlag < nonLinearFlagMax; nonLinearFlag++ )
+    {
+      for(int shift = TALF_SCALE_BIT; shift < TALF_SCALE_BIT + 4; shift++)
+      {
+        int filterCoeff  [MAX_NUM_ALF_LUMA_COEFF] = { 0 };
+        int filterClipIdx[MAX_NUM_ALF_LUMA_COEFF] = { 0 };
+        // initialize training state.
+        const int maxTrainingIters = 15;
+        double prevIterCost = MAX_DOUBLE;
+        for(int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+        {
+          m_trainingCovControl[ctbIdx] = tmpBestControl[ctbIdx].enabledFlag ? (MAX_NUM_TALF_FILTERS + 1) : filterCount;
+        }
+        for(int iter = 0; iter < maxTrainingIters; iter++)
+        {
+          AlfCovariance* c  = m_alfCovarianceTALF[shapeIdx][mode];
+          AlfCovariance& cf = m_alfCovarianceFrameTALF[shapeIdx][mode];
+          getFrameStatsTAlf(filterCount, c, cf);
+          deriveCoeffTAlf(compId, alfFilterShape, cf, filterCoeff, filterClipIdx, nonLinearFlag, shift + 1);
+          for (int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+          {
+            m_talfDistortion[0][filterIdx][ctbIdx] =
+              uint64_t(c[ctbIdx].pixAcc + c[ctbIdx].calcErrorForCoeffs(filterClipIdx, filterCoeff, numCoeff, shift + 1));
+          }
+          m_CABACEstimator->getCtx() = ctxStartTAlfFilterControlFlag;
+          uint64_t curTotalDistortion = 0;
+          double   curTotalRate       = 0;
+          double   curTotalCost       = 0;
+          // rate for ctbs and distortions
+          determineCtuFlag(cs, compId, m_ctbDistortionUnfilter, m_talfDistortion[0], filtControl
+            , curTotalDistortion, curTotalRate, filterCount, m_trainingCovControl);
+
+          // rate for new filter coefficients
+          curTotalRate += getSetTAlfRate(filterCount, talfParam.coeff, filterCoeff, talfParam.clipFlag, nonLinearFlag);
+          // rate for slice level controls
+          curTotalRate += 1             /* sh/ph enabledFlag */
+                        + (isBiTAlf(mode) ? 2 : 3) /* bits for mode */
+                        + 1             /* bit for newFilter Flag */
+                        + 3;            /* sh/ph APS ID */
+          curTotalRate += 5             /* APS ID set for APS */
+                        + 3;            /* APS Type */
+
+          curTotalCost = curTotalRate * m_lambda[compId] + curTotalDistortion;
+          // update current filterIdx best.
+          if (curTotalCost < bestCostCurFilter)
+          {
+            bestCostCurFilter             = curTotalCost;
+            talfParam.filterCount         = filterCount;
+            talfParam.clipFlag[filterIdx] = nonLinearFlag;
+            talfParam.shift   [filterIdx] = shift;
+            memcpy(talfParam.coeff[filterIdx], filterCoeff, sizeof(filterCoeff));
+            memcpy(talfParam.clipIdx[filterIdx], filterClipIdx, sizeof(filterClipIdx));
+            bestControl = filtControl;
+          }
+          // update overall best
+          if (curTotalCost < globalMinCost)
+          {
+            CandTALF cand;
+            cand.rate                    = curTotalRate;
+            cand.talfControl.enabledFlag = true;
+            cand.talfControl.newFilters  = true;
+            cand.talfControl.mode        = mode;
+            cand.talfControl.apsIds.push_back(newApsId);
+            cand.talfCtbParam            = bestControl;
+            cand.params.push_back(talfParam);
+            globalMinCost = curTotalCost;
+            bestTalfCand = cand;
+          }
+          if (curTotalCost < prevIterCost)
+          {
+            prevIterCost = curTotalCost;
+          }
+          else
+          {
+            break;
+          }
+        }
+      }
+    }
+    // update training control and ctbFlags.
+    tmpBestControl = bestControl;
+    int numCtbOff = 0;
+    for(int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+    {
+      numCtbOff += tmpBestControl[ctbIdx].enabledFlag ? 0 : 1;
+    }
+    if (numCtbOff == 0)
+    {
+      break;
+    }
+    // update distortion for current best filterIdx
+    AlfCovariance* c  = m_alfCovarianceTALF[shapeIdx][mode];
+    for (int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+    {
+      m_talfDistortion[0][filterIdx][ctbIdx] = uint64_t(c[ctbIdx].pixAcc + c[ctbIdx].calcErrorForCoeffs(
+        talfParam.clipIdx[filterIdx], talfParam.coeff[filterIdx], numCoeff, talfParam.shift[filterIdx] + 1));
+    }
+  }
+  filtControl.clear();
+  tmpBestControl.clear();
+  bestControl.clear();
+
+  m_CABACEstimator->getCtx() = ctxStartTAlfFilterControlFlag;
+
+  bool validNewFilter = bestTalfCand.talfControl.enabledFlag;
+  if (validNewFilter)
+  {
+    validNewFilter = false;
+    int sizeCtbControlFlags = int(bestTalfCand.talfCtbParam.size());
+    CHECK(sizeCtbControlFlags != m_numCTUsInPic, "sizeCtbControlFlags != m_numCTUsInPic");
+    for (int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+    {
+      validNewFilter |= bestTalfCand.talfCtbParam[ctbIdx].enabledFlag;
+    }
+  }
+  bestTalfCand.talfControl.enabledFlag = validNewFilter;
+
+  return bestTalfCand;
+}
+
+void EncAdaptiveLoopFilter::deriveTAlfReuseFilter(CodingStructure &cs, ComponentID compId
+  , const int mode, static_vector<CandTALF, NUM_TALF_REUSE_CANDS>& reuseCandList)
+{
+  const int numCoeff = NUM_TALF_COEFF + 1;
+  AlfFilterShape alfFilterShape(size_TALF - numCoeff);
+  const TempCtx ctxStartTAlfFilterControlFlag  ( m_ctxCache, SubCtx( Ctx::TAlfFilterControlFlag, m_CABACEstimator->getCtx() ) );
+  int newApsId = -1;
+  std::vector<int> apsIds = getAvailableTAlfApsIds(cs, newApsId);
+  std::vector<TAlfCtbParam> filtCtbControl;
+  filtCtbControl.resize(m_numCTUsInPic);
+  static_vector<double, NUM_TALF_REUSE_CANDS> reuseCostList;
+
+  if ( apsIds.size() > 0 )
+  {
+    for(int apsId : apsIds)
+    {
+      auto param = m_apsMap->getPS((apsId << NUM_APS_TYPE_LEN) + TALF_APS)->getTAlfAPSParam();
+      for (int filterIdx = 0; filterIdx < param.filterCount; filterIdx++)
+      {
+        int shapeIdx = param.shapeIdx;
+        AlfCovariance* c = m_alfCovarianceTALF[shapeIdx][mode];
+        for (int ctuIdx = 0; ctuIdx < m_numCTUsInPic; ctuIdx++)
+        {
+          m_talfDistortion[apsId][filterIdx][ctuIdx] = uint64_t(c[ctuIdx].pixAcc + c[ctuIdx].calcErrorForCoeffs(
+            param.clipIdx[filterIdx], param.coeff[filterIdx], numCoeff, param.shift[filterIdx] + 1));
+        }
+      }
+    }
+    for ( int k = 1; k <= apsIds.size(); k++ )
+    {
+      std::vector<std::vector<int>> combMap = getCombMap(k, apsIds);
+      for( int combId = 0; combId < combMap.size(); combId++ )
+      {
+        // set the combination, distortion
+        std::vector<int> curApsIds = combMap[combId];
+        std::vector<TAlfFilterParam> params;
+        for( int apsId : curApsIds )
+        {
+          APS* aps = m_apsMap->getPS((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          CHECK(!aps, "empty aps, error");
+          auto param = aps->getTAlfAPSParam();
+          params.push_back(param);
+        }
+
+        uint64_t curTotalDistortion = 0;
+        double   curTotalRate       = 0;
+        double   curTotalCost       = 0;
+        m_CABACEstimator->getCtx() = ctxStartTAlfFilterControlFlag;
+        if(determineCtuFlagReuse(cs, compId, m_ctbDistortionUnfilter, m_talfDistortion, filtCtbControl.data()
+          , curApsIds, params, curTotalDistortion, curTotalRate))
+        {
+          curTotalRate += 1                                  /*sh/ph enabledFlag*/
+                        + (isBiTAlf(mode) ? 2 : 3)
+                        + 1                                  /*newFilters flag*/
+                        + lengthUvlc(int(params.size()) - 1) /*numApsMinus1*/
+                        + int(params.size()) * 3;            /*apsIds*/
+          curTotalCost = curTotalDistortion + m_lambda[compId] * curTotalRate;
+          CandTALF cand;
+          cand.rate   = curTotalRate;
+          cand.talfCtbParam = filtCtbControl;
+          cand.params = params;
+          cand.talfControl.enabledFlag = true;
+          cand.talfControl.newFilters  = false;
+          cand.talfControl.apsIds      = curApsIds;
+          cand.talfControl.mode        = mode;
+          updateCandList(cand, curTotalCost, reuseCandList, reuseCostList, NUM_TALF_REUSE_CANDS);
+        }
+      }
+    }
+  }
+
+  filtCtbControl.clear();
+  m_CABACEstimator->getCtx() = ctxStartTAlfFilterControlFlag;
+}
+
+void EncAdaptiveLoopFilter::deriveTAlfFilter(CodingStructure &cs, ComponentID compId, std::vector<CandTALF>& talfCandList)
+{
+  bool modeOff[NUM_TALF_MODE] = { false, false, false, false, false, false };
+  for(int mode = 0; mode < NUM_TALF_MODE; mode++)
+  {
+    AlfCovariance& covarFrame0 = m_alfCovarianceFrameTALF[0][mode];
+    modeOff[mode] = (covarFrame0.pixAcc == 0) ? true : false;
+  }
+
+  for(int mode = 0; mode < NUM_TALF_MODE; mode++)
+  {
+    if (modeOff[mode])
+    {
+      continue;
+    }
+    for (int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+    {
+      m_ctbDistortionUnfilter[compId][ctbIdx] = double(m_alfCovarianceTALF[0][mode][ctbIdx].pixAcc);
+    }
+    for(int shapeIdx = 0; shapeIdx < MAX_TALF_FILTER_SHAPE; shapeIdx++)
+    {
+      CandTALF newCand = deriveTAlfNewFilter(cs, compId, mode, shapeIdx);
+      if(newCand.talfControl.enabledFlag)
+      {
+        talfCandList.push_back(newCand);
+      }
+    }
+    static_vector<CandTALF, NUM_TALF_REUSE_CANDS> reuseCandList;
+    deriveTAlfReuseFilter(cs, compId, mode, reuseCandList);
+    for (size_t candIdx = 0; candIdx < reuseCandList.size(); candIdx++)
+    {
+      talfCandList.push_back(reuseCandList[candIdx]);
+    }
+  }
+}
+
+void EncAdaptiveLoopFilter::deriveStatsForTAlfFilter(CodingStructure &cs, ComponentID compId, const PelUnitBuf &orgYuv, const PelUnitBuf &recBeforeALF)
+{
+  for(int shapeIdx = 0; shapeIdx < MAX_TALF_FILTER_SHAPE; shapeIdx++)
+  {
+    for (int mode = 0; mode < NUM_TALF_MODE; mode++)
+    {
+      AlfCovariance* covar = m_alfCovarianceTALF[shapeIdx][mode];
+      AlfCovariance& covarFrame = m_alfCovarianceFrameTALF[shapeIdx][mode];
+      covarFrame.reset(m_encCfg->getUseNonLinearAlfLuma() ? MaxAlfNumClippingValues : 1);
+      int ctuRsAddr = 0;
+      for( ; ctuRsAddr < m_numCTUsInPic; ctuRsAddr++ )
+      {
+        covar[ctuRsAddr].reset(m_encCfg->getUseNonLinearAlfLuma() ? MaxAlfNumClippingValues : 1);
+      }
+      ctuRsAddr = 0;
+      for( int yPos = 0; yPos < m_picHeight; yPos += m_maxCUHeight )
+      {
+        for( int xPos = 0; xPos < m_picWidth; xPos += m_maxCUWidth )
+        {
+          UnitArea ctu(cs.pcv->chrFormat, Area(xPos, yPos, m_maxCUWidth, m_maxCUHeight));
+          UnitArea clippedCtu = clipArea(ctu, *cs.slice->getPic());
+          const CPelBuf org = orgYuv.get(compId);
+          const CPelBuf rec = recBeforeALF.get(compId);
+          getBlkStatsTAlf(covar[ctuRsAddr], org, rec, cs, clippedCtu, compId, shapeIdx, mode);
+          covarFrame += covar[ctuRsAddr];
+          ctuRsAddr++;
+        }
+      }
+    }
+  }
+}
+
+void EncAdaptiveLoopFilter::getBlkStatsTAlf(AlfCovariance &alfCovariance, const CPelBuf &orgYuv, const CPelBuf &recBeforeALF, CodingStructure &cs
+    , const UnitArea& clippedCtu, const ComponentID compId, const int shapeIdx, const int mode)
+{
+  const CPelBuf recBuf = cs.getRecoBuf(compId);
+  const int numBins = alfCovariance.numBins;
+  const int isBiFilter = isBiTAlf(mode);
+  const int numCoeff = NUM_TALF_COEFF + 1;
+  MvField mvField[2];
+  Pel inputBatch[4][NUM_TALF_COEFF + 1][TALF_SBB_SIZE][TALF_SBB_SIZE];
+  Pel clipMax[4][MAX_NUM_ALF_LUMA_COEFF];
+  Pel clipMin[4][MAX_NUM_ALF_LUMA_COEFF];
+  for(int clipIdx = 0; clipIdx < MaxAlfNumClippingValues; clipIdx++)
+  {
+    std::fill_n(clipMax[clipIdx], MAX_NUM_ALF_LUMA_COEFF,  m_alfClippingValues[toChannelType(compId)][clipIdx]);
+    std::fill_n(clipMin[clipIdx], MAX_NUM_ALF_LUMA_COEFF, -m_alfClippingValues[toChannelType(compId)][clipIdx]);
+  }
+ 
+  int numSamples = 0;
+  for(int y = clippedCtu.blocks[compId].y; y < (clippedCtu.blocks[compId].y + clippedCtu.blocks[compId].height); y += TALF_SBB_SIZE)
+  {
+    for (int x = clippedCtu.blocks[compId].x; x < (clippedCtu.blocks[compId].x + clippedCtu.blocks[compId].width); x += TALF_SBB_SIZE)
+    {
+      const Position sbbPos(x, y);
+      if (getMotionOffset(cs, sbbPos, mvField, mode, shapeIdx))
+      {
+        m_setTAlfInput[isBiFilter](inputBatch, cs, compId, recBeforeALF, clipMax, clipMin, sbbPos, shapeIdx
+          , m_picWidth, m_picHeight, mode, m_refCombs, mvField, MaxAlfNumClippingValues);
+        for (int ySbb = 0; ySbb < TALF_SBB_SIZE; ySbb++)
+        {
+          for (int xSbb = 0; xSbb < TALF_SBB_SIZE; xSbb++)
+          {
+            const Position pos(sbbPos.offset(xSbb, ySbb));
+            Intermediate_Int yLocal = orgYuv.at(pos) - recBuf.at(pos);
+            alfCovariance.pixAcc += yLocal * (float)yLocal;
+            for(int clipIdx = 0; clipIdx < MaxAlfNumClippingValues; clipIdx++)
+            {
+              for(int idx = 0; idx < numCoeff; idx++)
+              {
+                m_ELocalStorage[clipIdx][idx][numSamples] = inputBatch[clipIdx][idx][ySbb][xSbb];
+              }
+            }
+            m_yLocalStorage[numSamples++] = yLocal;
+          }
+        }
+      }
+      
+    }
+  }
+
+  if(numSamples == 0)
+  {
+    return;
+  }
+
+  for (ptrdiff_t b0 = 0; b0 < numBins; b0++)
+  {
+    for (ptrdiff_t k = 0; k < numCoeff; k++)
+    {
+      for (ptrdiff_t b1 = 0; b1 <= b0; b1++)
+      {
+        const ptrdiff_t maxl = b0 == b1 ? k + 1 : numCoeff;
+        for (ptrdiff_t l = 0; l < maxl; l++)
+        {
+          const ptrdiff_t oe = alfCovariance.getOffsetEfast(b0, b1, k, l);
+          float curE = 0;
+          int batchNum = numSamples >> 4;
+          int idx = 0;
+          for(; idx < (batchNum << 4); idx += 16)
+          {
+            curE += (float)m_groupSumTAlf(&m_ELocalStorage[b0][k][idx], &m_ELocalStorage[b1][l][idx]);
+          }
+          for(; idx < numSamples; idx++)
+          {
+            curE += m_ELocalStorage[b0][k][idx] * (float)m_ELocalStorage[b1][l][idx];
+          }
+          alfCovariance.data[oe] += curE;
+        }
+      }
+    }
+    for (ptrdiff_t k = 0; k < numCoeff; k++)
+    {
+      ptrdiff_t b = b0;
+      const ptrdiff_t oy = alfCovariance.getOffsetY(b, k);
+      float curY = 0;
+      int batchNum = numSamples >> 4;
+      int idx = 0;
+      for(; idx < (batchNum << 4); idx += 16)
+      {
+        curY += (float)m_groupSumTAlf(&m_ELocalStorage[b][k][idx], &m_yLocalStorage[idx]);
+      }
+      for(; idx < numSamples; idx++)
+      {
+        curY += m_ELocalStorage[b][k][idx] * (float)m_yLocalStorage[idx];
+      }
+      alfCovariance.data[oy] += curY;
+    }
+  }
+}
+
+void EncAdaptiveLoopFilter::getFrameStatsTAlf(const int filterIdc, AlfCovariance* covar, AlfCovariance& covarFrame)
+{
+  covarFrame.reset(m_encCfg->getUseNonLinearAlfLuma() ? MaxAlfNumClippingValues : 1);
+  for (int ctuIdx = 0; ctuIdx < m_numCTUsInPic; ctuIdx++)
+  {
+    if (m_trainingCovControl[ctuIdx] == filterIdc)
+    {
+      covarFrame += covar[ctuIdx];
+    }
+  }
+}
+
+void EncAdaptiveLoopFilter::deriveCoeffTAlf(const ComponentID compId, const AlfFilterShape& alfFilterShape, const AlfCovariance& covarFrame
+    , int filterCoeffQuant[MAX_NUM_ALF_LUMA_COEFF], int filterClipIdx[MAX_NUM_ALF_LUMA_COEFF]
+    , const int nonLinearFlag, const int bitDepth)
+{
+  const int numCoeff = alfFilterShape.numCoeff;
+  std::fill_n( filterClipIdx, numCoeff, nonLinearFlag ? AlfNumClippingValues[toChannelType(compId)] / 2 : 0 );
+  deriveCoeffQuant(filterClipIdx, filterCoeffQuant, covarFrame, alfFilterShape, bitDepth, nonLinearFlag);
+}
+
+double EncAdaptiveLoopFilter::getRecoDist(const PelUnitBuf &orgYuv, PelUnitBuf &recYuv, const ComponentID compId, const CodingStructure& cs)
+{
+  const int bd = cs.sps->getBitDepth(toChannelType(compId));
+  Distortion dist = m_sseCost->getDistPart(orgYuv.get(compId), recYuv.get(compId), bd, compId, DF_SSE);
+
+  return double(dist);
+}
+
+int EncAdaptiveLoopFilter::getOneTAlfRate(int nonLinearFlag, int coeff[MAX_NUM_ALF_LUMA_COEFF])
+{
+  const int numCoeff = NUM_TALF_COEFF;
+  int bestCurBits = MAX_INT;
+  for(int kCur = 0; kCur <= 1; kCur++)
+  {
+    int curBits = 0;
+    curBits += 1; // 1-bit for alternative order-k
+    curBits += ceilLog2(MAX_TALF_FILTER_SHAPE); // 1-bit shape index
+    for (int cIdx = 0; cIdx < numCoeff; cIdx++)
+    {
+      curBits += lengthGolomb(coeff[cIdx], kCur);
+      if (nonLinearFlag && coeff[cIdx])
+      {
+        curBits += 2;
+      }
+    }
+    if(curBits < bestCurBits)
+    {
+      bestCurBits = curBits;
+    }
+  }
+
+  return bestCurBits;
+}
+
+int EncAdaptiveLoopFilter::getSetTAlfRate(uint8_t filterCount, int bestCoeff[MAX_NUM_TALF_FILTERS][MAX_NUM_ALF_LUMA_COEFF]
+    , int coeff[MAX_NUM_ALF_LUMA_COEFF], int bestNonLinearFlag[MAX_NUM_TALF_FILTERS], int nonLinearFlag)
+{
+  int bits = 0;
+  if ( filterCount > 0 )
+  {
+    int filterCountMinus1 = filterCount - 1;
+    bits += lengthUvlc(filterCountMinus1);
+    bits += ceilLog2(MAX_TALF_FILTER_SHAPE); // 1-bit shape index
+    const int numCoeff = NUM_TALF_COEFF;
+    for ( int fIdx = 0; fIdx <= filterCountMinus1; fIdx++ )
+    {
+      int bestCurBits = MAX_INT;
+      int* c = (fIdx == filterCountMinus1) ? coeff : bestCoeff[fIdx];
+      int nl = (fIdx == filterCountMinus1) ? nonLinearFlag : bestNonLinearFlag[fIdx];
+      for(int kCur = 0; kCur <= 1; kCur++)
+      {
+        int curBits = 0;
+        curBits += 1; // 1-bit for alternative order-k
+        curBits += 2; // 2-bits for coefficient precision
+        curBits += 1; // non-linear clip
+
+        // bits for coefficients.
+        for (int cIdx = 0; cIdx < numCoeff; cIdx++)
+        {
+          curBits += lengthGolomb(c[cIdx], kCur);
+          if (nl && c[cIdx])
+          {
+            curBits += 2;
+          }
+        }
+        if(curBits < bestCurBits)
+        {
+          bestCurBits = curBits;
+        }
+      }
+      bits += bestCurBits;
+    }
+  }
+
+  return bits;
+}
+
+void EncAdaptiveLoopFilter::setTAlfAPS( CodingStructure &cs, CandTALF& cand )
+{
+  auto talfSliceControl = cand.talfControl;
+  cs.slice->setTileGroupTAlfControl(talfSliceControl);
+  if(!talfSliceControl.enabledFlag)
+  {
+    return;
+  }
+  if (talfSliceControl.newFilters)
+  {
+    CHECK(talfSliceControl.apsIds.size() < 1, "talfSliceControl.apsIds.size() < 1");
+    int numAPS = int(talfSliceControl.apsIds.size());
+    int newApsId = talfSliceControl.apsIds[numAPS - 1];
+    APS* newAPS = m_apsMap->getPS((newApsId << NUM_APS_TYPE_LEN) + TALF_APS);
+    if (newAPS == NULL)
+    {
+      newAPS = m_apsMap->allocatePS((newApsId << NUM_APS_TYPE_LEN) + TALF_APS);
+      newAPS->setAPSId(newApsId);
+      newAPS->setAPSType(TALF_APS);
+    }
+    CHECK(cand.params.size() != numAPS, "cand.params.size() != numAPS");
+    CHECK(!cand.params[numAPS - 1].newFlag, "!cand.params[numAPS - 1].newFlag");
+    newAPS->setTAlfAPSParam(cand.params[numAPS - 1]);
+    newAPS->setTemporalId( cs.slice->getTLayer() );
+    m_apsMap->setChangedFlag((newApsId << NUM_APS_TYPE_LEN) + TALF_APS);
+    m_apsIdStart2 = newApsId; // --included
+  }
+
+  for(auto apsId : talfSliceControl.apsIds)
+  {
+    cs.slice->getTAlfAPSs()[apsId] = m_apsMap->getPS((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+  }
+  auto ctbControl = cand.talfCtbParam;
+  for (int i = 0; i < m_numCTUsInPic; i++)
+  {
+    m_tAlfCtbControl[i] = ctbControl[i];
+  }
+}
+
+std::vector<int> EncAdaptiveLoopFilter::getAvailableTAlfApsIds(CodingStructure& cs, int& newApsId)
+{
+  APS** apss2 = cs.slice->getTAlfAPSs();
+  for (int i = 0; i < ALF_CTB_MAX_NUM_APS; i++)
+  {
+    apss2[i] = m_apsMap->getPS((i << NUM_APS_TYPE_LEN) + TALF_APS);
+  }
+
+  std::vector<int> result;
+  for(int curApsId = 0; curApsId < ALF_CTB_MAX_NUM_APS; curApsId++)
+  {
+    if (!cs.slice->isIntra() && !cs.slice->getPendingRasInit() && !cs.slice->isIDRorBLA())
+    {
+      APS* curAPS = cs.slice->getTAlfAPSs()[curApsId];
+      if (curAPS && curAPS->getLayerId() == cs.slice->getPic()->layerId
+          && curAPS->getTemporalId() <= cs.slice->getTLayer() && curAPS->getTAlfAPSParam().newFlag)
+      {
+        result.push_back(curApsId);
+      }
+    }
+  }
+
+  newApsId = m_apsIdStart2 - 1;
+  if (newApsId < 0)
+  {
+    newApsId = ALF_CTB_MAX_NUM_APS - 1;
+  }
+  CHECK(newApsId >= ALF_CTB_MAX_NUM_APS, "Wrong APS index assignment in getAvailableTAlfAps");
+
+  return result;
+}
+#endif

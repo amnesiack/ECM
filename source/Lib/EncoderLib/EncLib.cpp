@@ -58,7 +58,11 @@
 
 EncLib::EncLib( EncLibCommon* encLibCommon )
   : m_cListPic( encLibCommon->getPictureBuffer() )
+#if JVET_AK0065_TALF
+   , m_cEncALF( encLibCommon->getApsIdStart(), encLibCommon->getApsIdStart2() )
+#else
   , m_cEncALF( encLibCommon->getApsIdStart() )
+#endif
   , m_spsMap( encLibCommon->getSpsMap() )
   , m_ppsMap( encLibCommon->getPpsMap() )
   , m_apsMap( encLibCommon->getApsMap() )
@@ -87,6 +91,9 @@ EncLib::EncLib( EncLibCommon* encLibCommon )
 
   memset(m_apss, 0, sizeof(m_apss));
 
+#if JVET_AK0065_TALF
+  memset(m_apss2, 0, sizeof(m_apss2));
+#endif
   m_layerId = NOT_VALID;
   m_picIdInGOP = NOT_VALID;
 }
@@ -101,6 +108,9 @@ void EncLib::create( const int layerId )
   m_iPOCLast = m_compositeRefEnabled ? -2 : -1;
   // create processing unit classes
   m_cGOPEncoder.        create( );
+#if JVET_AJ0237_INTERNAL_12BIT
+  m_cGOPEncoder.m_cBilateralFilter.setInternalBitDepth(m_bitDepth[COMPONENT_Y]);
+#endif
 #if ENABLE_SPLIT_PARALLELISM
 #if ENABLE_SPLIT_PARALLELISM
   m_numCuEncStacks  = m_numSplitThreads == 1 ? 1 : NUM_RESERVERD_SPLIT_JOBS;
@@ -131,6 +141,9 @@ void EncLib::create( const int layerId )
   m_cCuEncoder.         create( this );
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
   m_bilateralFilter.    create();
+#if JVET_AJ0237_INTERNAL_12BIT
+  m_bilateralFilter.setInternalBitDepth(m_bitDepth[COMPONENT_Y]);
+#endif
 #endif
 #endif
 #if JVET_J0090_MEMORY_BANDWITH_MEASURE
@@ -219,6 +232,9 @@ void EncLib::create( const int layerId )
     m_cEncSAO.create(m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, floorLog2(m_maxCUWidth) - m_log2MinCUSize, (uint32_t)std::max(0, m_bitDepth[CHANNEL_TYPE_LUMA] - MAX_SAO_TRUNCATED_BITDEPTH), (uint32_t)std::max(0, m_bitDepth[CHANNEL_TYPE_CHROMA] - MAX_SAO_TRUNCATED_BITDEPTH));
 #endif
     m_cEncSAO.createEncData(m_saoCtuBoundary, numCtuInFrame);
+#if JVET_AJ0237_INTERNAL_12BIT
+    m_cEncSAO.m_bilateralFilter.setInternalBitDepth(m_bitDepth[COMPONENT_Y]);
+#endif
   }
 }
 
@@ -751,6 +767,9 @@ void EncLib::init( bool isFieldCoding, AUWriterIf* auWriterIf )
                      , &m_cReshaper
 #if JVET_Z0153_IBC_EXT_REF
                      , pps0.getPicWidthInLumaSamples()
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+                     , pps0.getPicHeightInLumaSamples()
+#endif
 #endif
   );
 
@@ -798,7 +817,11 @@ void EncLib::init( bool isFieldCoding, AUWriterIf* auWriterIf )
 
     picBg->getRecoBuf().fill(0);
 
+#if JVET_AK0065_TALF
+    picBg->finalInit( m_vps, sps0, pps0, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS );
+#else
     picBg->finalInit( m_vps, sps0, pps0, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
 
     picBg->allocateNewSlice();
@@ -946,7 +969,11 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
 
     picCurr->M_BUFS( 0, PIC_ORIGINAL ).copyFrom( m_cGOPEncoder.getPicBg()->getRecoBuf() );
 
+#if JVET_AK0065_TALF
+    picCurr->finalInit(m_vps, *sps, *pps, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS);
+#else
     picCurr->finalInit( m_vps, *sps, *pps, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
     picCurr->poc = m_iPOCLast - 1;
     m_iPOCLast -= 2;
@@ -1173,7 +1200,11 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
       pcPicCurr->M_BUFS( 0, PIC_ORIGINAL ).swap( *pcPicYuvOrg );
     }
 
+#if JVET_AK0065_TALF
+    pcPicCurr->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS );
+#else
     pcPicCurr->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
     pcPicCurr->poc = m_iPOCLast;
 
@@ -1311,7 +1342,11 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
       const PPS *pPPS = ( ppsID < 0 ) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS( ppsID );
       const SPS *pSPS = m_spsMap.getPS( pPPS->getSPSId() );
 
+#if JVET_AK0065_TALF
+      pcField->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_apss2, m_lmcsAPS, m_scalinglistAPS );
+#else
       pcField->finalInit( m_vps, *pSPS, *pPPS, &m_picHeader, m_apss, m_lmcsAPS, m_scalinglistAPS );
+#endif
 
       pcField->poc = m_iPOCLast;
       pcField->reconstructed = false;
@@ -1823,12 +1858,19 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setLog2SignPredArea                    (m_log2SignPredArea);
 #endif
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  sps.setUseMTSExt(m_MTSExt);
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   sps.setUseIntraLFNSTISlice                 ( m_intraLFNSTISlice );
   sps.setUseIntraLFNSTPBSlice                ( m_intraLFNSTPBSlice );
   sps.setUseInterLFNST                       ( m_interLFNST );
 #else
   sps.setUseLFNST                            ( m_LFNST );
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  sps.setUseNSPT                             ( m_NSPT );
+  sps.setUseLFNSTExt                         ( m_LFNSTExt );
 #endif
   sps.setSbTMVPEnabledFlag(m_sbTmvpEnableFlag);
   sps.setAMVREnabledFlag                ( m_ImvMode != IMV_OFF );
@@ -1856,6 +1898,14 @@ void EncLib::xInitSPS( SPS& sps )
     setMaxNumAffineMergeCand(getMaxNumAffineMergeCand() - 2);
   }
 #endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  sps.setConfigSbTmvpMvExt(m_sbTmvpMvExt);
+  if (m_intraPeriod == -1)
+  {
+    sps.setConfigSbTmvpMvExt(false);
+    setMaxNumAffineMergeCand(getMaxNumAffineMergeCand() - 2);
+  }
+#endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   sps.setUseArmcRefinedMotion               ( m_armcRefinedMotion );
 #endif
@@ -1879,14 +1929,19 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setMaxNumIBCMergeCand(getMaxNumIBCMergeCand());
   sps.setMaxNumGeoCand(getMaxNumGeoCand());
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AJ0274_GPM_AFFINE_TM
+  sps.setMaxNumGpmAffCand      (getMaxNumGpmAffCand());
+  sps.setMaxNumGpmAffTmCand    (m_intraPeriod == -1 ? (m_sourceWidth * m_sourceHeight >= 1920 * 1080 ? 0 : getMaxNumGpmAffTmCand() - 2) : getMaxNumGpmAffTmCand());
+#else
   sps.setMaxNumGpmAffCand      (((m_sourceWidth * m_sourceHeight) > (m_intraPeriod == -1 ? 1280 * 720 : 0)) ? getMaxNumGpmAffCand() : 0);
+#endif
 #endif
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
   sps.setMaxNumMHPCand(getMaxNumMHPCand());
 #endif
   sps.setUseAffine             ( m_Affine );
   sps.setUseAffineType         ( m_AffineType );
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   sps.setUseAltCost            ( m_useAltCost );
   if ((getSourceWidth() * getSourceHeight()) > (832 * 480) && ((getSourceWidth() * getSourceHeight()) < (1920 * 1080)))
   {
@@ -1895,6 +1950,9 @@ void EncLib::xInitSPS( SPS& sps )
       sps.setUseAltCost(false);
     }
   }
+#endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  sps.setUseExtAmvp            ( m_useExtAmvp );
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   sps.setUseAffineTM           ( m_useAffineTM );
@@ -2009,11 +2067,17 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AA0133_INTER_MTS_OPT
   sps.setInterMTSMaxSize(m_interMTSMaxSize);
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  sps.setIntraMTSMaxSize(m_intraMTSMaxSize);
+#endif
 #if ENABLE_DIMD
   sps.setUseDimd            ( m_dimd );
 #endif
 #if JVET_W0123_TIMD_FUSION
   sps.setUseTimd            ( m_timd );
+#if JVET_AJ0061_TIMD_MERGE
+  sps.setUseTimdMrg         ( m_timdMrg );
+#endif
 #endif
 #if JVET_X0141_CIIP_TIMD_TM && JVET_W0123_TIMD_FUSION
   sps.setUseCiipTimd        ( m_ciipTimd );
@@ -2075,10 +2139,13 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
   sps.setUseGeo                ( m_Geo );
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
-  sps.setUseGeoBlend           ( true );
+  sps.setUseGeoBlend           ( m_Geo && m_tmToolsEnableFlag );
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   sps.setUseGeoInterIbc        ( m_Geo ? m_geoInterIbc : false );
+#endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  sps.setUseGeoShapeAdapt      ( m_geoShapeAdapt );
 #endif
   sps.setUseMMVD               ( m_MMVD );
   sps.setFpelMmvdEnabledFlag   (( m_MMVD ) ? m_allowDisFracMMVD : false);
@@ -2139,6 +2206,11 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setItmpLicExtension                   ( m_itmpLicExtension );
   sps.setItmpLicMode                        ( m_itmpLicMode );
 #endif
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  sps.setDisableRefFilter                   ( false );
+  sps.setDisablePdpc                        ( false );
+  sps.setDisableIntraFusion                 ( false );
+#endif
   sps.setWrapAroundEnabledFlag                      ( m_wrapAround );
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   sps.setEnableMaxMttIncrease               ( m_enableMaxMttIncrease );
@@ -2182,6 +2254,9 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setUseLmcs                            ( m_lmcsEnabled );
   sps.setUseMRL                ( m_MRL );
   sps.setUseMIP                ( m_MIP );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  sps.setNnipMode(m_nnip);
+#endif
   CHECK(m_log2MinCUSize > std::min(6, floorLog2(sps.getMaxCUWidth())), "log2_min_luma_coding_block_size_minus2 shall be in the range of 0 to min (4, log2_ctu_size - 2)");
   CHECK(m_uiMaxMTTHierarchyDepth > 2 * (floorLog2(sps.getCTUSize()) - sps.getLog2MinCodingBlockSize()), "sps_max_mtt_hierarchy_depth_inter_slice shall be in the range 0 to 2*(ctbLog2SizeY - log2MinCUSize)");
   CHECK(m_uiMaxMTTHierarchyDepthI > 2 * (floorLog2(sps.getCTUSize()) - sps.getLog2MinCodingBlockSize()), "sps_max_mtt_hierarchy_depth_intra_slice_luma shall be in the range 0 to 2*(ctbLog2SizeY - log2MinCUSize)");
@@ -2217,6 +2292,13 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   sps.setCCALFPrecisionFlag( m_ccalfPrecision );
+#endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  sps.setAlfLumaFixedFilterAdjust( m_intraPeriod < 0 ? false : true );
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  sps.setInloopOffsetRefineFlag( m_intraPeriod < 0 ? false : true );
+  sps.setInloopOffsetRefineFunc( m_intraPeriod < 0 ? ( getBaseQP() < 30 ? 1 : 0 ) : 0 );
 #endif
   sps.setJointCbCrEnabledFlag( m_JointCbCrMode );
   sps.setMaxTLayers( m_maxTempLayer );
@@ -2276,6 +2358,9 @@ void EncLib::xInitSPS( SPS& sps )
   {
     sps.setAlfScaleMode( 1 );
   }
+#endif
+#if JVET_AK0065_TALF
+  sps.setUseTAlf(true);
 #endif
 
   if (sps.getVuiParametersPresentFlag())

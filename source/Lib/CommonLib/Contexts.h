@@ -540,6 +540,9 @@ public:
   static const CtxSet DbvChromaMode;
 #endif
   static const CtxSet   MipFlag;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  static const CtxSet PnnLuminanceFlag;
+#endif
 #if JVET_V0130_INTRA_TMP
   static const CtxSet   TmpFlag;
 #if JVET_AD0086_ENHANCED_INTRA_TMP
@@ -568,6 +571,9 @@ public:
 #endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   static const CtxSet   GeoBlendFlag;
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  static const CtxSet   GeoBlendTMFlag;
+#endif
 #endif
 #if JVET_W0097_GPM_MMVD_TM
   static const CtxSet   GeoMmvdFlag;
@@ -710,6 +716,9 @@ public:
   static const CtxSet   TransformSkipFlag;
   static const CtxSet   MTSIdx;
   static const CtxSet   LFNSTIdx;
+#if AHG7_LN_TOOLOFF_CFG
+  static const CtxSet   VvcLFNSTIdx;
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   static const CtxSet   InterLFNSTIdx;
 #endif
@@ -739,6 +748,12 @@ public:
 #endif
 #if JVET_W0123_TIMD_FUSION
   static const CtxSet   TimdFlag;
+#if JVET_AJ0061_TIMD_MERGE
+  static const CtxSet   TimdMrgFlag;
+#endif
+#if JVET_AJ0146_TIMDSAD
+  static const CtxSet   TimdFlagSad;
+#endif
 #endif
 #if JVET_AB0155_SGPM
   static const CtxSet   SgpmFlag;
@@ -795,6 +810,9 @@ public:
 #endif
 #if JVET_AB0157_TMRL
   static const CtxSet   TmrlDerive;
+#if JVET_AJ0081_CHROMA_TMRL
+  static const CtxSet   ChromaTmrlFlag;
+#endif
 #endif
 #if JVET_AE0059_INTER_CCCM
   static const CtxSet   InterCccmFlag;
@@ -811,6 +829,9 @@ public:
 #endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   static const CtxSet   InterCcpMergeZeroRootCbfIdc;
+#endif
+#if JVET_AK0065_TALF
+  static const CtxSet   TAlfFilterControlFlag;
 #endif
   static const unsigned NumberOfContexts;
 
@@ -1130,8 +1151,8 @@ public:
   TempCtx ( CtxCache* cache, const Ctx& ctx    )  : m_ctx( *cache->get() ), m_cache( cache ) { m_ctx = ctx; }
   TempCtx ( CtxCache* cache, SubCtx&&   subCtx )  : m_ctx( *cache->get() ), m_cache( cache ) { m_ctx = std::forward<SubCtx>(subCtx); }
   ~TempCtx()                                      { m_cache->cache( &m_ctx ); }
-  const Ctx& operator=( const Ctx& ctx )          { return ( m_ctx = ctx ); }
-  SubCtx     operator=( SubCtx&&   subCtx )       { return m_ctx = std::forward<SubCtx>( subCtx ); }
+  void operator=( const Ctx& ctx )          { m_ctx = ctx ; }
+  void operator=( SubCtx&&   subCtx )       { m_ctx = std::forward<SubCtx>( subCtx ); }
   operator const Ctx& ()           const          { return m_ctx; }
   operator       Ctx& ()                          { return m_ctx; }
 private:
@@ -1347,7 +1368,7 @@ public:
 
   void updateBufferState( const Slice* slice )
   {
-#if JVET_AD0206_CABAC_INIT_AT_GDR
+#if JVET_Z0118_GDR && JVET_AD0206_CABAC_INIT_AT_GDR
     if( slice->getPendingRasInit() || slice->isInterGDR() )
 #else
     if( slice->getPendingRasInit() )

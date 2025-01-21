@@ -108,6 +108,9 @@ Slice::Slice()
 #if JVET_AG0098_AMVP_WITH_SBTMVP
 , m_amvpSbTmvpAmvrEnabledFlag     (false)
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+, m_extAmvpLevel                  (0)
+#endif
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
 , m_costForARMC                   ( MAX_UINT )
 #endif
@@ -144,6 +147,9 @@ Slice::Slice()
 , m_intraRegionRootMtDepth        ( -1 )
 , m_intraRegionRootImplicitBtDepth( -1 )
 , m_intraRegionNoSplitTest        ( false )
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+, m_pnnMode(false)
 #endif
 {
   for(uint32_t i=0; i<NUM_REF_PIC_LIST_01; i++)
@@ -187,6 +193,9 @@ Slice::Slice()
 #endif
 
   memset(m_alfApss, 0, sizeof(m_alfApss));
+#if JVET_AK0065_TALF
+  memset(m_talfApss, 0, sizeof(m_talfApss));
+#endif
   m_ccAlfFilterParam.reset();
   resetTileGroupAlfEnabledFlag();
   resetTileGroupCcAlCbfEnabledFlag();
@@ -198,6 +207,9 @@ Slice::Slice()
   m_idxCorrChroma[0] = 0;
   m_idxCorrChroma[1] = 0;
   m_idxCorrChroma[2] = 0;
+#endif
+#if JVET_AK0065_TALF
+  m_tileGroupTAlfControl.reset();
 #endif
 }
 
@@ -263,6 +275,12 @@ void Slice::initSlice()
   m_ccSaoComParam.reset();
   resetCcSaoEnabledFlag();
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_offsetRefinementDbf = false;
+  m_offsetRefinementAlf = false;
+  m_offsetRefinementDbfIdx = false;
+  m_offsetRefinementAlfIdx = false;
+#endif
   resetTileGroupAlfEnabledFlag();
   m_ccAlfFilterParam.reset();
   m_tileGroupCcAlfCbEnabledFlag = 0;
@@ -276,6 +294,9 @@ void Slice::initSlice()
   m_idxCorrChroma[0] = 0;
   m_idxCorrChroma[1] = 0;
   m_idxCorrChroma[2] = 0;
+#endif
+#if JVET_AK0065_TALF
+  m_tileGroupTAlfControl.reset();
 #endif
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   m_separateTreeEnabled           = false;
@@ -631,6 +652,9 @@ void Slice::inheritFromPicHeader( PicHeader *picHeader, const PPS *pps, const SP
   setTileGroupCcAlfCrApsId(picHeader->getCcAlfCrApsId());
   m_ccAlfFilterParam.ccAlfFilterEnabled[COMPONENT_Cb - 1] = picHeader->getCcAlfEnabledFlag(COMPONENT_Cb);
   m_ccAlfFilterParam.ccAlfFilterEnabled[COMPONENT_Cr - 1] = picHeader->getCcAlfEnabledFlag(COMPONENT_Cr);
+#if JVET_AK0065_TALF
+  setTileGroupTAlfControl(picHeader->getTAlfControl());
+#endif
 }
 
 void Slice::setNumSubstream(const SPS* sps, const PPS* pps)
@@ -2122,12 +2146,14 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
 #endif
 
   m_cabacInitFlag                 = pSrc->m_cabacInitFlag;
-
 #if JVET_AG0196_CABAC_RETRAIN
   m_cabacInitSliceType = pSrc->m_cabacInitSliceType;
 #endif
 
   memcpy(m_alfApss, pSrc->m_alfApss, sizeof(m_alfApss)); // this might be quite unsafe
+#if JVET_AK0065_TALF
+  memcpy(m_talfApss, pSrc->m_talfApss, sizeof(m_talfApss)); // this might be quite unsafe
+#endif
 #if ALF_IMPROVEMENT
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   memcpy( m_tileGroupAlfFixedFilterSetIdx, pSrc->m_tileGroupAlfFixedFilterSetIdx, sizeof(m_tileGroupAlfFixedFilterSetIdx));
@@ -2166,11 +2192,21 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
   m_lumaPelMin                              = pSrc->m_lumaPelMin;
   m_adaptiveClipQuant                       = pSrc->m_adaptiveClipQuant;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_offsetRefinementDbf                     = pSrc->m_offsetRefinementDbf;
+  m_offsetRefinementAlf                     = pSrc->m_offsetRefinementAlf;
+  m_offsetRefinementDbfIdx                  = pSrc->m_offsetRefinementDbfIdx;
+  m_offsetRefinementAlfIdx                  = pSrc->m_offsetRefinementAlfIdx;
+#endif
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   for ( int c=0 ; c<MAX_NUM_COMPONENT ; c++ )
   {
     m_idxCorrChroma[c]                      = pSrc->m_idxCorrChroma[c];
   }
+#endif
+#if JVET_AK0065_TALF
+  m_tAlfCtbControl     = pSrc->m_tAlfCtbControl;
+  m_tileGroupTAlfControl = pSrc->m_tileGroupTAlfControl;
 #endif
 }
 
@@ -3929,6 +3965,9 @@ PicHeader::PicHeader()
   m_alfApsId.resize(0);
 
   resetWpScaling();
+#if JVET_AK0065_TALF
+  m_talfControl.reset();
+#endif
 }
 
 PicHeader::~PicHeader()
@@ -4144,6 +4183,11 @@ SPS::SPS()
   , m_itmpLicExtension        ( false )
   , m_itmpLicMode             ( false )
 #endif
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  , m_disableRefFilter        ( false )
+  , m_disablePdpc             ( false )
+  , m_disableIntraFusion      ( false )
+#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
  , m_DMVDMode                 ( false )
 #endif
@@ -4194,6 +4238,9 @@ SPS::SPS()
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
 , m_alfScaleMode              ( 0 )
 , m_alfScalePrevEnabled       ( false )
+#endif
+#if JVET_AK0065_TALF
+, m_talf                      ( false )
 #endif
 , m_SBT                       ( false )
 , m_ISP                       ( false )
@@ -4283,6 +4330,9 @@ SPS::SPS()
 , m_verCollocatedChromaFlag   ( false )
 , m_IntraMTS                  ( false )
 , m_InterMTS                  ( false )
+#if AHG7_MTS_TOOLOFF_CFG
+, m_MTSExt                    ( false )
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
 , m_intraLFNSTISlice          ( false )
 , m_intraLFNSTPBSlice         ( false )
@@ -4290,10 +4340,17 @@ SPS::SPS()
 #else
 , m_LFNST                     ( false )
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+, m_NSPT                      ( false )
+, m_LFNSTExt                  ( false )
+#endif
 , m_Affine                    ( false )
 , m_AffineType                ( false )
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
 , m_useAltCost                ( true )
+#endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+, m_useExtAmvp                ( true )
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
 , m_useAffineTM               ( false )
@@ -4359,6 +4416,9 @@ SPS::SPS()
 , m_ciipAffine                ( false )
 #endif
 , m_Geo                       ( false )
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+, m_geoShapeAdapt             ( false )
+#endif
 #if INTER_LIC
 , m_licEnabledFlag            ( false )
 #endif
@@ -4417,6 +4477,9 @@ SPS::SPS()
 , m_maxNumGeoCand(0)
 #if JVET_AG0164_AFFINE_GPM
 , m_maxNumGpmAffCand(0)
+#if JVET_AJ0274_GPM_AFFINE_TM
+, m_maxNumGpmAffTmCand(0)
+#endif
 #endif
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
 , m_maxNumMHPCand(0)
@@ -5822,7 +5885,11 @@ uint32_t PreCalcValues::getMinQtSize( const Slice &slice, const ChannelType chTy
 }
 
 #if JVET_Y0128_NON_CTC
+#if JVET_AK0065_TALF
+bool Slice::scaleRefPicList( Picture* scaledRefPic[ ], PicHeader* picHeader, APS** apss, APS** apss2, APS* lmcsAps, APS* scalingListAps, const bool isDecoder )
+#else
 bool Slice::scaleRefPicList( Picture* scaledRefPic[ ], PicHeader* picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder )
+#endif
 #else
 void Slice::scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder )
 #endif
@@ -5924,7 +5991,11 @@ void Slice::scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS
             scaledRefPic[j]->reconstructed = false;
             scaledRefPic[j]->referenced = true;
 
+#if JVET_AK0065_TALF
+            scaledRefPic[j]->finalInit( m_pcPic->cs->vps, *sps, *pps, picHeader, apss, apss2, lmcsAps, scalingListAps );
+#else
             scaledRefPic[j]->finalInit( m_pcPic->cs->vps, *sps, *pps, picHeader, apss, lmcsAps, scalingListAps );
+#endif
 
             scaledRefPic[j]->poc = NOT_VALID;
 

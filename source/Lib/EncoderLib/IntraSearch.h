@@ -204,6 +204,9 @@ private:
 #endif
   int             m_numCandAMTForFullRD;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  std::array<std::array<uint32_t, NUM_INDICES_REP>, MAX_NUM_COMPONENT> m_indicesRepresentationPnn;
+#endif
   XUCache         m_unitCache;
 
   CodingStructure ****m_pSplitCS;
@@ -233,8 +236,8 @@ private:
     bool     tmpFusionFlag;
     bool     tmpFlmFlag;
 #if JVET_AG0136_INTRA_TMP_LIC
-    bool tmpLicFlag;
-    uint8_t tmpLicIdc;
+    bool     tmpLicFlag;
+    uint8_t  tmpLicIdc;
 #endif
     int      tmpIsSubPel;
     int      tmpSubPelIdx;
@@ -252,6 +255,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
     Mv       sgpmBv0;
     Mv       sgpmBv1;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+    bool sgpmIsRegression;
+    AffineBlendingModel sgpmBlendModel;
 #endif
 #endif
 #if JVET_AB0155_SGPM
@@ -271,6 +278,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
   , sgpmBv0(0, 0), sgpmBv1(0, 0)
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  , sgpmIsRegression(false)
+  , sgpmBlendModel(AffineBlendingModel(5,1,31))
+#endif
 {}
     ModeInfo(const bool mipf, const bool miptf, const int mrid, const uint8_t ispm, const uint32_t mode,
              const bool tmpf = 0
@@ -287,6 +298,10 @@ private:
 	  , const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0, const int si = 0 
 #if JVET_AG0152_SGPM_ITMP_IBC
     , const Mv sbv0 = Mv(0, 0), const Mv sbv1 = Mv(0, 0)
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      , const bool sir = false
+      , const AffineBlendingModel sbm = AffineBlendingModel(5, 1, 31)
 #endif
 )
 #else
@@ -320,6 +335,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
       , sgpmBv0(sbv0)
       , sgpmBv1(sbv1)
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      , sgpmIsRegression(sir)
+      , sgpmBlendModel(sbm)
 #endif
     {
     }
@@ -355,6 +374,10 @@ private:
 #if JVET_AG0152_SGPM_ITMP_IBC
       sgpmBv0 = other.sgpmBv0;
       sgpmBv1 = other.sgpmBv1;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+      sgpmIsRegression = other.sgpmIsRegression;
+      sgpmBlendModel = other.sgpmBlendModel;
 #endif
       return *this;
     }
@@ -590,6 +613,10 @@ private:
   int64_t m_coeffAbsSumDCT2;
 #endif
 #endif
+#if JVET_AJ0061_TIMD_MERGE
+  static_vector<ModeInfo, NumTimdMode> m_uiSavedRdModeListTimd;
+  static_vector<double,   NumTimdMode> m_uiSavedModeCostTimd;
+#endif
 #if JVET_AE0169_BIPREDICTIVE_IBC
   double     m_bestIntraSADHADCost;
 #endif
@@ -630,6 +657,12 @@ private:
 #endif
 #if JVET_AH0209_PDP
   Pel* m_pdpIntraPredBuf[NUM_LUMA_MODE];
+#if JVET_AK0061_PDP_MPM
+  static_vector<ModeInfo, NUM_MOST_PROBABLE_MODES> m_mpmSavedPdpModeList;
+  static_vector<double, NUM_MOST_PROBABLE_MODES> m_mpmSavedPdpRdList;
+  std::pair<ModeInfo, double> m_timdMergeRdModeList;
+  
+#endif
 #endif
 #if JVET_AG0058_EIP
   Pel* m_eipPredBuf[NUM_DERIVED_EIP];
@@ -638,6 +671,20 @@ private:
   static_vector<ModeInfo, NUM_DERIVED_EIP + MAX_MERGE_EIP> m_uiSavedHadModeListEip;
   static_vector<double, NUM_DERIVED_EIP + MAX_MERGE_EIP>   m_dSavedModeCostEip;
   static_vector<double, NUM_DERIVED_EIP + MAX_MERGE_EIP>   m_dSavedHadListEip;
+#if JVET_AJ0082_MM_EIP
+  double m_encBestEipCost;
+#endif
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+  Pel* m_timdPredBuf[NumTimdMode];
+#endif
+#if JVET_AJ0146_TIMDSAD 
+  Pel* m_timdSadPredBuf;
+#if !JVET_AJ0061_TIMD_MERGE
+  Pel* m_timdPredBuf;
+#endif
+  double m_dSavedRDCostTimdSad;
+  double m_dSavedHadTimdSad;
 #endif
 #if JVET_AH0076_OBIC
   Pel* m_dimdPredBuf;
@@ -674,6 +721,10 @@ private:
   PelStorage      m_fusionStorage[6];
 #endif
 
+#if JVET_AJ0081_CHROMA_TMRL
+  PelStorage     m_chromaMrlStorage[CHROMA_TMRL_LIST_SIZE];
+#endif
+
 #if JVET_AD0120_LBCCP
   PelStorage      m_lmPredFiltStorage[LBCCP_FILTER_MMLMNUM];
   struct lmPredFiltModeInfo
@@ -708,9 +759,11 @@ protected:
   CtxCache*       m_ctxCache;
 
   bool            m_isInitialized;
+#if !JVET_AJ0237_INTERNAL_12BIT
   uint32_t        m_symbolSize;
   uint16_t**      m_truncBinBits;
   uint16_t*       m_escapeNumBins;
+#endif
   bool            m_bestEscape;
   double*         m_indexError[MAXPLTSIZE + 1];
   uint8_t*        m_minErrorIndexMap; // store the best index in terms of distortion for each pixel
@@ -724,31 +777,53 @@ public:
 #if INTRA_TRANS_ENC_OPT
   bool            m_skipTimdLfnstMtsPass;
 #endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool            m_skipSgpmLfnstMtsPass;
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+  bool            m_skipTimdMrgLfnstMtsPass;
+  bool            m_skipObicMode;
+  bool            m_skipDimdMode;
+  uint64_t        m_satdCostOBIC;
+  uint64_t        m_satdCostDIMD;
+  bool            m_skipTimdMode[NumTimdMode];
+  uint64_t        m_satdCostTIMD[NumTimdMode][2]; 
+#endif
 #if JVET_AH0076_OBIC
   bool            m_skipObicLfnstMtsPass;
   bool            m_skipDimdLfnstMtsPass;
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool            m_skipNnLfnstMtsPass;
 #endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   bool            m_skipCCCMSATD;
   int             m_isCccmNoSubModeEnabledInRdo[MMLM_T_IDX + 1];
 #endif 
+#if JVET_AJ0082_MM_EIP
+  bool            m_skipEipLfnstMtsPass;
+#endif
 #if JVET_AD0202_CCCM_MDF
   bool            m_skipCCCMwithMdfSATD;
   int             m_isCccmWithMdfEnabledInRdo[5][MMLM_T_IDX + 1];
 #endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
-  bool m_skipDdCcpListConstruction;
-  bool firstTransformDdccp;
+  bool            m_skipDdCcpListConstruction;
+  bool            firstTransformDdccp;
   PelStorage      m_ddCcpStorage;
   PelUnitBuf      m_ddCcpStorageTemp;
   std::vector<DecoderDerivedCcpCandidate> m_decoderDerivedCcpList;
-  bool m_skipDdCcpMergeFusionList;
-  int m_numCcpMergefusionRdo;
-  double m_ddccpMergeFusionCost[2];
-  int m_ddCcpMergeFusionModeIndex[2];
+  bool            m_skipDdCcpMergeFusionList;
+  int             m_numCcpMergefusionRdo;
+  double          m_ddccpMergeFusionCost[2];
+  int             m_ddCcpMergeFusionModeIndex[2];
   PelStorage      m_ddCcpFusionStorage[2];
   PelUnitBuf      m_ddCcpFusionStorageTemp[2];
 #endif  
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool            m_isDimdPredictionSaved;
+  bool            m_isObicPredictionSaved;
+#endif
   IntraSearch();
   ~IntraSearch();
 
@@ -783,6 +858,10 @@ public:
   double findInterCUCost          ( CodingUnit &cu );
 #endif
 public:
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void resetIndicesRepresentationPnnMemories();
+  void resetAreDimdObicPredictionsSaved() { m_isDimdPredictionSaved = false; m_isObicPredictionSaved = false; }
+#endif
   bool estIntraPredLumaQT(CodingUnit &cu, Partitioner& pm, const double bestCostSoFar = MAX_DOUBLE, bool mtsCheckRangeFlag = false, int mtsFirstCheckId = 0, int mtsLastCheckId = 0, bool moreProbMTSIdxFirst = false, CodingStructure* bestCS = NULL
 #if JVET_AG0136_INTRA_TMP_LIC
     , InterPrediction* pcInterPred = nullptr
@@ -875,6 +954,9 @@ protected:
 #if JVET_AC0105_DIRECTIONAL_PLANAR
     , const double* dirPlanarCostList
 #endif
+#if JVET_AJ0146_TIMDSAD
+    , int addOne
+#endif
   );
   void   derivePLTLossy  (      CodingStructure& cs, Partitioner& partitioner, ComponentID compBegin, uint32_t numComp);
   void   calcPixelPred   (      CodingStructure& cs, Partitioner& partitioner, uint32_t    yPos,      uint32_t xPos,             ComponentID compBegin, uint32_t  numComp);
@@ -883,10 +965,16 @@ protected:
   void     deriveIndexMap         (CodingStructure& cs, Partitioner& partitioner, ComponentID compBegin, uint32_t numComp, PLTScanMode pltScanMode, double& dCost, bool* idxExist);
   bool     deriveSubblockIndexMap(CodingStructure& cs, Partitioner& partitioner, ComponentID compBegin, PLTScanMode pltScanMode, int minSubPos, int maxSubPos, const BinFracBits& fracBitsPltRunType, const BinFracBits* fracBitsPltIndexINDEX, const BinFracBits* fracBitsPltIndexCOPY, const double minCost, bool useRotate);
   double   rateDistOptPLT         (bool RunType, uint8_t RunIndex, bool prevRunType, uint8_t prevRunIndex, uint8_t aboveRunIndex, bool& prevCodedRunType, int& prevCodedRunPos, int scanPos, uint32_t width, int dist, int indexMaxValue, const BinFracBits* IndexfracBits, const BinFracBits& TypefracBits);
+#if !JVET_AJ0237_INTERNAL_12BIT
   void     initTBCTable           (int bitDepth);
+#endif
   uint32_t getTruncBinBits        (uint32_t symbol, uint32_t maxSymbol);
   uint32_t getEpExGolombNumBins   (uint32_t symbol, uint32_t count);
+#if AHG7_LN_TOOLOFF_CFG
+  void xGetNextISPMode                    ( ModeInfo& modeInfo, const ModeInfo* lastMode, const Size cuSize, bool lfnstExtFlag, bool nsptFlag );
+#else
   void xGetNextISPMode                    ( ModeInfo& modeInfo, const ModeInfo* lastMode, const Size cuSize );
+#endif
   bool xSortISPCandList                   ( double bestCostSoFar, double bestNonISPCost, ModeInfo bestNonISPMode );
   void xSortISPCandListLFNST              ( );
   void xFindAlreadyTestedNearbyIntraModes ( int currentLfnstIdx, int currentIntraMode, int* refLfnstIdx, int* leftIntraMode, int* rightIntraMode, ISPType ispOption, int windowSize );

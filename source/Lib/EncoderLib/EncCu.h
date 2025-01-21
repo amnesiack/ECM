@@ -371,6 +371,9 @@ private:
 #endif
   FastGeoMMVDCostList   m_geoMMVDCostList;
   bool                  m_fastGpmMmvdSearch;
+#if JVET_AJ0274_GPM_AFFINE_TM
+  int                  m_fastGpmAffSearch;
+#endif
   bool                  m_fastGpmMmvdRelatedCU;
   bool                  m_includeMoreMMVDCandFirstPass;
   int                   m_maxNumGPMDirFirstPass;
@@ -379,6 +382,9 @@ private:
   PelStorage            m_acGeoMergeTmpBuffer[GEO_TM_MAX_NUM_CANDS];
   PelStorage            m_acGeoSADTmpBuffer[GEO_TM_MAX_NUM_CANDS];
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  PelStorage            m_acGeoBlendTMBuffer[GEO_TM_MAX_NUM_CANDS];
 #endif
   double                m_AFFBestSATDCost;
   double                m_mergeBestSATDCost;
@@ -405,6 +411,9 @@ private:
 #endif
   Mv                    m_mvBufEncBDOF[MRG_MAX_NUM_CANDS][BDOF_SUBPU_MAX_NUM];
   Mv                    m_mvBufEncBDOF4TM[MRG_MAX_NUM_CANDS][BDOF_SUBPU_MAX_NUM];
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  Mv                    m_mvBufEncBDOF4TMBlend[MRG_MAX_NUM_CANDS][BDOF_SUBPU_MAX_NUM];
+#endif
 #if JVET_X0049_ADAPT_DMVR
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   Mv                    m_mvBufBDMVR4BM[(BM_MRG_MAX_NUM_INIT_CANDS << 1)<<1][MAX_NUM_SUBCU_DMVR];
@@ -494,7 +503,11 @@ public:
   void  compressCtu         ( CodingStructure& cs, const UnitArea& area, const unsigned ctuRsAddr, const int prevQP[], const int currQP[] );
   /// CTU encoding function
   int   updateCtuDataISlice ( const CPelBuf buf );
-
+  /// function to check whether the current CU is luma and non-boundary CU
+#if JVET_AI0087_BTCUS_RESTRICTION
+  bool isLumaNonBoundaryCu(const Partitioner &partitioner, SizeType picWidth, SizeType picHeight);
+  bool xStoreRDcostandPredMode(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode &encTestmode, double tempcost);
+#endif
   EncModeCtrl* getModeCtrl  () { return m_modeCtrl; }
 
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
@@ -515,26 +528,47 @@ protected:
 
   void xCalDebCost            ( CodingStructure &cs, Partitioner &partitioner, bool calDist = false );
   Distortion getDistortionDb  ( CodingStructure &cs, CPelBuf org, CPelBuf reco, ComponentID compID, const CompArea& compArea, bool afterDb );
-
-  void xCompressCU            ( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& pm, double maxCostAllowed = MAX_DOUBLE );
+#if JVET_AJ0226_MTT_SKIP
+  void xStoreMttSplitFlagCabacBits(CodingStructure*& tempCS, Partitioner& partitioner, int mttSplitFlagCabacBits);
+#endif
+  void xCompressCU            ( CodingStructure*& tempCS, CodingStructure*& bestCS, Partitioner& pm, double maxCostAllowed = MAX_DOUBLE 
+#if JVET_AJ0226_MTT_SKIP 
+    , int mttSplitFlagCabacBits = 0
+#endif
+  );
 #if ENABLE_SPLIT_PARALLELISM
   void xCompressCUParallel    ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm );
   void copyState              ( EncCu* other, Partitioner& pm, const UnitArea& currArea, const bool isDist );
 #endif
-
   bool
     xCheckBestMode         ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestmode );
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
 #if JVET_Y0152_TT_ENC_SPEEDUP
-  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass, double *splitRdCostBest );
+  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass, double *splitRdCostBest 
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #else
-  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass );
+  void xCheckModeSplit        ( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, const ModeType modeTypeParent, bool &skipInterPass 
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #endif
 #else
 #if JVET_Y0152_TT_ENC_SPEEDUP
-  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, double *splitRdCostBest);
+  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, double *splitRdCostBest
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #else
-  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode );
+  void xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode 
+#if JVET_AJ0226_MTT_SKIP
+    , int mttSplitFlagCabacBits
+#endif
+  );
 #endif
 #endif
   bool xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &pm, const EncTestMode& encTestMode, bool adaptiveColorTrans);
@@ -625,7 +659,13 @@ protected:
                                );
 #if JVET_AG0135_AFFINE_CIIP
   void xCheckSATDCostAffineMerge
-  (CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtx, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer, PelUnitBuf  acMergeAffineBuffer[AFFINE_MRG_MAX_NUM_CANDS]
+  (CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    , AffineMergeCtx& affineMergeCtx
+#else
+    , AffineMergeCtx affineMergeCtx
+#endif 
+    , MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer, PelUnitBuf  acMergeAffineBuffer[AFFINE_MRG_MAX_NUM_CANDS]
     , unsigned& uiNumMrgSATDCand, static_vector<ModeInfo, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  &rdModeList, static_vector<double, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM> &candCostList, DistParam distParam, const TempCtx &ctxStart);
 #else
   void xCheckSATDCostAffineMerge 
@@ -634,13 +674,25 @@ protected:
 #endif
 #if JVET_AG0276_LIC_FLAG_SIGNALING
   void xCheckSATDCostAffineMergeOppositeLic
-  (CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtx, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
+  (CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    , AffineMergeCtx& affineMergeCtx
+#else
+    , AffineMergeCtx affineMergeCtx
+#endif
+    , MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
     , unsigned& uiNumMrgSATDCand, static_vector<ModeInfo, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  &rdModeList, static_vector<double, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM> &candCostList, DistParam distParam, const TempCtx &ctxStart
   );
 #endif
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
   void xCheckSATDCostBMAffineMerge
-  (CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu, AffineMergeCtx affineMergeCtxL0, RefPicList reflist, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
+  (CodingStructure *&tempCS, CodingUnit &cu, PredictionUnit &pu
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    , AffineMergeCtx& affineMergeCtxL0
+#else
+    , AffineMergeCtx affineMergeCtxL0
+#endif
+    , RefPicList reflist, MergeCtx& mrgCtx, PelUnitBuf *acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM], PelUnitBuf *&singleMergeTempBuffer
     , unsigned& uiNumMrgSATDCand, static_vector<ModeInfo, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  &rdModeList, static_vector<double, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM> &candCostList, DistParam distParam, const TempCtx &ctxStart
   );
 #endif

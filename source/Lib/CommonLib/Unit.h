@@ -43,6 +43,9 @@
 #include "Mv.h"
 #include "MotionInfo.h"
 #include "ChromaFormat.h"
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+#include <array>
+#endif
 
 // ---------------------------------------------------------------------------
 // tools
@@ -357,6 +360,9 @@ struct CodingUnit : public UnitArea
   int8_t         dimdChromaModeSecond;
 #endif
 #endif
+#if JVET_AK0064_CCP_LFNST_NSPT
+  int8_t         ccpChromaDimdMode[4]; // jointCbCr: 0,1,2,3
+#endif
 #if JVET_AB0157_INTRA_FUSION
   int8_t         dimdBlendMode[DIMD_FUSION_NUM-1]; // max number of blend modes (the main mode is not counter) --> incoherent with dimdRelWeight
   int8_t         dimdRelWeight[DIMD_FUSION_NUM]; // max number of predictions to blend
@@ -408,6 +414,34 @@ struct CodingUnit : public UnitArea
 #else
   int8_t         timdFusionWeight[2];
 #endif
+#if JVET_AJ0146_TIMDSAD
+  bool           timdSad;
+  int            timdModeSad;
+#if JVET_AC0094_REF_SAMPLES_OPT
+  bool           timdModeCheckWASad;
+  bool           timdModeSecondaryCheckWASad;
+#endif
+  int            timdModeSecondarySad;
+  bool           timdIsBlendedSad;
+#if JVET_AG0092_ENHANCED_TIMD_FUSION
+  int            timdModeNonAngSad;
+  int8_t         timdFusionWeightSad[TIMD_FUSION_NUM];
+  int8_t         timdLocDepSad[TIMD_FUSION_NUM];
+#else
+  int8_t         timdFusionWeightSad[2];
+#endif
+#endif
+
+#if JVET_AJ0061_TIMD_MERGE
+  int           timdMrg;
+  int           timdMrgList[NUM_TIMD_MERGE_MODES][TIMD_FUSION_NUM];
+  bool          timdMrgIsBlended[NUM_TIMD_MERGE_MODES];
+  int           timdMrgFusionWeight[NUM_TIMD_MERGE_MODES][TIMD_FUSION_NUM];
+  bool          timdMrgModeCheckWA[NUM_TIMD_MERGE_MODES][TIMD_FUSION_NUM];
+  int8_t        timdMrgLocDep[NUM_TIMD_MERGE_MODES][TIMD_FUSION_NUM];
+  int           timdMrgCand;
+  int           timdmTrType[NUM_TIMD_MERGE_MODES + 1][2];
+#endif
 #endif
 #if JVET_AB0155_SGPM
   int            timdHor;
@@ -415,6 +449,9 @@ struct CodingUnit : public UnitArea
 #if JVET_AG0152_SGPM_ITMP_IBC
   Mv             sgpmBv0;
   Mv             sgpmBv1;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  AffineBlendingModel sgpmBlendModel;
 #endif
   bool           sgpm;
   int            sgpmIdx;
@@ -426,6 +463,9 @@ struct CodingUnit : public UnitArea
   bool eipFlag;
   bool              eipMerge;
   EipModelCandidate eipModel;
+#if JVET_AJ0082_MM_EIP
+  bool              eipMmFlag;
+#endif
 #endif
 #if ENABLE_OBMC
   bool           obmcFlag;
@@ -445,6 +485,10 @@ struct CodingUnit : public UnitArea
 #endif
 #endif
   uint8_t        lfnstIdx;
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  std::array<std::array<uint32_t, NUM_INDICES_REP>, MAX_NUM_COMPONENT> indicesRepresentationPnn;
+  bool           lfnstSecFlag;
+#endif
   uint8_t        bcwIdx;
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   AffineBlendingModel blendModel;
@@ -453,6 +497,9 @@ struct CodingUnit : public UnitArea
   bool           mipFlag;
 #if JVET_AB0067_MIP_DIMD_LFNST
   int            mipDimdMode;
+#endif
+#if JVET_AJ0112_REGRESSION_SGPM
+  int            sgpmDimdMode;
 #endif
 #if JVET_V0130_INTRA_TMP
   bool		    	 tmpFlag;
@@ -570,6 +617,9 @@ struct CodingUnit : public UnitArea
   const bool        isConsInter() const { return modeType == MODE_TYPE_INTER; }
   const bool        isConsIntra() const { return modeType == MODE_TYPE_INTRA; }
 #endif
+#if JVET_AJ0260_SBT_CORNER_MODE
+  int                getSbtTuIdx() const;
+#endif
 };
 
 // ---------------------------------------------------------------------------
@@ -578,7 +628,7 @@ struct CodingUnit : public UnitArea
 
 struct IntraPredictionData
 {
-#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AH0136_CHROMA_REORDERING
+#if ENABLE_DIMD || JVET_W0123_TIMD_FUSION || JVET_AH0136_CHROMA_REORDERING || JVET_AJ0249_NEURAL_NETWORK_BASED
   bool      parseLumaMode = false;
   int8_t    candId = -1;
   bool      parseChromaMode = false;
@@ -638,6 +688,11 @@ struct IntraPredictionData
   int       ccpMergeFusionFlag;
   int       ccpMergeFusionType;
 #endif
+#if JVET_AJ0081_CHROMA_TMRL
+  int       chromaMrlIdx;
+  bool      chromaTmrlFlag;
+  int       chromaTmrlIdx;
+#endif
 };
 
 struct InterPredictionData
@@ -674,6 +729,9 @@ struct InterPredictionData
   bool        geoTmFlag1;
   uint8_t     geoTmType;
 #endif
+#endif
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  bool        geoBlendTmFlag;
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   uint8_t     geoBldIdx;
@@ -736,6 +794,9 @@ struct InterPredictionData
   uint8_t     mvpNum  [NUM_REF_PIC_LIST_01];
   Mv        mvd     [NUM_REF_PIC_LIST_01];
   Mv        mv      [NUM_REF_PIC_LIST_01];
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  Mv        mvHighPrec[NUM_REF_PIC_LIST_01];
+#endif
 #if MULTI_PASS_DMVR
   bool      bdmvrRefine;
 #else
@@ -1134,8 +1195,15 @@ struct SgpmInfo
   int sgpmMode1;
   Mv   sgpmBv0;
   Mv   sgpmBv1;
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool isRegression;
+  AffineBlendingModel blendModel;
+  SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(0, 0), sgpmBv1(0, 0), isRegression(false), blendModel(AffineBlendingModel(5, 1, 31)) {}
+  SgpmInfo(const int sd, const int sm0, const int sm1, const Mv sbv0, const Mv sbv1, bool isR, AffineBlendingModel bM) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1), isRegression(isR), blendModel(bM){}
+#else
   SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(0, 0), sgpmBv1(0, 0) {}
   SgpmInfo(const int sd, const int sm0, const int sm1, const Mv sbv0, const Mv sbv1) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1) {}
+#endif
 
   SgpmInfo& operator=(const SgpmInfo& other)
   {
@@ -1144,6 +1212,10 @@ struct SgpmInfo
     sgpmMode1 = other.sgpmMode1;
     sgpmBv0 = other.sgpmBv0;
     sgpmBv1 = other.sgpmBv1;
+#if JVET_AJ0112_REGRESSION_SGPM
+    isRegression = other.isRegression;
+    blendModel = other.blendModel;
+#endif
     return *this;
   }
 };

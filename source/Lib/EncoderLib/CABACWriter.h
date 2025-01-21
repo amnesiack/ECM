@@ -64,9 +64,13 @@ public:
 
 public:
 #if JVET_AG0196_CABAC_RETRAIN
-  void        initCtxModels             ( Slice&                  slice );
+  void initCtxModels(Slice &slice);
 #else
-  void        initCtxModels             ( const Slice&                  slice );
+  void        initCtxModels(const Slice &slice);
+#endif
+#if JVET_AI0087_BTCUS_RESTRICTION
+  bool         isLumaNonBoundaryCu(const Partitioner& partitioner, SizeType picWidth, SizeType picHeight);
+  void         setBtFirstPart(Partitioner& partitioner, SizeType blockSize, PartSplit setValue);
 #endif
   void        setEncCu(EncCu* pcEncCu) { m_EncCu = pcEncCu; }
   SliceType   getCtxInitId              ( const Slice&                  slice );
@@ -109,10 +113,18 @@ public:
   // coding (quad)tree (clause 7.3.8.4)
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   void        coding_tree               ( const CodingStructure&        cs,       Partitioner&      pm,         CUCtx& cuCtx, int (&qps)[2], Partitioner* pPartitionerChroma = nullptr, CUCtx* pCuCtxChroma = nullptr);
-  void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm,    const CodingUnit* cu );
+  void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,     Partitioner& pm, const CodingUnit* cu
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , bool btUpdateInfo
+#endif
+  );
 #else
   void        coding_tree               ( const CodingStructure&        cs,       Partitioner&      pm,         CUCtx& cuCtx, Partitioner* pPartitionerChroma = nullptr, CUCtx* pCuCtxChroma = nullptr);
-  void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm );
+  void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , bool btUpdateInfo
+#endif
+  );
 #endif
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   void        mode_constraint           ( const PartSplit               split,    const CodingStructure& cs,    Partitioner& pm,    const ModeType modeType );
@@ -144,6 +156,9 @@ public:
   void        extend_ref_line           (const CodingUnit&              cu );
   void        intra_luma_pred_modes     ( const CodingUnit&             cu );
   void        intra_luma_pred_mode      ( const PredictionUnit&         pu );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  void cu_pnn_flag(const CodingUnit& cu);
+#endif
 #if ENABLE_DIMD
   void        cu_dimd_flag              ( const CodingUnit&             cu );
 #endif
@@ -152,12 +167,18 @@ public:
 #endif
 #if JVET_W0123_TIMD_FUSION
   void        cu_timd_flag              ( const CodingUnit&             cu );
+#if JVET_AJ0061_TIMD_MERGE
+  void        cu_timd_merge_flag        ( const CodingUnit&             cu );
+#endif
 #endif
 #if JVET_AB0155_SGPM
   void        sgpm_flag                 (const CodingUnit&              cu );
 #endif
 #if JVET_AB0157_TMRL
   void        cuTmrlFlag                ( const CodingUnit&             cu );
+#if JVET_AJ0081_CHROMA_TMRL
+  void        intraChromaTmrl           ( const PredictionUnit&         pu );
+#endif
 #endif
   void        intra_chroma_pred_modes   ( const CodingUnit&             cu );
   void        intra_chroma_lmc_mode     ( const PredictionUnit&         pu );
@@ -474,6 +495,11 @@ public:
   );
   void codeCcAlfFilterControlIdc(uint8_t idcVal, CodingStructure &cs, const ComponentID compID, const int curIdx,
                                  const uint8_t *filterControlIdc, Position lumaPos, const int filterCount);
+#if JVET_AK0065_TALF
+  void codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStructure &cs, const ComponentID compID,
+                                const int curIdx, const TAlfCtbParam *filterControlIdc, Position lumaPos,
+                                const int filterCount, const int numSets, const bool newFilters);
+#endif
 
 #if INTER_LIC
   void        cu_lic_flag               ( const CodingUnit& cu );

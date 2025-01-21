@@ -176,6 +176,9 @@ public:
 #else
   void  parseAPS            ( APS* pcAPS );
 #endif
+#if JVET_AK0065_TALF
+  void  parseTAlfAps(APS *pcAPS);
+#endif
   void  parseAlfAps         ( APS* pcAPS );
   void  parseLmcsAps        ( APS* pcAPS );
   void  parseScalingListAps ( APS* pcAPS );
@@ -217,6 +220,9 @@ public:
   void parseReshaper        ( SliceReshapeInfo& sliceReshaperInfo, const SPS* pcSPS, const bool isIntra );
 #if JVET_W0066_CCSAO
   void parseCcSao           ( Slice* pcSlice, PicHeader* picHeader, const SPS* sps, CcSaoComParam& ccSaoParam );
+#endif
+#if JVET_AK0065_TALF
+  void decodeTAlfNewFilter  ( TAlfFilterParam &param );
 #endif
 #if ALF_IMPROVEMENT
   int  alfGolombDecode( const int k, const bool signed_val = true );

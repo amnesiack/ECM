@@ -64,6 +64,12 @@ namespace CS
 // CU tools
 namespace CU
 {
+#if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
+  bool hasAffineNb(const CodingUnit& cu);
+  bool isAffineAllowed(const CodingUnit& cu);
+  bool affineCtxInc(const CodingUnit& cu);
+#endif
+
 #if JVET_AG0276_NLIC
   bool isSecLicParaNeeded             (const CodingUnit &cu);
   bool isPredRefined                  (const CodingUnit &cu);
@@ -134,6 +140,9 @@ namespace CU
 #endif
 #if JVET_AC0130_NSPT
   bool  isNSPTAllowed                 ( const TransformUnit& tu, const ComponentID compID, int width, int height, bool isIntra );
+#if AHG7_LN_TOOLOFF_CFG
+  bool  isNSPTAllowed                 ( int width, int height );
+#endif
   bool  nsptApplyCond                 ( const TransformUnit& tu, ComponentID compID, bool allowNSPT );
 #endif
 
@@ -172,11 +181,17 @@ namespace CU
   uint8_t numSbtModeRdo               (uint8_t sbtAllowed);
   bool    isSbtMode                   (const uint8_t sbtInfo);
   bool    isSameSbtSize               (const uint8_t sbtInfo1, const uint8_t sbtInfo2);
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  bool    checkGeoBlendTmAvail        (const CodingUnit& currCU, const CodingStructure* bestCS);
+#endif
 #if JVET_AI0050_SBT_LFNST
   void    getSBTPosAndSize            (const CodingUnit &cu, Position& pos, Size& size, uint8_t sbtMode);
 #endif
   bool    getRprScaling               ( const SPS* sps, const PPS* curPPS, Picture* refPic, int& xScale, int& yScale );
   void    checkConformanceILRP        (Slice *slice);
+#if JVET_AJ0146_TIMDSAD
+  bool allowTimdSad(const CodingUnit& cu);
+#endif
 #if JVET_AB0157_TMRL
   bool allowTmrl(const CodingUnit& cu);
 #endif
@@ -209,6 +224,12 @@ namespace CU
 // PU tools
 namespace PU
 {
+#if JVET_AJ0061_TIMD_MERGE
+  int canTimdMergeImplicitDst7(const TransformUnit &tu);
+  bool canTimdMerge(const PredictionUnit &pu);
+  std::array<const CodingUnit *, TIMD_MERGE_MAX_NONADJACENT> timdMergeNonAdjacentNeighbours(const PredictionUnit &pu);
+  bool hasTimdMergeCandidate(const PredictionUnit &pu);
+#endif
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
   int  getItmpMergeCandidate      (const PredictionUnit& pu, std::vector<Mv>& pBvs
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
@@ -236,6 +257,10 @@ namespace PU
 #if JVET_AC0094_REF_SAMPLES_OPT
                  , const bool &isForcedValid
 #endif
+#if JVET_AK0061_PDP_MPM
+    , const bool& enableNonSortPDP = false
+    , const bool& mpmSort = false
+#endif
 #if JVET_AD0085_MPM_SORTING
                  , IntraPrediction* pIntraPred = nullptr
 #endif
@@ -244,6 +269,10 @@ namespace PU
 #else
   int  getIntraMPMs(const PredictionUnit &pu, unsigned *mpm, const ChannelType &channelType = CHANNEL_TYPE_LUMA);
 #endif
+#if JVET_AK0061_PDP_MPM
+  bool determinePDPTemp(const PredictionUnit& pu);
+#endif
+
 #if JVET_Y0065_GPM_INTRA
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void getGeoIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t splitDir, uint8_t shape, bool doInit, bool doInitAL = true, bool doInitA = true, bool doInitL = true);
@@ -264,6 +293,10 @@ namespace PU
 #if JVET_AB0155_SGPM
   bool isSgpm(const PredictionUnit &pu, const ChannelType &chType = CHANNEL_TYPE_LUMA);
   bool isDMChromaSgpm(const PredictionUnit &pu);
+#if JVET_AJ0112_REGRESSION_SGPM
+  bool isRegressionSgpm(const PredictionUnit &pu);
+  bool isRegressionSgpmAllow(const PredictionUnit &pu);
+#endif
 #endif
 #if JVET_AB0155_SGPM
   uint32_t getIntraDirLuma(const PredictionUnit &pu, const int partIdx = 0);
@@ -283,9 +316,16 @@ namespace PU
   uint32_t getNSPTIntraMode               ( int wideAngPredMode );
 #endif
 #if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+  int      getLFNSTMatrixDim          ( int width, int height, bool lfnstExtFlag = true );
+#else
   int      getLFNSTMatrixDim          ( int width, int height );
+#endif
 #if JVET_AC0130_NSPT
   int      getNSPTMatrixDim           ( int width, int height );
+#endif
+#if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+  int      getNSPTBucket              ( const TransformUnit &tu );
 #endif
   bool     getUseLFNST8               ( int width, int height );
   uint8_t  getLFNSTIdx                ( int intraMode, int mtsMode = 0 );
@@ -321,6 +361,9 @@ namespace PU
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   bool checkIsChromaBvCandidateValidChromaTm(const PredictionUnit &pu, const Mv mv, const int tmpSize, int filterIdx = 0, bool isRefTemplate = false, bool isRefAbove = false);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  uint32_t getCoLocatedIdxRepresentationPnn(const PredictionUnit& pu);
 #endif
   int      getWideAngle                   ( const TransformUnit &tu, const uint32_t dirMode, const ComponentID compID );
 #if MULTI_PASS_DMVR || JVET_W0097_GPM_MMVD_TM
@@ -408,6 +451,41 @@ namespace PU
                          , bool checkAllRefValid = false
   );
 #endif
+  
+#if JVET_AK0185_TMVP_SELECTION
+  bool collectTMVP(
+    const PredictionUnit& pu,
+    const std::vector<Position>& posList,
+    const std::vector<bool>& availList,
+    int iRefIdx,
+    int col,
+
+    MergeCtx& mrgCtx,
+    int mrgCandIdx,
+    int& cnt,
+
+    const Slice& slice,
+    int maxNumMergeCand,
+    int mvdThreshold,
+
+    MergeCtx* tmpMrgCtx,
+    int* tmpMrgCtxcnt,
+
+    int  tmvpFlag,
+    bool useNullRefIdx,
+
+    bool checkBiPredFromDifferentDirEqDistPoc = false,
+
+    bool checkValidMergeMvCand = false,
+    bool useAmvpMergeMode = false,
+    int  amvpMergeCtxMergeDir = -1,
+    int  amvpRefList = -1
+  );
+
+  void addTmvp2AMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, int colIdx, AMVPInfo* pInfo, bool oneTmvpFlag = false);
+  void addTmvp2AffineAMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, AffineAMVPInfo& affiAMVPInfo, bool oneTmvpFlag = false);
+#endif
+
 #if JVET_AE0159_FIBC
   bool checkIsIBCFilterCandidateValid(const PredictionUnit &pu, const MotionInfo miNeighbor, int  filterIdx = 0, bool isRefTemplate = false, bool isRefAbove = false);
 #endif
@@ -438,6 +516,9 @@ namespace PU
     , int col = 0
 #endif
     , int* targetRefIdx = nullptr
+#endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    , int sbTmvpType = 0
 #endif
   );
 #if JVET_AI0197_AFFINE_TMVP
@@ -490,7 +571,11 @@ namespace PU
 #else
   void fillIBCMvpCand                 (PredictionUnit &pu, AMVPInfo &amvpInfo);
 #endif
-  void fillAffineMvpCand              (      PredictionUnit &pu, const RefPicList &eRefPicList, const int &refIdx, AffineAMVPInfo &affiAMVPInfo);
+  void fillAffineMvpCand              (      PredictionUnit &pu, const RefPicList &eRefPicList, const int &refIdx, AffineAMVPInfo &affiAMVPInfo
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+    , InterPrediction* interPred = nullptr
+#endif
+  );
   bool addMVPCandUnscaled             (const PredictionUnit &pu, const RefPicList &eRefPicList, const int &iRefIdx, const Position &pos, const MvpDir &eDir, AMVPInfo &amvpInfo);
   void xInheritedAffineMv             ( const PredictionUnit &pu, const PredictionUnit* puNeighbour, RefPicList eRefPicList, Mv rcMv[3] );
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
@@ -735,6 +820,9 @@ namespace PU
 #else
     , bool fixRefIdx = false
 #endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    , int sbTmvpType = 0
+#endif
 #endif
 #else
     , int mmvdList
@@ -792,6 +880,13 @@ namespace PU
 #if JVET_AG0067_DMVR_EXTENSIONS
   bool isBiPredFromDifferentDirGenDistPoc(const PredictionUnit &pu);
 #endif
+
+#if JVET_AJ0097_BDOF_LDB
+  bool isBiPredFromSameDirUnEqDistPoc(const PredictionUnit& pu);
+  bool isBiPredFromSameDirUnEqDistPoc(const PredictionUnit& pu, int refIdx0, int refIdx1);
+  bool isMergeIndexBDOFCondition(const PredictionUnit& pu);
+#endif
+
   void restrictBiPredMergeCandsOne    (PredictionUnit &pu);
 #if ENABLE_OBMC
   unsigned int getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position off, int  iDir, int& iLength, int iMaxLength);
@@ -822,6 +917,9 @@ namespace PU
   bool isAffineGPMSizeValid(const PredictionUnit& pu);
 
   int  getAffGPMCtxOffset(const PredictionUnit& pu);
+#if JVET_AJ0274_GPM_AFFINE_TM
+  bool isAffineGpmTmValid(const PredictionUnit& pu);
+#endif
 #endif
 #if JVET_W0097_GPM_MMVD_TM
 #if TM_MRG
@@ -852,6 +950,9 @@ namespace PU
   void spanGeoMMVDMotionInfo(PredictionUnit& pu, MergeCtx& geoMrgCtx 
 #if JVET_AG0164_AFFINE_GPM
      , AffineMergeCtx& geoAffMrgCtx
+#if JVET_AJ0274_GPM_AFFINE_TM
+     , AffineMergeCtx& geoAffTmMrgCtx
+#endif
 #endif
     , MergeCtx& geoTmMrgCtx0, MergeCtx& geoTmMrgCtx1, const uint8_t splitDir, const uint8_t mergeIdx0, const uint8_t mergeIdx1, const bool tmFlag0, const bool mmvdFlag0, const uint8_t mmvdIdx0, const bool tmFlag1, const bool mmvdFlag1, const uint8_t mmvdIdx1, const uint8_t bldIdx,const uint8_t *intraMPM,
 #if JVET_AI0082_GPM_WITH_INTER_IBC
@@ -920,6 +1021,26 @@ namespace PU
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool checkAffineTMCondition(const PredictionUnit& pu);
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  enum ExtAffineAmvpType
+  {
+    EXT_AFFINE_AMVP_TYPE_NONE = 0,
+    EXT_AFFINE_AMVP_TYPE_NA_TEMP = 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS10 = (1 << 8) + (1 << 4) + 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS4 = (2 << 8) + (1 << 4) + 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS5 = (3 << 8) + (1 << 4) + 1,
+    EXT_AFFINE_AMVP_TYPE_LISTS4_REORDER_FIRST =  (2 << 8) + (2 << 4) + 1
+  };
+  enum ExtRegularAmvpType
+  {
+    EXT_REGULAR_AMVP_TYPE_NONE = 0,
+    EXT_REGULAR_AMVP_TYPE_NA_SPATIAL = (1 << 4),
+    EXT_REGULAR_AMVP_TYPE_LISTS10 = (1 << 4) + 1
+  };
+  int checkExtAffineAmvpCondition(const PredictionUnit& pu);
+  int checkExtRegularAmvpCondition(const PredictionUnit& pu);
+#endif
+
 #if INTER_LIC
   void spanLicFlags(PredictionUnit &pu, const bool LICFlag);
 #endif
@@ -962,6 +1083,9 @@ namespace PU
 #endif
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
   bool hasCCPMergeFusionFlag(const PredictionUnit& pu);
+#endif
+#if JVET_AJ0081_CHROMA_TMRL
+  bool hasChromaTmrl(const PredictionUnit& pu);
 #endif
 #if JVET_AC0071_DBV
   bool hasChromaBvFlag(const PredictionUnit &pu);
@@ -1445,26 +1569,79 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
                 , const bool& isForcedValid
 #endif
                 , bool extPrecision = false
+#if JVET_AK0061_PDP_MPM
+  , const bool& pdpRefAvailable = false
+#endif
 #if JVET_AD0085_MPM_SORTING
+#if JVET_AK0061_PDP_MPM
+  , const bool& mpmSort = false
+#endif
+
                 , IntraPrediction* pIntraPred = nullptr
 #endif
 );
-void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, const int numCand, bool extPrecision = false);
-void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm);
+void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, const int numCand, bool extPrecision = false
+#if JVET_AK0061_PDP_MPM
+  , const bool& pdpRefAvailable = false
+#endif
+);
+void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
+#if JVET_AK0061_PDP_MPM
+  , const PredictionUnit& pu, const bool& pdpRefAvailable = false
+#endif
+
+);
+#endif
+#if JVET_AK0061_PDP_MPM
+int getPDPPredMode(const SizeType& width, const SizeType& height, const uint8_t& uiMode, const bool includedMode[]);
 #endif
 
 #if JVET_AG0058_EIP
 Position getRecoLinesEIP(const CodingUnit& cu, const ComponentID compId);
 bool     getAllowedEipMerge(const CodingUnit &cu, const ComponentID compId);
 bool     getAllowedEip(const CodingUnit &cu, const ComponentID compId);
+#if JVET_AJ0082_MM_EIP
+int getAllowedCurEip(const CodingUnit& cu, const ComponentID compId, static_vector<EIPInfo, NUM_DERIVED_EIP>& eipInfoList, bool bMmEip = false);
+#else 
 int getAllowedCurEip(const CodingUnit& cu, const ComponentID compId, static_vector<EIPInfo, NUM_DERIVED_EIP>& eipInfoList);
+#endif
 #endif
 
 #if JVET_AI0082_TEMPORAL_BV
 bool getColocatedBVP(const PredictionUnit &pu, const Position &posIn, MotionInfo &rcMv, const int col);
 void getTemporalBv(const PredictionUnit &pu, std::vector<MotionInfo>& temporalMiCandList);
 #endif
+
+
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+inline bool use2x2EdgeOperator(const Size& sz) { return sz.area() <= DIMD_SMALL_BLOCK_THR ? true : false; };
+#endif 
+
+#if JVET_AK0065_TALF
+bool isBiTAlf(const int tAlfMode);
+bool isMvTAlf(const int tAlfMode);
+bool isFwdTAlf(const int tAlfMode);
 #endif
+
 #if JVET_AG0061_INTER_LFNST_NSPT
-int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh);
+int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+                  , const int filterSizeIdx = 0// 0 - default, 1 - small
+#endif  
+);
+#endif
+#if JVET_AJ0267_ADAPTIVE_HOG
+void buildHistogramAdaptive(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, uint32_t* uiSizeExt, int *piHistogram, int direction,
+                  const int cuHeight, const int cuWidth, int maxTemplateSize, bool* isExtraAvailable, uint64_t maxAmp
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+                  , const int filterSizeIdx = 0// 0 - default, 1 - small
+#endif  
+);
+#endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+void calcGradForOBMC(const PredictionUnit pu, const Pel* pReco, const int iStride, const int totalUnits, const int templateSize, const int blkSize, int* modeBuf, const int isAbove, const bool isExistFirst, const bool isExistLast);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+bool isAllowedMultiple(const SizeType width, const SizeType height);
+#endif
 #endif

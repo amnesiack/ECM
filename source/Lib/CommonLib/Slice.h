@@ -1579,6 +1579,11 @@ private:
   bool              m_itmpLicExtension;
   bool              m_itmpLicMode;
 #endif
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  bool              m_disableRefFilter;
+  bool              m_disablePdpc;
+  bool              m_disableIntraFusion;
+#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
   bool              m_DMVDMode;
 #endif
@@ -1627,6 +1632,9 @@ private:
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   int               m_alfScaleMode;
   bool              m_alfScalePrevEnabled;
+#endif
+#if JVET_AK0065_TALF
+  bool              m_talf;
 #endif
   bool              m_SBT;
 #if JVET_AI0050_INTER_MTSS
@@ -1741,6 +1749,9 @@ private:
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   bool              m_ccalfPrecisionFlag;
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool              m_nnipMode;
+#endif
   bool              m_bTemporalIdNestingFlag; // temporal_id_nesting_flag
 
   bool              m_scalingListEnabledFlag;
@@ -1775,6 +1786,13 @@ private:
 
   bool              m_alfEnabledFlag;
   bool              m_ccalfEnabledFlag;
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  bool              m_alfLumaFixedFilterAdjust;
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool              m_inloopOffsetRefineFlag;
+  bool              m_inloopOffsetRefineFunc;
+#endif
   bool              m_wrapAroundEnabledFlag;
   unsigned          m_IBCFlag;
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -1792,6 +1810,9 @@ private:
   bool              m_MTS;
   bool              m_IntraMTS;                   // 18
   bool              m_InterMTS;                   // 19
+#if AHG7_MTS_TOOLOFF_CFG
+  bool              m_MTSExt;
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool              m_intraLFNSTISlice;
   bool              m_intraLFNSTPBSlice;
@@ -1799,11 +1820,18 @@ private:
 #else
   bool              m_LFNST;
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  bool              m_NSPT;
+  bool              m_LFNSTExt;
+#endif
   bool              m_SMVD;
   bool              m_Affine;
   bool              m_AffineType;
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   bool              m_useAltCost;
+#endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  bool              m_useExtAmvp;
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   bool              m_useAffineTM;
@@ -1821,6 +1849,9 @@ private:
 #endif
 #if JVET_W0123_TIMD_FUSION
   bool              m_timd;
+#if JVET_AJ0061_TIMD_MERGE
+  bool              m_timdMrg;
+#endif
 #endif
 #if JVET_AB0155_SGPM
   bool              m_sgpm;
@@ -1873,6 +1904,9 @@ private:
   bool              m_ciipAffine;
 #endif
   bool              m_Geo;
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  bool              m_geoShapeAdapt;
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool              m_geoInterIbc;
 #endif
@@ -1894,6 +1928,10 @@ private:
 #endif
 #endif
 
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+  bool              m_largeIBCLSR;
+#endif
+
 #if LUMA_ADAPTIVE_DEBLOCKING_FILTER_QP_OFFSET
   bool              m_LadfEnabled;
   int               m_LadfNumIntervals;
@@ -1903,6 +1941,9 @@ private:
 
 #if JVET_AA0133_INTER_MTS_OPT
   int               m_interMTSMaxSize;
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  int              m_intraMTSMaxSize;
 #endif
 #if MULTI_HYP_PRED
   bool              m_InterMultiHyp;              // multi hypothesis inter prediction
@@ -1963,6 +2004,9 @@ private:
   uint32_t          m_maxNumGeoCand;
 #if JVET_AG0164_AFFINE_GPM
   uint32_t          m_maxNumGpmAffCand;
+#if JVET_AJ0274_GPM_AFFINE_TM
+  uint32_t          m_maxNumGpmAffTmCand;
+#endif
 #endif
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
   uint32_t          m_maxNumMHPCand;
@@ -1992,6 +2036,9 @@ private:
 #if JVET_AI0183_MVP_EXTENSION
   bool              m_scaledMvExtTmvp;
   bool              m_scaledMvExtBiTmvp;
+#endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  bool m_sbTmvpMvExt;
 #endif
 
 public:
@@ -2228,10 +2275,24 @@ public:
   bool                    getCCALFPrecisionFlag() const                                                   { return m_ccalfPrecisionFlag; }
   void                    setCCALFPrecisionFlag( bool b )                                                 { m_ccalfPrecisionFlag = b; }
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool                    getNnipMode() const { return m_nnipMode; }
+  void                    setNnipMode(const bool nnipMode) { m_nnipMode = nnipMode; }
+#endif
   bool                    getALFEnabledFlag() const                                                       { return m_alfEnabledFlag; }
   void                    setALFEnabledFlag( bool b )                                                     { m_alfEnabledFlag = b; }
 bool                    getCCALFEnabledFlag() const                                                       { return m_ccalfEnabledFlag; }
 void                    setCCALFEnabledFlag( bool b )                                                     { m_ccalfEnabledFlag = b; }
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  bool                    getAlfLumaFixedFilterAdjust() const                                             { return m_alfLumaFixedFilterAdjust; }
+  void                    setAlfLumaFixedFilterAdjust( bool b )                                           { m_alfLumaFixedFilterAdjust = b; }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool                    getInloopOffsetRefineFlag() const                                               { return m_inloopOffsetRefineFlag; }
+  void                    setInloopOffsetRefineFlag( bool b )                                             { m_inloopOffsetRefineFlag = b; }
+  bool                    getInloopOffsetRefineFunc() const                                               { return m_inloopOffsetRefineFunc; }
+  void                    setInloopOffsetRefineFunc( bool b )                                             { m_inloopOffsetRefineFunc = b; }
+#endif
   void                    setJointCbCrEnabledFlag(bool bVal)                                              { m_JointCbCrEnabledFlag = bVal; }
   bool                    getJointCbCrEnabledFlag() const                                                 { return m_JointCbCrEnabledFlag; }
 
@@ -2301,7 +2362,14 @@ void                    setCCALFEnabledFlag( bool b )                           
   void                    setItmpLicMode(bool b)                                                     { m_itmpLicMode = b; }
   bool                    getItmpLicMode() const                                                     { return m_itmpLicMode; }
 #endif
-
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  void                    setDisableRefFilter(bool b)                                                     { m_disableRefFilter = b; }
+  bool                    getDisableRefFilter() const                                                     { return m_disableRefFilter; }
+  void                    setDisablePdpc(bool b)                                                          { m_disablePdpc = b; }
+  bool                    getDisablePdpc() const                                                          { return m_disablePdpc; }
+  void                    setDisableIntraFusion(bool b)                                                   { m_disableIntraFusion = b; }
+  bool                    getDisableIntraFusion() const                                                   { return m_disableIntraFusion; }
+#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
   void                    setUseDMVDMode(bool b)                                                          { m_DMVDMode = b; }
   bool                    getUseDMVDMode() const                                                          { return m_DMVDMode; }
@@ -2431,6 +2499,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AG0164_AFFINE_GPM
   uint32_t                getMaxNumGpmAffCand() const                                                     { CHECK(m_maxNumGpmAffCand > GEO_MAX_NUM_UNI_AFF_CANDS, "Number of GPM Affine candidates exceed GEO_MAX_NUM_UNI_AFF_CANDS"); return m_maxNumGpmAffCand; }
   void                    setMaxNumGpmAffCand(uint32_t u)                                                 { CHECK(m_maxNumGpmAffCand > GEO_MAX_NUM_UNI_AFF_CANDS, "Number of GPM Affine  candidates exceed GEO_MAX_NUM_UNI_AFF_CANDS"); m_maxNumGpmAffCand = u; }
+#if JVET_AJ0274_GPM_AFFINE_TM
+  uint32_t                getMaxNumGpmAffTmCand() const                                                   { return m_maxNumGpmAffTmCand; }
+  void                    setMaxNumGpmAffTmCand(uint32_t u)                                               { m_maxNumGpmAffTmCand = u; }
+#endif
 #endif
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
   uint32_t                getMaxNumMHPCand() const                                                        { CHECK( m_maxNumMHPCand >= GEO_MAX_NUM_UNI_CANDS, "Number of MHP candidates exceed GEO_MAX_NUM_CANDS" ); return m_maxNumMHPCand; }
@@ -2512,6 +2584,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getUseIntraMTS        ()                                      const     { return m_IntraMTS; }
   void      setUseInterMTS        ( bool b )                                        { m_InterMTS = b; }
   bool      getUseInterMTS        ()                                      const     { return m_InterMTS; }
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setUseMTSExt(bool b)                                                    { m_MTSExt = b; }
+  bool      getUseMTSExt()                                                const     { return m_MTSExt; }
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   void      setUseIntraLFNSTISlice  ( bool b )                                      { m_intraLFNSTISlice = b; }
   bool      getUseIntraLFNSTISlice  ()                                    const     { return m_intraLFNSTISlice; }
@@ -2522,6 +2598,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #else
   void      setUseLFNST           ( bool b )                                        { m_LFNST = b; }
   bool      getUseLFNST           ()                                      const     { return m_LFNST; }
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  void      setUseNSPT            ( bool b )                                        { m_NSPT = b; }
+  bool      getUseNSPT            ()                                      const     { return m_NSPT; }
+  void      setUseLFNSTExt        ( bool b )                                        { m_LFNSTExt = b; }
+  bool      getUseLFNSTExt        ()                                      const     { return m_LFNSTExt; }
 #endif
   void      setUseSMVD(bool b)                                                      { m_SMVD = b; }
   bool      getUseSMVD()                                                  const     { return m_SMVD; }
@@ -2540,6 +2622,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AA0133_INTER_MTS_OPT
   void      setInterMTSMaxSize(int size)                                            { m_interMTSMaxSize = size; }
   int       getInterMTSMaxSize()                                          const     { return m_interMTSMaxSize; }
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+  void      setIntraMTSMaxSize(int size)                                            { m_intraMTSMaxSize = size; }
+  int       getIntraMTSMaxSize()                                          const     { return m_intraMTSMaxSize; }
 #endif
 #if MULTI_HYP_PRED
   bool      getUseInterMultiHyp()                                      const { return m_InterMultiHyp; }
@@ -2567,6 +2653,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_W0123_TIMD_FUSION
   void      setUseTimd         ( bool b )                                        { m_timd = b; }
   bool      getUseTimd         ()                                      const     { return m_timd; }
+#if JVET_AJ0061_TIMD_MERGE
+  void      setUseTimdMrg      ( bool b )                                        { m_timdMrg = b; }
+  bool      getUseTimdMrg      ()                                      const     { return m_timdMrg; }
+#endif
 #endif
 #if JVET_AB0155_SGPM
   void      setUseSgpm         (bool b)                                          { m_sgpm = b; }
@@ -2627,6 +2717,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getAlfScalePrevEnabled()                                   const     { return m_alfScalePrevEnabled; }
   void      setAlfScalePrevEnabled(bool b)                                       { m_alfScalePrevEnabled = b;    }
 #endif
+#if JVET_AK0065_TALF
+  bool      getUseTAlf         ()                                      const     { return m_talf; }
+  void      setUseTAlf         ( bool b )                                        { m_talf = b; }
+#endif
   void      setUseCiip         ( bool b )                                        { m_ciip = b; }
   bool      getUseCiip         ()                                      const     { return m_ciip; }
 #if JVET_X0141_CIIP_TIMD_TM && JVET_W0123_TIMD_FUSION
@@ -2639,6 +2733,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #endif
   void      setUseGeo             ( bool b )                                        { m_Geo = b; }
   bool      getUseGeo             ()                                      const     { return m_Geo; }
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  void      setUseGeoShapeAdapt   ( bool b )                                        { m_geoShapeAdapt = b; }
+  bool      getUseGeoShapeAdapt   ()                                      const     { return m_geoShapeAdapt; }
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   void      setUseGeoInterIbc     ( bool b )                                        { m_geoInterIbc = b; }
   bool      getUseGeoInterIbc     ()                                      const     { return m_geoInterIbc; }
@@ -2662,6 +2760,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   void      setUseInterCcpMergeZeroLumaCbf   ( bool b )                              { m_interCcpMergeZeroLumaCbf = b; }
   bool      getUseInterCcpMergeZeroLumaCbf   ()                           const      { return m_interCcpMergeZeroLumaCbf; }
+#endif
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+  void      setUseLargeIBCLSR   ( bool b )                                           { m_largeIBCLSR = b; }
+  bool      getUseLargeIBCLSR   ()                                        const      { return m_largeIBCLSR; }
 #endif
   void      setUseMRL             ( bool b )                                        { m_MRL = b; }
   bool      getUseMRL             ()                                      const     { return m_MRL; }
@@ -2693,7 +2795,11 @@ void                    setCCALFEnabledFlag( bool b )                           
   void      setUseFastSubTmvp     ( bool b )                                        { m_fastSubTmvp = b; }
   bool      getUseFastSubTmvp     ()                                      const     { return m_fastSubTmvp; }
 #endif
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  void      setUseExtAmvp         ( bool b )                                        { m_useExtAmvp = b; }
+  bool      getUseExtAmvp          ()                                      const     { return m_useExtAmvp; }
+#endif
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   void      setUseAltCost         ( bool b )                                        { m_useAltCost = b; }
   bool      getUseAltCost         ()                                      const     { return m_useAltCost; }
 #endif
@@ -2775,6 +2881,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getConfigScaledMvExtTmvp()                       const { return m_scaledMvExtTmvp; }
   void      setConfigScaledMvExtBiTmvp( bool n )                   { m_scaledMvExtBiTmvp = n; }
   bool      getConfigScaledMvExtBiTmvp()                     const { return m_scaledMvExtBiTmvp; }
+#endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  void      setConfigSbTmvpMvExt( bool n )                     { m_sbTmvpMvExt = n; }
+  bool      getConfigSbTmvpMvExt()                       const { return m_sbTmvpMvExt; }
 #endif
 };
 
@@ -3200,6 +3310,9 @@ private:
   CcAlfFilterParam       m_ccAlfAPSParam;
   bool                   m_hasPrefixNalUnitType;
 
+#if JVET_AK0065_TALF
+  TAlfFilterParam        m_talfAPSParam;
+#endif
 public:
   APS();
   virtual                ~APS();
@@ -3229,6 +3342,10 @@ public:
   bool                   getHasPrefixNalUnitType() const                                  { return m_hasPrefixNalUnitType;                }
 #if JVET_R0433
   bool chromaPresentFlag;
+#endif
+#if JVET_AK0065_TALF
+  void                   setTAlfAPSParam(TAlfFilterParam &param)                          { m_talfAPSParam = param;                }
+  TAlfFilterParam&       getTAlfAPSParam()                                                { return m_talfAPSParam;                        }
 #endif
 };
 
@@ -3356,6 +3473,9 @@ private:
   bool m_ccalfEnabledFlag[MAX_NUM_COMPONENT];
   int  m_ccalfCbApsId;
   int  m_ccalfCrApsId;
+#if JVET_AK0065_TALF
+  TAlfControl m_talfControl;
+#endif
   bool                        m_deblockingFilterOverrideFlag;                           //!< deblocking filter override controls enabled
   bool                        m_deblockingFilterDisable;                                //!< deblocking filter disabled flag
   int                         m_deblockingFilterBetaOffsetDiv2;                         //!< beta offset for deblocking filter
@@ -3469,8 +3589,15 @@ public:
   void                        setColRefIdx( uint32_t refIdx)                             { m_colRefIdx = refIdx;                                                                       }
   uint32_t                    getColRefIdx()                                             { return m_colRefIdx;                                                                         }
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AJ0237_INTERNAL_12BIT
+  void                        setCostForARMC(uint32_t cost, int bitDepth)               { m_costForARMC = (cost << (std::max(0, bitDepth - 10)));                                      }
+#else
   void                        setCostForARMC(uint32_t cost)                             { m_costForARMC = cost;                                                                        }
+#endif
   uint32_t                    getCostForARMC()                                          { return m_costForARMC;                                                                        }
+#if JVET_AJ0237_INTERNAL_12BIT
+  uint32_t                    getCostForARMC(int bitDepth)                              { return m_costForARMC >> (std::max(0, bitDepth - 10));                                        } // for header parsing/writing purpose
+#endif
 #endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   void                        setPicColFromL0Flag2nd(bool val)                          { m_picColFromL0Flag2nd = val;                                                                 }
@@ -3534,6 +3661,10 @@ public:
   int  getCcAlfCbApsId() const { return m_ccalfCbApsId; }
   void setCcAlfCrApsId(int i) { m_ccalfCrApsId = i; }
   int  getCcAlfCrApsId() const { return m_ccalfCrApsId; }
+#if JVET_AK0065_TALF
+  void setTAlfControl(TAlfControl c) { m_talfControl = c;    }
+  TAlfControl getTAlfControl() const { return m_talfControl; }
+#endif
   void                        setDeblockingFilterOverrideFlag( bool b )                 { m_deblockingFilterOverrideFlag = b;                                                          }
   bool                        getDeblockingFilterOverrideFlag() const                   { return m_deblockingFilterOverrideFlag;                                                       }
   void                        setDeblockingFilterDisable( bool b )                      { m_deblockingFilterDisable= b;                                                                }
@@ -3753,6 +3884,9 @@ private:
   bool                       m_amvpSbTmvpAmvrEnabledFlag;
   bool                       m_amvpSbTmvpEnabledFlag;
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  int                        m_extAmvpLevel;
+#endif
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
   uint32_t                   m_costForARMC;
 #endif
@@ -3796,7 +3930,6 @@ private:
   uint32_t                   m_numSubstream;
 
   bool                       m_cabacInitFlag;
-
 #if JVET_AG0196_CABAC_RETRAIN
   SliceType                  m_cabacInitSliceType;
 #endif
@@ -3817,6 +3950,9 @@ private:
   int                        m_tileGroupAlfFixedFilterSetIdx;
 #endif
 #endif
+#if JVET_AK0065_TALF
+  APS*                       m_talfApss[ALF_CTB_MAX_NUM_APS];
+#endif
   APS*                       m_alfApss[ALF_CTB_MAX_NUM_APS];
   bool                       m_tileGroupAlfEnabledFlag[MAX_NUM_COMPONENT];
   int                        m_tileGroupNumAps;
@@ -3834,10 +3970,19 @@ private:
   int                        m_idxCorrChroma[3];
 #endif
 
+#if JVET_AK0065_TALF
+  TAlfControl   m_tileGroupTAlfControl; //slice controls
+#endif
 #if JVET_AG0145_ADAPTIVE_CLIPPING
   int                        m_lumaPelMax;
   int                        m_lumaPelMin;
   bool                       m_adaptiveClipQuant;
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool                       m_offsetRefinementDbf;
+  bool                       m_offsetRefinementAlf;
+  uint8_t                    m_offsetRefinementDbfIdx;
+  uint8_t                    m_offsetRefinementAlfIdx;
 #endif
 #if MULTI_HYP_PRED
   int                        m_numMultiHypRefPics = 0;
@@ -3864,6 +4009,9 @@ private:
   bool                       m_intraRegionNoSplitTest;
 #endif
 
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool m_pnnMode;
+#endif
 public:
                               Slice();
   virtual                     ~Slice();
@@ -3884,6 +4032,10 @@ public:
 
   void                        setAlfAPSs(APS** apss)                                 { memcpy(m_alfApss, apss, sizeof(m_alfApss));                   }
   APS**                       getAlfAPSs()                                           { return m_alfApss;                                             }
+#if JVET_AK0065_TALF
+  void                        setTAlfAPSs(APS **apss)                                { memcpy(m_talfApss, apss, sizeof(m_talfApss)); }
+  APS**                       getTAlfAPSs()                                          { return m_talfApss; }
+#endif
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   bool                        getUseAlfScale()                                       { return m_useScaleAlf; }
   void                        setUseAlfScale( bool s )                               { m_useScaleAlf = s; }
@@ -4015,8 +4167,14 @@ public:
   bool                        getAmvpSbTmvpAmvrEnabledFlag() const                   { return m_amvpSbTmvpAmvrEnabledFlag;                               }
   bool                        getAmvpSbTmvpEnabledFlag() const                       { return m_amvpSbTmvpEnabledFlag;                                   }
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  int                         getExtAmvpLevel() const                                 { return m_extAmvpLevel;                                   }
+#endif
   void                        checkColRefIdx(uint32_t curSliceSegmentIdx, const Picture* pic);
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AJ0237_INTERNAL_12BIT
+  uint32_t                    getCostForARMC(int bitDepth) const                                 { return m_costForARMC >> (std::max(0, bitDepth - 10)); } // for header parsing/writing purpose
+#endif
   uint32_t                    getCostForARMC() const                                 { return m_costForARMC;                                         }
 #endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
@@ -4213,8 +4371,15 @@ public:
   void                        setAmvpSbTmvpNumColPic(uint8_t numPic)                 { m_amvpSbTmvpNumColPic = numPic;                                   }
   void                        setAmvpSbTmvpAmvrEnabledFlag(bool b)                   { m_amvpSbTmvpAmvrEnabledFlag = b;                                  }
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  void                        setExtAmvpLevel(int b)                            { m_extAmvpLevel = b;                                    }
+#endif
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
+#if JVET_AJ0237_INTERNAL_12BIT
+  void                        setCostForARMC(uint32_t cost, int bitDepth)                          { m_costForARMC = (cost << (std::max(0, bitDepth - 10))); }
+#else
   void                        setCostForARMC(uint32_t cost)                          { m_costForARMC = cost;                                         }
+#endif
 #endif
   void                        setBiDirPred( bool b, int refIdx0, int refIdx1 ) { m_biDirPred = b; m_symRefIdx[0] = refIdx0; m_symRefIdx[1] = refIdx1; }
   bool                        getBiDirPred() const { return m_biDirPred; }
@@ -4349,7 +4514,6 @@ public:
 
   void                        setCabacInitFlag( bool val )                           { m_cabacInitFlag = val;                                        } //!< set CABAC initial flag
   bool                        getCabacInitFlag()                               const { return m_cabacInitFlag;                                       } //!< get CABAC initial flag
-
 #if JVET_AG0196_CABAC_RETRAIN
   void                        setCabacInitSliceType( SliceType val )                 { m_cabacInitSliceType = val; }
   SliceType                   getCabacInitSliceType()                          const { return m_cabacInitSliceType; }
@@ -4414,12 +4578,21 @@ public:
   bool getTileGroupCcAlfCrEnabledFlag() { return m_tileGroupCcAlfCrEnabledFlag; }
   int  getTileGroupCcAlfCbApsId() { return m_tileGroupCcAlfCbApsId; }
   int  getTileGroupCcAlfCrApsId() { return m_tileGroupCcAlfCrApsId; }
+#if JVET_AK0065_TALF
+  TAlfCtbParam* m_tAlfCtbControl;  // ctb controls
+  void        setTileGroupTAlfControl(TAlfControl c) { m_tileGroupTAlfControl = c;    }
+  TAlfControl getTileGroupTAlfControl() const         { return m_tileGroupTAlfControl; }
+#endif
   void                        setDisableSATDForRD(bool b) { m_disableSATDForRd = b; }
   bool                        getDisableSATDForRD() { return m_disableSATDForRd; }
   void                        setLossless(bool b) { m_isLossless = b; }
   bool                        isLossless() const { return m_isLossless; }
 #if JVET_Y0128_NON_CTC
+#if JVET_AK0065_TALF
+  bool                        scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS** apss2, APS* lmcsAps, APS* scalingListAps, const bool isDecoder );
+#else
   bool                        scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder );
+#endif
 #else
   void                        scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS** apss, APS* lmcsAps, APS* scalingListAps, const bool isDecoder );
 #endif
@@ -4456,6 +4629,21 @@ public:
   int                         getLumaPelMin()                               const { return  m_lumaPelMin; }
   void                        setAdaptiveClipQuant(bool b)                        { m_adaptiveClipQuant = b; };
   bool                        getAdaptiveClipQuant()                        const { return m_adaptiveClipQuant; };
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void                        setOffsetRefinementDbf(bool b)                      { m_offsetRefinementDbf = b; }
+  bool                        getOffsetRefinementDbf()                      const { return m_offsetRefinementDbf; }
+  void                        setOffsetRefinementAlf(bool b)                      { m_offsetRefinementAlf = b; }
+  bool                        getOffsetRefinementAlf()                      const { return m_offsetRefinementAlf; }
+  void                        setOffsetRefinementDbfIdx(uint8_t b)                { m_offsetRefinementDbfIdx = b; }
+  uint8_t                     getOffsetRefinementDbfIdx()                   const { return m_offsetRefinementDbfIdx; }
+  void                        setOffsetRefinementAlfIdx(uint8_t b)                { m_offsetRefinementAlfIdx = b; }
+  uint8_t                     getOffsetRefinementAlfIdx()                   const { return m_offsetRefinementAlfIdx; }
+#endif
+
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  bool getPnnMode() const { return m_pnnMode; }
+  void setPnnMode(const bool pnnMode) { m_pnnMode = pnnMode; }
 #endif
 
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE

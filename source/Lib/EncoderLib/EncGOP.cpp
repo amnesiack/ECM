@@ -2707,11 +2707,19 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       if (index != -1)
       {
         const SPS* sps = pcSlice->getSPS();
+#if JVET_AJ0237_INTERNAL_12BIT
+        pcSlice->setCostForARMC(sps->getLambdaVal(index), sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
         pcSlice->setCostForARMC(sps->getLambdaVal(index));
+#endif
       }
       else
       {
+#if JVET_AJ0237_INTERNAL_12BIT
+        pcSlice->setCostForARMC((uint32_t)LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp(), 0), MAX_QP)], pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
         pcSlice->setCostForARMC((uint32_t) LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp(), 0), MAX_QP)]);
+#endif
       }
 
       if (pcSlice->getCheckLDC())
@@ -2738,12 +2746,20 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
         if (mindist != 1 )
         {
+#if JVET_AJ0237_INTERNAL_12BIT
+          pcSlice->setCostForARMC((uint32_t)LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp() - 4, 0), MAX_QP)], pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
           pcSlice->setCostForARMC((uint32_t) LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp() - 4, 0), MAX_QP)]);
+#endif
         }
       }
       else
       {
+#if JVET_AJ0237_INTERNAL_12BIT
+        pcSlice->setCostForARMC((uint32_t)LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp() - 4, 0), MAX_QP)], pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
         pcSlice->setCostForARMC((uint32_t) LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp() - 4, 0), MAX_QP)]);
+#endif
       }
     }
 #endif
@@ -3250,11 +3266,19 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     {
       PicHeader *picHeader = new PicHeader;
       *picHeader = *pcPic->cs->picHeader;
+#if JVET_AK0065_TALF
+      bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, picHeader, m_pcEncLib->getApss(), m_pcEncLib->getApss2(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#else
       bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, picHeader, m_pcEncLib->getApss(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#endif
     }
     else
     {
+#if JVET_AK0065_TALF
+      bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, pcPic->cs->picHeader, m_pcEncLib->getApss(), m_pcEncLib->getApss2(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#else
       bDisableTMVP = pcSlice->scaleRefPicList(scaledRefPic, pcPic->cs->picHeader, m_pcEncLib->getApss(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false);
+#endif
     }
 #else
     bool  bDisableTMVP = pcSlice->scaleRefPicList( scaledRefPic, pcPic->cs->picHeader, m_pcEncLib->getApss(), picHeader->getLmcsAPS(), picHeader->getScalingListAPS(), false );
@@ -3468,7 +3492,18 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     bool decPic = false;
     bool encPic = false;
     // test if we can skip the picture entirely or decode instead of encoding
-    trySkipOrDecodePicture( decPic, encPic, *m_pcCfg, pcPic, m_pcEncLib->getApsMap() );
+    try
+    {
+      trySkipOrDecodePicture(decPic, encPic, *m_pcCfg, pcPic, m_pcEncLib->getApsMap());
+    }
+    catch(const std::exception&)
+    {
+      decPic = false;
+      encPic = true;
+      tryDecodePicture(nullptr, 0, std::string(""));
+    }
+ 
+
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
     if ( decPic && pcPic != nullptr && pcPic->cs->sps->getALFEnabledFlag() )
     {
@@ -3619,15 +3654,24 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #endif
         {
           clipMv = clipMvInSubpic;
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+          clipMv2 = clipMvInSubpic2;
+#endif
           m_pcEncLib->getInterSearch()->setClipMvInSubPic(true);
         }
         else
         {
           clipMv = clipMvInPic;
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+          clipMv2 = clipMvInPic2;
+#endif
           m_pcEncLib->getInterSearch()->setClipMvInSubPic(false);
         }
 
         m_pcSliceEncoder->precompressSlice( pcPic );
+#if JVET_AJ0249_NEURAL_NETWORK_BASED 
+        pcSlice->setPnnMode(m_pcCfg->getNnipMode());
+#endif
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
 
         if(sliceIdx < pcPic->cs->pps->getNumSlicesInPic() - 1)
@@ -3771,7 +3815,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         m_pcALF->copyResiData(cs);
       }
 #endif
-
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+      m_pcALF->callCodingInfoBuf( cs ).fill( 0 );
+#endif
       // create SAO object based on the picture size
       if( pcSlice->getSPS()->getSAOEnabledFlag()
 #if JVET_W0066_CCSAO
@@ -3795,6 +3841,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         if ( saoSize.width != picWidth || saoSize.height != picHeight ) 
         {
           m_pcSAO->create(picWidth, picHeight, chromaFormatIDC, maxCUWidth, maxCUHeight, maxTotalCUDepth, log2SaoOffsetScaleLuma, log2SaoOffsetScaleChroma);
+#if JVET_AJ0237_INTERNAL_12BIT
+          m_pcSAO->m_bilateralFilter.setInternalBitDepth(pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#endif
           m_pcSAO->setReshaper(m_pcReshaper);
         }
 
@@ -3862,7 +3911,49 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       }
 #endif
 
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+      const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
+      PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
+      m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
+#else
       m_pcLoopFilter->loopFilterPic( cs );
+#endif
+
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+      if( cs.sps->getALFEnabledFlag() )
+      {
+        bool sliceTypeCondition = true;
+        bool enableRefinement = false;
+        bool dbfEnabled = !cs.slice->getDeblockingFilterDisable();
+        PelUnitBuf dbfInput = m_pcALF->callRecBeforeDbfBuf();
+        PelUnitBuf dbfOutput = cs.getRecoBuf();
+
+        PelUnitBuf dbfOffsetRefine0 = m_pcALF->callRecAfterSaoBuf();
+        PelUnitBuf dbfOffsetRefine1 = m_pcALF->callRecBeforeAlfBuf();
+
+        int stageIdx = 0;
+        int refineIdx = 0;
+
+        if( sliceTypeCondition && dbfEnabled )
+        {
+          m_pcALF->calcOffsetRefinement(cs, dbfInput, dbfOutput, dbfOffsetRefine0, stageIdx, 0 );
+          m_pcALF->calcOffsetRefinement(cs, dbfInput, dbfOutput, dbfOffsetRefine1, stageIdx, 1 );
+          enableRefinement = m_pcALF->calcOffsetRefinementOnOff(cs, dbfOutput, dbfOffsetRefine0, dbfOffsetRefine1, refineIdx );
+        }
+
+        if( sliceTypeCondition && enableRefinement )
+        {
+          cs.slice->setOffsetRefinementDbf( true );
+          cs.slice->setOffsetRefinementDbfIdx( refineIdx );
+          m_pcALF->copyOffsetRefinement(cs, refineIdx ? dbfOffsetRefine1 : dbfOffsetRefine0, dbfOutput);
+        }
+        else
+        {
+          cs.slice->setOffsetRefinementDbf( false );
+          cs.slice->setOffsetRefinementDbfIdx( false );
+        }
+      }
+#endif
 
 #if !MULTI_PASS_DMVR
       CS::setRefinedMotionField(cs);
@@ -4005,6 +4096,41 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           , m_pcCfg->getIntraPeriod()
 #endif
         );
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+        if( cs.sps->getALFEnabledFlag() )
+        {
+          bool sliceTypeCondition = !cs.slice->isIntra();
+          bool alfEnabled = cs.slice->getTileGroupAlfEnabledFlag( COMPONENT_Y );
+          bool enableRefinement = false;
+          PelUnitBuf alfInput = m_pcALF->callRecAfterSaoBuf();
+          PelUnitBuf alfOutput = cs.getRecoBuf();
+
+          PelUnitBuf alfOffsetRefine0 = m_pcALF->callRecBeforeDbfBuf();
+          PelUnitBuf alfOffsetRefine1 = m_pcALF->callRecBeforeAlfBuf();
+
+          int stageIdx = 1;
+          int refineIdx = 0;
+
+          if( sliceTypeCondition && alfEnabled )
+          {
+            m_pcALF->calcOffsetRefinement(cs, alfInput, alfOutput, alfOffsetRefine0, stageIdx, 0 );
+            m_pcALF->calcOffsetRefinement(cs, alfInput, alfOutput, alfOffsetRefine1, stageIdx, 1 );
+            enableRefinement = m_pcALF->calcOffsetRefinementOnOff(cs, alfOutput, alfOffsetRefine0, alfOffsetRefine1, refineIdx );
+          }
+
+          if( sliceTypeCondition && enableRefinement )
+          {
+            cs.slice->setOffsetRefinementAlf( true );
+            cs.slice->setOffsetRefinementAlfIdx( refineIdx );
+            m_pcALF->copyOffsetRefinement(cs, refineIdx ? alfOffsetRefine1 : alfOffsetRefine0, alfOutput);
+          }
+          else
+          {
+            cs.slice->setOffsetRefinementAlf( false );
+            cs.slice->setOffsetRefinementAlfIdx( false );
+          }
+        }
+#endif
 
         //assign ALF slice header
         for (int s = 0; s < uiNumSliceSegments; s++)
@@ -4044,6 +4170,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           if( s < uiNumSliceSegments - 1 )
           {
             pcPic->slices[s]->setAlfAPSs(cs.slice->getAlfAPSs());
+#if JVET_AK0065_TALF
+            pcPic->slices[s]->setTAlfAPSs(cs.slice->getTAlfAPSs());
+#endif
           }
           pcPic->slices[s]->setTileGroupApsIdChroma(cs.slice->getTileGroupApsIdChroma());
           pcPic->slices[s]->setTileGroupCcAlfCbApsId(cs.slice->getTileGroupCcAlfCbApsId());
@@ -4055,6 +4184,10 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           pcPic->slices[s]->m_ccAlfFilterParam      = m_pcALF->getCcAlfFilterParam();
           pcPic->slices[s]->m_ccAlfFilterControl[0] = m_pcALF->getCcAlfControlIdc(COMPONENT_Cb);
           pcPic->slices[s]->m_ccAlfFilterControl[1] = m_pcALF->getCcAlfControlIdc(COMPONENT_Cr);
+#if JVET_AK0065_TALF
+          pcPic->slices[s]->setTileGroupTAlfControl(cs.slice->getTileGroupTAlfControl());
+          pcPic->slices[s]->m_tAlfCtbControl       = m_pcALF->getTAlfControl();
+#endif
         }
         m_pcALF->destroy(true);
       }
@@ -4156,7 +4289,13 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         // This does not need to be run even if BIF=1.
         m_pcSAO->disabledRate( *pcPic->cs, pcPic->getSAO(1), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma());
       }
+#if JVET_AK0065_TALF
+      const TAlfControl talfControl = pcSlice->getTileGroupTAlfControl();
+      if ((pcSlice->getSPS()->getALFEnabledFlag() && (pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) || pcSlice->getTileGroupCcAlfCbEnabledFlag() || pcSlice->getTileGroupCcAlfCrEnabledFlag()))
+          || (pcSlice->getSPS()->getUseTAlf() && talfControl.enabledFlag))  // ALF or TALF enabled.
+#else
       if (pcSlice->getSPS()->getALFEnabledFlag() && (pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) || pcSlice->getTileGroupCcAlfCbEnabledFlag() || pcSlice->getTileGroupCcAlfCrEnabledFlag()))
+#endif
       {
         // IRAP AU: reset APS map
         {
@@ -4184,7 +4323,11 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
                 // Luma
                 for( int i = 0; i < sliceApsIdsLuma.size(); i++ )
                 {
+#if JVET_AK0065_TALF
+                  if( aps->getAPSId() == sliceApsIdsLuma[i] && pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) )
+#else
                   if( aps->getAPSId() == sliceApsIdsLuma[i] )
+#endif
                   {
                     activeAps = true;
                     break;
@@ -4209,6 +4352,28 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
                 }
               }
             }
+#if JVET_AK0065_TALF
+            m_pcALF->setApsIdStart2( ALF_CTB_MAX_NUM_APS );
+            for( int apsId = 0; apsId < ALF_CTB_MAX_NUM_APS; apsId++ )
+            {
+              int psId = ( apsId << NUM_APS_TYPE_LEN ) + TALF_APS;
+              APS* aps = apsMap->getPS( psId );
+              if( aps )
+              {
+                // Check if this APS is currently the active one (used in current slice)
+                bool activeApsTAlf = false;
+                for (int i = 0; i < talfControl.apsIds.size(); i++)
+                {
+                  activeApsTAlf |= (talfControl.enabledFlag && talfControl.apsIds[i] == aps->getAPSId());
+                }
+                if( !activeApsTAlf)
+                {
+                  apsMap->clearChangedFlag( psId );
+                  aps->getTAlfAPSParam().reset();
+                }
+              }
+            }
+#endif
           }
         }
 
@@ -4232,6 +4397,32 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
         if( changedApsId >= 0 )
           m_pcALF->setApsIdStart( changedApsId );
+
+#if JVET_AK0065_TALF
+        int changedApsId2 = -1;
+        for( int apsId = ALF_CTB_MAX_NUM_APS - 1; apsId >= 0; apsId-- )
+        {
+          ParameterSetMap<APS>* apsMap = m_pcEncLib->getApsMap();
+          int psId = ( apsId << NUM_APS_TYPE_LEN ) + TALF_APS;
+          APS* aps = apsMap->getPS( psId );
+          if( aps )
+          {
+            // In slice, replace the old APS (from decoder map) with the APS from encoder map due to later checks while bitstream writing
+            if( pcSlice->getTAlfAPSs() && pcSlice->getTAlfAPSs()[apsId] )
+            {
+              pcSlice->getTAlfAPSs()[apsId] = aps;
+            }
+            if (apsMap->getChangedFlag(psId))
+            {
+              changedApsId2 = apsId;
+            }
+          }
+        }
+        if (changedApsId2 >= 0)
+        {
+          m_pcALF->setApsIdStart2(changedApsId2);
+        }
+#endif
       }
     }
 
@@ -4405,6 +4596,39 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
       }
 
+#if JVET_AK0065_TALF  // Write TALF APS.
+      const TAlfControl talfControl = pcSlice->getTileGroupTAlfControl();
+      if (pcSlice->getSPS()->getUseTAlf() && talfControl.enabledFlag)
+      {
+        for (int apsId = 0; apsId < ALF_CTB_MAX_NUM_APS; apsId++)
+        {
+          ParameterSetMap<APS> *apsMap = m_pcEncLib->getApsMap();
+          APS *aps      = apsMap->getPS((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          bool writeAPS = aps && apsMap->getChangedFlag((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          if (!aps && pcSlice->getTAlfAPSs() && pcSlice->getTAlfAPSs()[apsId])
+          {
+            writeAPS = true;
+            aps      = pcSlice->getTAlfAPSs()[apsId];                             // use asp from slice header
+            *apsMap->allocatePS((apsId << NUM_APS_TYPE_LEN) + TALF_APS) = *aps;   // allocate and cpy
+            m_pcALF->setApsIdStart2(apsId);
+          }
+#if JVET_Z0118_GDR // note : insert APS at every GDR picture
+          if (aps && apsId >= 0)
+          {
+            writeAPS |= (pcSlice->isInterGDR());
+          }
+#endif
+          if (writeAPS )
+          {
+#if JVET_R0433
+            aps->chromaPresentFlag = pcSlice->getSPS()->getChromaFormatIdc() != CHROMA_400;
+#endif
+            actualTotalBits += xWriteAPS( accessUnit, aps, m_pcEncLib->getLayerId(), true );
+            apsMap->clearChangedFlag((apsId << NUM_APS_TYPE_LEN) + TALF_APS);
+          }
+        }
+      }
+#endif
       // reset presence of BP SEI indication
       m_bufferingPeriodSEIPresentInAU = false;
       // create prefix SEI associated with a picture
@@ -4520,6 +4744,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
             picHeader->setCcAlfEnabledFlag(COMPONENT_Cr, pcSlice->getTileGroupCcAlfCrEnabledFlag());
             picHeader->setCcAlfCbApsId(pcSlice->getTileGroupCcAlfCbApsId());
             picHeader->setCcAlfCrApsId(pcSlice->getTileGroupCcAlfCrApsId());
+#if JVET_AK0065_TALF
+            picHeader->setTAlfControl(pcSlice->getTileGroupTAlfControl());
+#endif
           }
 
           // code WP parameters in picture header or slice headers
@@ -4669,7 +4896,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 
       //-- For time output for each slice
       auto elapsed = std::chrono::steady_clock::now() - beforeTime;
-      auto encTime = std::chrono::duration_cast<std::chrono::seconds>( elapsed ).count();
+      auto encTime = std::chrono::duration_cast<std::chrono::milliseconds>( elapsed ).count()/1000.0;
 
 
       std::string digestStr;
@@ -4838,7 +5065,19 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     pcPic->cs->destroyTemporaryCsData();
 #if JVET_AA0096_MC_BOUNDARY_PADDING
     m_pcFrameMcPadPrediction->init(m_pcEncLib->getRdCost(), pcSlice->getSPS()->getChromaFormatIdc(),
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+#if JVET_AJ0237_INTERNAL_12BIT
+                                   pcSlice->getSPS()->getMaxCUHeight(), NULL, pcPic->getPicWidthInLumaSamples(),pcPic->getPicHeightInLumaSamples(), pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
+                                   pcSlice->getSPS()->getMaxCUHeight(), NULL, pcPic->getPicWidthInLumaSamples(),pcPic->getPicHeightInLumaSamples());
+#endif
+#else
+#if JVET_AJ0237_INTERNAL_12BIT
+                                   pcSlice->getSPS()->getMaxCUHeight(), NULL, pcPic->getPicWidthInLumaSamples(), pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
                                    pcSlice->getSPS()->getMaxCUHeight(), NULL, pcPic->getPicWidthInLumaSamples());
+#endif
+#endif
     m_pcFrameMcPadPrediction->mcFramePad(pcPic, *(pcPic->slices[0]));
     m_pcFrameMcPadPrediction->destroy();
 #endif
@@ -5014,7 +5253,7 @@ void EncGOP::printOutSummary(uint32_t uiNumAllPicCoded, bool isField, const bool
                               printMSSSIM,
 #endif
                               printHexPsnr, printRprPSNR, bitDepths, useLumaWPSNR);
-    if (g_verbosity >= DETAILS)
+    if (g_verbosity >= INFO)
     {
       std::cout << "\nWPSNR SUMMARY --------------------------------------------------------\n"
                 << header << '\n'
@@ -5124,7 +5363,13 @@ uint64_t EncGOP::preLoopFilterPicAndCalcDist( Picture* pcPic )
   } 
 #endif
 
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+  const bool storeCodingInfo = false;
+  PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
+  m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
+#else
   m_pcLoopFilter->loopFilterPic( cs );
+#endif
 
   const CPelUnitBuf picOrg = pcPic->getRecoBuf();
   const CPelUnitBuf picRec = cs.getRecoBuf();
@@ -5419,7 +5664,7 @@ double EncGOP::xFindDistortionPlaneWPSNR(const CPelBuf& pic0, const CPelBuf& pic
 #endif
 
 void EncGOP::xCalculateAddPSNRs(const bool isField, const bool isFieldTopFieldFirst, const int iGOPid, Picture *pcPic,
-                                const AccessUnit &accessUnit, PicList &rcListPic, const int64_t dEncTime,
+                                const AccessUnit &accessUnit, PicList &rcListPic, const double dEncTime,
                                 const InputColourSpaceConversion snr_conversion, const bool printFrameMSE,
 #if MSSIM_UNIFORM_METRICS_LOG
                                 const bool printMSSSIM,
@@ -5908,7 +6153,7 @@ void EncGOP::xCalculateAddPSNR(Picture *pcPic, PelUnitBuf cPicD, const AccessUni
       }
     }
 #endif
-    msg( NOTICE, " [ET %5.0f ]", dEncTime );
+    msg( NOTICE, " [ET %5.3f ]", dEncTime );
 
     // msg( SOME, " [WP %d]", pcSlice->getUseWeightedPrediction());
 

@@ -569,6 +569,9 @@ struct SrchCostBv
       bvLicIdx[idxDst] = bvLicIdx[idxSrc];
       skipLicSrch[idxDst] = skipLicSrch[idxSrc];
 #endif
+#if JVET_AE0159_FIBC
+      bvFilter[idxDst] = bvFilter[idxSrc];
+#endif
     }
   }
 
@@ -649,6 +652,9 @@ struct SrchCostBv
 #if JVET_AE0078_IBC_LIC_EXTENSION
       bvLicIdx[idx] = bvLic;
 #endif
+#if JVET_AE0159_FIBC
+      bvFilter[idx] = false;
+#endif
     };
 
     auto replaceNext = [&](uint32_t idx)
@@ -666,6 +672,9 @@ struct SrchCostBv
 #endif
 #if JVET_AE0078_IBC_LIC_EXTENSION
       bvLicIdx[idx + 1] = bvLicIdx[idx];
+#endif
+#if JVET_AE0159_FIBC
+      bvFilter[idx + 1] = bvFilter[idx];
 #endif
     };
 
@@ -974,6 +983,9 @@ public:
                                      , EncReshape*   m_pcReshape
 #if JVET_Z0153_IBC_EXT_REF
                                     , const uint32_t curPicWidthY
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+                                    , const uint32_t curPicHeightY 
+#endif
 #endif
                                     );
 
@@ -1368,7 +1380,11 @@ public:
 #endif
                                   , int mmvdCand0 = -1, int mmvdCand1 = -1); // mmvdCandX = -1: regular, 0~GPM_EXT_MMVD_MAX_REFINE_NUM-1: MMVD, >=GPM_EXT_MMVD_MAX_REFINE_NUM: TM
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
+#if JVET_AJ0274_GPM_AFFINE_TM
+  void setGeoTMSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND], const AffineMergeCtx &affMergeCtx, int mergeCand0, int mergeCand1, int mmvdCand0 = -1, int mmvdCand1 = -1); // mmvdCandX = -1: regular, 0~GPM_EXT_MMVD_MAX_REFINE_NUM-1: MMVD, >=GPM_EXT_MMVD_MAX_REFINE_NUM: TM
+#else
   void setGeoTMSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND], int mergeCand0, int mergeCand1, int mmvdCand0 = -1, int mmvdCand1 = -1); // mmvdCandX = -1: regular, 0~GPM_EXT_MMVD_MAX_REFINE_NUM-1: MMVD, >=GPM_EXT_MMVD_MAX_REFINE_NUM: TM
+#endif
 #endif
   int  convertGeoSplitModeToSyntax(int splitDir, int mergeCand0, int mergeCand1, int mmvdCand0 = -1, int mmvdCand1 = -1); // mmvdCandX = -1: regular, 0~GPM_EXT_MMVD_MAX_REFINE_NUM-1: MMVD, >=GPM_EXT_MMVD_MAX_REFINE_NUM: TM
 #if JVET_AE0169_BIPREDICTIVE_IBC
@@ -1508,10 +1524,17 @@ protected:
                                   uint32_t (&gpmTplCostPart0)[2][GEO_NUM_PARTITION_MODE],
                                   uint32_t (&gpmTplCostPart1)[2][GEO_NUM_PARTITION_MODE]);
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
-  bool selectGeoTMSplitModes (PredictionUnit &pu, 
+#if JVET_AJ0274_GPM_AFFINE_TM
+  bool selectGeoTMSplitModes (PredictionUnit &pu,
+                              uint32_t (&gpmTplCostPart0)[2][GEO_NUM_PARTITION_MODE],
+                              uint32_t (&gpmTplCostPart1)[2][GEO_NUM_PARTITION_MODE],
+                              MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND], const AffineMergeCtx& affMergeCtx, int mergeCand0, int mergeCand1, uint8_t& numValidInList, uint8_t (&modeList)[GEO_NUM_SIG_PARTMODE]);
+#else
+  bool selectGeoTMSplitModes (PredictionUnit &pu,
                               uint32_t (&gpmTplCostPart0)[2][GEO_NUM_PARTITION_MODE],
                               uint32_t (&gpmTplCostPart1)[2][GEO_NUM_PARTITION_MODE],
                               MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND], int mergeCand0, int mergeCand1, uint8_t& numValidInList, uint8_t (&modeList)[GEO_NUM_SIG_PARTMODE]);
+#endif
   void getBestGeoTMModeListEncoder (PredictionUnit &pu, uint8_t& numValidInList,
                                     uint8_t (&modeList)[GEO_NUM_SIG_PARTMODE],
                                     Pel* (&pRefTopPart0)[GEO_NUM_TM_MV_CAND], Pel* (&pRefLeftPart0)[GEO_NUM_TM_MV_CAND],

@@ -1047,12 +1047,19 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AI0050_SBT_LFNST
   ("SbtLFNST",                                        m_useSbtLFNST,                                     true, "SBT-LFNST (0:off, 1:on)  [default: on]")
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  ( "NSPT",                                           m_NSPT,                                            true, "Enable NSPT (0:off, 1:on)  [default: on]" )
+  ( "LFNSTExt",                                       m_LFNSTExt,                                        true, "Enable LFNST extension (0:off, 1:on)  [default: on]" )
+#endif
   ("SbTMVP",                                          m_sbTmvpEnableFlag,                               false, "Enable Subblock Temporal Motion Vector Prediction (0: off, 1: on) [default: off]")
   ("MMVD",                                            m_MMVD,                                            true, "Enable Merge mode with Motion Vector Difference (0:off, 1:on)  [default: 1]")
   ("Affine",                                          m_Affine,                                         false, "Enable affine prediction (0:off, 1:on)  [default: off]")
   ("AffineType",                                      m_AffineType,                                      true,  "Enable affine type prediction (0:off, 1:on)  [default: on]" )
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   ("AltCost",                                         m_useAltCost,                                      true, "Enable alternating cost function based on parity of merge index (0:off, 1:on)  [default: on]")
+#endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  ("ExtAmvp",                                         m_useExtAmvp,                                      true, "Enable extended amvp candidates (0:off, 1:on)  [default: on]")
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   ("AffineTM",                                        m_useAffineTM,                                     true, "Enable TM-based subblock motion refinement (0:off, 1:on)  [default: on]")
@@ -1153,6 +1160,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AA0133_INTER_MTS_OPT
   ("InterMTSMaxSize",                                 m_interMTSMaxSize,                                   32, "InterMTSMaxSize")
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  ("IntraMTSMaxSize",                                 m_intraMTSMaxSize,                                  128, "InterMTSMaxSize")
+  ("MTSExt",                                          m_MTSExt,                                          true, "Enable extended MTS (0: 0ff, 1: on)")
+#endif
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   ("EnableTMnoninterTools",                           m_tmNoninterToolsEnableFlag,                       (bool) JVET_AE0174_NONINTER_TM_TOOLS_CONTROL,  "Enable non-inter based template matching  (0:off, 1:on) \n")
 #endif
@@ -1161,6 +1172,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_W0123_TIMD_FUSION
   ( "TIMD",                                           m_timd,                                            true,  "Enable template based intra mode derivation\n" )
+#if JVET_AJ0061_TIMD_MERGE
+  ( "TIMDMerge",                                      m_timdMrg,                                         true,  "Enable merge mode for TIMD\n" )
+#endif
 #endif
 #if JVET_AB0155_SGPM
   ( "SGPM",                                           m_sgpm,                                            true,  "Enable spatial geometric partitioning mode\n" )
@@ -1197,8 +1211,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("CIIPTIMD",                                        m_ciipTimd,                                       true, "Enable CIIP-TIMD mode")
 #endif
   ("Geo",                                             m_Geo,                                            false, "Enable geometric partitioning mode (0:off, 1:on)")
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  ("GeoShapeAdapt",                                   m_geoShapeAdapt,                                  false, "Enable shape adaptive geometric partitioning mode (0:off, 1:on)")
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
-  ("GeoInterIbc",                                     m_geoInterIbc,                                    true, "GPM with inter and IBC (0:off, 1:on)  [default: off]" )
+  ("GeoInterIbc",                                     m_geoInterIbc,                                    false, "GPM with inter and IBC (0:off, 1:on)  [default: off]" )
 #endif
   ("HashME",                                          m_HashME,                                         false, "Enable hash motion estimation (0:off, 1:on)")
 
@@ -1306,6 +1323,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AG0136_INTRA_TMP_LIC
   ("ItmpLicExtension",                                m_itmpLicExtension,                               false, "extended Itmp LIC(0:off, 1:on)  [default: off]" )
 #endif
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  ("IntraToolControlMode",                            m_intraToolControlMode,                               1, "Control of Intra tools related to reference Filtering, PDPC, and intra prediction fusion (0:tool off, 1:tool on, 2:decision by alogithm whether to signal 0 or 1 in SPS)  [default: 1]")
+#endif
   ("WrapAround",                                      m_wrapAround,                                     false, "Enable horizontal wrap-around motion compensation for inter prediction (0:off, 1:on)  [default: off]")
   ("WrapAroundOffset",                                m_wrapAroundOffset,                                  0u, "Offset in luma samples used for computing the horizontal wrap-around position")
 #if JVET_AH0135_TEMPORAL_PARTITIONING
@@ -1363,6 +1383,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("ScaleMvExtTmvp",                                  m_scaledMvExtTmvp,                                 true, "ScaleMvExtTmvp" )
   ("ScaleMvExtBiTmvp",                                m_scaledMvExtBiTmvp,                               true, "ScaleMvExtBiTmvp" )
 #endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  ("SbTmvpMvExt",                                     m_sbTmvpMvExt,                                     true, "SbTmvpMvExt" )
+#endif
   // ADD_NEW_TOOL : (encoder app) add parsing parameters here
   ( "VirtualBoundariesPresentInSPSFlag",              m_virtualBoundariesPresentFlag,                    true, "Virtual Boundary position information is signalled in SPS or PH (1:SPS, 0:PH)  [default: on]" )
   ("NumVerVirtualBoundaries",                         m_numVerVirtualBoundaries,                           0u, "Number of vertical virtual boundaries (0-3, inclusive)")
@@ -1387,7 +1410,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("PBIntraFast",                                     m_usePbIntraFast,                                 false, "Fast assertion if the intra mode is probable")
   ("AMaxBT",                                          m_useAMaxBT,                                      false, "Adaptive maximal BT-size")
   ("E0023FastEnc",                                    m_e0023FastEnc,                                    true, "Fast encoding setting for QTBT (proposal E0023)")
-#if JVET_AE0057_MTT_ET
+#if JVET_AJ0226_MTT_SKIP
   ("MTTSkipping",                                     m_useMttSkip,                                     false, "MTT split modes early termination")
 #endif 
   ("ContentBasedFastQtbt",                            m_contentBasedFastQtbt,                           false, "Signal based QTBT speed-up")
@@ -1568,6 +1591,13 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   ("CCALFPrecision",                                  m_ccalfPrecision,                                  true, "Cross-component Alf with variable precision coefficients")
 #endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  ("AlfLumaFixedFilterAdjust",                        m_alfLumaFixedFilterAdjust,                         true, "Alf Luma Fixed Filter Adjustment" )
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  ("InloopOffsetRefineFlag",                          m_inloopOffsetRefineFlag,                           true, "Inloop Filter Offset Refinement Flag" )
+  ("InloopOffsetRefineFunc",                          m_inloopOffsetRefineFunc,                           true, "Inloop Filter Offset Refinement Func" )
+#endif
   ("TestSAODisableAtPictureLevel",                    m_bTestSAODisableAtPictureLevel,                  false, "Enables the testing of disabling SAO at the picture level after having analysed all blocks")
   ("SaoEncodingRate",                                 m_saoEncodingRate,                                 0.75, "When >0 SAO early picture termination is enabled for luma and chroma")
   ("SaoEncodingRateChroma",                           m_saoEncodingRateChroma,                            0.5, "The SAO early picture termination rate to use for chroma (when m_SaoEncodingRate is >0). If <=0, use results for luma")
@@ -1634,6 +1664,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AG0164_AFFINE_GPM
   ("MaxNumGPMAffCand",                                m_maxNumGpmAffCand,                                  9u, "Maximum number of geometric partitioning mode candidates")
+#if JVET_AJ0274_GPM_AFFINE_TM
+  ("MaxNumGPMAffTmCand",                              m_maxNumGpmAffTmCand,                                6u, "Maximum number of affine candidates for geometric partitioning mode with TM")
+#endif
 #endif
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
 #if NON_ADJACENT_MRG_CAND
@@ -1882,6 +1915,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("DebugCTU",                                        m_debugCTU,                                  -1, "If DebugBitstream is present, load frames up to this POC from this bitstream. Starting with DebugPOC-frame at CTUline containin debug CTU.")
   ("EnsureWppBitEqual",                               m_ensureWppBitEqual,                      false, "Ensure the results are equal to results with WPP-style parallelism, even if WPP is off")
   ( "ALF",                                             m_alf,                                    true, "Adaptive Loop Filter\n" )
+#if FIXFILTER_CFG
+  ( "AlfFixedFilter",                                  m_alfFixedFilter,                             true, "Fixed Filters for Adaptive Loop Filter\n" )
+#endif
   ( "CCALF",                                           m_ccalf,                                  true, "Cross-component Adaptive Loop Filter" )
   ( "CCALFQpTh",                                       m_ccalfQpThreshold,                         37, "QP threshold above which encoder reduces CCALF usage")
 #if JVET_Q0114_ASPECT5_GCI_FLAG
@@ -1963,6 +1999,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
     ("TemporalFilterFutureRefs",                      m_gopBasedTemporalFilterFutureRefs,        TF_DEFAULT_REFS, "Number of future references for temporal prefilter")
     ("FirstValidFrame",                               m_firstValidFrame,                                       0, "First valid frame")
     ("LastValidFrame",                                m_lastValidFrame,                                  MAX_INT, "Last valid frame")
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    ("IntraNN",                                       m_intraNN,                                            true, "Neural Network Intra Prediction: 1 activated, 0 deactivated")
+#endif
     ("TemporalFilterStrengthFrame*",                  m_gopBasedTemporalFilterStrengths, std::map<int, double>(), "Strength for every * frame in GOP based temporal filter, where * is an integer."
                                                                                                                   " E.g. --TemporalFilterStrengthFrame8 0.95 will enable GOP based temporal filter at every 8th frame with strength 0.95");
   // clang-format on
@@ -2031,6 +2070,13 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
       m_MSBExtendedBitDepth[1] = m_inputBitDepth[1];
     }
 #endif
+  }
+#endif
+
+#if JVET_AJ0061_TIMD_MERGE
+  if (!m_timd)
+  {
+    m_timdMrg = false;
   }
 #endif
 
@@ -3560,6 +3606,21 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   }
 #endif
 
+#if AHG7_LN_TOOLOFF_CFG
+  if( !m_interLFNST )
+  {
+    m_useInterMTSS = false;
+    m_useSbtLFNST = false;
+  }
+#endif
+
+#if JVET_AJ0237_INTERNAL_12BIT
+  if ((m_internalBitDepth[CHANNEL_TYPE_LUMA] > 10) && m_CCSAO && (m_iQP >= 37) && (m_sourceWidth * m_sourceHeight > 1920 * 1080))
+  {
+    m_CCSAO = false;
+  }
+#endif
+
   // check validity of input parameters
   if( xCheckParameter() )
   {
@@ -4063,6 +4124,9 @@ bool EncAppCfg::xCheckParameter()
 #if JVET_AG0164_AFFINE_GPM
   xConfirmPara( m_maxNumGpmAffCand > GEO_MAX_NUM_UNI_AFF_CANDS, "MaxNumGeoCand must be no more than GEO_MAX_NUM_UNI_CANDS." );
   xConfirmPara( 0 < m_maxNumGpmAffCand && m_maxNumGpmAffCand < 2, "MaxNumGeoCand must be no less than 2 unless MaxNumGeoCand is 0." );
+#if JVET_AJ0274_GPM_AFFINE_TM
+  xConfirmPara( m_maxNumGpmAffTmCand > m_maxNumGpmAffCand, "MaxNumGeoAffTmCand must be no more than MaxNumGeoAffCand." );
+#endif
 #endif
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
   xConfirmPara( m_maxNumMHPCand > GEO_MAX_NUM_UNI_CANDS, "m_maxNumMHPCand must be no more than GEO_MAX_NUM_UNI_CANDS." );
@@ -4113,6 +4177,13 @@ bool EncAppCfg::xCheckParameter()
       msg(WARNING, "TIMD is forcefully disabled since the enable flag of non-inter-TM tools is set off. \n");
       m_timd = false;
     }
+#if JVET_AJ0061_TIMD_MERGE
+    if (!m_timd)
+    {
+      msg(WARNING, "TIMDMerge is forcefully disabled since timd mode is set to off. \n");
+      m_timdMrg = false;
+    }
+#endif
 #endif
 #if JVET_AB0155_SGPM
     if (m_sgpm)
@@ -5557,6 +5628,9 @@ void EncAppCfg::xPrintParameter()
   msg( DETAILS, "Max Num Geo Merge Candidates           : %d\n", m_maxNumGeoCand );
 #if JVET_AG0164_AFFINE_GPM
   msg( DETAILS, "Max Num Gpm Affine Merge Candidates    : %d\n", m_maxNumGpmAffCand );
+#if JVET_AJ0274_GPM_AFFINE_TM
+  msg( DETAILS, "Max Num Gpm Affine Tm Merge Candidates : %d\n", m_maxNumGpmAffTmCand );
+#endif
 #endif
 
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
@@ -5628,6 +5702,10 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AI0050_SBT_LFNST
     msg( VERBOSE, "SbtLFNST:%d ", m_useSbtLFNST );
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+    msg( VERBOSE, "NSPT:%d ", m_NSPT );
+    msg( VERBOSE, "LFNSTExt:%d ", m_LFNSTExt );
+#endif
     msg( VERBOSE, "MMVD:%d ", m_MMVD);
     msg( VERBOSE, "Affine:%d ", m_Affine );
     if ( m_Affine )
@@ -5649,6 +5727,13 @@ void EncAppCfg::xPrintParameter()
     msg( VERBOSE, "HorCollocatedChroma:%d ", m_horCollocatedChromaFlag );
     msg( VERBOSE, "VerCollocatedChroma:%d ", m_verCollocatedChromaFlag );
     msg( VERBOSE, "MTS: %1d(intra) %1d(inter) ", m_MTS & 1, ( m_MTS >> 1 ) & 1 );
+#if AHG7_MTS_TOOLOFF_CFG
+    msg(VERBOSE, "MTSExt: %d ", m_MTSExt);
+    if (m_MTS & 1)
+    {
+      msg(VERBOSE, "IntraMTSMaxSize: %d ", m_intraMTSMaxSize);
+    }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
     if ((m_MTS >> 1) & 1)
     {
@@ -5672,6 +5757,9 @@ void EncAppCfg::xPrintParameter()
     msg(VERBOSE, "CIIPAffine:%d ", m_useCiipAffine);
 #endif
     msg( VERBOSE, "Geo:%d ", m_Geo );
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    msg( VERBOSE, "GeoShapeAdapt:%d ", m_geoShapeAdapt );
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
     msg( VERBOSE, "GeoInterIbc:%d ", m_geoInterIbc );
 #endif
@@ -5748,6 +5836,9 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AG0136_INTRA_TMP_LIC
   msg( VERBOSE, "TmpLicExtension:%d ", m_itmpLicExtension );
   msg( VERBOSE, "TmpLicMode:%d ", m_itmpLicMode );
+#endif
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  msg(VERBOSE, "IntraToolControlMode:%d ", m_intraToolControlMode);
 #endif
   msg( VERBOSE, "HashME:%d ", m_HashME );
   msg( VERBOSE, "WrapAround:%d ", m_wrapAround);
@@ -5855,6 +5946,9 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AH0209_PDP
   msg( VERBOSE, "PDP:%d ", m_pdp );
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  msg(VERBOSE, "IntraNN:%d ", m_intraNN);
+#endif
 #if ENABLE_DIMD
   msg( VERBOSE, "DIMD:%d ", m_dimd );
 #endif
@@ -5913,6 +6007,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_W0123_TIMD_FUSION
   msg(VERBOSE, "TIMD:%d ", m_timd);
+#if JVET_AJ0061_TIMD_MERGE
+  msg(VERBOSE, "TIMDMerge:%d ", m_timdMrg);
+#endif
 #endif
 #if JVET_AB0155_SGPM
   msg(VERBOSE, "SGPM:%d ", m_sgpm);
@@ -5971,7 +6068,7 @@ void EncAppCfg::xPrintParameter()
   {
     msg( VERBOSE, "FastPicLevelLIC:%d ", m_fastPicLevelLIC );
 #if JVET_AG0276_LIC_SLOPE_ADJUST
-    msg( VERBOSE, "LicSlopeAdust:%d ", m_licSlopeAdjust );
+    msg( VERBOSE, "LicSlopeAdjust:%d ", m_licSlopeAdjust );
 #endif
   }
 #endif
@@ -6037,6 +6134,9 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AI0183_MVP_EXTENSION
   msg( VERBOSE, "ScaleMvExtTmvp:%d ", m_scaledMvExtTmvp );
   msg( VERBOSE, "ScaleMvExtBiTmvp:%d ", m_scaledMvExtBiTmvp );
+#endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  msg(VERBOSE, "SbTmvpMvExt:%d ", m_sbTmvpMvExt);
 #endif
 
   // transform and coefficient coding

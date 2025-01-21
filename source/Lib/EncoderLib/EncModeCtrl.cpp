@@ -177,6 +177,23 @@ void EncModeCtrl::setBest( CodingStructure& cs )
   }
 }
 
+#if JVET_AI0087_BTCUS_RESTRICTION 
+bool EncModeCtrl::isLumaNonBoundaryCu(const Partitioner& partitioner, SizeType picWidth, SizeType picHeight)
+{
+  bool validCU = false;
+  if (isLuma(partitioner.chType))
+  {
+    int maxWidthHeight = std::max(partitioner.currArea().lwidth(), partitioner.currArea().lheight()) - 1;
+    if ((partitioner.currArea().Y().x + maxWidthHeight < picWidth)
+      && (partitioner.currArea().Y().y + maxWidthHeight < picHeight))
+    {
+      validCU = true;
+    }
+  }
+  return validCU;
+}
+#endif
+
 void EncModeCtrl::xGetMinMaxQP( int& minQP, int& maxQP, const CodingStructure& cs, const Partitioner &partitioner, const int baseQP, const SPS& sps, const PPS& pps, const PartSplit splitMode )
 {
   if( m_pcEncCfg->getUseRateCtrl() )
@@ -1707,6 +1724,61 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   m_ComprCUCtxList.push_back( ComprCUCtx( cs, minDepth, maxDepth, NUM_EXTRA_FEATURES ) );
 #endif
 
+#if JVET_AI0087_BTCUS_RESTRICTION
+  bool disableBTV = false;
+  bool disableBTH = false;
+  if (EncModeCtrl::isLumaNonBoundaryCu(partitioner, cs.picture->lwidth(), cs.picture->lheight()) 
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    && (!(cs.slice->getProcessingIntraRegion() && cs.slice->getProcessingSeparateTrees()) || cs.slice->isIntra()) 
+#endif
+    )
+  {
+    if ((partitioner.currBtDepth == 1) && (partitioner.currPartIdx() == 1))
+    {
+      if (partitioner.currPartLevel().split == CU_HORZ_SPLIT)   // BTH Case
+      {
+        if (partitioner.currArea().lwidth() == 128 && cs.btFirstPartDecs[0] == CU_VERT_SPLIT)
+        {
+          disableBTV = true;
+        }
+
+        else if (partitioner.currArea().lwidth() == 64 && cs.btFirstPartDecs[1] == CU_VERT_SPLIT)
+        {
+          disableBTV = true;
+        }
+        else if (partitioner.currArea().lwidth() == 32 && cs.btFirstPartDecs[2] == CU_VERT_SPLIT)
+        {
+          disableBTV = true;
+        }
+        else if (partitioner.currArea().lwidth() == 16 && cs.btFirstPartDecs[3] == CU_VERT_SPLIT)
+        {
+          disableBTV = true;
+        }
+      }
+
+      else if (partitioner.currPartLevel().split == CU_VERT_SPLIT)   // BTV Case
+      {
+        if (partitioner.currArea().lheight() == 128 && cs.btFirstPartDecs[0] == CU_HORZ_SPLIT)
+        {
+          disableBTH = true;
+        }
+        else if (partitioner.currArea().lheight() == 64 && cs.btFirstPartDecs[1] == CU_HORZ_SPLIT)
+        {
+          disableBTH = true;
+        }
+        else if (partitioner.currArea().lheight() == 32 && cs.btFirstPartDecs[2] == CU_HORZ_SPLIT)
+        {
+          disableBTH = true;
+        }
+        if (partitioner.currArea().lheight() == 16 && cs.btFirstPartDecs[3] == CU_HORZ_SPLIT)
+        {
+          disableBTH = true;
+        }
+      }
+    }
+  }
+#endif
+
 #if ENABLE_SPLIT_PARALLELISM
   if( m_runNextInParallel )
   {
@@ -1735,7 +1807,11 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   unsigned maxBTD;
   bool canNo, canQt, canBh, canBv, canTh, canTv;
 
-  partitioner.canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv, maxBTD );
+  partitioner.canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv, maxBTD 
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  );
 
   if (!canBh && !canBv)
   {
@@ -1762,6 +1838,7 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
     m_nonIntraCUECtx->bestCU && !m_nonIntraCUECtx->bestCU->isSST )
   {
     cuECtx = *m_nonIntraCUECtx;
+    cuECtx.testModes.clear();
     isReusingCu = cuECtx.get<bool>( IS_REUSING_CU );
   }
   else
@@ -1862,7 +1939,11 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 #if JVET_AH0135_TEMPORAL_PARTITIONING 
   if ( canTv )
 #else
-  if( partitioner.canSplit( CU_TRIV_SPLIT, cs ) )
+  if( partitioner.canSplit( CU_TRIV_SPLIT, cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  ) )
 #endif
   {
     // add split modes
@@ -1879,7 +1960,11 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   if ( canTh )
 #else
-  if( partitioner.canSplit( CU_TRIH_SPLIT, cs ) )
+  if( partitioner.canSplit( CU_TRIH_SPLIT, cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  ) )
 #endif
   {
     // add split modes
@@ -1897,9 +1982,17 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   int maxQPq = maxQP;
   xGetMinMaxQP( minQP, maxQP, cs, partitioner, baseQP, *cs.sps, *cs.pps, CU_BT_SPLIT );
 #if JVET_AH0135_TEMPORAL_PARTITIONING
-  if ( canBv )
+  if ( canBv
+#if JVET_AI0087_BTCUS_RESTRICTION 
+    && !(disableBTV)
+#endif
+    )
 #else
-  if( partitioner.canSplit( CU_VERT_SPLIT, cs ) )
+  if( partitioner.canSplit( CU_VERT_SPLIT, cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , disableBTV, disableBTH
+#endif
+  ) )
 #endif
   {
     // add split modes
@@ -1927,9 +2020,17 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
   }
 
 #if JVET_AH0135_TEMPORAL_PARTITIONING
-  if ( canBh )
+  if ( canBh
+#if JVET_AI0087_BTCUS_RESTRICTION 
+    && !(disableBTH)
+#endif
+    )
 #else
-  if( partitioner.canSplit( CU_HORZ_SPLIT, cs ) )
+  if( partitioner.canSplit( CU_HORZ_SPLIT, cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , disableBTV, disableBTH
+#endif
+  ) )
 #endif
   {
     // add split modes
@@ -2440,28 +2541,48 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
   ComprCUCtx& cuECtx = m_ComprCUCtxList[EncModeCtrl::m_treeIdx].back();
 #else
   ComprCUCtx& cuECtx = m_ComprCUCtxList.back();
-#endif
-  // MTT modes early termination for 64x64 luma CU based on nosplit intra cost
-#if JVET_AE0057_MTT_ET
-  if (m_pcEncCfg->getUseMttSkip() && partitioner.currQtDepth == (cs.sps->getCTUSize() == 256 ? 2 : 1)
-      && partitioner.currBtDepth == 0
-      && partitioner.currArea().lwidth() == 64 && partitioner.currArea().lheight() == 64
-#if JVET_AI0136_ADAPTIVE_DUAL_TREE
-      && !(cs.slice->getSeparateTreeEnabled() && cs.sps->getInterSliceSeparateTreeEnabled())
-#endif
-    )
+#endif     
+
+#if JVET_AJ0226_MTT_SKIP   
+  if (m_pcEncCfg->getUseMttSkip() && partitioner.currBtDepth == 0 && (partitioner.currArea().lwidth() == partitioner.currArea().lheight()) &&
+      (partitioner.currArea().lwidth() == 64 || partitioner.currArea().lwidth() == 32 ))
   {
-    if (((partitioner.currArea().Y().x + 63 < cs.picture->lwidth())
-         && (partitioner.currArea().Y().y + 63 < cs.picture->lheight()))
-        && (encTestmode.type == ETM_SPLIT_BT_H || encTestmode.type == ETM_SPLIT_BT_V
-            || encTestmode.type == ETM_SPLIT_TT_H || encTestmode.type == ETM_SPLIT_TT_V)
-        && partitioner.chType == CHANNEL_TYPE_LUMA)
+    if (((partitioner.currArea().Y().x + partitioner.currArea().lwidth()-1  < cs.picture->lwidth())
+      && (partitioner.currArea().Y().y + partitioner.currArea().lwidth()-1  < cs.picture->lheight()))
+      && (encTestmode.type == ETM_SPLIT_BT_H || encTestmode.type == ETM_SPLIT_BT_V
+        || encTestmode.type == ETM_SPLIT_TT_H || encTestmode.type == ETM_SPLIT_TT_V)
+      && partitioner.chType == CHANNEL_TYPE_LUMA 
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+      && (!(cs.slice->getProcessingIntraRegion() && cs.slice->getProcessingSeparateTrees()) || cs.slice->isIntra())
+#endif
+      )
     {
-      int thresholdMTT = Clip3(0, MAX_INT, (120 - ((m_pcEncCfg->getBaseQP() - 22) * 3)) * 1000000);
-      if (m_noSplitIntraRdCost > thresholdMTT)
+      double splitSignalCostScaling = Clip3(0.0, 4.0, (4.0 * pow(0.5, (m_pcEncCfg->getBaseQP() - 22.0) / 5)));
+      int modeCabacCost = 0;
+
+      if (encTestmode.type == ETM_SPLIT_TT_H)
+      {
+        modeCabacCost = partitioner.currArea().lwidth() == 64 ? m_cabacBitsforTTH[2] : partitioner.currArea().lwidth() == 32 ? m_cabacBitsforTTH[3] : 0;
+      }
+      else if (encTestmode.type == ETM_SPLIT_TT_V)
+      {
+        modeCabacCost = partitioner.currArea().lwidth() == 64 ? m_cabacBitsforTTV[2] : partitioner.currArea().lwidth() == 32 ? m_cabacBitsforTTV[3] : 0;
+      }
+      else if (encTestmode.type == ETM_SPLIT_BT_H)
+      {
+        modeCabacCost = partitioner.currArea().lwidth() == 64 ? m_cabacBitsforBTH[2] : partitioner.currArea().lwidth() == 32 ? m_cabacBitsforBTH[3] : 0;
+      }
+      else if (encTestmode.type == ETM_SPLIT_BT_V)
+      {
+        modeCabacCost = partitioner.currArea().lwidth() == 64 ? m_cabacBitsforBTV[2] : partitioner.currArea().lwidth() == 32 ? m_cabacBitsforBTV[3] : 0;
+      }
+
+      int thresholdMTT = Clip3(0, MAX_INT, (140 - ((cs.slice->getSliceQp() - 22) * 3)) * (1000000 - (int)(modeCabacCost * splitSignalCostScaling) ));
+      double noSplitCost = partitioner.currArea().lwidth() == 64 ? m_noSplitIntraRdCost64CU : partitioner.currArea().lwidth() == 32 ? m_noSplitIntraRdCost32CU :  0;
+
+      if (noSplitCost > thresholdMTT)
       {
         const PartSplit split = getPartSplit(encTestmode);
-
         if (split == CU_HORZ_SPLIT)
         {
           cuECtx.set(DID_HORZ_SPLIT, false);
@@ -2469,6 +2590,14 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
         if (split == CU_VERT_SPLIT)
         {
           cuECtx.set(DID_VERT_SPLIT, false);
+        }
+        if (split == CU_TRIH_SPLIT)
+        {
+          cuECtx.set(DO_TRIH_SPLIT, false);
+        }
+        if (split == CU_TRIV_SPLIT)
+        {
+          cuECtx.set(DO_TRIV_SPLIT, false);
         }
         return false;
       }
@@ -2519,7 +2648,11 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
   }
   else if( isBoundary && encTestmode.type == ETM_SPLIT_QT )
   {
-    return partitioner.canSplit( CU_QUAD_SPLIT, cs );
+    return partitioner.canSplit( CU_QUAD_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    );
   }
 
 #if REUSE_CU_RESULTS
@@ -2558,17 +2691,33 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
   CodedCUInfo    &relatedCU          = getBlkInfo( partitioner.currArea() );
 #endif
 
-  if( cuECtx.minDepth > partitioner.currQtDepth && partitioner.canSplit( CU_QUAD_SPLIT, cs ) )
-  {
-    // enforce QT
-    return encTestmode.type == ETM_SPLIT_QT;
-  }
-  else if( encTestmode.type == ETM_SPLIT_QT && cuECtx.maxDepth <= partitioner.currQtDepth )
-  {
-    // don't check this QT depth
-    return false;
-  }
+  if( cuECtx.minDepth > partitioner.currQtDepth && partitioner.canSplit( CU_QUAD_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
 
+  ) )
+  {
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
+    bool doIntra = encTestmode.type == ETM_INTRA && cs.slice->getSeparateTreeEnabled()
+                   && cs.slice->getIntraRegionNoSplitTest() && !bestCS;
+    if (!doIntra)
+#endif
+    {
+      // enforce QT
+      return encTestmode.type == ETM_SPLIT_QT;
+    }
+  }
+  else if (encTestmode.type == ETM_SPLIT_QT && cuECtx.maxDepth <= partitioner.currQtDepth)
+  {
+#if JVET_AI0087_BTCUS_RESTRICTION  
+        if (!(partitioner.chType == CHANNEL_TYPE_LUMA && partitioner.currBtDepth == 0 && (partitioner.currArea().lwidth() == 128 || partitioner.currArea().lwidth() == 64 || partitioner.currArea().lwidth() == 32)))
+#endif      
+        {
+          // don't check this QT depth
+          return false;
+        }      
+  }
   if( bestCS && bestCS->cus.size() == 1 )
   {
     // update the best non-split cost
@@ -2984,7 +3133,11 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
     }
 
     const PartSplit split = getPartSplit( encTestmode );
-    if( !partitioner.canSplit( split, cs ) || skipScore >= 2 )
+    if( !partitioner.canSplit( split, cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif    
+    ) || skipScore >= 2 )
     {
       if( split == CU_HORZ_SPLIT ) cuECtx.set( DID_HORZ_SPLIT, false );
       if( split == CU_VERT_SPLIT ) cuECtx.set( DID_VERT_SPLIT, false );
@@ -3068,7 +3221,11 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
 #if JVET_AH0135_TEMPORAL_PARTITIONING
             bool canNo, canQt, canBh, canBv, canTh, canTv;
             unsigned maxBTD;
-            partitioner.canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv, maxBTD );
+            partitioner.canSplit( cs, canNo, canQt, canBh, canBv, canTh, canTv, maxBTD 
+#if JVET_AI0087_BTCUS_RESTRICTION
+              , false, false
+#endif
+            );
 #else 
             unsigned maxBTD        = cs.pcv->getMaxBtDepth( slice, partitioner.chType );
 #endif
@@ -3896,7 +4053,11 @@ bool EncModeCtrlMTnoRQT::useModeResult( const EncTestMode& encTestmode, CodingSt
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   bool canNo, canQt, canBh, canBv, canTh, canTv;
   unsigned maxBTD;
-  partitioner.canSplit( *tempCS, canNo, canQt, canBh, canBv, canTh, canTv, maxBTD );
+  partitioner.canSplit( *tempCS, canNo, canQt, canBh, canBv, canTh, canTv, maxBTD
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  );
   maxMtD = (int)maxBTD;
 #endif
 

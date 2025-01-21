@@ -810,6 +810,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setLog2SignPredArea                                  (m_log2SignPredArea);
 #endif
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  m_cEncLib.setMTSExt                                            (m_MTSExt);
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   m_cEncLib.setIntraLFNSTISlice                                  ( m_intraLFNSTISlice );
   m_cEncLib.setIntraLFNSTPBSlice                                 ( m_intraLFNSTPBSlice );
@@ -824,14 +827,21 @@ void EncApp::xInitLibCfg()
 #if JVET_AI0050_SBT_LFNST
   m_cEncLib.setUseSBTLFNST                                       ( m_useSbtLFNST );
 #endif
+#if AHG7_LN_TOOLOFF_CFG
+  m_cEncLib.setNSPT                                              ( m_NSPT );
+  m_cEncLib.setLFNSTExt                                          ( m_LFNSTExt );
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   m_cEncLib.setUseFastInterLFNST                                 ( m_useFastInterLFNST );
 #endif
   m_cEncLib.setSbTmvpEnabledFlag                                 ( m_sbTmvpEnableFlag );
   m_cEncLib.setAffine                                            ( m_Affine );
   m_cEncLib.setAffineType                                        ( m_AffineType );
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   m_cEncLib.setUseAltCost                                        ( m_useAltCost );
+#endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  m_cEncLib.setUseExtAmvp                                        ( m_useExtAmvp );
 #endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
   m_cEncLib.setUseAffineTM                                       ( m_useAffineTM );
@@ -938,11 +948,21 @@ void EncApp::xInitLibCfg()
 #if JVET_AA0133_INTER_MTS_OPT
   m_cEncLib.setInterMTSMaxSize(m_interMTSMaxSize);
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+  m_cEncLib.setIntraMTSMaxSize(m_intraMTSMaxSize);
+#endif
 #if ENABLE_DIMD
   m_cEncLib.setUseDimd                                           ( m_dimd );
 #endif
 #if JVET_W0123_TIMD_FUSION
   m_cEncLib.setUseTimd                                           ( m_timd );
+#if JVET_AJ0061_TIMD_MERGE
+  m_cEncLib.setUseTimdMrg                                        ( m_timdMrg );
+  if (!m_timd)
+  {
+    m_cEncLib.setUseTimdMrg                                        ( false );
+  }
+#endif
 #endif
 #if JVET_AB0155_SGPM
   m_cEncLib.setUseSgpm                                           ( m_sgpm );
@@ -981,6 +1001,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setUseGeo                                            ( m_Geo );
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   m_cEncLib.setUseGeoInterIbc                                    ( m_Geo ? m_geoInterIbc : false );
+#endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  m_cEncLib.setUseGeoShapeAdapt                                  ( m_Geo ? m_geoShapeAdapt : false);
 #endif
   m_cEncLib.setUseHashME                                         ( m_HashME );
 
@@ -1068,7 +1091,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setTMIbc(m_tmibc);
   m_cEncLib.setIbcMerge                                          ( m_ibcMerge );
 #endif
-
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  m_cEncLib.setIntraToolControlMode                              ( m_intraToolControlMode );
+#endif
   m_cEncLib.setUseWrapAround                                     ( m_wrapAround );
   m_cEncLib.setWrapAroundOffset                                  ( m_wrapAroundOffset );
 #if JVET_V0130_INTRA_TMP
@@ -1113,6 +1138,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AI0183_MVP_EXTENSION
   m_cEncLib.setConfigScaledMvExtTmvp                             ( m_scaledMvExtTmvp );
   m_cEncLib.setConfigScaledMvExtBiTmvp                           ( m_scaledMvExtBiTmvp );
+#endif
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+  m_cEncLib.setConfigSbTmvpMvExt                                 ( m_sbTmvpMvExt );
 #endif
 
   // ADD_NEW_TOOL : (encoder app) add setting of tool enabling flags and associated parameters here
@@ -1182,7 +1210,7 @@ void EncApp::xInitLibCfg()
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT
   m_cEncLib.setTempCabacInitMode                                 ( m_tempCabacInitMode );
 #endif
-  #if JVET_AE0057_MTT_ET 
+  #if JVET_AJ0226_MTT_SKIP 
   m_cEncLib.setUseMttSkip                                        (m_useMttSkip);
 #endif
   // set internal bit-depth and constants
@@ -1204,6 +1232,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setMaxNumGeoCand                                     ( m_maxNumGeoCand );
 #if JVET_AG0164_AFFINE_GPM
   m_cEncLib.setMaxNumGpmAffCand                                  ( m_maxNumGpmAffCand );
+#if JVET_AJ0274_GPM_AFFINE_TM
+  m_cEncLib.setMaxNumGpmAffTmCand                                ( m_maxNumGpmAffTmCand );
+#endif
 #endif
   m_cEncLib.setMaxNumIBCMergeCand                                ( m_maxNumIBCMergeCand );
 #if JVET_Z0127_SPS_MHP_MAX_MRG_CAND
@@ -1253,6 +1284,13 @@ void EncApp::xInitLibCfg()
 #endif
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   m_cEncLib.setUseCCALFPrecision                                 ( m_ccalfPrecision );
+#endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  m_cEncLib.setAlfLumaFixedFilterAdjust                          ( m_alfLumaFixedFilterAdjust );
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_cEncLib.setInloopOffsetRefineFlag                            ( m_inloopOffsetRefineFlag );
+  m_cEncLib.setInloopOffsetRefineFunc                            ( m_inloopOffsetRefineFunc );
 #endif
   m_cEncLib.setTestSAODisableAtPictureLevel                      ( m_bTestSAODisableAtPictureLevel );
   m_cEncLib.setSaoEncodingRate                                   ( m_saoEncodingRate );
@@ -1489,6 +1527,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setForceSingleSplitThread                            ( m_forceSplitSequential );
 #endif
   m_cEncLib.setUseALF                                            ( m_alf );
+#if FIXFILTER_CFG
+  m_cEncLib.setUseAlfFixedFilter                                 ( m_alfFixedFilter );
+#endif
   m_cEncLib.setUseCCALF                                          ( m_ccalf );
   m_cEncLib.setCCALFQpThreshold                                  ( m_ccalfQpThreshold );
   m_cEncLib.setLmcs                                              ( m_lmcsEnabled );
@@ -1611,6 +1652,9 @@ void EncApp::xInitLibCfg()
 
 #if JVET_AB0171_ASYMMETRIC_DB_FOR_GDR
   m_cEncLib.setAsymmetricILF(m_asymmetricILF);
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  m_cEncLib.setNnipMode(m_intraNN);
 #endif
 }
 

@@ -997,9 +997,18 @@ void HLSyntaxReader::parseAPS( APS* aps )
   aps->setAPSType( ApsType(code) );
 #endif
 #if JVET_R0433
+#if JVET_AK0065_TALF
+  if (aps->getAPSType() != TALF_APS)
+  {
+    uint32_t codeApsChromaPresentFlag;
+    READ_FLAG(codeApsChromaPresentFlag, "aps_chroma_present_flag");
+    aps->chromaPresentFlag = codeApsChromaPresentFlag;
+  }
+#else
   uint32_t codeApsChromaPresentFlag;
   READ_FLAG(codeApsChromaPresentFlag, "aps_chroma_present_flag");
   aps->chromaPresentFlag = codeApsChromaPresentFlag;
+#endif
 #endif
 
   const ApsType apsType = aps->getAPSType();
@@ -1008,6 +1017,12 @@ void HLSyntaxReader::parseAPS( APS* aps )
   {
     parseAlfAps( aps );
   }
+#if JVET_AK0065_TALF
+  else if (apsType == TALF_APS)
+  {
+    parseTAlfAps(aps);
+  }
+#endif
   else if (apsType == LMCS_APS)
   {
     parseLmcsAps( aps );
@@ -1031,6 +1046,16 @@ void HLSyntaxReader::parseAPS( APS* aps )
   xReadRbspTrailingBits();
 }
 
+#if JVET_AK0065_TALF
+void HLSyntaxReader::parseTAlfAps(APS *aps)
+{
+  auto param = aps->getTAlfAPSParam();
+  param.reset();
+  param.newFlag = true;
+  decodeTAlfNewFilter(param);
+  aps->setTAlfAPSParam(param);
+}
+#endif
 void HLSyntaxReader::parseAlfAps( APS* aps )
 {
   uint32_t  code;
@@ -1098,9 +1123,25 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
       code = 0;
     param.numAlternativesLuma = code + 1;
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
+#if FIXFILTER_CFG
+    READ_FLAG(code, "alf_luma_use_fixed_filter");
+    if(code)
+    {
+      READ_FLAG(code, "alf_luma_13_ext_db_resi_direct : alf_luma_13_ext_db_resi");
+      param.filterType[CHANNEL_TYPE_LUMA] =
+        code ? ALF_FILTER_13_EXT_DB_RESI_DIRECT : ALF_FILTER_13_EXT_DB_RESI;
+    }
+    else
+    {
+      READ_FLAG(code, "alf_luma_13_db_resi_direct : alf_luma_13_db_resi");
+      param.filterType[CHANNEL_TYPE_LUMA] =
+        code ? ALF_FILTER_13_DB_RESI_DIRECT : ALF_FILTER_13_DB_RESI;
+    }
+#else
     READ_FLAG(code, "alf_luma_13_ext_db_resi_direct : alf_luma_13_ext_db_resi");
     param.filterType[CHANNEL_TYPE_LUMA] =
       code ? ALF_FILTER_13_EXT_DB_RESI_DIRECT : ALF_FILTER_13_EXT_DB_RESI;
+#endif
 #else
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF && JVET_AA0095_ALF_LONGER_FILTER
     READ_FLAG(code, "alf_luma_9_ext_db : alf_luma_13_ext_db");
@@ -1203,7 +1244,19 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
     READ_FLAG(code, "alf_nonlinear_enable_flag_chroma");
     param.nonLinearFlag[CHANNEL_TYPE_CHROMA] = code ? true : false;
 #else
+#if FIXFILTER_CFG
+    READ_FLAG(code, "alf_chroma_use_fixed_filter");
+    if(code)
+    {
+      param.filterType[CHANNEL_TYPE_CHROMA] = ALF_FILTER_9;
+    }
+    else
+    {
+      param.filterType[CHANNEL_TYPE_CHROMA] = ALF_FILTER_9_NO_FIX;
+    }
+#else
     param.filterType[CHANNEL_TYPE_CHROMA] = ALF_FILTER_9;
+#endif
 #endif
 
     if( MAX_NUM_ALF_ALTERNATIVES_CHROMA > 1 )
@@ -2089,6 +2142,14 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   {
     READ_FLAG(uiCode, "sps_explicit_mts_intra_enabled_flag");               pcSPS->setUseIntraMTS(uiCode != 0);
     READ_FLAG(uiCode, "sps_explicit_mts_inter_enabled_flag");               pcSPS->setUseInterMTS(uiCode != 0);
+#if AHG7_MTS_TOOLOFF_CFG
+    READ_FLAG(uiCode, "sps_explicit_mts_extension_enabled_flag");               pcSPS->setUseMTSExt(uiCode != 0);
+    if (pcSPS->getUseIntraMTS())
+    {
+      READ_CODE(2, uiCode, "intraMTSMaxSizeMinus5");
+      pcSPS->setIntraMTSMaxSize(1 << (uiCode + 5));
+    }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
     if (pcSPS->getUseInterMTS())
     {
@@ -2108,6 +2169,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #endif
 #else
   READ_FLAG(uiCode, "sps_lfnst_enabled_flag");                    pcSPS->setUseLFNST(uiCode != 0);
+#endif
+#if AHG7_LN_TOOLOFF_CFG
+  READ_FLAG( uiCode, "sps_nspt_enabled_flag" );                    pcSPS->setUseNSPT( uiCode != 0 );
+  READ_FLAG( uiCode, "sps_lfnst_ext_enabled_flag" );               pcSPS->setUseLFNSTExt( uiCode != 0 );
 #endif
 #endif
 
@@ -2183,6 +2248,28 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     pcSPS->setAlfPrecisionFlag( false );
   }
 #endif
+#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
+  if( pcSPS->getALFEnabledFlag() )
+  {
+    READ_FLAG( uiCode, "sps_alf_luma_fixed_filter_adjust" );         pcSPS->setAlfLumaFixedFilterAdjust( uiCode ? true : false );
+  }
+  else
+  {
+    pcSPS->setAlfLumaFixedFilterAdjust( false );
+  }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  if( pcSPS->getALFEnabledFlag() )
+  {
+    READ_FLAG( uiCode, "sps_inloop_offset_refine_flag" );                 pcSPS->setInloopOffsetRefineFlag( uiCode ? true : false );
+    READ_FLAG( uiCode, "sps_inloop_offset_refine_func" );                 pcSPS->setInloopOffsetRefineFunc( uiCode ? true : false );
+  }
+  else
+  {
+    pcSPS->setInloopOffsetRefineFlag( false );
+    pcSPS->setInloopOffsetRefineFunc( false );
+  }
+#endif
   if (pcSPS->getALFEnabledFlag() && pcSPS->getChromaFormatIdc() != CHROMA_400)
   {
     READ_FLAG( uiCode, "sps_ccalf_enabled_flag" );                      pcSPS->setCCALFEnabledFlag ( uiCode ? true : false );
@@ -2200,6 +2287,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   {
     pcSPS->setCCALFPrecisionFlag(false);
   }
+#endif
+#if JVET_AK0065_TALF
+  READ_FLAG( uiCode, "sps_talf_enabled_flag ");
+  pcSPS->setUseTAlf(uiCode);
 #endif
 #if SIGN_PREDICTION
   READ_CODE(4, uiCode, "num_predicted_coef_signs");
@@ -2550,7 +2641,12 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AI0183_MVP_EXTENSION
     const uint32_t uiCodeAffMrgMaxNumCands = uiCode;
     READ_FLAG( uiCode, "sps_scaled_mv_ext_b_configure_flag" );                      pcSPS->setConfigScaledMvExtTmvp( uiCode == 1 );
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    READ_FLAG(uiCode, "sps_sbtmvp_mv_ext_configure_flag");                          pcSPS->setConfigSbTmvpMvExt(uiCode == 1);
+    pcSPS->setMaxNumAffineMergeCand(AFFINE_MRG_MAX_NUM_CANDS - uiCodeAffMrgMaxNumCands - (pcSPS->getConfigScaledMvExtTmvp() ? 0 : 2) - (pcSPS->getConfigSbTmvpMvExt() ? 0 : 2));  
+#else
     pcSPS->setMaxNumAffineMergeCand(AFFINE_MRG_MAX_NUM_CANDS - uiCodeAffMrgMaxNumCands - (pcSPS->getConfigScaledMvExtTmvp() ? 0 : 2));
+#endif
 #else
     pcSPS->setMaxNumAffineMergeCand(AFFINE_MRG_MAX_NUM_CANDS - uiCode);
 #endif
@@ -2622,10 +2718,12 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     READ_FLAG(uiCode, "sps_tm_mmvd_enabled_flag");                  pcSPS->setUseTMMMVD(uiCode != 0);
   }
 #endif
-#if JVET_AH0185_ADAPTIVE_COST_IN_MERGE_MODE
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   READ_FLAG( uiCode, "sps_alt_cost_enabled_flag");                  pcSPS->setUseAltCost(uiCode != 0);
 #endif
-
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  READ_FLAG( uiCode, "sps_ext_amvp_enabled_flag");                  pcSPS->setUseExtAmvp(uiCode != 0);
+#endif
   READ_FLAG( uiCode,    "sps_bcw_enabled_flag" );                   pcSPS->setUseBcw( uiCode != 0 );
   READ_FLAG( uiCode,     "sps_ciip_enabled_flag" );                           pcSPS->setUseCiip             ( uiCode != 0 );
 #if JVET_X0141_CIIP_TIMD_TM && TM_MRG
@@ -2680,6 +2778,13 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
         READ_UVLC(uiCode, "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
         pcSPS->setMaxNumGpmAffCand((uint32_t)(pcSPS->getMaxNumAffineMergeCand() - uiCode));
       }
+#if JVET_AJ0274_GPM_AFFINE_TM
+      if (pcSPS->getMaxNumGpmAffCand() > 0)
+      {
+        READ_UVLC(uiCode, "max_num_gpm_aff_tm_cand");
+        pcSPS->setMaxNumGpmAffTmCand((uint32_t)uiCode);
+      }
+#endif
 #endif
 
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -2692,6 +2797,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AI0082_GPM_WITH_INTER_IBC
       READ_FLAG(uiCode, "sps_gpm_inter_ibc_enabled_flag");
       pcSPS->setUseGeoInterIbc(uiCode != 0);
+#endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      READ_FLAG(uiCode, "sps_gpm_shape_adapt_flag");
+      pcSPS->setUseGeoShapeAdapt(uiCode != 0);
 #endif
     }
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -2737,6 +2846,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AH0209_PDP
   READ_FLAG( uiCode, "sps_pdp_enabled_flag" );                      pcSPS->setUsePDP( uiCode != 0 );
 #endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  READ_FLAG(uiCode, "sps_nnip_enabled_flag");
+  pcSPS->setNnipMode(static_cast<bool>(uiCode));
+#endif
 #if ENABLE_DIMD
   READ_FLAG(uiCode, "sps_dimd_enabled_flag");                           pcSPS->setUseDimd(uiCode != 0);
 #endif
@@ -2768,6 +2881,16 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #endif
 #if JVET_W0123_TIMD_FUSION
   READ_FLAG(uiCode, "sps_timd_enabled_flag");                        pcSPS->setUseTimd( uiCode != 0 );
+#if JVET_AJ0061_TIMD_MERGE
+  if (pcSPS->getUseTimd())
+  {
+    READ_FLAG(uiCode, "sps_timd_merge_enabled_flag");                pcSPS->setUseTimdMrg( uiCode != 0 );
+  }
+  else
+  {
+    pcSPS->setUseTimdMrg( false );
+  }
+#endif
 #endif
 #if JVET_X0141_CIIP_TIMD_TM && JVET_W0123_TIMD_FUSION
   if (pcSPS->getUseCiip() && pcSPS->getUseTimd())
@@ -2961,6 +3084,12 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AG0136_INTRA_TMP_LIC
   READ_FLAG( uiCode, "sps_itmp_lic_extension_flag" );                    pcSPS->setItmpLicExtension ( uiCode != 0 );
   READ_FLAG( uiCode, "sps_itmp_lic_mode_flag" );                              pcSPS->setItmpLicMode ( uiCode != 0 );
+#endif
+
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  READ_FLAG(uiCode, "sps_ref_filter_disabled_flag");                    pcSPS->setDisableRefFilter(uiCode != 0);
+  READ_FLAG(uiCode, "sps_pdpc_disabled_flag");                          pcSPS->setDisablePdpc(uiCode != 0);
+  READ_FLAG(uiCode, "sps_intra_fusion_disabled_flag");                  pcSPS->setDisableIntraFusion(uiCode != 0);
 #endif
 
 #if !JVET_S0074_SPS_REORDER
@@ -3767,6 +3896,51 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
     picHeader->setAlfEnabledFlag(COMPONENT_Cb, false);
     picHeader->setAlfEnabledFlag(COMPONENT_Cr, false);
   }
+#if JVET_AK0065_TALF
+  TAlfControl talfControl;
+  if (sps->getUseTAlf() && pps->getAlfInfoInPhFlag())
+  {
+    READ_FLAG(uiCode, "slice_talf_enabled_flag");
+    talfControl.enabledFlag = uiCode;
+    if (talfControl.enabledFlag)
+    {
+      READ_FLAG(uiCode, "newFilters flag");
+      talfControl.newFilters = uiCode;
+      int numUsingMinus1 = 0;
+      if (!talfControl.newFilters)
+      {
+        READ_CODE(3, uiCode, "the number of sets of talf used in slice");
+        numUsingMinus1 = uiCode;
+        talfControl.apsIds.resize(numUsingMinus1 + 1);
+      }
+      else
+      {
+        talfControl.apsIds.resize(1);
+      }
+      for (int i = 0; i <= numUsingMinus1; i++)
+      {
+        READ_CODE(3, uiCode, "the apsId for locating the stored coefficients");
+        talfControl.apsIds[i] = uiCode;
+      }
+      uint32_t isMv  = 0;
+      uint32_t isBi  = 0;
+      uint32_t isFwd = 0;
+      READ_FLAG(isMv, "isMv");
+      READ_FLAG(isBi, "isBi");
+      if (!isBi)
+      {
+        READ_FLAG(isFwd, "isFwd");
+      }
+      talfControl.mode += (isMv ? 0 : (NUM_TALF_MODE >> 1));
+      talfControl.mode += (isBi ? BIDIR_TALF_MV : 0);
+      if (!isBi)
+      {
+        talfControl.mode += (isFwd ? FORWARD_TALF_MV : BACKWARD_TALF_MV);
+      }
+    }
+  }
+  picHeader->setTAlfControl(talfControl);
+#endif
   // luma mapping / chroma scaling controls
   if (sps->getUseLmcs())
   {
@@ -4667,7 +4841,11 @@ void HLSyntaxReader::parseScaleAlf( Slice* pcSlice, SPS* sps, ParameterSetManage
     {
       ScaleAlf& curScaleAlfParam = pcSlice->getAlfScale( i , j );
 
+#if JVET_AJ0237_INTERNAL_12BIT
+      curScaleAlfParam.init(apsIdx, j, alfParam.lumaClassifierIdx[j], sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
       curScaleAlfParam.init( apsIdx, j, alfParam.lumaClassifierIdx[j] );
+#endif
       curScaleAlfParam.apsIdx = apsIdx;
 
       if ( !bReadUseAlfScale ) 
@@ -5112,6 +5290,51 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     parseScaleAlf( pcSlice, sps, parameterSetManager, alfCbUsedFlag, alfCrUsedFlag );
 #endif
   }
+#if JVET_AK0065_TALF
+  TAlfControl talfControl;
+  if (sps->getUseTAlf() && !pps->getAlfInfoInPhFlag())
+  {
+    READ_FLAG(uiCode, "slice_talf_enabled_flag");
+    talfControl.enabledFlag = uiCode;
+    if (talfControl.enabledFlag)
+    {
+      READ_FLAG(uiCode, "newFilters flag");
+      talfControl.newFilters = uiCode;
+      int numUsingMinus1 = 0;
+      if (!talfControl.newFilters)
+      {
+        READ_CODE(3, uiCode, "the number of sets of talf used in slice");
+        numUsingMinus1 = uiCode;
+        talfControl.apsIds.resize(numUsingMinus1 + 1);
+      }
+      else
+      {
+        talfControl.apsIds.resize(1);
+      }
+      for (int i = 0; i <= numUsingMinus1; i++)
+      {
+        READ_CODE(3, uiCode, "the apsId for locating the stored coefficients");
+        talfControl.apsIds[i] = uiCode;
+      }
+      uint32_t isMv  = 0;
+      uint32_t isBi  = 0;
+      uint32_t isFwd = 0;
+      READ_FLAG(isMv, "isMv");
+      READ_FLAG(isBi, "isBi");
+      if (!isBi)
+      {
+        READ_FLAG(isFwd, "isFwd");
+      }
+      talfControl.mode += (isMv ? 0 : (NUM_TALF_MODE >> 1));
+      talfControl.mode += (isBi ? BIDIR_TALF_MV : 0);
+      if (!isBi)
+      {
+        talfControl.mode += (isFwd ? FORWARD_TALF_MV : BACKWARD_TALF_MV);
+      }
+    }
+  }
+  pcSlice->setTileGroupTAlfControl(talfControl);
+#endif
   if (picHeader->getLmcsEnabledFlag() && !pcSlice->getPictureHeaderInSliceHeader())
   {
     READ_FLAG(uiCode, "slice_lmcs_enabled_flag");
@@ -5425,7 +5648,6 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
       pcSlice->setCabacInitFlag( uiCode ? true : false );
       pcSlice->setEncCABACTableIdx( pcSlice->getSliceType() == B_SLICE ? ( uiCode ? P_SLICE : B_SLICE ) : ( uiCode ? B_SLICE : P_SLICE ) );
     }
-
     if ( picHeader->getEnableTMVPFlag() )
     {
       if( pcSlice->getSliceType() == P_SLICE )
@@ -5764,7 +5986,11 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     if (index != -1)
     {
       lambdaCanBePredicted = true;
+#if JVET_AJ0237_INTERNAL_12BIT
+      pcSlice->setCostForARMC(sps->getLambdaVal((int)index), sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
       pcSlice->setCostForARMC(sps->getLambdaVal((int) index));
+#endif
     }
     if (!lambdaCanBePredicted)
     {
@@ -5773,7 +5999,11 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
 #else
       READ_CODE(9, uiCode, "Lambda");
 #endif
+#if JVET_AJ0237_INTERNAL_12BIT
+      pcSlice->setCostForARMC((uint32_t)uiCode, sps->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
       pcSlice->setCostForARMC((uint32_t)uiCode);
+#endif
     }
   }
 #endif
@@ -5818,6 +6048,9 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
   {
     clipDeltaShift = ADAPTIVE_CLIP_SHIFT_DELTA_VALUE_0;
   }
+#if JVET_AJ0237_INTERNAL_12BIT
+  clipDeltaShift += std::max(0, sps->getBitDepth(toChannelType(COMPONENT_Y)) - 10);
+#endif
   if (pcSlice->getSliceType() == I_SLICE)
   {
     READ_SVLC(iCode, "clip_luma_pel_max");
@@ -5857,6 +6090,43 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     int deltaMin = iCode;
     pcSlice->setLumaPelMax(deltaMax);
     pcSlice->setLumaPelMin(deltaMin);
+  }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool sliceTypeConditionDbf = true;
+  if( sps->getALFEnabledFlag() && !pcSlice->getDeblockingFilterDisable() && sliceTypeConditionDbf )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_dbf");
+    pcSlice->setOffsetRefinementDbf( uiCode );
+  }
+  else
+  {
+    pcSlice->setOffsetRefinementDbf( false );
+  }
+
+  pcSlice->setOffsetRefinementDbfIdx( false );
+  if( pcSlice->getOffsetRefinementDbf() )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_dbf_idx");
+    pcSlice->setOffsetRefinementDbfIdx( uiCode );
+  }
+
+  bool sliceTypeConditionAlf = !pcSlice->isIntra();
+  if( sps->getALFEnabledFlag() && pcSlice->getTileGroupAlfEnabledFlag( COMPONENT_Y ) && sliceTypeConditionAlf  )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_alf");
+    pcSlice->setOffsetRefinementAlf( uiCode );
+  }
+  else
+  {
+    pcSlice->setOffsetRefinementAlf( false );
+  }
+
+  pcSlice->setOffsetRefinementAlfIdx( false );
+  if( pcSlice->getOffsetRefinementAlf() )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_alf_idx");
+    pcSlice->setOffsetRefinementAlfIdx( uiCode );
   }
 #endif
 
@@ -6969,6 +7239,39 @@ bool HLSyntaxReader::xMoreRbspData()
   return (cnt>0);
 }
 
+#if JVET_AK0065_TALF
+void HLSyntaxReader::decodeTAlfNewFilter( TAlfFilterParam &param )
+{
+  uint32_t filterCountMinus1      = 0;
+  READ_UVLC(filterCountMinus1, "filterCountMinus1");
+  param.filterCount = filterCountMinus1 + 1;
+  uint32_t shapeIdx = 0;
+  READ_FLAG(shapeIdx, "param.shapeIdx");
+  param.shapeIdx = shapeIdx;
+  const int numCoeff = NUM_TALF_COEFF;
+  for (int fIdx = 0; fIdx <= filterCountMinus1; fIdx++)
+  {
+    uint32_t k = 0;
+    READ_FLAG(k, "k");
+    uint32_t shift = 0;
+    READ_CODE(2, shift, "param.shift[fIdx]");
+    param.shift[fIdx] = shift + TALF_SCALE_BIT;
+    uint32_t clipFlag = 0;
+    READ_FLAG(clipFlag, "param.clipFlag[fIdx]");
+    param.clipFlag[fIdx] = clipFlag;
+    for (int cIdx = 0; cIdx < numCoeff; cIdx++)
+    {
+      param.coeff[fIdx][cIdx] = alfGolombDecode(k);
+      if (param.coeff[fIdx][cIdx] && param.clipFlag[fIdx])
+      {
+        uint32_t clipIdx = 0;
+        READ_CODE(2, clipIdx, "tAlfParam.param.clipIdx[fIdx][cIdx]");
+        param.clipIdx[fIdx][cIdx] = clipIdx;
+      }
+    }
+  }
+}
+#endif
 #if JVET_W0066_CCSAO
 void HLSyntaxReader::parseCcSao( Slice* pcSlice, PicHeader* picHeader, const SPS* sps, CcSaoComParam& ccSaoParam )
 {

@@ -46,6 +46,15 @@ using namespace std;
 
 static const uint8_t emulation_prevention_three_byte = 3;
 
+void checkWriteError(std::ostream& out)
+{
+  if (out.fail())
+  {
+    printf ("\nError writing bitstream file\n");
+    exit (EXIT_FAILURE);
+  }
+}
+
 void writeNalUnitHeader(ostream& out, OutputNALUnit& nalu)       // nal_unit_header()
 {
 OutputBitstream bsNALUHeader;
@@ -59,6 +68,7 @@ OutputBitstream bsNALUHeader;
   bsNALUHeader.write(nalu.m_temporalId + 1, 3);   // nuh_temporal_id_plus1
 
   out.write(reinterpret_cast<const char*>(bsNALUHeader.getByteStream()), bsNALUHeader.getByteStreamLength());
+  checkWriteError(out);
 }
 
 /**
@@ -123,6 +133,7 @@ void writeNaluContent(ostream& out, OutputNALUnit& nalu)
     outputBuffer[outputAmount++]=emulation_prevention_three_byte;
   }
   out.write(reinterpret_cast<const char*>(&(*outputBuffer.begin())), outputAmount);
+  checkWriteError(out);
 }
 
 void writeNaluWithHeader(ostream& out, OutputNALUnit& nalu)

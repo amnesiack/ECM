@@ -74,6 +74,13 @@ enum AlfFilterType
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   ALF_FILTER_13_EXT_DB_RESI_DIRECT,
   ALF_FILTER_13_EXT_DB_RESI,
+#if FIXFILTER_CFG
+  ALF_FILTER_13_DB_RESI_DIRECT,
+  ALF_FILTER_13_DB_RESI,
+#endif
+#endif
+#if FIXFILTER_CFG
+  ALF_FILTER_9_NO_FIX,
 #endif
 #endif
   ALF_NUM_OF_FILTER_TYPES
@@ -91,10 +98,26 @@ static const int size_ALF_FILTER_13_EXT_DB = -6;
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
 static const int size_ALF_FILTER_13_EXT_DB_RESI_DIRECT = -7;
 static const int size_ALF_FILTER_13_EXT_DB_RESI        = -8;
+#if FIXFILTER_CFG
+static const int size_ALF_FILTER_13_DB_RESI_DIRECT = -9;
+static const int size_ALF_FILTER_13_DB_RESI        = -10;
+#endif
+#endif
+#if FIXFILTER_CFG
+static const int size_ALF_FILTER_9_NO_FIX          = -11;
+#endif
+#if JVET_AK0065_TALF
+static const int size_TALF = -100;
 #endif
 const int alfTypeToSize[ALF_NUM_OF_FILTER_TYPES] = { 5, 7, size_CC_ALF, 9, size_ALF_FILTER_9_EXT, size_ALF_FILTER_EXT, size_ALF_FILTER_13_EXT, size_ALF_FILTER_9_EXT_DB, size_ALF_FILTER_13_EXT_DB 
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
                                                      ,size_ALF_FILTER_13_EXT_DB_RESI_DIRECT, size_ALF_FILTER_13_EXT_DB_RESI
+#if FIXFILTER_CFG
+  ,size_ALF_FILTER_13_DB_RESI_DIRECT, size_ALF_FILTER_13_DB_RESI
+#endif
+#endif
+#if FIXFILTER_CFG
+  , size_ALF_FILTER_9_NO_FIX
 #endif
 };
 #elif JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
@@ -213,6 +236,37 @@ struct AlfFilterShape
       offset0 = ALF_ORDER;
 #endif
     }
+#if FIXFILTER_CFG
+    else if( size == size_ALF_FILTER_9_NO_FIX )
+    {
+      filterLength = 9;
+      filterSize = 9 * 9 / 2 + 1 ;
+      pattern = {
+                     0,
+                 1,  2,  3,
+             4,  5,  6,  7,  8,
+         9, 10, 11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20, 19, 18, 17, 16,
+        15, 14, 13, 12, 11, 10,  9, 
+             8,  7,  6,  5,  4,
+                 3,  2,  1,
+                     0
+      };
+
+      weights = {
+                    2,
+                2,  2,  2,
+            2,  2,  2,  2,  2,
+        2,  2,  2,  2,  2,  2,  2,
+    2,  2,  2,  2,  1,  1
+      };
+      filterType = ALF_FILTER_9_NO_FIX;
+      numCoeff = 21;
+      numOrder = 1;
+      indexSecOrder = 20;
+      offset0 = 0;
+    }
+#endif
     else if( size == size_ALF_FILTER_9_EXT )
     {
       size = 9;
@@ -446,8 +500,13 @@ struct AlfFilterShape
     {
       size          = 13;
 #if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+      numCoeff   = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + 1 + 1 + NUM_LAPLACIAN_FILTERED_COEFF;
+      filterSize = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + 1 + 1 + NUM_LAPLACIAN_FILTERED_COEFF;
+#else
       numCoeff      = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + 1 + 1;
       filterSize    = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + 1 + 1;
+#endif
 #elif JVET_AD0222_ALF_LONG_FIXFILTER
       numCoeff      = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + 1;
       filterSize    = 11 + EXT_LENGTH + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + 1;
@@ -477,7 +536,11 @@ struct AlfFilterShape
       };
       numOrder      = 2;
 #if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+#if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+      indexSecOrder = 8 + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI + NUM_LAPLACIAN_FILTERED_COEFF - NUM_LAPLACIAN_FILTERED_SOURCE;
+#else
       indexSecOrder = 8 + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI;
+#endif
 #elif JVET_AD0222_ALF_LONG_FIXFILTER
       indexSecOrder = 8 + NUM_DB + NUM_FIXED_BASED_COEFF_NEW - 1 + NUM_RESI;
 #elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
@@ -487,6 +550,98 @@ struct AlfFilterShape
 #endif
       offset0       = 0;
     }
+#if FIXFILTER_CFG
+    else if (size == size_ALF_FILTER_13_DB_RESI_DIRECT)
+    {
+      size          = 13;
+#if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      numCoeff = 11 + NUM_DB + NUM_RESI + NUM_GAUSS_FILTERED_COEFF;
+      filterSize = 11 + NUM_DB + NUM_RESI + NUM_GAUSS_FILTERED_COEFF;
+#elif JVET_AD0222_ALF_LONG_FIXFILTER
+      numCoeff = 11 + NUM_DB + NUM_RESI;
+      filterSize = 11 + NUM_DB + NUM_RESI;
+#elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      numCoeff = 21 + NUM_DB + NUM_RESI + NUM_GAUSS_FILTERED_COEFF;
+      filterSize = 21 + NUM_DB + NUM_RESI + NUM_GAUSS_FILTERED_COEFF;
+#else
+      numCoeff      = 21 + NUM_DB;
+      filterSize    = 21 + NUM_DB;
+#endif
+      filterLength  = 13;
+      filterType    = ALF_FILTER_13_DB_RESI_DIRECT;
+      pattern = {
+                            0,
+                            1,
+                            2,  
+                            3,
+                    4,  5,  6,  7,  8,
+                    9, 10, 11, 12, 13, 
+   14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 
+                   13, 12, 11, 10,  9,
+                    8,  7,  6,  5,  4,
+                            3,  
+                            2,  
+                            1,
+                            0
+      };
+      numOrder      = 2;
+#if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      indexSecOrder = 8 + NUM_DB + NUM_RESI + NUM_GAUSS_FILTERED_COEFF - NUM_GAUSS_FILTERED_SOURCE;
+#elif JVET_AD0222_ALF_LONG_FIXFILTER
+      indexSecOrder = 8 + NUM_DB + NUM_RESI;
+#elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      indexSecOrder = 18 + NUM_DB + NUM_RESI + NUM_GAUSS_FILTERED_COEFF - NUM_GAUSS_FILTERED_SOURCE;
+#else
+      indexSecOrder = 18 + NUM_DB + NUM_RESI;
+#endif
+      offset0       = 0;
+    }
+    else if (size == size_ALF_FILTER_13_DB_RESI)
+    {
+      size          = 13;
+#if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      numCoeff      = 11 + NUM_DB + NUM_RESI + 1;
+      filterSize    = 11 + NUM_DB + NUM_RESI + 1;
+#elif JVET_AD0222_ALF_LONG_FIXFILTER
+      numCoeff      = 11 + NUM_DB + NUM_RESI + 1;
+      filterSize    = 11 + NUM_DB + NUM_RESI + 1;
+#elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      numCoeff      = 21 + NUM_DB + NUM_RESI + 1 + 1;
+      filterSize    = 21 + NUM_DB + NUM_RESI + 1 + 1;
+#else
+      numCoeff      = 21 + NUM_DB + NUM_RESI + 1;
+      filterSize    = 21 + NUM_DB + NUM_RESI + 1;
+#endif
+      filterLength  = 13;
+      filterType    = ALF_FILTER_13_DB_RESI;
+      pattern = {
+                            0,
+                            1,
+                            2,  
+                            3,
+                    4,  5,  6,  7,  8,
+                    9, 10, 11, 12, 13, 
+   14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 
+                   13, 12, 11, 10,  9,
+                    8,  7,  6,  5,  4,
+                            3,  
+                            2,  
+                            1,
+                            0
+      };
+      numOrder      = 2;
+#if JVET_AD0222_ALF_LONG_FIXFILTER && JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      indexSecOrder = 8 + NUM_DB + NUM_RESI;
+#elif JVET_AD0222_ALF_LONG_FIXFILTER
+      indexSecOrder = 8 + NUM_DB + NUM_RESI;
+#elif JVET_AD0222_ADDITONAL_ALF_FIXFILTER
+      indexSecOrder = 18 + NUM_DB + NUM_RESI;
+#else
+      indexSecOrder = 18 + NUM_DB + NUM_RESI;
+#endif
+      offset0       = 0;
+    }
+#endif
 #endif
 #endif
     else if( size == size_CC_ALF )
@@ -503,6 +658,12 @@ struct AlfFilterShape
 #endif
       filterType   = CC_ALF;
     }
+#if JVET_AK0065_TALF
+    else if (size <= size_TALF)
+    {
+      numCoeff = abs(size - size_TALF);
+    }
+#endif
     else
     {
       filterType = ALF_NUM_OF_FILTER_TYPES;
@@ -584,6 +745,9 @@ struct ScaleAlf
   bool usePrev;
 
   int apsIdx;
+#if JVET_AJ0237_INTERNAL_12BIT
+  int bitDepth;
+#endif
 
   void reset() 
   {
@@ -608,14 +772,20 @@ struct ScaleAlf
   void setMinMax( const Pel lumaMin = 0, const Pel lumaMax = 1024, const bool bCheckClassifier = true ) 
   {
     const int c = classifierIdx;
+#if !JVET_AJ0237_INTERNAL_12BIT
     const int bitDepth = 10;
+#endif
     idxClassMin = (!bCheckClassifier || c == 1) ? ((lumaMin * ALF_NUM_CLASSES_CLASSIFIER[c]) >> bitDepth) : 0 ;
     idxClassMax = (!bCheckClassifier || c == 1) ? ((lumaMax * ALF_NUM_CLASSES_CLASSIFIER[c]) >> bitDepth) : (ALF_NUM_CLASSES_CLASSIFIER[c] - 1) ;
 
     initMinMaxDone = true;
   }
 
-  void init( const int f, const int a, const int c ) 
+#if JVET_AJ0237_INTERNAL_12BIT
+  void init(const int f, const int a, const int c, const int bDepth)
+#else
+  void init( const int f, const int a, const int c )
+#endif
   {
     filterSetIndex  = f;
     alt_num         = a;
@@ -625,7 +795,9 @@ struct ScaleAlf
 
     idxClassMin = 0 ;
     idxClassMax = ALF_NUM_CLASSES_CLASSIFIER[c] - 1 ;
-
+#if JVET_AJ0237_INTERNAL_12BIT
+    bitDepth = bDepth;
+#endif
     initDone = true;
   }
 
@@ -1051,6 +1223,17 @@ struct CcSaoPrvParam
   }
 };
 #endif
+#endif
+
+#if JVET_AK0065_TALF
+const Position templateShape0[NUM_TALF_COEFF] = { 
+  Position( 0, 0), Position( 1, 0), Position( 0, 1), Position( 1, 1), Position(-1, 1), Position( 2, 0), Position( 0, 2),
+  Position(-2, 1), Position( 2, 1), Position(-1, 2), Position( 1, 2), Position( 3, 0), Position( 0, 3)
+};
+const Position templateShape1[NUM_TALF_COEFF] = { 
+  Position( 0, 0), Position( 1, 0), Position( 0, 1), Position( 1, 1), Position(-1, 1), Position( 2, 0), Position( 0, 2),
+  Position( 3, 0), Position( 0, 3), Position( 4, 0), Position( 0, 4), Position( 5, 0), Position( 0, 5)
+};
 #endif
 //! \}
 

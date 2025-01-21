@@ -133,6 +133,9 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
   cs.pps              = slice->getPPS();
   memcpy(cs.alfApss, slice->getAlfAPSs(), sizeof(cs.alfApss));
 
+#if JVET_AK0065_TALF
+  memcpy(cs.talfApss, slice->getTAlfAPSs(), sizeof(cs.talfApss));
+#endif
   cs.lmcsAps          = slice->getPicHeader()->getLmcsAPS();
   cs.scalinglistAps   = slice->getPicHeader()->getScalingListAPS();
 
@@ -180,10 +183,16 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
 #endif
   {
     clipMv = clipMvInSubpic;
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    clipMv2 = clipMvInSubpic2;
+#endif
   }
   else
   {
     clipMv = clipMvInPic;
+#if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+    clipMv2 = clipMvInPic2;
+#endif
   }
 
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
@@ -518,6 +527,14 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
     slice->setAmvpSbTmvpEnabledFlag(false);
   }
 #endif
+#endif
+
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  if (!slice->isIntra())
+  {
+    int picH = slice->getPic()->getPicHeightInLumaSamples();
+    slice->setExtAmvpLevel(picH >= 2160 ? 3 : (picH >= 1080 ? 2 : (picH >= 720 ? 1 : 0)));
+  }
 #endif
 
   // for every CTU in the slice segment...

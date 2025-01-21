@@ -843,7 +843,7 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
 
   rpcSlice->setDisableSATDForRD(false);
 
-  if( ( m_pcCfg->getIBCHashSearch() && m_pcCfg->getIBCMode() ) || ( eSliceType != I_SLICE && m_pcCfg->getAllowDisFracMMVD() ) )
+  if( eSliceType == I_SLICE || ( m_pcCfg->getIBCHashSearch() && m_pcCfg->getIBCMode() ) || ( eSliceType != I_SLICE && m_pcCfg->getAllowDisFracMMVD() ) )
   {
     m_pcCuEncoder->getIbcHashMap().destroy();
     m_pcCuEncoder->getIbcHashMap().init( pcPic->cs->pps->getPicWidthInLumaSamples(), pcPic->cs->pps->getPicHeightInLumaSamples() );
@@ -1719,6 +1719,13 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     pcSlice->setAmvpSbTmvpEnabledFlag(false);
   }
 #endif
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+  if (!pcSlice->isIntra())
+  {
+    int picH = pcSlice->getPic()->getPicHeightInLumaSamples();
+    pcSlice->setExtAmvpLevel(picH >= 2160 ? 3 : (picH >= 1080 ? 2 : (picH >= 720 ? 1 : 0)));
+  }
+#endif
 
   if ( bWp_explicit )
   {
@@ -1893,101 +1900,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   const int iQPIndex              = pcSlice->getSliceQpBase();
 #endif
 #if JVET_AG0145_ADAPTIVE_CLIPPING
-  int pelMax = pcPic->getLumaClpRng().max;
-  int pelMin = pcPic->getLumaClpRng().min;
-#if JVET_AI0096_ADAPTIVE_CLIPPING_BIT_DEPTH_FIX
-  int targetMin = 16 * (1 << (pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y)) - 8));
-  int targetMax = 235 * (1 << (pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y)) - 8));
-#else
-  int targetMin = 64, targetMax = 940;
-#endif
-  if (cs.slice->getSliceType() != I_SLICE)
-  {
-    const Picture* const pColPic = pcPic->cs->slice->getRefPic(RefPicList(1 - pcPic->cs->slice->getColFromL0Flag()), pcPic->cs->slice->getColRefIdx())->unscaledPic;
-    ClpRng colLumaClpRng = pColPic->getLumaClpRng();
-    targetMin = colLumaClpRng.min;
-    targetMax = colLumaClpRng.max;
-  }
-  int clipDeltaShift = 0;
-  if (cs.slice->getSliceType()!=I_SLICE && cs.slice->getCheckLDC())
-  {
-    clipDeltaShift = ADAPTIVE_CLIP_SHIFT_DELTA_VALUE_1;
-    pcPic->cs->slice->setAdaptiveClipQuant(true);
-  }
-  else
-  {
-    clipDeltaShift = ADAPTIVE_CLIP_SHIFT_DELTA_VALUE_0;
-    pcPic->cs->slice->setAdaptiveClipQuant(false);
-  }
-  int pelMaxOF = 0;
-  int pelMinOF = (1 << pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1;
-  const int orgPelMin = pelMin;
-  {
-    int deltaMinToSignal = (pelMin - targetMin);
-    if (deltaMinToSignal < 0)
-    {
-      int absDelta = ((targetMin - pelMin) >> clipDeltaShift) << clipDeltaShift;
-      pelMin = targetMin - absDelta;
-      while (pelMin > orgPelMin)
-      {
-        pelMin -= (1 << clipDeltaShift);
-      }
-      while (pelMin < 0)
-      {
-        pelMinOF = pelMin;
-        pelMin = 0;
-      }
-      CHECK(pelMin < 0, "this is not possible");
-    }
-    else if (deltaMinToSignal > 0)
-    {
-      int absDelta = (deltaMinToSignal >> clipDeltaShift) << clipDeltaShift;
-      pelMin = targetMin + absDelta;
-      CHECK(pelMin > orgPelMin, "this is not possible");
-      CHECK(pelMin < 0, "this is not possible");
-    }
-    else
-    {
-      CHECK(pelMin != targetMin, "this is not possible");
-    }
-  }
-
-  const int orgPelMax = pelMax;
-  {
-    int deltaMaxToSignal = (pelMax - targetMax);
-    if (deltaMaxToSignal < 0)
-    {
-      int absDelta = ((targetMax - pelMax) >> clipDeltaShift) << clipDeltaShift;
-      pelMax = targetMax - absDelta;
-      CHECK(pelMax < orgPelMax, "this is not possible");
-      CHECK(pelMax > (1 << pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1, "this is not possible");
-    }
-    else if (deltaMaxToSignal > 0)
-    {
-      int absDelta = (deltaMaxToSignal >> clipDeltaShift) << clipDeltaShift;
-      pelMax = targetMax + absDelta;
-      while (pelMax < orgPelMax)
-      {
-        pelMax += (1 << clipDeltaShift);
-      }
-      while (pelMax >= (1 << pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y))))
-      {
-        pelMaxOF = pelMax;
-        pelMax = (1 << pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1;
-      }
-      CHECK(pelMax > (1 << pcPic->cs->sps->getBitDepth(toChannelType(COMPONENT_Y))) - 1, "this is not possible");
-    }
-    else
-    {
-      CHECK(pelMax != targetMax, "this is not possible");
-    }
-  }
-  pcPic->cs->slice->setLumaPelMax(pelMax);
-  pcPic->cs->slice->setLumaPelMin(pelMin);
-  pcPic->lumaClpRng.min = pelMin;
-  pcPic->lumaClpRng.max = pelMax;
-  pcPic->lumaClpRngforQuant.min = min(pelMin, pelMinOF);
-  pcPic->lumaClpRngforQuant.max = max(pelMax, pelMaxOF);
+  pcPic->calcLumaClpParams();
 #endif
 
 #if ENABLE_SPLIT_PARALLELISM
@@ -2017,16 +1930,14 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
   currQP[0] = currQP[1] = pcSlice->getSliceQp();
 
-    prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
-
-#if (JVET_AC0335_CONTENT_ADAPTIVE_OBMC_ENABLING && ENABLE_OBMC) || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS || JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
-    int hashBlkHitPerc = -1;
+#if (JVET_AC0335_CONTENT_ADAPTIVE_OBMC_ENABLING && ENABLE_OBMC) || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS || JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0 || JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+  int hashBlkHitPerc = -1;
 #endif
 
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
-  if( ( !pcSlice->isIntra() && pcSlice->getSPS()->getFpelMmvdEnabledFlag() ) || ( pcSlice->getUseIBC() && m_pcCuEncoder->getEncCfg()->getIBCHashSearch() ) )
+  if( pcSlice->isIntra() || ( !pcSlice->isIntra() && pcSlice->getSPS()->getFpelMmvdEnabledFlag() ) || ( pcSlice->getUseIBC() && m_pcCuEncoder->getEncCfg()->getIBCHashSearch() ) )
 #else
-  if( ( !pcSlice->isIntra() && pcSlice->getSPS()->getFpelMmvdEnabledFlag() ) || ( pcSlice->getSPS()->getIBCFlag() && m_pcCuEncoder->getEncCfg()->getIBCHashSearch() ) )
+  if( pcSlice->isIntra() || ( !pcSlice->isIntra() && pcSlice->getSPS()->getFpelMmvdEnabledFlag() ) || ( pcSlice->getSPS()->getIBCFlag() && m_pcCuEncoder->getEncCfg()->getIBCHashSearch() ) )
 #endif
   {
 #if JVET_AA0070_RRIBC
@@ -2076,7 +1987,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     bool isSCC = hashBlkHitPerc >= 20;
     spsTmp->setUseIbcFilter(isSCC);   
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
-    if (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) // ensure sequential and parallel simulation generate same output
+    if ( cs.sps->getUseGeoBlend() && (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) ) // ensure sequential and parallel simulation generate same output
     {
       spsTmp->setUseGeoBlend(!isSCC);
     }
@@ -2102,6 +2013,15 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   }
 #endif
 
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+  if (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) // ensure sequential and parallel simulation generate same output
+  {
+    hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
+    SPS* spsTmp = const_cast<SPS*>(cs.sps);
+    spsTmp->setUseLargeIBCLSR(hashBlkHitPerc > 56);
+  }
+#endif
+
 #if JVET_AH0209_PDP
   if( m_pcCuEncoder->getEncCfg()->getUsePDP() )
   {
@@ -2114,6 +2034,36 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
   }
 #endif
+
+#if JVET_AJ0097_BDOF_LDB
+  if (m_pcCuEncoder->getEncCfg()->getBIO())
+  {
+    hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
+    bool isSCC = hashBlkHitPerc >= 10;
+
+    int curPoc = cs.slice->getPOC();
+    bool lowdelayRefExist = false;
+    int n0 = pcSlice->getNumRefIdx(REF_PIC_LIST_0);
+    int n1 = pcSlice->getNumRefIdx(REF_PIC_LIST_1);
+
+    for (int idx0 = 0; idx0 < n0; idx0++)
+    {
+      int poc0 = pcSlice->getRefPOC(REF_PIC_LIST_0, idx0);
+
+      for (int idx1 = 0; idx1 < n1; idx1++)
+      {
+        int poc1 = pcSlice->getRefPOC(REF_PIC_LIST_1, idx1);
+        if ((curPoc - poc0) * (curPoc - poc1) > 0)
+        {
+          lowdelayRefExist = true;
+          break;
+        }
+      }
+    }
+    cs.picHeader->setDisBdofFlag(isSCC && lowdelayRefExist);
+  }
+#endif
+
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   if (m_pcCuEncoder->getEncCfg()->getUseGeoInterIbc())
   {
@@ -2159,12 +2109,55 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
   }
 #endif
+#if JVET_AJ0260_SBT_CORNER_MODE
+  if( m_pcCuEncoder->getEncCfg()->getUseSBT() )
+  {
+    if( cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE ) // ensure sequential and parallel simulation generate same output
+    {
+      hashBlkHitPerc = hashBlkHitPerc == -1 ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc( cs.area.Y() ) : hashBlkHitPerc;
+      bool isSCC = hashBlkHitPerc >= 20;
+      m_pcCuEncoder->getEncCfg()->setSBTFast64WidthTh( isSCC ? 1920 : 0 );
+    }
+  }
+#endif
+
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+  if (m_pcCuEncoder->getEncCfg()->getIntraToolControlMode() == 0)
+  {
+    SPS* spsTmp = const_cast<SPS*>(cs.sps);
+    spsTmp->setDisableRefFilter(true);
+    spsTmp->setDisablePdpc(true);
+    spsTmp->setDisableIntraFusion(true);
+  }
+  else if (m_pcCuEncoder->getEncCfg()->getIntraToolControlMode() == 1)
+  {
+    SPS* spsTmp = const_cast<SPS*>(cs.sps);
+    spsTmp->setDisableRefFilter(false);
+    spsTmp->setDisablePdpc(false);
+    spsTmp->setDisableIntraFusion(false);
+  }
+  else if (m_pcCuEncoder->getEncCfg()->getIntraToolControlMode() == 2)
+  {
+    SPS* spsTmp = const_cast<SPS*>(cs.sps);    
+    if (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) // ensure sequential and parallel simulation generate same output
+    {
+      hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
+      bool isSCC = hashBlkHitPerc >= 20;
+      spsTmp->setDisableRefFilter(isSCC);
+      spsTmp->setDisablePdpc(isSCC);
+      spsTmp->setDisableIntraFusion(isSCC);
+    }
+  }  
+#endif
 
   // for every CTU in the slice
   for( uint32_t ctuIdx = 0; ctuIdx < pcSlice->getNumCtuInSlice(); ctuIdx++ )
   {
     const int32_t ctuRsAddr = pcSlice->getCtuAddrInSlice( ctuIdx );
 
+#if JVET_AJ0226_MTT_SKIP 
+    m_pcCuEncoder->getModeCtrl()->resetSplitSignalCostParams();
+#endif
     // update CABAC state
     const uint32_t ctuXPosInCtus        = ctuRsAddr % widthInCtus;
     const uint32_t ctuYPosInCtus        = ctuRsAddr / widthInCtus;

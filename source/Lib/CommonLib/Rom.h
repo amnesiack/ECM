@@ -60,12 +60,15 @@ void         destroyROM();
 // ====================================================================================================================
 // Data structure related table & variable
 // ====================================================================================================================
+#if JVET_AK0061_PDP_MPM
+extern const bool g_sBlkPdpMode[NUM_LUMA_MODE];
+extern const bool g_bBlkPdpMode[NUM_LUMA_MODE];
+#endif
 
 #if JVET_AH0209_PDP
 extern const int g_sizeData[PDP_NUM_SIZES][11];
 extern std::unordered_map<int, int> g_size;
 
-extern const int g_modeGroup[PDP_NUM_MODES];
 extern int16_t*** g_pdpFilters[PDP_NUM_GROUPS][PDP_NUM_SIZES];
 extern int g_validSize[PDP_NUM_SIZES];
 void createPdpFilters();
@@ -82,11 +85,27 @@ void destroyMipFilters();
 #if SIGN_PREDICTION
 #if JVET_Y0141_SIGN_PRED_IMPROVE
 #if JVET_W0119_LFNST_EXTENSION || EXTENDED_LFNST
+#if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+#if JVET_AJ0237_INTERNAL_12BIT
+extern       int16_t* g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
+#else
+extern       int8_t * g_resiBorderTemplateLFNST[NUM_NSPT_BLOCK_TYPES][6][6][210];
+#endif
+#else
+#if JVET_AJ0237_INTERNAL_12BIT
+extern       int16_t* g_resiBorderTemplateLFNST[6][6][210];
+#else
 extern       int8_t * g_resiBorderTemplateLFNST[6][6][210];
+#endif
+#endif
 #else
 extern       int8_t * g_resiBorderTemplateLFNST[6][6][16];
 #endif
+#if JVET_AJ0237_INTERNAL_12BIT
+extern       int16_t* g_resiBorderTemplate[6][6][NUM_TRANS_TYPE * NUM_TRANS_TYPE];
+#else
 extern       int8_t * g_resiBorderTemplate[6][6][NUM_TRANS_TYPE*NUM_TRANS_TYPE];
+#endif
 #else
 extern const int8_t * g_resiBorderTemplate[6][6][NUM_TRANS_TYPE*NUM_TRANS_TYPE];
 #endif
@@ -220,6 +239,12 @@ extern TMatrixCoeff g_aiTr128[NUM_TRANS_TYPE][128][128];
 extern TMatrixCoeff g_aiTr256[NUM_TRANS_TYPE][256][256];
 
 extern const uint8_t g_aucIpmToTrSet[16][36];
+
+#if JVET_AJ0257_IMPLICIT_MTS_LUT
+extern const uint8_t g_aucImplicitToTrSet[16][35];
+extern const uint8_t g_aucImplicitTrIdxToTr[36][2];
+#endif
+
 #if JVET_Y0142_ADAPT_INTRA_MTS
 extern const uint8_t g_aucTrSet[80][6];
 #else
@@ -232,6 +257,10 @@ extern const uint8_t g_aucTrIdxToTr[25][2];
 extern const     int8_t   g_lfnst16x16[ 35 ][ 3 ][ L16H ][ L16W ];
 extern const     int8_t   g_lfnst8x8  [ 35 ][ 3 ][  L8H ][  L8W ];
 extern const     int8_t   g_lfnst4x4  [ 35 ][ 3 ][   16 ][   16 ];
+#if AHG7_LN_TOOLOFF_CFG
+extern const     int8_t   g_vvcLfnst8x8[ 4 ][ 2 ][ 16 ][ 48 ];
+extern const     int8_t   g_vvcLfnst4x4[ 4 ][ 2 ][ 16 ][ 16 ];
+#endif
 #else
 #if EXTENDED_LFNST
 extern const     int8_t   g_lfnst8x8[ 35 ][ 3 ][ 64 ][ 64 ];
@@ -244,6 +273,9 @@ extern const     int8_t   g_lfnst4x4[ 4 ][ 2 ][ 16 ][ 16 ];
 
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
 extern const     uint8_t  g_lfnstLut[NUM_LFNST_INTRA_MODES];
+#if AHG7_LN_TOOLOFF_CFG
+extern const     uint8_t  g_vvcLfnstLut[ NUM_LFNST_INTRA_MODES ];
+#endif
 #else
 extern const     uint8_t  g_lfnstLut[ NUM_INTRA_MODE + NUM_EXT_LUMA_MODE - 1 ];
 #endif
@@ -251,6 +283,36 @@ extern const     uint8_t  g_lfnstLut[ NUM_INTRA_MODE + NUM_EXT_LUMA_MODE - 1 ];
 #if JVET_AC0130_NSPT
 extern const     uint8_t  g_nsptLut[ 97 ];                      // 97= NUM_LUMA_MODE + NUM_EXT_LUMA_MODE - 1
 
+#if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+extern const     int8_t   g_nspt4x4[ NUM_NSPT_CLUSTERS_4x4 ][ 16 ][ 16 ];
+extern const     int8_t   g_nspt4x8[ NUM_NSPT_CLUSTERS_4x8 ][ 20 ][ 32 ];
+extern const     int8_t   g_nspt8x4[ NUM_NSPT_CLUSTERS_8x4 ][ 20 ][ 32 ];
+extern const     int8_t   g_nspt8x8[ NUM_NSPT_CLUSTERS_8x8 ][ 32 ][ 64 ];
+extern const     int8_t   g_nspt4x16[ NUM_NSPT_CLUSTERS_4x16 ][ 24 ][ 64 ];
+extern const     int8_t   g_nspt16x4[ NUM_NSPT_CLUSTERS_16x4 ][ 24 ][ 64 ];
+extern const     int8_t   g_nspt8x16[ NUM_NSPT_CLUSTERS_8x16 ][ 40 ][ 128 ];
+extern const     int8_t   g_nspt16x8[ NUM_NSPT_CLUSTERS_16x8 ][ 40 ][ 128 ];
+#if JVET_AE0086_LARGE_NSPT
+extern const     int8_t   g_nspt4x32[ NUM_NSPT_CLUSTERS_4x32 ][ 20 ][ 128 ];
+extern const     int8_t   g_nspt32x4[ NUM_NSPT_CLUSTERS_32x4 ][ 20 ][ 128 ];
+extern const     int8_t   g_nspt8x32[ NUM_NSPT_CLUSTERS_8x32 ][ 24 ][ 256 ];
+extern const     int8_t   g_nspt32x8[ NUM_NSPT_CLUSTERS_32x8 ][ 24 ][ 256 ];
+#endif
+extern const     uint8_t  g_nsptIdx4x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx4x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx4x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx16x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx16x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+#if JVET_AE0086_LARGE_NSPT
+extern const     uint8_t  g_nsptIdx_4x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx_32x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx_8x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx_32x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+#endif
+#else
 extern const     int8_t   g_nspt4x4[ 35 ][ 3 ][ 16 ][ 16 ];
 extern const     int8_t   g_nspt4x8[ 35 ][ 3 ][ 20 ][ 32 ];
 extern const     int8_t   g_nspt8x4[ 35 ][ 3 ][ 20 ][ 32 ];
@@ -265,6 +327,8 @@ extern const     int8_t   g_nspt32x4[ 35 ][ 3 ][ 20 ][ 128 ];
 extern const     int8_t   g_nspt8x32[ 35 ][ 3 ][ 24 ][ 256 ];
 extern const     int8_t   g_nspt32x8[ 35 ][ 3 ][ 24 ][ 256 ];
 #endif
+#endif
+
 #endif
 #if JVET_AH0209_PDP
 extern int16_t g_weights4x4[11][16][36];
@@ -429,14 +493,30 @@ extern Pel*      g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
 #else
 extern int16_t*  g_geoEncSadMask[GEO_NUM_PRESTORED_MASK];
 #endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+extern int16_t   g_weightOffset       [GEO_TOTAL_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
+#else
 extern int16_t   g_weightOffset       [GEO_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE][GEO_NUM_CU_SIZE][2];
+#endif
 extern int8_t    g_angle2mask         [GEO_NUM_ANGLES];
 extern int8_t    g_dis[GEO_NUM_ANGLES];
 extern int8_t    g_angle2mirror[GEO_NUM_ANGLES];
 
+
 #if JVET_AB0155_SGPM
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+extern int16_t   g_weightOffsetEx[GEO_TOTAL_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE_EX][GEO_NUM_CU_SIZE_EX][2];
+#else
 extern int16_t   g_weightOffsetEx[GEO_NUM_PARTITION_MODE][GEO_NUM_CU_SIZE_EX][GEO_NUM_CU_SIZE_EX][2];
 extern int8_t    g_sgpmSplitDir[GEO_NUM_PARTITION_MODE];
+#endif
+#endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+extern int8_t    g_gpmSplitDir[GEO_NUM_CU_SHAPES][GEO_NUM_PARTITION_MODE];
+
+extern int8_t    g_sgpmSplitDir[SGPM_TOTAL_NUM_PARTITIONS];
+extern int8_t    g_ibcGpmSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM];
+extern int8_t    g_ibcGpmSplitDirFirstSetRank[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM + IBC_GPM_MAX_SPLIT_DIR_SECOND_SET_NUM];
 #endif
 #if JVET_Y0065_GPM_INTRA
 extern int8_t    g_geoAngle2IntraAng  [GEO_NUM_ANGLES];
@@ -477,9 +557,11 @@ extern int g_rmvfMultApproxTbl[3 << sizeof(int64_t)];
 extern const int8_t g_glmPattern[NUM_GLM_PATTERN][6];
 #endif
 #if JVET_AC0112_IBC_GPM
+#if !JVET_AJ0107_GPM_SHAPE_ADAPT
 extern const int8_t g_ibcGpmFirstSetSplitDirToIdx[GEO_NUM_PARTITION_MODE];
 extern const int8_t g_ibcGpmFirstSetSplitDir[IBC_GPM_MAX_SPLIT_DIR_FIRST_SET_NUM];
 extern const int8_t g_ibcGpmSecondSetSplitDir[GEO_NUM_PARTITION_MODE];
+#endif
 #endif
 #if JVET_AE0169_IBC_MBVD_LIST_DERIVATION
 extern int g_ibcMbvdCandOffsets[IBC_MBVD_AD_STEP_NUM];
@@ -498,9 +580,17 @@ extern const Position g_eipFilter[NUM_EIP_SHAPE][EIP_FILTER_TAP - 1];
 extern const Position g_eipFilter[NUM_EIP_SHAPE][EIP_FILTER_TAP];
 #endif
 extern const EIPInfo  g_eipInfoLut[4][4][9];
+#if JVET_AJ0082_MM_EIP
+extern const EIPInfo  g_mmEipInfoLut[4][4][9];
+#endif
 #endif
 #if JVET_AG0276_LIC_SLOPE_ADJUST
 extern const int g_licSlopeDeltaSet[LIC_SLOPE_MAX_NUM_DELTA + 1];
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+extern uint64_t g_timdMrgCost[EXT_VDIA_IDX + 1];
+extern const std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> g_timdMergeOffsetXTable;
+extern const std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> g_timdMergeOffsetYTable;
 #endif
 #endif  //__TCOMROM__
 

@@ -440,6 +440,9 @@ void InterSearch::init( EncCfg*        pcEncCfg,
                       , EncReshape*    pcReshape
 #if JVET_Z0153_IBC_EXT_REF
                       , const uint32_t curPicWidthY 
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+                      , const uint32_t curPicHeightY 
+#endif
 #endif
 )
 {
@@ -494,7 +497,19 @@ void InterSearch::init( EncCfg*        pcEncCfg,
   const ChromaFormat cform = pcEncCfg->getChromaFormatIdc();
 #if INTER_LIC || (TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM) || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
 #if JVET_Z0153_IBC_EXT_REF
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+#if JVET_AJ0237_INTERNAL_12BIT
+  InterPrediction::init( pcRdCost, cform, maxCUHeight, m_pcReshape, curPicWidthY, curPicHeightY, pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
+  InterPrediction::init( pcRdCost, cform, maxCUHeight, m_pcReshape, curPicWidthY, curPicHeightY );
+#endif
+#else
+#if JVET_AJ0237_INTERNAL_12BIT
+  InterPrediction::init( pcRdCost, cform, maxCUHeight, m_pcReshape, curPicWidthY, pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA));
+#else
   InterPrediction::init( pcRdCost, cform, maxCUHeight, m_pcReshape, curPicWidthY );
+#endif
+#endif
 #else
   InterPrediction::init( pcRdCost, cform, maxCUHeight, m_pcReshape );
 #endif
@@ -1984,7 +1999,11 @@ void InterSearch::xIntraPatternSearch(PredictionUnit &pu, IntTZSearchStruct &cSt
 #endif
     {
 #if JVET_Z0153_IBC_EXT_REF
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+      int verTop = pu.cu->slice->getSPS()->getUseLargeIBCLSR()? -(int)lcuWidth * 2:- (int)lcuWidth;
+#else
       int verTop = - (int)lcuWidth;
+#endif
       int verBottom = std::min((int)(lcuWidth>>2), (int)(lcuWidth - (cuPelY % lcuWidth) - roiHeight));
       int horLeft = - (int)lcuWidth*2;
       int horRight = lcuWidth>>2;
@@ -3206,12 +3225,16 @@ void InterSearch::xSetIntraSearchRange(PredictionUnit& pu, int iRoiWidth, int iR
   const int picWidth = pu.cs->slice->getPPS()->getPicWidthInLumaSamples();
 
   srLeft = -cuPelX;
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+  srTop = -cuPelY;
+#else
   srTop = - 2 * lcuWidth - (cuPelY % lcuWidth);
 #if JVET_AA0106_IBCBUF_CTU256
   if (256 == lcuWidth)
   {
     srTop = -lcuWidth - (cuPelY % lcuWidth);
   }
+#endif
 #endif
   srRight = picWidth - cuPelX - iRoiWidth;
   srBottom = lcuWidth - (cuPelY % lcuWidth) - iRoiHeight;  
@@ -4952,6 +4975,11 @@ inline void InterSearch::getBestBvpBvOneZeroComp(PredictionUnit &pu, Mv cMv, Dis
   }
   else if (cMv.getHor() == 0)
   {
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+    bvpCand[0] = Mv(0, std::max(-(int) pu.lheight(), -pu.Y().y));
+    bvpCand[1] = Mv(0, -pu.Y().y);
+    bvOneZeroCompCost = m_pcRdCost->getBvHorZeroCompCost(cMv.getVer(), pu.cs->sps->getAMVREnabledFlag(), &tempImv, &tempIdx, bvpCand);
+#else
     const int ctbSize     = pu.cs->sps->getCTUSize();
     const int numCurrCtuY = (pu.Y().y >> (floorLog2(ctbSize)));
     unsigned int lcuWidth = pu.cs->slice->getSPS()->getMaxCUWidth();
@@ -4967,6 +4995,7 @@ inline void InterSearch::getBestBvpBvOneZeroComp(PredictionUnit &pu, Mv cMv, Dis
     bvpCand[0] = Mv(0, std::max(-(int) pu.lheight(), rrTop));
     bvpCand[1] = Mv(0, rrTop);
     bvOneZeroCompCost = m_pcRdCost->getBvHorZeroCompCost(cMv.getVer(), pu.cs->sps->getAMVREnabledFlag(), &tempImv, &tempIdx, bvpCand);
+#endif
   }
 
   if (bvOneZeroCompCost < initCost)
@@ -6021,7 +6050,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
 #if JVET_AD0213_LIC_IMP && TM_AMVP
   resetLicEncCtrlPara();
 #endif
-
 #if MULTI_HYP_PRED
   const bool saveMeResultsForMHP = cs.sps->getUseInterMultiHyp()
     && bcwIdx != BCW_DEFAULT
@@ -6312,7 +6340,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
           uiMotBits[1] = uiBits[1] - uiMbBits[1];
           uiBits[2] = uiMbBits[2] + uiMotBits[0] + uiMotBits[1];
         }
-
         if( doBiPred )
         {
         // 4-times iteration (default)
@@ -6323,6 +6350,8 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
         {
           iNumIter = 1;
         }
+
+
 #if JVET_X0083_BM_AMVP_MERGE_MODE
         if (amvpMergeModeFlag)
         {
@@ -6383,7 +6412,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
           }
 
           bool bChanged = false;
-
           iRefStart = 0;
           iRefEnd   = cs.slice->getNumRefIdx(eRefPicList)-1;
           for (int iRefIdxTemp = iRefStart; iRefIdxTemp <= iRefEnd; iRefIdxTemp++)
@@ -6408,6 +6436,7 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
             xCopyAMVPInfo( &amvp[refListAmvp], &aacAMVPInfo[refListAmvp][iRefIdxTemp]); // must always be done ( also when AMVP_MODE = AM_NONE )
             numberBestMvpIdxLoop = amvp[eRefPicList].numCand;
           }
+
           for (int bestMvpIdxLoop = 0; bestMvpIdxLoop < numberBestMvpIdxLoop; bestMvpIdxLoop++)
           {
             if (amvpMergeModeFlag)
@@ -6659,7 +6688,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
         }
         cu.refIdxBi[0] = iRefIdxBi[0];
         cu.refIdxBi[1] = iRefIdxBi[1];
-
         if ( cs.slice->getBiDirPred() && trySmvd )
         {
           Distortion symCost;
@@ -6868,7 +6896,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
           }
         }
       } // if (B_SLICE)
-
 #if JVET_AG0098_AMVP_WITH_SBTMVP
       bool       useAmvpSbTmvpBuf = false;
       int        amvpSbTmvpMvdIdx = -1;
@@ -7398,6 +7425,7 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
     }
 #endif
 #if INTER_LIC
+
 #if JVET_X0083_BM_AMVP_MERGE_MODE && JVET_AD0213_LIC_IMP
 #if JVET_AG0098_AMVP_WITH_SBTMVP
     if (cu.licFlag && !amvpMergeModeFlag && !pu.amvpSbTmvpFlag)
@@ -7675,7 +7703,12 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
           && (pu.interDir & (1 << uiRefListIdx)) && (absMvd[0] != Mv(0, 0) || absMvd[1] != Mv(0, 0) || absMvd[2] != Mv(0, 0)) && pu.isMvdPredApplicable())
         {
           AffineAMVPInfo affineAMVPInfo;
-          PU::fillAffineMvpCand(pu, eRefPicList, pu.refIdx[uiRefListIdx], affineAMVPInfo);
+          PU::fillAffineMvpCand(pu, eRefPicList, pu.refIdx[uiRefListIdx], affineAMVPInfo
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+            , this
+#endif    
+          );
+
           const unsigned mvpIdx = pu.mvpIdx[eRefPicList];
 
 #if JVET_AD0140_MVD_PREDICTION
@@ -7739,7 +7772,6 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
         }
       }
 #endif
-
       for (uint32_t uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++)
       {
         RefPicList eRefPicList = RefPicList(uiRefListIdx);
@@ -7757,6 +7789,7 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
           {
             PU::fillMvpCand(pu, RefPicList(uiRefListIdx), iRefIdx, *amvpCand, this);
           }
+
           Mv cMvPred2 = amvpCand->mvCand[pu.mvpIdx[uiRefListIdx]];
 #else
           auto aMvPred = bi ? cMvPredBi : cMvPred;
@@ -8351,7 +8384,11 @@ void InterSearch::setGeoSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx& mer
 }
 
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
+#if JVET_AJ0274_GPM_AFFINE_TM
+void InterSearch::setGeoTMSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx(&mergeCtx)[GEO_NUM_TM_MV_CAND], const AffineMergeCtx& affMergeCtx, int mergeCand0, int mergeCand1, int mmvdCand0, int mmvdCand1)
+#else
 void InterSearch::setGeoTMSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx(&mergeCtx)[GEO_NUM_TM_MV_CAND], int mergeCand0, int mergeCand1, int mmvdCand0, int mmvdCand1)
+#endif
 {
   const int idx0 = mmvdCand0 + 1;
   const int idx1 = mmvdCand1 + 1;
@@ -8364,6 +8401,9 @@ void InterSearch::setGeoTMSplitModeToSyntaxTable(PredictionUnit& pu, MergeCtx(&m
                         , m_gpmPartTplCost[idx0][mergeCand0]
                         , m_gpmPartTplCost[idx1][mergeCand1]
                         , mergeCtx
+#if JVET_AJ0274_GPM_AFFINE_TM
+                        , affMergeCtx
+#endif
                         , mergeCand0
                         , mergeCand1
                         , numValidInList
@@ -8472,10 +8512,17 @@ bool InterSearch::selectGeoSplitModes(PredictionUnit &pu,
 }
 
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
-bool InterSearch::selectGeoTMSplitModes (PredictionUnit &pu, 
+#if JVET_AJ0274_GPM_AFFINE_TM
+bool InterSearch::selectGeoTMSplitModes (PredictionUnit &pu,
+                                         uint32_t (&gpmTplCostPart0)[2][GEO_NUM_PARTITION_MODE],
+                                         uint32_t (&gpmTplCostPart1)[2][GEO_NUM_PARTITION_MODE],
+                                         MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND], const AffineMergeCtx& affMergeCtx,int mergeCand0, int mergeCand1, uint8_t& numValidInList, uint8_t (&modeList)[GEO_NUM_SIG_PARTMODE])
+#else
+bool InterSearch::selectGeoTMSplitModes (PredictionUnit &pu,
                                          uint32_t (&gpmTplCostPart0)[2][GEO_NUM_PARTITION_MODE],
                                          uint32_t (&gpmTplCostPart1)[2][GEO_NUM_PARTITION_MODE],
                                          MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND], int mergeCand0, int mergeCand1, uint8_t& numValidInList, uint8_t (&modeList)[GEO_NUM_SIG_PARTMODE])
+#endif
 {
   if (!m_bAMLTemplateAvailabe[0] && !m_bAMLTemplateAvailabe[1])
   {
@@ -8483,7 +8530,11 @@ bool InterSearch::selectGeoTMSplitModes (PredictionUnit &pu,
     return false;
   }
 
+#if JVET_AJ0274_GPM_AFFINE_TM
+  if (PU::checkRprRefExistingInGpm(pu, mergeCtx[GEO_TM_OFF], mergeCand0, mergeCtx[GEO_TM_OFF], mergeCand1, affMergeCtx))
+#else
   if (PU::checkRprRefExistingInGpm(pu, mergeCtx[GEO_TM_OFF], mergeCand0, mergeCtx[GEO_TM_OFF], mergeCand1))
+#endif
   {
     bool backupTplValid[2] = {m_bAMLTemplateAvailabe[0], m_bAMLTemplateAvailabe[1]};
     m_bAMLTemplateAvailabe[0] = false;
@@ -8504,15 +8555,25 @@ bool InterSearch::selectGeoTMSplitModes (PredictionUnit &pu,
   // First partition
   if (fillRefTplPart0)
   {
+#if JVET_AJ0274_GPM_AFFINE_TM
+    fillPartGPMRefTemplate<0, false>(pu, mergeCtx[GEO_TM_SHAPE_AL], mergeCand0, -1, pRefTopPart0[GEO_TM_SHAPE_AL], pRefLeftPart0[GEO_TM_SHAPE_AL], &affMergeCtx);
+    fillPartGPMRefTemplate<0, false>(pu, mergeCtx[GEO_TM_SHAPE_A ], mergeCand0, -1, pRefTopPart0[GEO_TM_SHAPE_A ], pRefLeftPart0[GEO_TM_SHAPE_A ], &affMergeCtx);
+#else
     fillPartGPMRefTemplate<0, false>(pu, mergeCtx[GEO_TM_SHAPE_AL], mergeCand0, -1, pRefTopPart0[GEO_TM_SHAPE_AL], pRefLeftPart0[GEO_TM_SHAPE_AL]);
     fillPartGPMRefTemplate<0, false>(pu, mergeCtx[GEO_TM_SHAPE_A ], mergeCand0, -1, pRefTopPart0[GEO_TM_SHAPE_A ], pRefLeftPart0[GEO_TM_SHAPE_A ]);
+#endif
   }
 
   // Second
   if (fillRefTplPart1)
   {
+#if JVET_AJ0274_GPM_AFFINE_TM
+    fillPartGPMRefTemplate<1, false>(pu, mergeCtx[GEO_TM_SHAPE_AL], mergeCand1, -1, pRefTopPart1[GEO_TM_SHAPE_AL], pRefLeftPart1[GEO_TM_SHAPE_AL], &affMergeCtx);
+    fillPartGPMRefTemplate<1, false>(pu, mergeCtx[GEO_TM_SHAPE_L ], mergeCand1, -1, pRefTopPart1[GEO_TM_SHAPE_L ], pRefLeftPart1[GEO_TM_SHAPE_L ], &affMergeCtx);
+#else
     fillPartGPMRefTemplate<1, false>(pu, mergeCtx[GEO_TM_SHAPE_AL], mergeCand1, -1, pRefTopPart1[GEO_TM_SHAPE_AL], pRefLeftPart1[GEO_TM_SHAPE_AL]);
     fillPartGPMRefTemplate<1, false>(pu, mergeCtx[GEO_TM_SHAPE_L ], mergeCand1, -1, pRefTopPart1[GEO_TM_SHAPE_L ], pRefLeftPart1[GEO_TM_SHAPE_L ]);
+#endif
   }
 
   // Get mode lists
@@ -8539,6 +8600,9 @@ void InterSearch::getBestGeoModeListEncoder(PredictionUnit &pu, uint8_t& numVali
   bool filledRefTplPart1 = gpmTplCostPart1[1][0] == std::numeric_limits<uint32_t>::max();
   int bitDepth = pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA);
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
   if (m_bAMLTemplateAvailabe[0])
   {
     SizeType   szPerLine            = pu.lwidth();
@@ -8556,13 +8620,24 @@ void InterSearch::getBestGeoModeListEncoder(PredictionUnit &pu, uint8_t& numVali
       GetAbsDiffPerSample(pcBufPredRefTopPart0.Y(), pcBufPredCurTop.Y(), pcBufPredRefTopPart0.Y());
       uint32_t fullCostPart0 = (uint32_t)GetSampleSum(pcBufPredRefTopPart0.Y(), bitDepth);
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 0>(splitDir);
         uint32_t tempDist = (uint32_t)Get01MaskedSampleSum(pcBufPredRefTopPart0.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart0[0][splitDirIdx] = tempDist;
+        gpmTplCostPart0[1][splitDirIdx] = fullCostPart0 - tempDist; // pre-calculated
+#else
         gpmTplCostPart0[0][splitDir] = tempDist;
         gpmTplCostPart0[1][splitDir] = fullCostPart0 - tempDist; // pre-calculated
+#endif
       }
     }
 
@@ -8572,13 +8647,24 @@ void InterSearch::getBestGeoModeListEncoder(PredictionUnit &pu, uint8_t& numVali
       GetAbsDiffPerSample(pcBufPredRefTopPart1.Y(), pcBufPredCurTop.Y(), pcBufPredRefTopPart1.Y());
       uint32_t fullCostPart1 = (uint32_t)GetSampleSum(pcBufPredRefTopPart1.Y(), bitDepth);
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 0>(splitDir);
         uint32_t tempDist = (uint32_t)Get01MaskedSampleSum(pcBufPredRefTopPart1.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart1[0][splitDirIdx] = tempDist;  // pre-calculated
+        gpmTplCostPart1[1][splitDirIdx] = fullCostPart1 - tempDist;
+#else
         gpmTplCostPart1[0][splitDir] = tempDist;  // pre-calculated
         gpmTplCostPart1[1][splitDir] = fullCostPart1 - tempDist;
+#endif
       }
     }
   }
@@ -8607,19 +8693,33 @@ void InterSearch::getBestGeoModeListEncoder(PredictionUnit &pu, uint8_t& numVali
     const int maskStride[3] = { (int)szPerLine, (int)szPerLine, (int)szPerLine }; // mask stride
     const int stepX[3] = { 1, 1, 1 };
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
     // Cost of partition 0
     if (filledRefTplPart0)
     {
       GetAbsDiffPerSample(pcBufPredRefLeftPart0.Y(), pcBufPredCurLeft.Y(), pcBufPredRefLeftPart0.Y());
       uint32_t fullCostPart0 = (uint32_t)GetSampleSum(pcBufPredRefLeftPart0.Y(), bitDepth);
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 2>(splitDir);
         uint32_t tempDist = (uint32_t)Get01MaskedSampleSum(pcBufPredRefLeftPart0.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart0[0][splitDirIdx] += tempDist;
+        gpmTplCostPart0[1][splitDirIdx] += fullCostPart0 - tempDist; // pre-calculated
+#else
         gpmTplCostPart0[0][splitDir] += tempDist;
         gpmTplCostPart0[1][splitDir] += fullCostPart0 - tempDist; // pre-calculated
+#endif
       }
     }
 
@@ -8629,13 +8729,24 @@ void InterSearch::getBestGeoModeListEncoder(PredictionUnit &pu, uint8_t& numVali
       GetAbsDiffPerSample(pcBufPredRefLeftPart1.Y(), pcBufPredCurLeft.Y(), pcBufPredRefLeftPart1.Y());
       uint32_t fullCostPart1 = (uint32_t)GetSampleSum(pcBufPredRefLeftPart1.Y(), bitDepth);
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 2>(splitDir);
         uint32_t tempDist = (uint32_t)Get01MaskedSampleSum(pcBufPredRefLeftPart1.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart1[0][splitDirIdx] += tempDist;  // pre-calculated
+        gpmTplCostPart1[1][splitDirIdx] += fullCostPart1 - tempDist;
+#else
         gpmTplCostPart1[0][splitDir] += tempDist;  // pre-calculated
         gpmTplCostPart1[1][splitDir] += fullCostPart1 - tempDist;
+#endif
       }
     }
   }
@@ -8671,6 +8782,9 @@ void InterSearch::getBestGeoTMModeListEncoder(PredictionUnit &pu, uint8_t& numVa
   bool filledRefTplPart1 = gpmTplCostPart1[1][0] == std::numeric_limits<uint32_t>::max();
   int bitDepth = pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA);
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
   if (m_bAMLTemplateAvailabe[0])
   {
     SizeType   szPerLine       = pu.lwidth();
@@ -8694,13 +8808,23 @@ void InterSearch::getBestGeoTMModeListEncoder(PredictionUnit &pu, uint8_t& numVa
       GetAbsDiffPerSample(pcBufPredRefTopPart0[GEO_TM_SHAPE_AL].Y(), pcBufPredCurTop.Y(), pcBufPredRefTopPart0[GEO_TM_SHAPE_AL].Y());
       GetAbsDiffPerSample(pcBufPredRefTopPart0[GEO_TM_SHAPE_A ].Y(), pcBufPredCurTop.Y(), pcBufPredRefTopPart0[GEO_TM_SHAPE_A ].Y());
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         uint8_t shapeIdx  = g_geoTmShape[0][g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 0>(splitDir);
         uint32_t tempDist = (uint32_t)Get01MaskedSampleSum(pcBufPredRefTopPart0[shapeIdx].Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart0[0][splitDirIdx] = tempDist;
+#else
         gpmTplCostPart0[0][splitDir] = tempDist;
+#endif
       }
     }
 
@@ -8710,13 +8834,23 @@ void InterSearch::getBestGeoTMModeListEncoder(PredictionUnit &pu, uint8_t& numVa
       GetAbsDiffPerSample(pcBufPredRefTopPart1[GEO_TM_SHAPE_AL].Y(), pcBufPredCurTop.Y(), pcBufPredRefTopPart1[GEO_TM_SHAPE_AL].Y());
       GetAbsDiffPerSample(pcBufPredRefTopPart1[GEO_TM_SHAPE_L ].Y(), pcBufPredCurTop.Y(), pcBufPredRefTopPart1[GEO_TM_SHAPE_L ].Y());
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         uint8_t shapeIdx  = g_geoTmShape[1][g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 0>(splitDir);
         uint32_t tempDist = (uint32_t)Get01InvMaskedSampleSum(pcBufPredRefTopPart1[shapeIdx].Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart1[1][splitDirIdx] = tempDist;
+#else
         gpmTplCostPart1[1][splitDir] = tempDist;
+#endif
       }
     }
   }
@@ -8755,13 +8889,23 @@ void InterSearch::getBestGeoTMModeListEncoder(PredictionUnit &pu, uint8_t& numVa
       GetAbsDiffPerSample(pcBufPredRefLeftPart0[GEO_TM_SHAPE_AL].Y(), pcBufPredCurLeft.Y(), pcBufPredRefLeftPart0[GEO_TM_SHAPE_AL].Y());
       GetAbsDiffPerSample(pcBufPredRefLeftPart0[GEO_TM_SHAPE_A ].Y(), pcBufPredCurLeft.Y(), pcBufPredRefLeftPart0[GEO_TM_SHAPE_A ].Y());
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         uint8_t shapeIdx  = g_geoTmShape[0][g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 2>(splitDir);
         uint32_t tempDist = (uint32_t)Get01MaskedSampleSum(pcBufPredRefLeftPart0[shapeIdx].Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart0[0][splitDirIdx] += tempDist;
+#else
         gpmTplCostPart0[0][splitDir] += tempDist;
+#endif
       }
     }
 
@@ -8771,13 +8915,23 @@ void InterSearch::getBestGeoTMModeListEncoder(PredictionUnit &pu, uint8_t& numVa
       GetAbsDiffPerSample(pcBufPredRefLeftPart1[GEO_TM_SHAPE_AL].Y(), pcBufPredCurLeft.Y(), pcBufPredRefLeftPart1[GEO_TM_SHAPE_AL].Y());
       GetAbsDiffPerSample(pcBufPredRefLeftPart1[GEO_TM_SHAPE_L ].Y(), pcBufPredCurLeft.Y(), pcBufPredRefLeftPart1[GEO_TM_SHAPE_L ].Y());
 
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; ++splitDirIdx)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
       for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
       {
+#endif
         int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
         uint8_t shapeIdx  = g_geoTmShape[1][g_geoParams[splitDir][0]];
         Pel* mask = getTplWeightTableCU<false, 2>(splitDir);
         uint32_t tempDist = (uint32_t)Get01InvMaskedSampleSum(pcBufPredRefLeftPart1[shapeIdx].Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        gpmTplCostPart1[1][splitDirIdx] += tempDist;
+#else
         gpmTplCostPart1[1][splitDir] += tempDist;
+#endif
       }
     }
   }
@@ -8819,7 +8973,11 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
 #endif
 
   std::vector<Pel>* LUT = m_pcReshape->getSliceReshaperInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() ? &m_pcReshape->getInvLUT() : nullptr;
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  pcIntraPred->fillIntraGPMRefTemplateAll(pu, m_bAMLTemplateAvailabe[0], m_bAMLTemplateAvailabe[1], false, false, false, LUT, (partIdx == 0 ? mergeCand : 0), (partIdx == 1 ? mergeCand : 0));
+#else
   pcIntraPred->fillIntraGPMRefTemplateAll(pu, m_bAMLTemplateAvailabe[0], m_bAMLTemplateAvailabe[1], true, false, false, LUT, (partIdx == 0 ? mergeCand : 0), (partIdx == 1 ? mergeCand : 0));
+#endif
 #if JVET_AG0164_AFFINE_GPM
   int  realCandIdx = mergeCand - GEO_MAX_ALL_INTER_UNI_CANDS;
 #else
@@ -8830,9 +8988,16 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
   Pel* pDiffLeft   = partIdx == 0 ? m_acYuvRefAMLTemplatePart0[1] : m_acYuvRefAMLTemplatePart1[1];
 
   static_vector<int, GEO_NUM_PARTITION_MODE> intraModeToSplitDirAll[NUM_INTRA_MODE];
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
   {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+    uint8_t intraMode = pcIntraPred->getPrefilledIntraGPMMPMMode(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx);
+#else
     uint8_t intraMode = pcIntraPred->getPrefilledIntraGPMMPMMode(partIdx, splitDir, realCandIdx);
+#endif
     intraModeToSplitDirAll[intraMode].push_back(splitDir);
   }
 
@@ -8857,10 +9022,20 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
 
         for (int i = 0; i < toSplitDir.size(); ++i)
         {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          int splitDirIdx = toSplitDir[i];
+          CHECK(splitDirIdx >= GEO_NUM_PARTITION_MODE, "Invalid GPM partition");
+          int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
           int splitDir = toSplitDir[i];
+#endif
           int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
           Pel* mask = getTplWeightTableCU<false, 0>(splitDir);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          gpmTplCost[splitDirIdx] = (uint32_t)GetSampleSumFunc(partIdx + 2, pcBufDiffTop.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#else          
           gpmTplCost[splitDir] = (uint32_t)GetSampleSumFunc(partIdx + 2, pcBufDiffTop.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#endif
         }
       }
     }
@@ -8891,10 +9066,20 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
 
         for (int i = 0; i < toSplitDir.size(); ++i)
         {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          int splitDirIdx = toSplitDir[i];
+          CHECK(splitDirIdx >= GEO_NUM_PARTITION_MODE, "Invalid GPM partition");
+          int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
           int splitDir = toSplitDir[i];
+#endif
           int16_t mirrorIdx = g_angle2mirror[g_geoParams[splitDir][0]];
           Pel* mask = getTplWeightTableCU<false, 2>(splitDir);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+          gpmTplCost[splitDirIdx] += (uint32_t)GetSampleSumFunc(partIdx + 2, pcBufDiffLeft.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#else
           gpmTplCost[splitDir] += (uint32_t)GetSampleSumFunc(partIdx + 2, pcBufDiffLeft.Y(), bitDepth, mask, stepX[mirrorIdx], maskStride[mirrorIdx], maskStride2[mirrorIdx]);
+#endif
         }
       }
     }
@@ -10397,6 +10582,7 @@ void InterSearch::xPatternSearchIntRefine(PredictionUnit& pu, IntTZSearchStruct&
 
   cBaseMvd[0] = (rcMv - amvpInfo.mvCand[0]);
   cBaseMvd[1] = (rcMv - amvpInfo.mvCand[1]);
+
   CHECK( (cBaseMvd[0].getHor() & 0x03) != 0 || (cBaseMvd[0].getVer() & 0x03) != 0 , "xPatternSearchIntRefine(): AMVP cand 0 Mvd issue.");
   CHECK( (cBaseMvd[1].getHor() & 0x03) != 0 || (cBaseMvd[1].getVer() & 0x03) != 0 , "xPatternSearchIntRefine(): AMVP cand 1 Mvd issue.");
 
@@ -11210,6 +11396,7 @@ void InterSearch::xPredAffineInterSearch( PredictionUnit&       pu,
     {
     // 4-times iteration (default)
     int iNumIter = 4;
+
     // fast encoder setting or GPB: only one iteration
     if ( m_pcEncCfg->getFastInterSearchMode()==FASTINTERSEARCH_MODE1 || m_pcEncCfg->getFastInterSearchMode()==FASTINTERSEARCH_MODE2 || slice.getPicHeader()->getMvdL1ZeroFlag() )
     {
@@ -11675,9 +11862,7 @@ void InterSearch::xCheckBestAffineMVP( PredictionUnit &pu, AffineAMVPInfo &affin
   {
     return;
   }
-
   int mvNum = pu.cu->affineType ? 3 : 2;
-
   m_pcRdCost->selectMotionLambda( );
   m_pcRdCost->setCostScale ( 0 );
 
@@ -12244,7 +12429,12 @@ void InterSearch::xEstimateAffineAMVP( PredictionUnit&  pu,
   Distortion uiBestCost = std::numeric_limits<Distortion>::max();
 
   // Fill the MV Candidates
-  PU::fillAffineMvpCand( pu, eRefPicList, iRefIdx, affineAMVPInfo );
+  PU::fillAffineMvpCand( pu, eRefPicList, iRefIdx, affineAMVPInfo 
+#if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
+                , this
+#endif 
+  );
+
   CHECK( affineAMVPInfo.numCand == 0, "Assertion failed." );
 
   PelUnitBuf predBuf = m_tmpStorageLCU.getBuf( UnitAreaRelative(*pu.cu, pu) );
@@ -12275,6 +12465,7 @@ void InterSearch::xEstimateAffineAMVP( PredictionUnit&  pu,
 
   pu.mvpIdx[eRefPicList] = iBestIdx;
   pu.mvpNum[eRefPicList] = affineAMVPInfo.numCand;
+
   DTRACE( g_trace_ctx, D_COMMON, "#estAffi=%d \n", affineAMVPInfo.numCand );
 }
 
@@ -12573,11 +12764,19 @@ void InterSearch::xEncodeInterResidualQT(CodingStructure &cs, Partitioner &parti
 
   if (compID == MAX_NUM_TBLOCKS)  // we are not processing a channel, instead we always recurse and code the CBFs
   {
-    if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs ) )
+    if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    ) )
     {
       CHECK( !bSubdiv, "Not performing the implicit TU split" );
     }
-    else if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs ) )
+    else if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    ) )
     {
       CHECK( !bSubdiv, "Not performing the implicit TU split - sbt" );
     }
@@ -12652,11 +12851,19 @@ void InterSearch::xEncodeInterResidualQT(CodingStructure &cs, Partitioner &parti
   {
     if( compID == MAX_NUM_TBLOCKS || TU::getCbfAtDepth( currTU, compID, currDepth ) )
     {
-      if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs ) )
+      if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+        , false, false
+#endif
+      ) )
       {
         partitioner.splitCurrArea( TU_MAX_TR_SPLIT, cs );
       }
-      else if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs ) )
+      else if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+        , false, false
+#endif
+      ) )
       {
         partitioner.splitCurrArea( PartSplit( cu.getSbtTuSplit() ), cs );
       }
@@ -12692,10 +12899,17 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
   //                         if this cost is larger than the best cost, no need to try a specific SBT mode
   int cuWidth  = cu.lwidth();
   int cuHeight = cu.lheight();
+#if JVET_AJ0260_SBT_CORNER_MODE
+  const int numPartX = cuWidth  >= 8 ? 4 : 1;
+  const int numPartY = cuHeight >= 8 ? 4 : 1;
+
+  std::vector<std::vector<Distortion>> dist( numPartY, std::vector<Distortion>( numPartX, 0 ));
+#else
   int numPartX = cuWidth  >= 16 ? 4 : ( cuWidth  == 4 ? 1 : 2 );
   int numPartY = cuHeight >= 16 ? 4 : ( cuHeight == 4 ? 1 : 2 );
   Distortion dist[4][4];
   memset( dist, 0, sizeof( Distortion ) * 16 );
+#endif
 
   for( uint32_t c = 0; c < getNumberValidTBlocks( *cs.pcv ); c++ )
   {
@@ -12828,6 +13042,48 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     m_estMinDistSbt[SBT_HOR_Q1] = m_estMinDistSbt[SBT_HOR_Q1] >> shift;
   }
 
+#if JVET_AJ0260_SBT_CORNER_MODE
+  if( CU::targetSbtAllowed( SBT_QUAD, sbtAllowed ) )
+  {
+    m_estMinDistSbt[ SBT_Q0 ] = m_estMinDistSbt[ SBT_Q1 ] = m_estMinDistSbt[ SBT_Q2 ] = m_estMinDistSbt[ SBT_Q3 ] = 0;
+
+    for( int j = 0; j < numPartY / 2; j++ )
+    {
+      for( int i = 0; i < numPartX / 2; i++ )
+      {
+        m_estMinDistSbt[ SBT_Q0 ] += dist[ j ][ i ];
+        m_estMinDistSbt[ SBT_Q1 ] += dist[ j ][ i + ( numPartX >> 1 ) ];
+        m_estMinDistSbt[ SBT_Q2 ] += dist[ j + ( numPartY >> 1 ) ][ i ];
+        m_estMinDistSbt[ SBT_Q3 ] += dist[ j + ( numPartY >> 1 ) ][ i + ( numPartX >> 1 ) ];
+      }
+    }
+    m_estMinDistSbt[ SBT_Q0 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q0 ] ) + ( m_estMinDistSbt[ SBT_Q0 ] >> shift );
+    m_estMinDistSbt[ SBT_Q1 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q1 ] ) + ( m_estMinDistSbt[ SBT_Q1 ] >> shift );
+    m_estMinDistSbt[ SBT_Q2 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q2 ] ) + ( m_estMinDistSbt[ SBT_Q2 ] >> shift );
+    m_estMinDistSbt[ SBT_Q3 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_Q3 ] ) + ( m_estMinDistSbt[ SBT_Q3 ] >> shift );
+  }
+
+  if( CU::targetSbtAllowed( SBT_QUARTER, sbtAllowed ) )
+  {
+    m_estMinDistSbt[ SBT_QT0 ] = m_estMinDistSbt[ SBT_QT1 ] = m_estMinDistSbt[ SBT_QT2 ] = m_estMinDistSbt[ SBT_QT3 ] = 0;
+
+    for( int j = 0; j < numPartY / 4; j++ )
+    {
+      for( int i = 0; i < numPartX / 4; i++ )
+      {
+        m_estMinDistSbt[ SBT_QT0 ] += dist[ j ][ i ];
+        m_estMinDistSbt[ SBT_QT1 ] += dist[ j ][ i + ( 3 * numPartX >> 2 ) ];
+        m_estMinDistSbt[ SBT_QT2 ] += dist[ j + ( 3 * numPartY >> 2 ) ][ i ];
+        m_estMinDistSbt[ SBT_QT3 ] += dist[ j + ( 3 * numPartY >> 2 ) ][ i + ( 3 * numPartX >> 2 ) ];
+      }
+    }
+    m_estMinDistSbt[ SBT_QT0 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT0 ] ) + ( m_estMinDistSbt[ SBT_QT0 ] >> shift );
+    m_estMinDistSbt[ SBT_QT1 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT1 ] ) + ( m_estMinDistSbt[ SBT_QT1 ] >> shift );
+    m_estMinDistSbt[ SBT_QT2 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT2 ] ) + ( m_estMinDistSbt[ SBT_QT2 ] >> shift );
+    m_estMinDistSbt[ SBT_QT3 ] = ( m_estMinDistSbt[ NUMBER_SBT_MODE ] - m_estMinDistSbt[ SBT_QT3 ] ) + ( m_estMinDistSbt[ SBT_QT3 ] >> shift );
+  }
+#endif
+
   //SBT fast algorithm 5: try N SBT modes with the lowest distortion
   Distortion temp[NUMBER_SBT_MODE];
   memcpy( temp, m_estMinDistSbt, sizeof( Distortion ) * NUMBER_SBT_MODE );
@@ -12850,13 +13106,29 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
   }
 
   startIdx += numRDO;
+#if JVET_AJ0260_SBT_CORNER_MODE
+  numRDO = ( ( CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) + CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed ) ) << 1 ) + ( CU::targetSbtAllowed( SBT_QUAD, sbtAllowed ) << 2 );
+  numRDO = std::min( numRDO, SBT_NUM_RDO );
+#else
   numRDO = CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) + CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed );
   numRDO = std::min( ( numRDO << 1 ), SBT_NUM_RDO );
+#endif
+
   for( int i = startIdx; i < startIdx + numRDO; i++ )
   {
     Distortion minDist = std::numeric_limits<uint64_t>::max();
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+    for( int n = SBT_VER_Q0; n < NUMBER_SBT_MODE; n++ )
+    {
+      if( n >= SBT_QT0 && n <= SBT_QT3 )
+      {
+        continue;
+      }
+#else
     for( int n = SBT_VER_Q0; n <= SBT_HOR_Q1; n++ )
     {
+#endif
       if( temp[n] < minDist )
       {
         minDist = temp[n];
@@ -12865,6 +13137,26 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     }
     temp[m_sbtRdoOrder[i]] = std::numeric_limits<uint64_t>::max();
   }
+
+#if JVET_AJ0260_SBT_CORNER_MODE
+  startIdx += numRDO;
+  numRDO = CU::targetSbtAllowed( SBT_QUARTER, sbtAllowed );
+  numRDO = std::min( ( numRDO << 2 ), SBT_NUM_RDO );
+
+  for( int i = startIdx; i < startIdx + numRDO; i++ )
+  {
+    Distortion minDist = std::numeric_limits<uint64_t>::max();
+    for( int n = SBT_QT0; n <= SBT_QT3; n++ )
+    {
+      if( temp[ n ] < minDist )
+      {
+        minDist = temp[ n ];
+        m_sbtRdoOrder[ i ] = n;
+      }
+    }
+    temp[ m_sbtRdoOrder[ i ] ] = std::numeric_limits<uint64_t>::max();
+  }
+#endif
 }
 
 uint8_t InterSearch::skipSbtByRDCost( int width, int height, int mtDepth, uint8_t sbtIdx, uint8_t sbtPos, double bestCost, Distortion distSbtOff, double costSbtOff, bool rootCbfSbtOff )
@@ -12939,8 +13231,16 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
   const unsigned currDepth = partitioner.currTrDepth;
   const bool colorTransFlag = cs.cus[0]->colorTransform;
 
-  bool bCheckFull  = !partitioner.canSplit( TU_MAX_TR_SPLIT, cs );
-  if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs ) )
+  bool bCheckFull  = !partitioner.canSplit( TU_MAX_TR_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  );
+  if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+    , false, false
+#endif
+  ) )
   {
     bCheckFull = false;
   }
@@ -13286,10 +13586,22 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         if (lfnstAllowed)
         {
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+          int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                        || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+          int numMode = cu.cs->sps->getUseInterMTSS() && tu.cu->geoFlag ? ( kerCandNum << 1 ) : kerCandNum;
+#else
           int numMode = cu.cs->sps->getUseInterMTSS() && tu.cu->geoFlag ? 6 : 3;
+#endif
           for (int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + numMode; i++)   // 3 or 6 lfnst
 #else
+#if AHG7_LN_TOOLOFF_CFG
+          int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                        || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+          for( int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + kerCandNum; i++ )   // 3 lfnst
+#else
           for (int i = NUM_TRAFO_MODES_MTS; i < NUM_TRAFO_MODES_MTS + 3; i++)   // 3 lfnst
+#endif
 #endif
           {
             {
@@ -13505,9 +13817,17 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #if JVET_AG0061_INTER_LFNST_NSPT
             tu.mtsIdx[compID]   = trModes[transformMode].first < NUM_TRAFO_MODES_MTS ? trModes[transformMode].first : 0;
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+            int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                          || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+            int factor = ( trModes[ transformMode ].first - NUM_TRAFO_MODES_MTS ) / kerCandNum;
+            tu.lfnstIdx[ compID ] = trModes[ transformMode ].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[ transformMode ].first - NUM_TRAFO_MODES_MTS - kerCandNum * factor + 1;
+            tu.lfnstIntra[ compID ] = trModes[ transformMode ].first < ( NUM_TRAFO_MODES_MTS + kerCandNum ) ? 0 : ( trModes[ transformMode ].first < ( NUM_TRAFO_MODES_MTS + ( kerCandNum << 1 ) ) ? 1 : 2 );
+#else
             int factor = (trModes[transformMode].first - NUM_TRAFO_MODES_MTS) / 3;
             tu.lfnstIdx[compID] = trModes[transformMode].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[transformMode].first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
             tu.lfnstIntra[compID] = trModes[transformMode].first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (trModes[transformMode].first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
+#endif
 #else
             tu.lfnstIdx[compID] = trModes[transformMode].first < NUM_TRAFO_MODES_MTS
                                     ? 0
@@ -13583,9 +13903,17 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
               tu.mtsIdx[compID] = trModes[0].first < NUM_TRAFO_MODES_MTS ? trModes[0].first : 0;
 #if JVET_AI0050_INTER_MTSS
+#if AHG7_LN_TOOLOFF_CFG
+              int kerCandNum = ( cu.cs->sps->getUseLFNSTExt()
+                            || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( tu.blocks[ compID ].width, tu.blocks[ compID ].height ) ) ) ? 3 : 2;
+              int factor = ( trModes[ 0 ].first - NUM_TRAFO_MODES_MTS ) / kerCandNum;
+              tu.lfnstIdx[ compID ] = trModes[ 0 ].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[ 0 ].first - NUM_TRAFO_MODES_MTS - kerCandNum * factor + 1;
+              tu.lfnstIntra[ compID ] = trModes[ 0 ].first < ( NUM_TRAFO_MODES_MTS + kerCandNum ) ? 0 : ( trModes[ 0 ].first < ( NUM_TRAFO_MODES_MTS + ( kerCandNum << 1 ) ) ? 1 : 2 );
+#else
               int factor = (trModes[0].first - NUM_TRAFO_MODES_MTS) / 3;
               tu.lfnstIdx[compID] = trModes[0].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[0].first - NUM_TRAFO_MODES_MTS - 3 * factor + 1;
               tu.lfnstIntra[compID] = trModes[0].first < (NUM_TRAFO_MODES_MTS + 3) ? 0 : (trModes[0].first < (NUM_TRAFO_MODES_MTS + 6) ? 1 : 2);
+#endif
 #else
               tu.lfnstIdx[compID] =
                 trModes[0].first < NUM_TRAFO_MODES_MTS ? 0 : trModes[0].first - NUM_TRAFO_MODES_MTS + 1;
@@ -14742,11 +15070,19 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       m_CABACEstimator->getCtx() = ctxStart;
     }
 
-    if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs ) )
+    if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs 
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    ) )
     {
       partitioner.splitCurrArea( TU_MAX_TR_SPLIT, cs );
     }
-    else if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs ) )
+    else if( cu.sbtInfo && partitioner.canSplit( PartSplit( cu.getSbtTuSplit() ), cs
+#if JVET_AI0087_BTCUS_RESTRICTION
+      , false, false
+#endif
+    ) )
     {
       partitioner.splitCurrArea( PartSplit( cu.getSbtTuSplit() ), cs );
     }
@@ -16286,7 +16622,6 @@ void InterSearch::setEncCtrlParaLicOff(CodingUnit& cu)
 {
   CodingStructure& cs = *cu.cs;
   PredictionUnit&  pu = *cu.firstPU;
-
   isBDOFNotNeeded = (pu.interDir == 1 || pu.interDir == 2 || pu.cu->bcwIdx != BCW_DEFAULT || pu.cu->affine || pu.cu->smvdMode);
   amvpCand0 = &(m_tplAmvpInfo[cu.imv][REF_PIC_LIST_0][pu.refIdx[REF_PIC_LIST_0]]);
   amvpCand1 = &(m_tplAmvpInfo[cu.imv][REF_PIC_LIST_1][pu.refIdx[REF_PIC_LIST_1]]);
@@ -16294,6 +16629,7 @@ void InterSearch::setEncCtrlParaLicOff(CodingUnit& cu)
   amvpCand1Lic = &(m_tplAmvpInfoLIC[cu.imv][REF_PIC_LIST_1][pu.refIdx[REF_PIC_LIST_1]]);
   mvpIdx0 = pu.mvpIdx[REF_PIC_LIST_0];
   mvpIdx1 = pu.mvpIdx[REF_PIC_LIST_1];
+
   if (!cu.affine)
   {
     for (int refList = 0; refList < NUM_REF_PIC_LIST_01; refList++)
@@ -16318,7 +16654,6 @@ void InterSearch::setEncCtrlParaLicOff(CodingUnit& cu)
         pu.cu->licFlag = true;
       }
     }
-
     if (cs.picHeader->getMvdL1ZeroFlag() && pu.interDir == 3)
     {
       if (amvpCand1Lic->mvCand[mvpIdx1] != amvpCand1->mvCand[mvpIdx1])
@@ -16920,6 +17255,12 @@ bool InterSearch::searchBv(PredictionUnit& pu, int xPos, int yPos, int width, in
     return false;
   }
 
+#if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
+  if (((refTopY >> ctuSizeLog2) == (yPos >> ctuSizeLog2)) && ((refRightX >> ctuSizeLog2) > (xPos >> ctuSizeLog2)))
+  {
+    return false;
+  }
+#else
   unsigned curTileIdx = pu.cs->pps->getTileIdx(pu.lumaPos());
   unsigned refTileIdx = pu.cs->pps->getTileIdx(Position(refLeftX, refTopY));
   if (curTileIdx != refTileIdx)
@@ -17019,6 +17360,7 @@ bool InterSearch::searchBv(PredictionUnit& pu, int xPos, int yPos, int width, in
   }
   else
     return false;
+#endif
 #endif
 
   // in the same CTU, or valid area from left CTU. Check if the reference block is already coded
