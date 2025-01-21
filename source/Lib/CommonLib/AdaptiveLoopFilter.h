@@ -116,6 +116,11 @@ public:
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   PelUnitBuf callCodingInfoBuf( CodingStructure &cs ) { return m_tempBufCodingInfo; }
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  PelUnitBuf callRecAfterSaoBuf() { return m_tempBufSAO; }
+  PelUnitBuf callRecBeforeAlfBuf() { return m_tempBuf; }
+  PelUnitBuf callRecBeforeDbfBuf(){ return  m_tempBufBeforeDb; }
+#endif
 
   static constexpr int AlfNumClippingValues[MAX_NUM_CHANNEL_TYPE] = { 4, 4 };
   static constexpr int MaxAlfNumClippingValues = 4;
@@ -273,6 +278,14 @@ public:
 
   static void calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
   void(  *m_calcAlfLumaCodingInfoBlk )( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void calcOffsetRefinement(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, int stageIdx, int refineIdx);
+  void copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst );
+  void copyOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst, const Area& blk );
+
+  static void calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, PelUnitBuf& srcCodingInfo, int stageIdx, const Area& blk, int refineIdx, PelUnitBuf& codingInfo);
+  void ( *m_calcOffsetRefinementBlk )(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, PelUnitBuf& srcCodingInfo, int stageIdx, const Area& blk, int refineIdx, PelUnitBuf& codingInfo);
 #endif
 #if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   void paddingLaplacianResultsPic(Pel ***laplacianPic, const int storeIdx);

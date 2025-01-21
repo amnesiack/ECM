@@ -1288,6 +1288,10 @@ void EncApp::xInitLibCfg()
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   m_cEncLib.setAlfLumaFixedFilterAdjust                          ( m_alfLumaFixedFilterAdjust );
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_cEncLib.setInloopOffsetRefineFlag                            ( m_inloopOffsetRefineFlag );
+  m_cEncLib.setInloopOffsetRefineFunc                            ( m_inloopOffsetRefineFunc );
+#endif
   m_cEncLib.setTestSAODisableAtPictureLevel                      ( m_bTestSAODisableAtPictureLevel );
   m_cEncLib.setSaoEncodingRate                                   ( m_saoEncodingRate );
   m_cEncLib.setSaoEncodingRateChroma                             ( m_saoEncodingRateChroma );

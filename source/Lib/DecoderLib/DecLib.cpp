@@ -202,6 +202,12 @@ bool tryDecodePicture( Picture* pcEncPic, const int expectedPoc, const std::stri
 #if JVET_AG0145_ADAPTIVE_CLIPPING
                 pcEncPic->calcLumaClpParams();
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+                pcEncPic->cs->slice->setOffsetRefinementDbf(pic->cs->slice->getOffsetRefinementDbf() );
+                pcEncPic->cs->slice->setOffsetRefinementAlf(pic->cs->slice->getOffsetRefinementAlf() );
+                pcEncPic->cs->slice->setOffsetRefinementDbfIdx(pic->cs->slice->getOffsetRefinementDbfIdx() );
+                pcEncPic->cs->slice->setOffsetRefinementAlfIdx(pic->cs->slice->getOffsetRefinementAlfIdx() );
+#endif
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
                 pcEncPic->cs->slice->copyAlfScale( *pic->cs->slice );
 #endif
@@ -859,6 +865,25 @@ void DecLib::executeLoopFilters()
   m_cLoopFilter.loopFilterPic( cs );
 #endif
 
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  if( cs.sps->getALFEnabledFlag() )
+  {
+    bool sliceTypeCondition = true;
+    if( sliceTypeCondition && cs.slice->getOffsetRefinementDbf() )
+    {
+      PelUnitBuf dbfInput = m_cALF.callRecBeforeDbfBuf();
+      PelUnitBuf dbfOutput = cs.getRecoBuf();
+
+      PelUnitBuf dbfOffsetRefine = m_cALF.callRecAfterSaoBuf();
+
+      int stageIdx = 0;
+      int refineIdx = cs.slice->getOffsetRefinementDbfIdx();
+      m_cALF.calcOffsetRefinement(cs, dbfInput, dbfOutput, dbfOffsetRefine, stageIdx, refineIdx );
+      m_cALF.copyOffsetRefinement(cs, dbfOffsetRefine, dbfOutput);
+    }
+  }
+#endif
+
 #if !MULTI_PASS_DMVR
   CS::setRefinedMotionField(cs);
 #endif
@@ -921,6 +946,24 @@ void DecLib::executeLoopFilters()
   if( cs.sps->getUseTAlf())
   {
     m_cALF.TAlfProcess(cs);
+  }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  if( cs.sps->getALFEnabledFlag() )
+  {
+    bool sliceTypeCondition = !cs.slice->isIntra();
+    if( sliceTypeCondition && cs.slice->getOffsetRefinementAlf() )
+    {
+      PelUnitBuf alfInput = m_cALF.callRecAfterSaoBuf();
+      PelUnitBuf alfOutput = cs.getRecoBuf();
+
+      PelUnitBuf alfOffsetRefine = m_cALF.callRecBeforeDbfBuf();
+
+      int stageIdx = 1;
+      int refineIdx = cs.slice->getOffsetRefinementAlfIdx();
+      m_cALF.calcOffsetRefinement(cs, alfInput, alfOutput, alfOffsetRefine, stageIdx, refineIdx );
+      m_cALF.copyOffsetRefinement(cs, alfOffsetRefine, alfOutput);
+    }
   }
 #endif
   // Use residual buffer to store post-filtered image

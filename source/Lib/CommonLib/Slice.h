@@ -1789,6 +1789,10 @@ private:
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool              m_alfLumaFixedFilterAdjust;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool              m_inloopOffsetRefineFlag;
+  bool              m_inloopOffsetRefineFunc;
+#endif
   bool              m_wrapAroundEnabledFlag;
   unsigned          m_IBCFlag;
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -2282,6 +2286,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool                    getAlfLumaFixedFilterAdjust() const                                             { return m_alfLumaFixedFilterAdjust; }
   void                    setAlfLumaFixedFilterAdjust( bool b )                                           { m_alfLumaFixedFilterAdjust = b; }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool                    getInloopOffsetRefineFlag() const                                               { return m_inloopOffsetRefineFlag; }
+  void                    setInloopOffsetRefineFlag( bool b )                                             { m_inloopOffsetRefineFlag = b; }
+  bool                    getInloopOffsetRefineFunc() const                                               { return m_inloopOffsetRefineFunc; }
+  void                    setInloopOffsetRefineFunc( bool b )                                             { m_inloopOffsetRefineFunc = b; }
 #endif
   void                    setJointCbCrEnabledFlag(bool bVal)                                              { m_JointCbCrEnabledFlag = bVal; }
   bool                    getJointCbCrEnabledFlag() const                                                 { return m_JointCbCrEnabledFlag; }
@@ -3968,6 +3978,12 @@ private:
   int                        m_lumaPelMin;
   bool                       m_adaptiveClipQuant;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool                       m_offsetRefinementDbf;
+  bool                       m_offsetRefinementAlf;
+  uint8_t                    m_offsetRefinementDbfIdx;
+  uint8_t                    m_offsetRefinementAlfIdx;
+#endif
 #if MULTI_HYP_PRED
   int                        m_numMultiHypRefPics = 0;
 
@@ -4614,7 +4630,18 @@ public:
   void                        setAdaptiveClipQuant(bool b)                        { m_adaptiveClipQuant = b; };
   bool                        getAdaptiveClipQuant()                        const { return m_adaptiveClipQuant; };
 #endif
-#if JVET_AJ0249_NEURAL_NETWORK_BASED 
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void                        setOffsetRefinementDbf(bool b)                      { m_offsetRefinementDbf = b; }
+  bool                        getOffsetRefinementDbf()                      const { return m_offsetRefinementDbf; }
+  void                        setOffsetRefinementAlf(bool b)                      { m_offsetRefinementAlf = b; }
+  bool                        getOffsetRefinementAlf()                      const { return m_offsetRefinementAlf; }
+  void                        setOffsetRefinementDbfIdx(uint8_t b)                { m_offsetRefinementDbfIdx = b; }
+  uint8_t                     getOffsetRefinementDbfIdx()                   const { return m_offsetRefinementDbfIdx; }
+  void                        setOffsetRefinementAlfIdx(uint8_t b)                { m_offsetRefinementAlfIdx = b; }
+  uint8_t                     getOffsetRefinementAlfIdx()                   const { return m_offsetRefinementAlfIdx; }
+#endif
+
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool getPnnMode() const { return m_pnnMode; }
   void setPnnMode(const bool pnnMode) { m_pnnMode = pnnMode; }
 #endif

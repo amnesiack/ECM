@@ -3919,6 +3919,42 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       m_pcLoopFilter->loopFilterPic( cs );
 #endif
 
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+      if( cs.sps->getALFEnabledFlag() )
+      {
+        bool sliceTypeCondition = true;
+        bool enableRefinement = false;
+        bool dbfEnabled = !cs.slice->getDeblockingFilterDisable();
+        PelUnitBuf dbfInput = m_pcALF->callRecBeforeDbfBuf();
+        PelUnitBuf dbfOutput = cs.getRecoBuf();
+
+        PelUnitBuf dbfOffsetRefine0 = m_pcALF->callRecAfterSaoBuf();
+        PelUnitBuf dbfOffsetRefine1 = m_pcALF->callRecBeforeAlfBuf();
+
+        int stageIdx = 0;
+        int refineIdx = 0;
+
+        if( sliceTypeCondition && dbfEnabled )
+        {
+          m_pcALF->calcOffsetRefinement(cs, dbfInput, dbfOutput, dbfOffsetRefine0, stageIdx, 0 );
+          m_pcALF->calcOffsetRefinement(cs, dbfInput, dbfOutput, dbfOffsetRefine1, stageIdx, 1 );
+          enableRefinement = m_pcALF->calcOffsetRefinementOnOff(cs, dbfOutput, dbfOffsetRefine0, dbfOffsetRefine1, refineIdx );
+        }
+
+        if( sliceTypeCondition && enableRefinement )
+        {
+          cs.slice->setOffsetRefinementDbf( true );
+          cs.slice->setOffsetRefinementDbfIdx( refineIdx );
+          m_pcALF->copyOffsetRefinement(cs, refineIdx ? dbfOffsetRefine1 : dbfOffsetRefine0, dbfOutput);
+        }
+        else
+        {
+          cs.slice->setOffsetRefinementDbf( false );
+          cs.slice->setOffsetRefinementDbfIdx( false );
+        }
+      }
+#endif
+
 #if !MULTI_PASS_DMVR
       CS::setRefinedMotionField(cs);
 #endif
@@ -4060,6 +4096,41 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           , m_pcCfg->getIntraPeriod()
 #endif
         );
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+        if( cs.sps->getALFEnabledFlag() )
+        {
+          bool sliceTypeCondition = !cs.slice->isIntra();
+          bool alfEnabled = cs.slice->getTileGroupAlfEnabledFlag( COMPONENT_Y );
+          bool enableRefinement = false;
+          PelUnitBuf alfInput = m_pcALF->callRecAfterSaoBuf();
+          PelUnitBuf alfOutput = cs.getRecoBuf();
+
+          PelUnitBuf alfOffsetRefine0 = m_pcALF->callRecBeforeDbfBuf();
+          PelUnitBuf alfOffsetRefine1 = m_pcALF->callRecBeforeAlfBuf();
+
+          int stageIdx = 1;
+          int refineIdx = 0;
+
+          if( sliceTypeCondition && alfEnabled )
+          {
+            m_pcALF->calcOffsetRefinement(cs, alfInput, alfOutput, alfOffsetRefine0, stageIdx, 0 );
+            m_pcALF->calcOffsetRefinement(cs, alfInput, alfOutput, alfOffsetRefine1, stageIdx, 1 );
+            enableRefinement = m_pcALF->calcOffsetRefinementOnOff(cs, alfOutput, alfOffsetRefine0, alfOffsetRefine1, refineIdx );
+          }
+
+          if( sliceTypeCondition && enableRefinement )
+          {
+            cs.slice->setOffsetRefinementAlf( true );
+            cs.slice->setOffsetRefinementAlfIdx( refineIdx );
+            m_pcALF->copyOffsetRefinement(cs, refineIdx ? alfOffsetRefine1 : alfOffsetRefine0, alfOutput);
+          }
+          else
+          {
+            cs.slice->setOffsetRefinementAlf( false );
+            cs.slice->setOffsetRefinementAlfIdx( false );
+          }
+        }
+#endif
 
         //assign ALF slice header
         for (int s = 0; s < uiNumSliceSegments; s++)

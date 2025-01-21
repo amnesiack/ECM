@@ -515,6 +515,7 @@
 #define JVET_AJ0188_CODING_INFO_CLASSIFICATION            1 // JVET-AJ0188: Coding Information based Classification for ALF
 #define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
 #define JVET_AK0065_TALF                                  1 // JVET-AK0065: Temporal ALF
+#define JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT          1 // JVET-AK0121: Boundary-Aware Offset Refinement for Loop-Filters
 
 // SIMD optimizations
 #if IF_12TAP

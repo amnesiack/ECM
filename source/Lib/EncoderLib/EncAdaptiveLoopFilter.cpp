@@ -10031,6 +10031,71 @@ void EncAdaptiveLoopFilter::countChromaSampleValueNearMidPoint(const Pel* chroma
   }
 }
 
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+bool EncAdaptiveLoopFilter::calcOffsetRefinementOnOff(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& src2, int& refineIdx )
+{
+  const PreCalcValues& pcv = *cs.pcv;
+
+  PelUnitBuf org = cs.getTrueOrgBuf();
+
+  double dist0 = 0.0, dist1 = 0.0, dist2 = 0.0;
+
+  int ctuIdx = 0;
+
+  for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
+  {
+    for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
+    {
+      const int width = (xPos + pcv.maxCUWidth > pcv.lumaWidth) ? (pcv.lumaWidth - xPos) : pcv.maxCUWidth;
+      const int height = (yPos + pcv.maxCUHeight > pcv.lumaHeight) ? (pcv.lumaHeight - yPos) : pcv.maxCUHeight;
+
+      Area blk(xPos, yPos, width, height);
+
+      const int src0Stride = src0.get(COMPONENT_Y).stride;
+      const int src1Stride = src1.get(COMPONENT_Y).stride;
+      const int src2Stride = src2.get(COMPONENT_Y).stride;
+
+      const int orgStride = org.get(COMPONENT_Y).stride;
+      Pel* src0Ptr = src0.get(COMPONENT_Y).buf + blk.y * src0Stride + blk.x;
+      Pel* src1Ptr = src1.get(COMPONENT_Y).buf + blk.y * src1Stride + blk.x;
+      Pel* src2Ptr = src2.get(COMPONENT_Y).buf + blk.y * src2Stride + blk.x;
+
+      Pel* orgPtr = org.get(COMPONENT_Y).buf + blk.y * orgStride + blk.x;
+
+      for(int y = 0; y < blk.height; y++)
+      {
+        for(int x = 0; x < blk.width; x++)
+        {
+          int diff0 = orgPtr[x] - src0Ptr[x];
+          int diff1 = orgPtr[x] - src1Ptr[x];
+          int diff2 = orgPtr[x] - src2Ptr[x];
+
+          dist0 += diff0 * diff0;
+          dist1 += diff1 * diff1;
+          dist2 += diff2 * diff2;
+        }
+        src0Ptr += src0Stride;
+        src1Ptr += src1Stride;
+        src2Ptr += src2Stride;
+        orgPtr += orgStride;
+      }
+      ctuIdx++;
+    }
+  }
+
+  //src0 = disable, src1 = enable index 0, src2 = enable index 1
+
+  double lambda = cs.slice->getLambdas()[COMPONENT_Y];
+  dist0 += 1 * lambda;
+  dist1 += 2 * lambda;
+  dist2 += 2 * lambda;
+  refineIdx = dist1 <= dist2 ? 0 : 1;
+  double distMinEnable = refineIdx == 0 ? dist1 : dist2;
+  bool enableOffsetRefinement = distMinEnable < dist0 ? true : false;
+
+  return enableOffsetRefinement;
+}
+#endif
 #if JVET_AK0065_TALF
 std::vector<std::vector<int>> getCombMap(int k, std::vector<int>& apsIds)
 {

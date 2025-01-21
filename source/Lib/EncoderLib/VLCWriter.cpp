@@ -1404,6 +1404,13 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     WRITE_FLAG( pcSPS->getAlfLumaFixedFilterAdjust(),                                 "sps_alf_luma_fixed_filter_adjust" );
   }
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  if( pcSPS->getALFEnabledFlag() )
+  {
+    WRITE_FLAG( pcSPS->getInloopOffsetRefineFlag(),                                          "sps_inloop_offset_refine_flag" );
+    WRITE_FLAG( pcSPS->getInloopOffsetRefineFunc(),                                          "sps_inloop_offset_refine_func" );
+  }
+#endif
   if (pcSPS->getALFEnabledFlag() && pcSPS->getChromaFormatIdc() != CHROMA_400)
   {
     WRITE_FLAG( pcSPS->getCCALFEnabledFlag(),                                            "sps_ccalf_enabled_flag" );
@@ -3845,6 +3852,29 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
     }
     WRITE_SVLC(deltaMax, "clip_luma_pel_max");
     WRITE_SVLC(deltaMin, "clip_luma_pel_min");
+  }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool sliceTypeConditionDbf = true;
+  if( pcSlice->getSPS()->getALFEnabledFlag() && !pcSlice->getDeblockingFilterDisable() && sliceTypeConditionDbf )
+  {
+    WRITE_FLAG(pcSlice->getOffsetRefinementDbf(), "offset_refinement_for_dbf");
+
+    if( pcSlice->getOffsetRefinementDbf() )
+    {
+      WRITE_FLAG(pcSlice->getOffsetRefinementDbfIdx(), "offset_refinement_for_dbf_idx");
+    }
+  }
+
+  bool sliceTypeConditionAlf = !pcSlice->isIntra();
+  if( pcSlice->getSPS()->getALFEnabledFlag() && pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y) && sliceTypeConditionAlf )
+  {
+    WRITE_FLAG(pcSlice->getOffsetRefinementAlf(), "offset_refinement_for_alf");
+
+    if( pcSlice->getOffsetRefinementAlf() )
+    {
+      WRITE_FLAG(pcSlice->getOffsetRefinementAlfIdx(), "offset_refinement_for_alf_idx");
+    }
   }
 #endif
 }

@@ -2258,6 +2258,18 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     pcSPS->setAlfLumaFixedFilterAdjust( false );
   }
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  if( pcSPS->getALFEnabledFlag() )
+  {
+    READ_FLAG( uiCode, "sps_inloop_offset_refine_flag" );                 pcSPS->setInloopOffsetRefineFlag( uiCode ? true : false );
+    READ_FLAG( uiCode, "sps_inloop_offset_refine_func" );                 pcSPS->setInloopOffsetRefineFunc( uiCode ? true : false );
+  }
+  else
+  {
+    pcSPS->setInloopOffsetRefineFlag( false );
+    pcSPS->setInloopOffsetRefineFunc( false );
+  }
+#endif
   if (pcSPS->getALFEnabledFlag() && pcSPS->getChromaFormatIdc() != CHROMA_400)
   {
     READ_FLAG( uiCode, "sps_ccalf_enabled_flag" );                      pcSPS->setCCALFEnabledFlag ( uiCode ? true : false );
@@ -6078,6 +6090,43 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     int deltaMin = iCode;
     pcSlice->setLumaPelMax(deltaMax);
     pcSlice->setLumaPelMin(deltaMin);
+  }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool sliceTypeConditionDbf = true;
+  if( sps->getALFEnabledFlag() && !pcSlice->getDeblockingFilterDisable() && sliceTypeConditionDbf )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_dbf");
+    pcSlice->setOffsetRefinementDbf( uiCode );
+  }
+  else
+  {
+    pcSlice->setOffsetRefinementDbf( false );
+  }
+
+  pcSlice->setOffsetRefinementDbfIdx( false );
+  if( pcSlice->getOffsetRefinementDbf() )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_dbf_idx");
+    pcSlice->setOffsetRefinementDbfIdx( uiCode );
+  }
+
+  bool sliceTypeConditionAlf = !pcSlice->isIntra();
+  if( sps->getALFEnabledFlag() && pcSlice->getTileGroupAlfEnabledFlag( COMPONENT_Y ) && sliceTypeConditionAlf  )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_alf");
+    pcSlice->setOffsetRefinementAlf( uiCode );
+  }
+  else
+  {
+    pcSlice->setOffsetRefinementAlf( false );
+  }
+
+  pcSlice->setOffsetRefinementAlfIdx( false );
+  if( pcSlice->getOffsetRefinementAlf() )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_alf_idx");
+    pcSlice->setOffsetRefinementAlfIdx( uiCode );
   }
 #endif
 

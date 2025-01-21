@@ -1594,6 +1594,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   ("AlfLumaFixedFilterAdjust",                        m_alfLumaFixedFilterAdjust,                         true, "Alf Luma Fixed Filter Adjustment" )
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  ("InloopOffsetRefineFlag",                          m_inloopOffsetRefineFlag,                           true, "Inloop Filter Offset Refinement Flag" )
+  ("InloopOffsetRefineFunc",                          m_inloopOffsetRefineFunc,                           true, "Inloop Filter Offset Refinement Func" )
+#endif
   ("TestSAODisableAtPictureLevel",                    m_bTestSAODisableAtPictureLevel,                  false, "Enables the testing of disabling SAO at the picture level after having analysed all blocks")
   ("SaoEncodingRate",                                 m_saoEncodingRate,                                 0.75, "When >0 SAO early picture termination is enabled for luma and chroma")
   ("SaoEncodingRateChroma",                           m_saoEncodingRateChroma,                            0.5, "The SAO early picture termination rate to use for chroma (when m_SaoEncodingRate is >0). If <=0, use results for luma")

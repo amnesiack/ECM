@@ -737,6 +737,10 @@ protected:
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool      m_alfLumaFixedFilterAdjust;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool      m_inloopOffsetRefineFlag;
+  bool      m_inloopOffsetRefineFunc;
+#endif
   bool      m_bTestSAODisableAtPictureLevel;
   double    m_saoEncodingRate;       // When non-0 SAO early picture termination is enabled for luma and chroma
   double    m_saoEncodingRateChroma; // The SAO early picture termination rate to use for chroma (when m_SaoEncodingRate is >0). If <=0, use results for luma.
@@ -2459,6 +2463,12 @@ public:
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   void      setAlfLumaFixedFilterAdjust(bool b)                      { m_alfLumaFixedFilterAdjust = b; }
   bool      getAlfLumaFixedFilterAdjust()                      const { return m_alfLumaFixedFilterAdjust; }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void      setInloopOffsetRefineFlag(bool b)                          { m_inloopOffsetRefineFlag = b; }
+  bool      getInloopOffsetRefineFlag()                          const { return m_inloopOffsetRefineFlag; }
+  void      setInloopOffsetRefineFunc(bool b)                          { m_inloopOffsetRefineFunc = b; }
+  bool      getInloopOffsetRefineFunc()                          const { return m_inloopOffsetRefineFunc; }
 #endif
   void  setTestSAODisableAtPictureLevel (bool bVal)                  { m_bTestSAODisableAtPictureLevel = bVal; }
   bool  getTestSAODisableAtPictureLevel ( ) const                    { return m_bTestSAODisableAtPictureLevel; }

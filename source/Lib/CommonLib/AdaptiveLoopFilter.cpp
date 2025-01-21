@@ -185,6 +185,9 @@ AdaptiveLoopFilter::AdaptiveLoopFilter()
   m_textureClassMapping = textureClassMapping;
   m_calcAlfLumaCodingInfoBlk = calcAlfLumaCodingInfoBlk;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_calcOffsetRefinementBlk = calcOffsetRefinementBlk;
+#endif
 
 #if JVET_AK0065_TALF
   m_setTAlfInput[1] = setBiInput;
@@ -1886,7 +1889,7 @@ void AdaptiveLoopFilter::reconstructCoeff( AlfParam& alfParam, ChannelType chann
   }
 }
 
-#if FIXFILTER_CFG 
+#if FIXFILTER_CFG
 void AdaptiveLoopFilter::create(const int picWidth, const int picHeight, const ChromaFormat format, const int maxCUWidth, const int maxCUHeight, const int maxCUDepth, const int inputBitDepth[MAX_NUM_CHANNEL_TYPE], bool useFixedFilter)
 #else
 void AdaptiveLoopFilter::create(const int picWidth, const int picHeight, const ChromaFormat format, const int maxCUWidth, const int maxCUHeight, const int maxCUDepth, const int inputBitDepth[MAX_NUM_CHANNEL_TYPE])
@@ -9067,10 +9070,236 @@ void AdaptiveLoopFilter::calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClass
 
     }
   }
+
+}
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+void AdaptiveLoopFilter::calcOffsetRefinement(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, int stageIdx, int refineIdx )
+{
+  const PreCalcValues& pcv = *cs.pcv;
+
+  PelUnitBuf srcCodingInfo = m_tempBufCodingInfo.getBuf( cs.area );
+  mirroredPaddingForAlf(cs, srcCodingInfo, 4, true, false);
+
+  int ctuIdx = 0;
+
+  const bool isAlfEnabled = cs.slice->getTileGroupAlfEnabledFlag(COMPONENT_Y) && stageIdx > 0;
+  uint8_t* alfCtuEnableFlag = isAlfEnabled ? cs.picture->getAlfCtuEnableFlag( COMPONENT_Y ) : nullptr;
+
+  for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
+  {
+    for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
+    {
+      const int width = (xPos + pcv.maxCUWidth > pcv.lumaWidth) ? (pcv.lumaWidth - xPos) : pcv.maxCUWidth;
+      const int height = (yPos + pcv.maxCUHeight > pcv.lumaHeight) ? (pcv.lumaHeight - yPos) : pcv.maxCUHeight;
+
+      Area blk(xPos, yPos, width, height);
+
+      if( isAlfEnabled && !alfCtuEnableFlag[ctuIdx] )
+      {
+        //No Need to Perform Refinement
+        copyOffsetRefinementBlk(cs, src1, dst, blk);
+      }
+      else
+      {
+        bool applySimd = width % 8 == 0 ? true : false;
+
+        if( applySimd )
+        {
+          m_calcOffsetRefinementBlk(cs, src0, src1, dst, srcCodingInfo, stageIdx, blk, refineIdx, srcCodingInfo );
+        }
+        else
+        {
+          calcOffsetRefinementBlk(cs, src0, src1, dst, srcCodingInfo, stageIdx, blk, refineIdx, srcCodingInfo );
+        }
+      }
+
+      ctuIdx++;
+    }
+  }
+}
+
+void AdaptiveLoopFilter::calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, PelUnitBuf& srcCodingInfo, int stageIdx, const Area& blk, int refineIdx, PelUnitBuf& codingInfo )
+{
+
+  const int xPos = blk.pos().x;
+  const int yPos = blk.pos().y;
+  const int width = blk.width;
+  const int height = blk.height;
+
+  const int src0Stride = src0.get(COMPONENT_Y).stride;
+  const int src1Stride = src1.get(COMPONENT_Y).stride;
+  const int dstStride = dst.get(COMPONENT_Y).stride;
+  const int codingInfoStride = codingInfo.get(COMPONENT_Y).stride;
+  Pel* src0Ptr = src0.get(COMPONENT_Y).buf + yPos * src0Stride + xPos;
+  Pel* src1Ptr = src1.get(COMPONENT_Y).buf + yPos * src1Stride + xPos;
+  Pel* dstPtr = dst.get(COMPONENT_Y).buf + yPos * dstStride + xPos;
+  Pel* codingInfoPtr = codingInfo.get(COMPONENT_Y).buf + yPos * codingInfoStride + xPos;
+
+  const bool useDiffTh = !cs.sps->getInloopOffsetRefineFlag() && !cs.slice->isIntra();
+
+  int16_t log2Map[1024] =
+  {
+    0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+  };
+
+  int paramA = 6, paramB = 31, paramC = 5;
+  if( cs.sps->getInloopOffsetRefineFunc() )
+  {
+    paramA = 5, paramB = 31, paramC = 5;
+  }
+
+  const int offsetThValue = ( 1 << cs.sps->getBitDepth(CHANNEL_TYPE_LUMA) ) - 1;
+
+  int refineIdx0BoundThA = stageIdx ? 1 : 1;
+  int refineIdx0BoundThB = stageIdx ? 3 : 3;
+
+  int refineIdx1BoundThA = stageIdx ? 15 : 12;
+  int refineIdx1BoundThB = stageIdx ? 16 : 9;
+
+  for(int y = 0; y < height; y++)
+  {
+    for(int x = 0; x < width; x++)
+    {
+      int diff = src1Ptr[x] - src0Ptr[x];
+
+      int absDiff = abs( diff );
+      //Need Consider in SIMD
+      int absDiffForLog2 = Clip3<int>(+0, +offsetThValue, absDiff);
+
+      int sign = diff < 0 ? +1 : -1; //inverse adjustment here
+
+      int refine = 0;
+      if( refineIdx == 1 )
+      {
+        bool isBound = codingInfoPtr[x] > 0 ? true : false;
+
+        if( isBound )
+        {
+          absDiffForLog2 = useDiffTh ? ( absDiffForLog2 > refineIdx1BoundThB ? absDiffForLog2 : 0 ) : ( absDiffForLog2 > refineIdx1BoundThA ? absDiffForLog2 : 0 );
+          refine = sign * ( ( paramA *  log2Map[absDiffForLog2] + paramB ) >> paramC );
+        }
+        else
+        {
+          refine = sign * ( ( paramA * log2Map[absDiffForLog2] + paramB ) >> paramC );
+        }
+      }
+      else
+      {
+        bool isBound = codingInfoPtr[x] > 0 ? true : false;
+
+        if( isBound )
+        {
+          absDiffForLog2 = useDiffTh ? ( absDiffForLog2 > refineIdx0BoundThB ? absDiffForLog2 : 0 ) : ( absDiffForLog2 > refineIdx0BoundThA ? absDiffForLog2 : 0 );
+          refine = sign * ( ( paramA *  log2Map[absDiffForLog2] + paramB ) >> paramC );
+        }
+        else
+        {
+          refine = sign * ( ( paramA * log2Map[absDiffForLog2] + paramB ) >> paramC );
+        }
+      }
+
+      dstPtr[x] = src1Ptr[x] + refine;
+    }
+    src0Ptr += src0Stride;
+    src1Ptr += src1Stride;
+    dstPtr += dstStride;
+    codingInfoPtr += codingInfoStride;
+  }
+
+}
+
+void AdaptiveLoopFilter::copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst )
+{
+  const PreCalcValues& pcv = *cs.pcv;
+
+  int ctuIdx = 0;
+
+  for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
+  {
+    for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
+    {
+      const int width = (xPos + pcv.maxCUWidth > pcv.lumaWidth) ? (pcv.lumaWidth - xPos) : pcv.maxCUWidth;
+      const int height = (yPos + pcv.maxCUHeight > pcv.lumaHeight) ? (pcv.lumaHeight - yPos) : pcv.maxCUHeight;
+
+      Area blk(xPos, yPos, width, height);
+
+      const int srcStride = src.get(COMPONENT_Y).stride;
+      const int dstStride = dst.get(COMPONENT_Y).stride;
+      Pel* srcPtr = src.get(COMPONENT_Y).buf + blk.y * srcStride + blk.x;
+      Pel* dstPtr = dst.get(COMPONENT_Y).buf + blk.y * dstStride + blk.x;
+
+      for(int y = 0; y < blk.height; y++)
+      {
+        for(int x = 0; x < blk.width; x++)
+        {
+          dstPtr[x] = srcPtr[x];
+        }
+        srcPtr += srcStride;
+        dstPtr += dstStride;
+      }
+
+    }
+    ctuIdx++;
+  }
+}
+void AdaptiveLoopFilter::copyOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst, const Area& blk )
+{
+  const int xPos = blk.pos().x;
+  const int yPos = blk.pos().y;
+  const int width = blk.width;
+  const int height = blk.height;
+
+  const int srcStride = src.get(COMPONENT_Y).stride;
+  const int dstStride = dst.get(COMPONENT_Y).stride;
+
+  Pel* srcPtr = src.get(COMPONENT_Y).buf + yPos * srcStride + xPos;
+  Pel* dstPtr = dst.get(COMPONENT_Y).buf + yPos * dstStride + xPos;
+
+  for(int y = 0; y < height; y++)
+  {
+    for(int x = 0; x < width; x++)
+    {
+      dstPtr[x] = srcPtr[x];
+    }
+    srcPtr += srcStride;
+    dstPtr += dstStride;
+  }
 }
 #endif
 
-# if JVET_AK0065_TALF
+#if JVET_AK0065_TALF
 void AdaptiveLoopFilter::getRefPics(const CodingStructure &cs)
 {
   m_refCombs.clear();
