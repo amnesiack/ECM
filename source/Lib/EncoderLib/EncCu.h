@@ -386,6 +386,10 @@ private:
 #if JVET_AJ0274_REGRESSION_GPM_TM
   PelStorage            m_acGeoBlendTMBuffer[GEO_TM_MAX_NUM_CANDS];
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  PelStorage            m_acMergeIntraBuffer[GEO_BLEND_MAX_NUM_INTRA_CANDS];
+  PelStorage            m_acMergeOBMCBuffer[GEO_MAX_NUM_UNI_CANDS];
+#endif
   double                m_AFFBestSATDCost;
   double                m_mergeBestSATDCost;
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 

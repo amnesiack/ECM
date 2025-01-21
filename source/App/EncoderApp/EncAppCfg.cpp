@@ -1217,6 +1217,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   ("GeoInterIbc",                                     m_geoInterIbc,                                    false, "GPM with inter and IBC (0:off, 1:on)  [default: off]" )
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  ("GeoBlendIntra",                                   m_geoBlendIntra,                                  false, "Regression-based GPM with intra and inter (0:off, 1:on)  [default: off]" )
+#endif
   ("HashME",                                          m_HashME,                                         false, "Enable hash motion estimation (0:off, 1:on)")
 
   ("AllowDisFracMMVD",                                m_allowDisFracMMVD,                               false, "Disable fractional MVD in MMVD mode adaptively")
@@ -5762,6 +5765,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
     msg( VERBOSE, "GeoInterIbc:%d ", m_geoInterIbc );
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+    msg( VERBOSE, "GeoBlendIntra:%d ", m_geoBlendIntra );
 #endif
     m_allowDisFracMMVD = m_MMVD ? m_allowDisFracMMVD : false;
     if ( m_MMVD )

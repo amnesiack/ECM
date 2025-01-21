@@ -1781,6 +1781,12 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
         WRITE_UVLC(pcSPS->getMaxNumMergeCand() - pcSPS->getMaxNumGeoCand(),
                    "max_num_merge_cand_minus_max_num_gpm_cand");
       }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      if (pcSPS->getUseGeoBlend())
+      {
+        WRITE_FLAG(pcSPS->getUseGeoBlendIntra() ? 1 : 0, "sps_gpm_blend_intra_flag");
+      }
+#endif
 #if JVET_AG0164_AFFINE_GPM
       if (pcSPS->getUseAffine() && pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
       {

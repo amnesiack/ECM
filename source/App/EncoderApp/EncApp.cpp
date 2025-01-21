@@ -1005,6 +1005,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
   m_cEncLib.setUseGeoShapeAdapt                                  ( m_Geo ? m_geoShapeAdapt : false);
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  m_cEncLib.setUseGeoBlendIntra                                  ( m_Geo ? m_geoBlendIntra : false);
+#endif
   m_cEncLib.setUseHashME                                         ( m_HashME );
 
   m_cEncLib.setAllowDisFracMMVD                                  ( m_allowDisFracMMVD );

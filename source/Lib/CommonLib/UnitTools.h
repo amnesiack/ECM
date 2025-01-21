@@ -184,6 +184,9 @@ namespace CU
 #if JVET_AJ0274_REGRESSION_GPM_TM
   bool    checkGeoBlendTmAvail        (const CodingUnit& currCU, const CodingStructure* bestCS);
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool    checkGeoBlendIntraAvail(const CodingUnit& currCU, const CodingStructure* bestCS);
+#endif
 #if JVET_AI0050_SBT_LFNST
   void    getSBTPosAndSize            (const CodingUnit &cu, Position& pos, Size& size, uint8_t sbtMode);
 #endif
@@ -212,6 +215,9 @@ namespace CU
 #endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   bool isGeoBlendAvailable(const CodingUnit& cu);
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool isGeoBlendIntraAvailable(const CodingUnit& cu);
+#endif
 #endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   bool interCcpMergeZeroRootCbfAllowed(const CodingUnit& cu);
