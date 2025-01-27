@@ -339,6 +339,9 @@ struct CodingUnit : public UnitArea
   bool obicIsBlended;
   int obicMode[OBIC_FUSION_NUM];
   int obicFusionWeight[OBIC_FUSION_NUM];
+#if JVET_AK0056_WEIGHTED_OBIC
+  int obicLocDep[OBIC_FUSION_NUM];
+#endif
 #endif
 #if JVET_AG0146_DIMD_ITMP_IBC
   bool           isBvDimd;

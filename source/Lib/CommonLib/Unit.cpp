@@ -307,6 +307,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   {
     obicMode[i] = other.obicMode[i];
     obicFusionWeight[i] = other.obicFusionWeight[i];
+#if JVET_AK0056_WEIGHTED_OBIC
+    obicLocDep[i] = other.obicLocDep[i];
+#endif
   }
 #endif
 #if JVET_AG0146_DIMD_ITMP_IBC
@@ -664,6 +667,9 @@ void CodingUnit::initData()
   {
     obicMode[i] = -1;
     obicFusionWeight[i] = 0;
+#if JVET_AK0056_WEIGHTED_OBIC
+    obicLocDep[i] = 0;
+#endif
   }
 #endif
 #if JVET_AG0146_DIMD_ITMP_IBC
