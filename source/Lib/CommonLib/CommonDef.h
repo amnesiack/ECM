@@ -2481,4 +2481,13 @@ static const int COLLECT_TMVP_POS  = 2;
 static const int COLLECT_TMVP_BOTH = (COLLECT_TMVP_REF | COLLECT_TMVP_POS);
 #endif
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+// Parameters for Simulated Annealing (SA)
+static const int ALF_SA_SOLUTION_POOL_SIZE_MIN = 3; // the number of (best known) solutions used as starting points
+static const int ALF_SA_SOLUTION_POOL_SIZE_MAX = 8;
+static const int ALF_SA_RUNS_COUNT = 100; // how many times the full SA-process (from a start point until it converges) is tried
+static const int ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP = 8; // ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP * parametersNumber is the number of non-improving iterations that has to happen before SA run is stopped
+static const int ALF_SA_CHANGES_PER_ITERATION = 3; // the maximal number of changed parameters in one iteration
+#endif
+
 #endif // end of #ifndef  __COMMONDEF__

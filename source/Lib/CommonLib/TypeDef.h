@@ -517,6 +517,7 @@
 #define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
 #define JVET_AK0065_TALF                                  1 // JVET-AK0065: Temporal ALF
 #define JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT          1 // JVET-AK0121: Boundary-Aware Offset Refinement for Loop-Filters
+#define JVET_AK0123_ALF_COEFF_RESTRICTION                 1 // JVET-AK0123: Restrictions on ALF coefficient values
 
 // SIMD optimizations
 #if IF_12TAP
@@ -831,6 +832,7 @@ typedef std::pair<int, int>  TrCost;
 #define ENABLE_SIMD_OPT_DIST                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for the distortion calculations(SAD,SSE,HADAMARD), no impact on RD performance
 #define ENABLE_SIMD_OPT_AFFINE_ME                       ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for affine ME, no impact on RD performance
 #define ENABLE_SIMD_OPT_ALF                             ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for ALF
+#define ENABLE_SIMD_OPT_ALF_CHOLESKY                    ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD for Cholesky Decomposition in ALF, no impact on RD performance, introduced in JVET-AK0123
 #if ENABLE_SIMD_OPT_BUFFER
 #define ENABLE_SIMD_OPT_BCW                               1                                                 ///< SIMD optimization for Bcw
 #endif
