@@ -4379,6 +4379,9 @@ SPS::SPS()
 #if JVET_AG0058_EIP
 , m_eip(false)
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+, m_intraPredBf               ( false )
+#endif
 #if JVET_AD0085_MPM_SORTING
 , m_mpmSorting                      ( false )
 #endif

@@ -217,6 +217,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool      m_noObmcConstraintFlag;
 #endif
@@ -538,6 +541,9 @@ protected:
 #endif
 #if JVET_AG0058_EIP
   bool      m_eip;
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_intraPredBf;
 #endif
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;

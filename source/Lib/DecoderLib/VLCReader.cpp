@@ -2879,6 +2879,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AG0058_EIP
   READ_FLAG(uiCode, "sps_eip_enabled_flag");                        pcSPS->setUseEip(uiCode != 0);
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  READ_FLAG(uiCode, "sps_intra_pred_bf_enabled_flag");              pcSPS->setUseIntraPredBf(uiCode != 0);
+#endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   READ_FLAG(uiCode, "sps_inter_ccp_merge_zero_luma_cbf");           pcSPS->setUseInterCcpMergeZeroLumaCbf( uiCode != 0 );
 #endif
@@ -6402,6 +6405,9 @@ void HLSyntaxReader::parseConstraintInfo(ConstraintInfo *cinfo)
 #endif
 #if JVET_AG0058_EIP
     READ_FLAG(symbol, "gci_no_eip_constraint_flag");                     cinfo->setNoTmrlConstraintFlag(symbol > 0 ? true : false);
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    READ_FLAG(symbol, "gci_no_intra_pred_bf_constraint_flag");           cinfo->setNoIntraPredBfConstraintFlag(symbol > 0 ? true : false);
 #endif
     /* inter */
     READ_FLAG(symbol, "gci_no_ref_pic_resampling_constraint_flag");      cinfo->setNoRprConstraintFlag(symbol > 0 ? true : false);

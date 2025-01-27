@@ -1872,6 +1872,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_AG0058_EIP
   WRITE_FLAG(pcSPS->getUseEip() ? 1 : 0, "sps_eip_enabled_flag");
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  WRITE_FLAG(pcSPS->getUseIntraPredBf() ? 1 : 0, "sps_intra_pred_bf_enabled_flag");
+#endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   WRITE_FLAG( pcSPS->getUseInterCcpMergeZeroLumaCbf() ? 1 : 0,                         "sps_inter_ccp_merge_zero_luma_cbf");
 #endif
@@ -4075,6 +4078,9 @@ void  HLSWriter::codeConstraintInfo  ( const ConstraintInfo* cinfo )
 #endif
 #if JVET_AG0058_EIP
     WRITE_FLAG(cinfo->getNoEipConstraintFlag() ? 1 : 0, "gci_no_eip_constraint_flag");
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    WRITE_FLAG(cinfo->getNoIntraPredBfConstraintFlag() ? 1 : 0, "gci_no_intra_pred_bf_constraint_flag");
 #endif
     /* inter */
     WRITE_FLAG(cinfo->getNoRprConstraintFlag() ? 1 : 0, "gci_no_ref_pic_resampling_constraint_flag");

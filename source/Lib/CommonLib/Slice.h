@@ -339,6 +339,9 @@ class ConstraintInfo
 #if JVET_AG0058_EIP
   bool              m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool              m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool              m_noObmcConstraintFlag;
 #endif
@@ -660,6 +663,10 @@ public:
 #if JVET_AG0058_EIP
   bool          getNoEipConstraintFlag() const { return m_noEipConstraintFlag; }
   void          setNoEipConstraintFlag(bool bVal) { m_noEipConstraintFlag = bVal; }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool          getNoIntraPredBfConstraintFlag() const { return m_noIntraPredBfConstraintFlag; }
+  void          setNoIntraPredBfConstraintFlag(bool bVal) { m_noIntraPredBfConstraintFlag = bVal; }
 #endif
 #if ENABLE_OBMC
   bool          getNoObmcConstraintFlag() const { return m_noObmcConstraintFlag; }
@@ -1868,6 +1875,9 @@ private:
 #if JVET_AG0058_EIP
   bool              m_eip;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool              m_intraPredBf;
+#endif
 #if JVET_AD0085_MPM_SORTING
   bool              m_mpmSorting;
 #endif
@@ -2676,6 +2686,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AG0058_EIP
   void      setUseEip          (bool b)                                          { m_eip = b; }
   bool      getUseEip()                                                const     { return m_eip; }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  void      setUseIntraPredBf  (bool b)                                          { m_intraPredBf = b; }
+  bool      getUseIntraPredBf()                                        const     { return m_intraPredBf; }
 #endif
 #if JVET_AD0085_MPM_SORTING
   void      setUseMpmSorting   (bool b)                                          { m_mpmSorting = b; }

@@ -1730,6 +1730,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AG0058_EIP
   cinfo->setNoEipConstraintFlag(m_noEipConstraintFlag);
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  cinfo->setNoIntraPredBfConstraintFlag(m_noIntraPredBfConstraintFlag);
+#endif
 #if ENABLE_OBMC
   cinfo->setNoObmcConstraintFlag(m_noObmcConstraintFlag);
 #endif
@@ -2093,6 +2096,9 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
 #if JVET_AG0058_EIP
   sps.setUseEip             ( m_eip );
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  sps.setUseIntraPredBf     ( m_intraPredBf );
 #endif
 #if JVET_AD0085_MPM_SORTING
   sps.setUseMpmSorting      ( m_mpmSorting );

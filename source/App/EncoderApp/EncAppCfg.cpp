@@ -941,6 +941,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AG0058_EIP
   ("NoEipConstraintFlag",                              m_noEipConstraintFlag,                           false, "Indicate that EIP is deactivated")
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  ("NoIntraPredBfConstraintFlag",                      m_noIntraPredBfConstraintFlag,                   false, "Indicate that Intra Pred Bf is deactivated")
+#endif
 #if ENABLE_OBMC
   ("NoObmcConstraintFlag",                             m_noObmcConstraintFlag,                            false, "Indicate that OBMC is deactivated")
 #endif
@@ -1187,6 +1190,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AG0058_EIP
   ("EIP",                                             m_eip,                                             true, "Enable extrapolation filter-based intra prediction\n")
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  ("IntraPredBf",                                     m_intraPredBf,                                     true, "Enable intra prediction bilateral filtering\n")
 #endif
 #if JVET_AD0085_MPM_SORTING
   ( "MPMSorting",                                     m_mpmSorting,                                      true,  "Enable template-based intra MPM list construction\n" )
