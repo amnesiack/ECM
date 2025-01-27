@@ -166,6 +166,7 @@
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
 #define JVET_AH0076_OBIC                                  1 // JVET_AH0076: OBIC
+#define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET_AK0056: Weighted OBIC
 #endif
 
 #endif

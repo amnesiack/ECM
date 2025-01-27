@@ -3741,6 +3741,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   bool obicIsBlended = false;
   int obicMode[OBIC_FUSION_NUM] = { -1 };
   int obicFusionWeight[OBIC_FUSION_NUM] = { 0 };
+#if JVET_AK0056_WEIGHTED_OBIC
+  int obicLocDep[OBIC_FUSION_NUM] = {0};
+#endif
 #endif
 
   if (isLuma(partitioner.chType))
@@ -4348,6 +4351,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
               {
                 obicMode[i] = cu.obicMode[i];
                 obicFusionWeight[i] = cu.obicFusionWeight[i];
+#if JVET_AK0056_WEIGHTED_OBIC
+                obicLocDep[i] = cu.obicLocDep[i];
+#endif
               }
               obicIsBlended = cu.obicIsBlended;
               obicModeDerived = true;
@@ -4358,6 +4364,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
               {
                 cu.obicMode[i] = obicMode[i];
                 cu.obicFusionWeight[i] = obicFusionWeight[i];
+#if JVET_AK0056_WEIGHTED_OBIC
+                cu.obicLocDep[i] = obicLocDep[i];
+#endif
               }
               cu.obicIsBlended = obicIsBlended;
             }

@@ -2269,6 +2269,172 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       }
     }
     m_ipaParam.applyPDPC = applyPdpc;
+#if JVET_AK0056_WEIGHTED_OBIC
+    PelBuf predAngNonLocDep = m_tempBuffer[7].getBuf( localUnitArea.Y() );
+    PelBuf predAngVer       = m_tempBuffer[5].getBuf( localUnitArea.Y() );
+    PelBuf predAngHor       = m_tempBuffer[6].getBuf( localUnitArea.Y() );
+
+    Pel* pelVer = predAngVer.buf;
+    int strideVer = predAngVer.stride;
+    Pel* pelHor = predAngHor.buf;
+    int strideHor = predAngHor.stride; 
+    Pel *pelNonLocDep = predAngNonLocDep.buf;
+    int strideNonLocDep = predAngNonLocDep.stride;
+
+    bool useLocDepBlending = false;
+    int weightVer = 0, weightHor = 0, weightNonLocDep = 0;
+
+    for (int i = 0; i < OBIC_FUSION_NUM; i++)
+    {
+      if(i == 0 || blendModes[i-1])
+      {
+        if (pu.cu->obicLocDep[i] == 1)
+        {
+          weightVer += pu.cu->obicFusionWeight[i];
+        }
+        else if (pu.cu->obicLocDep[i] == 2)
+        {
+          weightHor += pu.cu->obicFusionWeight[i];
+        }
+        else
+        {
+          weightNonLocDep += pu.cu->obicFusionWeight[i];
+        }
+      }
+    }
+
+    if(weightHor || weightVer)
+    {
+      useLocDepBlending = true;
+    }
+    
+    if(!useLocDepBlending)
+    {
+      pelNonLocDep = piPred.buf;
+      strideNonLocDep = piPred.stride;
+    }
+#if JVET_W0123_TIMD_FUSION 
+    for (int locDep = 0; locDep < 3; locDep++) 
+    {
+      int totWeight = (locDep == 0 ? weightNonLocDep : (locDep == 1 ? weightVer : weightHor));
+      if (totWeight == 0)
+      {
+        continue;
+      }
+
+      int weights[OBIC_FUSION_NUM] = {0};
+      weights[0] = (pu.cu->obicLocDep[0] == locDep) ? pu.cu->obicFusionWeight[0] : 0;
+      for (int i = 1; i < OBIC_FUSION_NUM ; i++)
+      {
+        weights[i] = (blendModes[i-1] && pu.cu->obicLocDep[i] == locDep) ? pu.cu->obicFusionWeight[i] : 0;
+      }
+     
+      int num2blend = 0;
+      int blendIndexes[OBIC_FUSION_NUM] = {0};
+      for (int i = 0; i < OBIC_FUSION_NUM; i++)
+      {
+        if (weights[i] != 0)
+        {
+          blendIndexes[num2blend] = i;
+          num2blend++;
+        }
+      }
+      
+      if( (num2blend == 1 ) || (num2blend <=3 && (totWeight == (1 << (floorLog2(totWeight))) ) ) )
+      {
+        int index = blendIndexes[0]; 
+        if(locDep == 0)
+        {
+          pelNonLocDep = (index == 0 ? piPred.buf : predFusion[index-1].buf);
+          strideNonLocDep = (index == 0 ? piPred.stride : predFusion[index-1].stride);
+        }
+        else if(locDep == 1)
+        {
+          pelVer = (index == 0 ? piPred.buf : predFusion[index-1].buf);
+          strideVer = (index == 0 ? piPred.stride : predFusion[index-1].stride);
+        }
+        else
+        {
+          pelHor = (index == 0 ? piPred.buf : predFusion[index-1].buf);
+          strideHor = (index == 0 ? piPred.stride : predFusion[index-1].stride);
+        }
+        Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+        int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+
+        int factor = 64 / totWeight;
+        if (num2blend == 2)
+        {
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : predFusion[index1-1].buf);
+          int stride1 = (index1 == 0 ? piPred.stride : predFusion[index1-1].stride);
+
+          int w0 = (weights[index]*factor);
+          int w1 = 64 - w0;
+          m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
+        }
+        else if(num2blend == 3)
+        {
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : predFusion[index1-1].buf);
+          int stride1 = (index1 == 0 ? piPred.stride : predFusion[index1-1].stride);
+
+          int index2 = blendIndexes[2];
+          Pel* p2 = (index2 == 0 ? piPred.buf : predFusion[index2-1].buf);
+          int stride2 = (index2 == 0 ? piPred.stride : predFusion[index2-1].stride);
+
+          int w0 = (weights[index]*factor);
+          int w1 = (weights[index1]*factor);
+          int w2 = 64  - w0 - w1;
+          m_dimdBlending(pCur, strideCur, p1, stride1, p2, stride2, w0, w1, w2, width, height);
+        }
+      }
+      else
+#endif
+      {
+        Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+        int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+        
+        Pel *pelPred = piPred.buf;
+        Pel *pelFusion[OBIC_FUSION_NUM - 1];
+
+        for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+        {
+          pelFusion[i] = predFusion[i].buf;
+        }
+        
+        for( int y = 0; y < height; y++ )
+        {
+          for( int x = 0; x < width; x++ )
+          {
+            int blend = pelPred[x] * weights[0];
+            for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+            {
+              blend += blendModes[i] ? pelFusion[i][x] * weights[i + 1] : 0;
+            }
+            pCur[x] = (Pel)(blend / totWeight);
+          }
+          pCur += strideCur;
+          pelPred += piPred.stride;
+          for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+          {
+            pelFusion[i] += predFusion[i].stride;
+          }
+        }
+      }
+    }
+
+    if(useLocDepBlending)
+    {
+      int mode = ((weightHor > 0 && weightVer > 0) ? 0 : (weightVer > 0 ? 1 : 2));
+      Pel *pelDst = piPred.buf;
+      int strideDst = piPred.stride;
+#if JVET_W0123_TIMD_FUSION && JVET_AG0092_ENHANCED_TIMD_FUSION
+      xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#else
+      xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#endif
+    } 
+#else
     const int log2WeightSum = 6;
     Pel *pelPred = piPred.buf;
     Pel *pelFusion[OBIC_FUSION_NUM - 1];
@@ -2300,6 +2466,7 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       }
     }
     return;
+#endif
   }
 #endif
 #if JVET_W0123_TIMD_FUSION
@@ -5125,6 +5292,180 @@ void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit 
   {
     predUsingBv(predFusionBV.buf, predFusionBV.stride, pu.cu->bvDimd, *pu.cu);
   }
+#if JVET_AK0056_WEIGHTED_OBIC
+  Pel *pelFusion[OBIC_FUSION_NUM - 1];
+  int strideFusion[OBIC_FUSION_NUM - 1];
+
+  for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+  {
+    pelFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.buf : predFusion[i].buf;
+    strideFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.stride : predFusion[i].stride;
+  }
+
+  PelBuf predAngNonLocDep = m_tempBuffer[7].getBuf( localUnitArea.Y() );
+  PelBuf predAngVer       = m_tempBuffer[5].getBuf( localUnitArea.Y() );
+  PelBuf predAngHor       = m_tempBuffer[6].getBuf( localUnitArea.Y() );
+
+  Pel* pelVer = predAngVer.buf;
+  int strideVer = predAngVer.stride;
+  Pel* pelHor = predAngHor.buf;
+  int strideHor = predAngHor.stride; 
+  Pel *pelNonLocDep = predAngNonLocDep.buf;
+  int strideNonLocDep = predAngNonLocDep.stride;
+
+  bool useLocDepBlending = false;
+  int weightVer = 0, weightHor = 0, weightNonLocDep = 0;
+
+  for (int i = 0; i < OBIC_FUSION_NUM; i++)
+  {
+    if(i == 0 || blendModes[i-1])
+    {
+      if (pu.cu->obicLocDep[i] == 1)
+      {
+        weightVer += pu.cu->obicFusionWeight[i];
+      }
+      else if (pu.cu->obicLocDep[i] == 2)
+      {
+        weightHor += pu.cu->obicFusionWeight[i];
+      }
+      else
+      {
+        weightNonLocDep += pu.cu->obicFusionWeight[i];
+      }
+    }
+  }
+  
+  if(weightHor || weightVer)
+  {
+    useLocDepBlending = true;
+  }
+    
+  if(!useLocDepBlending)
+  {
+    pelNonLocDep = piPred.buf;
+    strideNonLocDep = piPred.stride;
+  }
+#if JVET_W0123_TIMD_FUSION 
+  for (int locDep = 0; locDep < 3; locDep++) 
+  {
+    for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+    {
+      pelFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.buf : predFusion[i].buf;
+      strideFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.stride : predFusion[i].stride;
+    }  
+
+    int totWeight = (locDep == 0 ? weightNonLocDep : (locDep == 1 ? weightVer : weightHor));
+    if (totWeight == 0)
+    {
+      continue;
+    }
+
+    int weights[OBIC_FUSION_NUM] = {0};
+    weights[0] = (pu.cu->obicLocDep[0] == locDep) ? pu.cu->obicFusionWeight[0] : 0;
+    for (int i = 1; i < OBIC_FUSION_NUM ; i++)
+    {
+      weights[i] = (blendModes[i-1] && pu.cu->obicLocDep[i] == locDep) ? pu.cu->obicFusionWeight[i] : 0;
+    }
+   
+    int num2blend = 0;
+    int blendIndexes[OBIC_FUSION_NUM] = {0};
+    for (int i = 0; i < OBIC_FUSION_NUM; i++)
+    {
+      if (weights[i] != 0)
+      {
+        blendIndexes[num2blend] = i;
+        num2blend++;
+      }
+    }
+      
+    if( (num2blend == 1 ) || (num2blend <=3 && (totWeight == (1 << (floorLog2(totWeight))) ) ) )
+    {
+      int index = blendIndexes[0]; 
+      if(locDep == 0)
+      {
+        pelNonLocDep = (index == 0 ? piPred.buf : pelFusion[index-1]);
+        strideNonLocDep = (index == 0 ? piPred.stride : strideFusion[index-1]);
+      }
+      else if(locDep == 1)
+      {
+        pelVer = (index == 0 ? piPred.buf : pelFusion[index-1]);
+        strideVer = (index == 0 ? piPred.stride : strideFusion[index-1]);
+      }
+      else
+      {
+        pelHor = (index == 0 ? piPred.buf : pelFusion[index-1]);
+        strideHor = (index == 0 ? piPred.stride : strideFusion[index-1]);
+      }
+      Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+      int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+
+      int factor = 64 / totWeight;
+      if (num2blend == 2)
+      {
+        int index1 = blendIndexes[1];
+        Pel* p1 = (index1 == 0 ? piPred.buf : pelFusion[index1-1]);
+        int stride1 = (index1 == 0 ? piPred.stride : strideFusion[index1-1]);
+
+        int w0 = (weights[index]*factor);
+        int w1 = 64 - w0;
+        m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
+      }
+      else if(num2blend == 3)
+      {
+        int index1 = blendIndexes[1];
+        Pel* p1 = (index1 == 0 ? piPred.buf : pelFusion[index1-1]);
+        int stride1 = (index1 == 0 ? piPred.stride : strideFusion[index1-1]);
+
+        int index2 = blendIndexes[2];
+        Pel* p2 = (index2 == 0 ? piPred.buf : pelFusion[index2-1]);
+        int stride2 = (index2 == 0 ? piPred.stride : strideFusion[index2-1]);
+
+        int w0 = (weights[index]*factor);
+        int w1 = (weights[index1]*factor);
+        int w2 = 64  - w0 - w1;
+        m_dimdBlending(pCur, strideCur, p1, stride1, p2, stride2, w0, w1, w2, width, height);
+      }
+    }
+    else
+#endif
+    {
+      Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+      int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+      Pel *pelPred = piPred.buf;
+        
+      for( int y = 0; y < height; y++ )
+      {
+        for( int x = 0; x < width; x++ )
+        {
+          int blend = pelPred[x] * weights[0];
+          for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+          {
+            blend += blendModes[i] ? pelFusion[i][x] * weights[i + 1] : 0;
+          }
+          pCur[x] = (Pel)(blend / totWeight);
+        }
+        pCur += strideCur;
+        pelPred += piPred.stride;
+        for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+        {
+          pelFusion[i] += strideFusion[i];
+        }
+      }
+    }
+  }
+
+  if(useLocDepBlending)
+  {
+    int mode = ((weightHor > 0 && weightVer > 0) ? 0 : (weightVer > 0 ? 1 : 2));
+    Pel *pelDst = piPred.buf;
+    int strideDst = piPred.stride;
+#if JVET_W0123_TIMD_FUSION && JVET_AG0092_ENHANCED_TIMD_FUSION
+    xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#else
+    xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#endif
+    } 
+  #else
   const int log2WeightSum = 6;
   Pel *pelPred = piPred.buf;
   Pel *pelFusion[OBIC_FUSION_NUM - 1];
@@ -5165,6 +5506,7 @@ void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit 
     pelFusionBv += predFusionBV.stride;
   }
   return;
+#endif
 }
 #if JVET_AJ0267_ADAPTIVE_HOG
 void IntraPrediction::generateDimdBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[DIMD_FUSION_NUM - 2], PelBuf &plnBlock)
@@ -10995,9 +11337,18 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
     }
     
     int histogram[NUM_LUMA_MODE];
+#if JVET_AK0056_WEIGHTED_OBIC
+    int histoLocDep[NUM_LUMA_MODE][3];
+#endif
     for (int i = 0; i < NUM_LUMA_MODE; i++)
     {
       histogram[i] = 0;
+#if JVET_AK0056_WEIGHTED_OBIC
+      for(int j=0 ; j<3 ; j++)
+      {
+        histoLocDep[i][j] = 0;
+      }
+#endif
     }
     const int step = 4;
     const int numCUs = NUM_OBIC_CUS;
@@ -11111,7 +11462,44 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
     int numToMix = 0;
     for (int i = 0; i < numCUs; i++)
     {
+#if JVET_AK0056_WEIGHTED_OBIC
+      useNeighbour[i] = (cuNeighbours[i] && (CU::isIntra(*cuNeighbours[i])|| CU::isInter(*cuNeighbours[i])));
+      bool useInter = false;
+      if (cuNeighbours[i] && (CU::isInter(*cuNeighbours[i])))
+      {
+        if (cuNeighbours[i]->geoFlag)
+        {
+          int ipm = g_geoAngle2IntraAng[g_geoParams[cuNeighbours[i]->firstPU->geoSplitDir][0]];
+          if (ipm > PLANAR_IDX && ipm < NUM_LUMA_MODE)
+          {
+            useInter = true;
+          }
+        }
+        else
+        {
+          int step = 4;
+          for (int m = 0; m < cuNeighbours[i]->lwidth(); m += step)
+          {
+            for (int n = 0; n < cuNeighbours[i]->lheight(); n += step)
+            {
+              int ipm = cuNeighbours[i]->firstPU->getIpmInfo(cuNeighbours[i]->Y().offset(m, n));
+              if (ipm > PLANAR_IDX && ipm < NUM_LUMA_MODE)
+              {
+                useInter = true;
+                break;
+              }
+            }
+            if (useInter == true)
+            {
+              break;
+            }
+          }
+        }
+        useNeighbour[i] &= useInter;
+      }
+#else
       useNeighbour[i] = (cuNeighbours[i] && CU::isIntra(*cuNeighbours[i]));
+#endif
       if (useNeighbour[i])
       {
         for (int j = i-1; j >= 0; j--)
@@ -11169,7 +11557,12 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       {
         continue;
       }
+#if JVET_AK0056_WEIGHTED_OBIC
+      const int weight[NUM_OBIC_CUS]={4, 4, 4, 4, 4,   4, 4, 4, 4, 4,  4, 4, 4, 2, 2, 2,2, 2, 2, 2, 2,1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+      const int numSamples = (weight[i]*(cuNeighbours[i]->lumaSize().width * cuNeighbours[i]->lumaSize().height)+2)/4;
+#else
       int numSamples = cuNeighbours[i]->lumaSize().width * cuNeighbours[i]->lumaSize().height;
+#endif
       if (cuNeighbours[i]->timd
 #if JVET_AJ0061_TIMD_MERGE
           && !cuNeighbours[i]->timdMrg
@@ -11180,15 +11573,36 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
           )
       {
         int m = MAP131TO67(cuNeighbours[i]->timdMode);
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[3] = {0};
+        w[0] = cuNeighbours[i]->timdFusionWeight[0];
+        w[1] = (cuNeighbours[i]->timdIsBlended && (cuNeighbours[i]->timdFusionWeight[1] > 0)) ? cuNeighbours[i]->timdFusionWeight[1] : 0;
+        w[2] = (cuNeighbours[i]->timdIsBlended && (cuNeighbours[i]->timdFusionWeight[2] > 0)) ? cuNeighbours[i]->timdFusionWeight[2] : 0;
+        histoLocDep[m][cuNeighbours[i]->timdLocDep[0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+
+#if JVET_AK0056_WEIGHTED_OBIC
+      if (cuNeighbours[i]->timdIsBlended && cuNeighbours[i]->timdFusionWeight[1] > 0 && (cuNeighbours[i]->timdMode != cuNeighbours[i]->timdModeSecondary) )
+#else
         if (cuNeighbours[i]->timdIsBlended && cuNeighbours[i]->timdFusionWeight[1] > 0)
+#endif
         {
           int m = MAP131TO67(cuNeighbours[i]->timdModeSecondary);
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m][cuNeighbours[i]->timdLocDep[1]] += numSamples * w[1] / w[0];
+#else
           histogram[m] += numSamples;
+#endif
           if (cuNeighbours[i]->timdFusionWeight[2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdModeNonAng);
+#if JVET_AK0056_WEIGHTED_OBIC
+            histoLocDep[m][cuNeighbours[i]->timdLocDep[2]] += numSamples * w[2] / w[0];
+#else
             histogram[m] += numSamples;
+#endif
           }
         }
       }
@@ -11196,15 +11610,35 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->timdMrg)
       {
         int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][0]);
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[3] = {0};
+        w[0] = cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][0];
+        w[1] = (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] > 0)) ? cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] : 0;
+        w[2] = (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] > 0)) ? cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] : 0;
+        histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+#if JVET_AK0056_WEIGHTED_OBIC
+        if (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] > 0 && (cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][0] != cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][1]))
+#else
         if (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] > 0)
+#endif
         {
           int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][1]);
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][1]] += numSamples * w[1] / w[0];
+#else
           histogram[m] += numSamples;
+#endif
           if (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][2]);
+#if JVET_AK0056_WEIGHTED_OBIC
+            histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][2]] += numSamples * w[2] / w[0];
+#else
             histogram[m] += numSamples;
+#endif
           }
         }
       }
@@ -11213,15 +11647,35 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->timdSad)
       {
         int m = MAP131TO67(cuNeighbours[i]->timdModeSad);
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[3] = {0};
+        w[0] = cuNeighbours[i]->timdFusionWeightSad[0];
+        w[1] = (cuNeighbours[i]->timdIsBlendedSad && (cuNeighbours[i]->timdFusionWeightSad[1] > 0)) ? cuNeighbours[i]->timdFusionWeightSad[1] : 0;
+        w[2] = (cuNeighbours[i]->timdIsBlendedSad && (cuNeighbours[i]->timdFusionWeightSad[2] > 0)) ? cuNeighbours[i]->timdFusionWeightSad[2] : 0;
+        histoLocDep[m][cuNeighbours[i]->timdLocDepSad[0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+#if JVET_AK0056_WEIGHTED_OBIC
+        if (cuNeighbours[i]->timdIsBlendedSad && cuNeighbours[i]->timdFusionWeightSad[1] > 0 && (cuNeighbours[i]->timdModeSad != cuNeighbours[i]->timdModeSecondarySad) )
+#else
         if (cuNeighbours[i]->timdIsBlendedSad && cuNeighbours[i]->timdFusionWeightSad[1] > 0)
+#endif
         {
           int m = MAP131TO67(cuNeighbours[i]->timdModeSecondarySad);
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m][cuNeighbours[i]->timdLocDepSad[1]] += numSamples * w[1] / w[0];
+#else
           histogram[m] += numSamples;
+#endif
           if (cuNeighbours[i]->timdFusionWeightSad[2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdModeNonAngSad);
+#if JVET_AK0056_WEIGHTED_OBIC
+            histoLocDep[m][cuNeighbours[i]->timdLocDepSad[2]] += numSamples * w[2] / w[0];
+#else
             histogram[m] += numSamples;
+#endif
           }
         }
       }
@@ -11229,18 +11683,46 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->dimd && !cuNeighbours[i]->obicFlag)
       {
         int m = cuNeighbours[i]->dimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[DIMD_FUSION_NUM] = {0};
+        w[0] = cuNeighbours[i]->dimdRelWeight[0];
+        w[1] = (cuNeighbours[i]->dimdRelWeight[1] > 0) ? cuNeighbours[i]->dimdRelWeight[1] : 0;
+        for(int j = 2; j < DIMD_FUSION_NUM ; j++)
+        {
+          w[j] = (cuNeighbours[i]->dimdBlending && (cuNeighbours[i]->dimdRelWeight[j] > 0)) ? cuNeighbours[i]->dimdRelWeight[j] : 0;
+        }
+#endif
         if (m >= 0 && m < NUM_LUMA_MODE)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m][cuNeighbours[i]->dimdLocDep[0]] += numSamples;
+#else
           histogram[m] += numSamples;
+#endif
         }
+#if JVET_AK0056_WEIGHTED_OBIC
+        if (cuNeighbours[i]->dimdRelWeight[1] > 0)
+        {
+          histoLocDep[0][0] += numSamples * w[1] / w[0];
+        }
+#endif
         if (cuNeighbours[i]->dimdBlending)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          for (int idx = 0; idx < DIMD_FUSION_NUM - 2; idx++)
+          {
+            m = cuNeighbours[i]->dimdBlendMode[idx];
+            if (m >= 0 && m < NUM_LUMA_MODE && cuNeighbours[i]->dimdRelWeight[idx + 2] > 0)
+            {
+              histoLocDep[m][cuNeighbours[i]->dimdLocDep[idx+1]] += numSamples * w[idx + 2] / w[0];
+#else
           for (int idx = 0; idx < DIMD_FUSION_NUM - 1; idx++)
           {
             m = cuNeighbours[i]->dimdBlendMode[idx];
             if (m >= 0 && m < NUM_LUMA_MODE && cuNeighbours[i]->dimdRelWeight[idx + 1] > 0)
             {
               histogram[m] += numSamples;
+#endif
             }
           }
         }
@@ -11248,7 +11730,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->dimd && cuNeighbours[i]->obicFlag)
       {
         int m = cuNeighbours[i]->obicMode[0];
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][cuNeighbours[i]->obicLocDep[0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
         if (cuNeighbours[i]->obicIsBlended)
         {
           for (int idx = 1; idx < OBIC_FUSION_NUM; idx++)
@@ -11256,7 +11742,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
             m = cuNeighbours[i]->obicMode[idx];
             if (m >= 0 && cuNeighbours[i]->obicFusionWeight[idx] > 0)
             {
+#if JVET_AK0056_WEIGHTED_OBIC
+              histoLocDep[m][cuNeighbours[i]->obicLocDep[idx]] += numSamples;
+#else
               histogram[m] += numSamples;
+#endif
             }
           }
         }
@@ -11267,53 +11757,114 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         int m2 = cuNeighbours[i]->sgpmMode1;
         if (m1 >= 0 && m1 < NUM_LUMA_MODE)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m1][0] += numSamples;
+#else
           histogram[m1] += numSamples;
+#endif
         }
         if (m2 >= 0 && m2 < NUM_LUMA_MODE)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m2][0] += numSamples;
+#else
           histogram[m2] += numSamples;
+#endif
         }
       }
       else if (cuNeighbours[i]->tmrlFlag)
       {
         int m = MAP131TO67(cuNeighbours[i]->firstPU->intraDir[0]);
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #if JVET_AG0058_EIP
       else if (cuNeighbours[i]->eipFlag && cu.slice->getSliceType() != I_SLICE)
       {
         int m = cuNeighbours[i]->eipModel.eipDimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
       else if (cuNeighbours[i]->tmpFlag && cu.slice->getSliceType() != I_SLICE)
       {
         int m = cuNeighbours[i]->intraTmpDimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
 #if JVET_AB0067_MIP_DIMD_LFNST
       else if (cuNeighbours[i]->mipFlag && cu.slice->getSliceType() != I_SLICE)
       {
         int m = cuNeighbours[i]->mipDimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
       else if (cuNeighbours[i]->firstPU->intraDir[0] == PNN_IDX)
       {
         const int m = cuNeighbours[i]->indicesRepresentationPnn[COMPONENT_Y][0];
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
       else if (CU::isIntra(*cuNeighbours[i]) && !cuNeighbours[i]->tmpFlag && !cuNeighbours[i]->mipFlag && !cuNeighbours[i]->eipFlag && !CU::isIBC(*cuNeighbours[i]) && !CU::isPLT(*cuNeighbours[i]))
       {
         int m = cuNeighbours[i]->firstPU->intraDir[0];
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+      }
+#if JVET_AK0056_WEIGHTED_OBIC
+      else if (cuNeighbours[i] && (CU::isInter(*cuNeighbours[i])))
+      {
+        const int step = 4;
+        for (int m = 0; m < cuNeighbours[i]->lwidth(); m += step)
+        {
+          for (int n = 0; n < cuNeighbours[i]->lheight(); n += step)
+          {
+            int ipm = cuNeighbours[i]->firstPU->getIpmInfo(cuNeighbours[i]->Y().offset(m, n));
+            if (cuNeighbours[i]->geoFlag)
+            {
+              ipm = g_geoAngle2IntraAng[g_geoParams[cuNeighbours[i]->firstPU->geoSplitDir][0]];
+            }
+            if (ipm >= DC_IDX && ipm < NUM_LUMA_MODE)
+            {
+              histoLocDep[ipm][0] += (step*step);
+            }
+          }
+        }
+      }
+#endif
+    }
+#if JVET_AK0056_WEIGHTED_OBIC
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      for(int j=0 ; j<3 ; j++)
+      {
+        histogram[i] += histoLocDep[i][j];
       }
     }
-
+#endif
     // Penalize Dimd modes to impose diversity between OBIC and DIMD
     if (cu.dimdMode >= 0 && cu.dimdMode < NUM_LUMA_MODE)
     {
@@ -11414,7 +11965,50 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       count += bestModes[i] >= 0 ? 1 : 0;
     }
 
-
+#if JVET_AK0056_WEIGHTED_OBIC
+//For each selected IPM in the generation of OBIC predictor, associate the dominant LocDep
+  for(int i = 0; i < OBIC_FUSION_NUM; i++)
+  {
+    int secondMode = bestModes[i];
+    int bestLocDep[3];
+    int bestLocDepAmp[3];
+    for(int i = 0; i < 3; i++)
+    {
+      bestLocDep[i] = -1;
+      bestLocDepAmp[i] = 0;
+    }
+    cu.obicLocDep[i] = 0;
+    
+    if (secondMode > DC_IDX)
+    {
+      for(int j=0 ; j<3 ; j++)
+      {
+        if(histoLocDep[secondMode][j] > bestLocDepAmp[0] )
+        {
+          bestLocDepAmp[2] = bestLocDepAmp[1];
+          bestLocDepAmp[1] = bestLocDepAmp[0];
+          bestLocDepAmp[0] = histoLocDep[secondMode][j];
+          bestLocDep[2] = bestLocDep[1];
+          bestLocDep[1] = bestLocDep[0];
+          bestLocDep[0] = j;
+        }
+        else if(histoLocDep[secondMode][j] > bestLocDepAmp[1] )
+        {
+          bestLocDepAmp[2] = bestLocDepAmp[1];
+          bestLocDepAmp[1] = histoLocDep[secondMode][j];
+          bestLocDep[2] = bestLocDep[1];
+          bestLocDep[1] = j;
+        }
+        else if (histoLocDep[secondMode][j] > bestLocDepAmp[2] )
+        {
+          bestLocDepAmp[2] = histoLocDep[secondMode][j];
+          bestLocDep[2] = j;
+        }
+      }
+      cu.obicLocDep[i] = bestLocDep[0];
+    }
+  }
+#endif
     /* -----------------------------------------------------------------
     -------------- Step 6: Compute the fusion weights ------------------
     ---------------- from amplitudes and store in CU -------------------
@@ -11437,6 +12031,9 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       cu.obicMode[1] = PLANAR_IDX;
       cu.obicFusionWeight[0] = sumWeight - planarWeight;
       cu.obicFusionWeight[1] = planarWeight;
+#if JVET_AK0056_WEIGHTED_OBIC
+      cu.obicLocDep[1] = 0;
+#endif
     }
     else
     {
@@ -11465,7 +12062,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       int iRatio[OBIC_FUSION_NUM] = { 0 };
       for (int i = 0; i < OBIC_FUSION_NUM; i++)
       {
+#if JVET_AK0056_WEIGHTED_OBIC
+        iRatio[i] = (int)(( ((uint64_t)bestAmps[i] * (uint64_t) v * (uint64_t) sumWeight + (uint64_t)add)) >> (uint64_t)shift);
+#else
         iRatio[i] = (bestAmps[i] * v * sumWeight + add) >> shift;
+#endif
         if (bestAmps[i] == 0)
         {
           iRatio[i] = 0;
@@ -11534,11 +12135,17 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       {
         cu.obicMode[count - 1] = PLANAR_IDX;
         cu.obicFusionWeight[count - 1] = planarWeight;
+#if JVET_AK0056_WEIGHTED_OBIC
+        cu.obicLocDep[count - 1] = 0;
+#endif
       }
       else
       {
         cu.obicMode[count] = PLANAR_IDX;
         cu.obicFusionWeight[count] = planarWeight;
+#if JVET_AK0056_WEIGHTED_OBIC
+        cu.obicLocDep[count] = 0;
+#endif
       }
       cu.obicIsBlended = true;
     }
