@@ -43,7 +43,9 @@
 #include "CommonLib/Picture.h" // th remove this
 #include "CommonLib/dtrace_next.h"
 #include "EncAdaptiveLoopFilter.h"
+#if !JVET_AK0123_ALF_COEFF_RESTRICTION
 #include "CommonLib/AdaptiveLoopFilter.h"
+#endif
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
 #include "SampleAdaptiveOffset.h"
 #endif
@@ -693,6 +695,9 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
       WRITE_CODE(param.coeffBits[altIdx] - 6, 2, "alf_luma_bits");
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      WRITE_CODE(param.coeffMantissa[altIdx] - 1, 1, "alf_luma_mantissa");
+#endif
 #else
       WRITE_FLAG( param.lumaClassifierIdx[altIdx], "alf_luma_classifier" );
 #endif
@@ -717,7 +722,8 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
 #else
       AlfFilterShape filterShape(alfFilterType == ALF_FILTER_5 ? 5 : (alfFilterType == ALF_FILTER_9_EXT ? size_ALF_FILTER_9_EXT : ((alfFilterType == ALF_FILTER_7 ? 7 : (alfFilterType == ALF_FILTER_EXT ? size_ALF_FILTER_EXT : 9)))));
 #endif
-      int bestK[2] = { 0 };
+      int bestK[2] = { 0, 0 };
+#if !JVET_AK0123_ALF_COEFF_RESTRICTION
       for (int orderIdx = 0; orderIdx < filterShape.numOrder; orderIdx++)
       {
         int minBits = MAX_INT;
@@ -743,6 +749,7 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
       }
       bestK[0] += filterShape.offset0;
       bestK[1] += ALF_ORDER;
+#endif
       alfFilter(param, false, altIdx, bestK[0], bestK[1]);
     }
 #else
@@ -782,7 +789,8 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
 #else
       AlfFilterShape filterShape(alfFilterType == ALF_FILTER_5 ? 5 : (alfFilterType == ALF_FILTER_9_EXT ? size_ALF_FILTER_9_EXT : ((alfFilterType == ALF_FILTER_7 ? 7 : (alfFilterType == ALF_FILTER_EXT ? size_ALF_FILTER_EXT : 9)))));
 #endif
-      int bestK[2] = { 0 };
+      int bestK[2] = { 0, 0 };
+#if !JVET_AK0123_ALF_COEFF_RESTRICTION
       for (int orderIdx = 0; orderIdx < filterShape.numOrder; orderIdx++)
       {
         int minBits = MAX_INT;
@@ -805,6 +813,7 @@ void HLSWriter::codeAlfAps( APS* pcAPS )
       }
       bestK[0] += filterShape.offset0;
       bestK[1] += ALF_ORDER;
+#endif
       alfFilter(param, true, altIdx, bestK[0], bestK[1]);
 #else
       alfFilter(param, true, altIdx);
@@ -4864,6 +4873,17 @@ void HLSWriter::alfGolombEncode(int coeff, int k, const bool signed_coeff)
     WRITE_FLAG((coeff < 0) ? 1 : 0, "alf_coeff_sign");
   }
 }
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+void HLSWriter::alfHuffmanEncode(const int coeff, HuffmanForALF& huffman)
+{
+  int length;
+  uint32_t symbol;
+  huffman.encodeCoeff(coeff, symbol, length);
+  WRITE_CODE(symbol, length, "alf_coeff_huffman");
+}
+#endif
+
 void HLSWriter::alfFilter( const AlfParam& alfParam, const bool isChroma, const int altIdx, int order0, int order1 )
 #else
 void HLSWriter::alfFilter( const AlfParam& alfParam, const bool isChroma, const int altIdx )
@@ -4877,6 +4897,9 @@ void HLSWriter::alfFilter( const AlfParam& alfParam, const bool isChroma, const 
   AlfFilterShape alfShape(alfFilterType == ALF_FILTER_5 ? 5 : (alfFilterType == ALF_FILTER_9_EXT ? size_ALF_FILTER_9_EXT : ((alfFilterType == ALF_FILTER_7 ? 7 : (alfFilterType == ALF_FILTER_EXT ? size_ALF_FILTER_EXT :9)))));
 #endif
   const int numFilters = isChroma ? 1 : alfParam.numLumaFilters[altIdx];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  const char* scaleIdx = isChroma ? alfParam.chromaScaleIdx[altIdx] : alfParam.lumaScaleIdx[altIdx];
+#endif
   const short* coeff = isChroma ? alfParam.chromaCoeff[altIdx] : alfParam.lumaCoeff[altIdx];
   int offset = isChroma ? MAX_NUM_ALF_CHROMA_COEFF : MAX_NUM_ALF_LUMA_COEFF;
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
@@ -4895,13 +4918,34 @@ void HLSWriter::alfFilter( const AlfParam& alfParam, const bool isChroma, const 
   const int numFilters = isChroma ? 1 : alfParam.numLumaFilters;
 #endif
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  HuffmanForALF huffman(!isChroma,
+    isChroma ? AdaptiveLoopFilter::m_NUM_BITS_CHROMA : alfParam.coeffBits[altIdx],
+    isChroma ? 1 : alfParam.coeffMantissa[altIdx],
+    0);
+  huffman.init();
+#endif
   // vlc for all
   // Filter coefficients
   for( int ind = 0; ind < numFilters; ++ind )
   {
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    WRITE_CODE((int)scaleIdx[ind], AdaptiveLoopFilter::m_SCALE_BITS_NUM, isChroma ? "alf_chroma_scale_factor" : "alf_luma_scale_factor");
+#endif
     for( int i = 0; i < alfShape.numCoeff - 1; i++ )
     {
 #if ALF_IMPROVEMENT
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      if (i == 0)
+      {
+        huffman.setGroup(0);
+      }
+      else if (i == alfShape.indexSecOrder)
+      {
+        huffman.setGroup(1);
+      }
+      alfHuffmanEncode(coeff[ind * offset + i], huffman);
+#else
       if (i < alfShape.indexSecOrder)
       {
         alfGolombEncode( coeff[ind* offset + i], order0 );
@@ -4910,6 +4954,7 @@ void HLSWriter::alfFilter( const AlfParam& alfParam, const bool isChroma, const 
       {
         alfGolombEncode( coeff[ind* offset + i], order1 );
       }
+#endif
 #else
       WRITE_UVLC( abs(coeff[ ind* MAX_NUM_ALF_LUMA_COEFF + i ]), isChroma ? "alf_chroma_coeff_abs" : "alf_luma_coeff_abs" ); //alf_coeff_chroma[i], alf_coeff_luma_delta[i][j]
       if( abs( coeff[ ind* MAX_NUM_ALF_LUMA_COEFF + i ] ) != 0 )
