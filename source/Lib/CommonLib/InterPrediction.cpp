@@ -1,4 +1,4 @@
-﻿/* The copyright in this software is being made available under the BSD
+/* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
@@ -43272,7 +43272,11 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
       }
 
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      pcIntraPred->predIntraAng(ComponentID(c), cTmp.bufs[c], subPu, true, false, false);
+#else
       pcIntraPred->predIntraAng(ComponentID(c), cTmp.bufs[c], subPu, false, false);
+#endif
 #else
       pcIntraPred->predIntraAng(ComponentID(c), cTmp.bufs[c], subPu);
 #endif
