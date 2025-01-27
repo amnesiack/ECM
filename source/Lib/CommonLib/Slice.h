@@ -1981,6 +1981,10 @@ private:
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   bool              m_fastSubTmvp;
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  bool              m_useTemporalAffineOpt;
+  bool              m_useSyntheticAffine;
+#endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   bool              m_armcRefinedMotion;
 #endif
@@ -2815,6 +2819,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   void      setUseFastSubTmvp     ( bool b )                                        { m_fastSubTmvp = b; }
   bool      getUseFastSubTmvp     ()                                      const     { return m_fastSubTmvp; }
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  void      setUseTemporalAffineOpt( bool b )                                       { m_useTemporalAffineOpt = b; }
+  bool      getUseTemporalAffineOpt()                                     const     { return m_useTemporalAffineOpt; }
+  void      setUseSyntheticAffine  ( bool b )                                       { m_useSyntheticAffine = b; }
+  bool      getUseSyntheticAffine  ()                                     const     { return m_useSyntheticAffine; }
 #endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
   void      setUseExtAmvp         ( bool b )                                        { m_useExtAmvp = b; }

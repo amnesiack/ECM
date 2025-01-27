@@ -978,6 +978,9 @@ public:
     for (unsigned i = 0; i < AFFINE_MRG_MAX_NUM_CANDS_ALL; i++)
     {
       affineType[i] = AFFINEMODEL_4PARAM;
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+      m_isConstructed[i] = false;
+#endif
     }
   }
   ~AffineMergeCtx() {}
@@ -1013,6 +1016,9 @@ public:
 
   MergeCtx *mrgCtx;
   MergeType mergeType[AFFINE_MRG_MAX_NUM_CANDS_ALL];
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  bool m_isConstructed[AFFINE_MRG_MAX_NUM_CANDS_ALL];
+#endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   int colIdx[AFFINE_MRG_MAX_NUM_CANDS_ALL];
 #endif
@@ -1188,6 +1194,9 @@ public:
   bool            obmcFlags[ALT_AFF_MRG_MAX_NUM_CANDS];
 #endif
   int             numValidMergeCand;
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  bool            m_isConstructed[ALT_AFF_MRG_MAX_NUM_CANDS];
+#endif
 
   bool            xCheckSameAffMotion(const PredictionUnit& pu, int cnt);
   void            initAltLMAffMergeCtx(int idx);

@@ -3193,6 +3193,9 @@ void AltLMAffineMergeCtx::initAltLMAffMergeCtx(int idx)
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
   obmcFlags[idx] = true;
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  m_isConstructed[idx] = false;
+#endif
 }
 
 void AltLMAffineMergeCtx::init()

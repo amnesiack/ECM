@@ -1733,6 +1733,10 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     }
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    WRITE_FLAG(pcSPS->getUseTemporalAffineOpt() ? 1 : 0, "sps_temporal_affine_opt");
+    WRITE_FLAG(pcSPS->getUseSyntheticAffine() ? 1 : 0, "sps_synthetic_affine");
+#endif
   }
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
   if (pcSPS->getUseMMVD() || pcSPS->getUseAffineMmvdMode())

@@ -529,6 +529,10 @@ namespace PU
   );
 #if JVET_AI0197_AFFINE_TMVP
   bool getColocatedAffineCMVP(const PredictionUnit &pu, const RefPicList &eRefPicList, const Position &pos, Mv rcMv[3],
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+                              Mv rcMvAlt[3],
+                              bool isAlt,
+#endif
                               const int &refIdx, bool sbFlag
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
@@ -770,6 +774,9 @@ namespace PU
     AffineMergeCtx affineRMVFOriCtx,
     uint16_t numCandtoAdd,
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    AffineMergeCtx* tmvpMrgCtx = NULL,
+#endif
 #if AFFINE_MMVD
                            int mrgCandIdx = -1, bool isAfMmvd = false
 #else
@@ -782,6 +789,9 @@ namespace PU
                           , bool noSbTMVP = false
 #endif
   );
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  void getAffineTMVPMergeCand(const PredictionUnit &pu, AffineMergeCtx& affMrgCtx);
+#endif
 #if JVET_AG0276_NLIC
   void getAltLMAffineMergeCand(const PredictionUnit &pu, AltLMAffineMergeCtx& altLMAffMrgCtx);
 #if JVET_AG0276_LIC_FLAG_SIGNALING

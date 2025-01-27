@@ -2143,6 +2143,10 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
   }
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  sps.setUseTemporalAffineOpt  ( m_sourceWidth * m_sourceHeight > 832 * 480 && getBaseQP() > 22 );
+  sps.setUseSyntheticAffine    ( m_sourceWidth * m_sourceHeight < 3840 * 2160 && getBaseQP() > 22 );
+#endif
   sps.setUseGeo                ( m_Geo );
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   sps.setUseGeoBlend           ( m_Geo && m_tmToolsEnableFlag );

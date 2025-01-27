@@ -2001,6 +2001,16 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       spsTmp->setMaxNumGpmAffCand(m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand());
     }
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE 
+    if (cs.sps->getUseSyntheticAffine() && isSCC)
+    {
+      spsTmp->setUseSyntheticAffine(false);
+    }
+    if (cs.sps->getPLTMode())
+    {
+      spsTmp->setUseTemporalAffineOpt(false);
+    }
+#endif
   }
 #endif
 
