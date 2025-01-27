@@ -400,6 +400,9 @@ static void simdFilter5x5Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 )
 {
 #if !ALF_IMPROVEMENT
@@ -413,13 +416,14 @@ static void simdFilter5x5Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
   const size_t srcStride = srcBuffer.stride;
   const size_t dstStride = dstBuffer.stride;
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 #if !ALF_IMPROVEMENT
   const __m128i mmOffset1 = _mm_set1_epi32((1 << ((shift + 3) - 1)) - round );
 #endif
@@ -471,12 +475,20 @@ static void simdFilter5x5Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
     {
 #if ALF_IMPROVEMENT
       __m128i params[2][2][3];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; ++k)
       {
         const int transposeIdx = pClass ? (pClass[j + 4 * k] & 0x3)  : 0;
         const int classIdx = pClass ? ( pClass[j + 4 * k] >> 2) : 0;
         const int transposeIdx1 = pClass ? ( pClass[j + 4 * k + 2] & 0x3) : 0;
         const int classIdx1 = pClass ? ( pClass[j + 4 * k + 2] >> 2 ) : 0;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        scaleFactor[k * 4] = scaleFactor[k * 4 + 1] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+        scaleFactor[k * 4 + 2] = scaleFactor[k * 4 + 3] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
         __m128i rawCoeff = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
         __m128i rawClip = _mm_loadu_si128((const __m128i *) (fClipSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
@@ -533,8 +545,13 @@ static void simdFilter5x5Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         }
 #endif
         __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m128i accumA = _mm_setzero_si128();
+        __m128i accumB = _mm_setzero_si128();
+#else
         __m128i accumA = mmOffset;
         __m128i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
           const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -599,6 +616,14 @@ static void simdFilter5x5Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         process2coeffs(1, pImg1 + 0, pImg2 + 0, pImg1 - 1, pImg2 + 1);
         process2coeffs(2, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
 #if ALF_IMPROVEMENT
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+        accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+        accumA = _mm_add_epi32(accumA, mmOffset);
+        accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
+
         accumA = _mm_srai_epi32( accumA, shift );
         accumB = _mm_srai_epi32( accumB, shift );
 #else
@@ -688,6 +713,9 @@ static void simdFilter7x7Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 #else
   , const int vbCTUHeight, int vbPos
 #endif
@@ -704,13 +732,14 @@ static void simdFilter7x7Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
   const size_t srcStride = srcBuffer.stride;
   const size_t dstStride = dstBuffer.stride;
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
   const size_t width  = blk.width;
   const size_t height = blk.height;
 
@@ -749,6 +778,9 @@ static void simdFilter7x7Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
     for (size_t j = 0; j < width; j += stepX)
     {
       __m128i params[2][2][6];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
 
       for (int k = 0; k < 2; ++k)
       {
@@ -787,6 +819,11 @@ static void simdFilter7x7Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         const __m128i rawClipHi  = _mm_or_si128(_mm_shuffle_epi8(rawClip0, s2), _mm_shuffle_epi8(rawClip1, s3));
 
 #if ALF_IMPROVEMENT
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        scaleFactor[k * 4] = scaleFactor[k * 4 + 1] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+        scaleFactor[k * 4 + 2] = scaleFactor[k * 4 + 3] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
+
         rawCoeff0 = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
         rawCoeff1 = _mm_loadl_epi64((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
 
@@ -868,8 +905,13 @@ static void simdFilter7x7Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 #endif
         __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m128i accumA = _mm_setzero_si128();
+        __m128i accumB = _mm_setzero_si128();
+#else
         __m128i accumA = mmOffset;
         __m128i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
           const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -917,6 +959,14 @@ static void simdFilter7x7Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         process2coeffs(5, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
 
 #if ALF_IMPROVEMENT
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+        accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+        accumA = _mm_add_epi32(accumA, mmOffset);
+        accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
+
         accumA = _mm_srai_epi32( accumA, shift );
         accumB = _mm_srai_epi32( accumB, shift );
 #else
@@ -1169,6 +1219,9 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 )
 {
   const CPelBuf srcBuffer = recSrc.get(compId);
@@ -1178,13 +1231,14 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
   const size_t dstStride = dstBuffer.stride;
 
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 
   const size_t width = blk.width;
   const size_t height = blk.height;
@@ -1224,6 +1278,9 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
       for (size_t j = 0; j < width; j += stepX * 2)
       {
         __m256i params[2][2][10];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[16];
+#endif
         for (int k = 0; k < 2; k++)
         {
           __m128i rawCoeffTmp[2][2][3], rawClipTmp[2][2][3], s0Tmp[2], s1Tmp[2], s2Tmp[2], s3Tmp[2];
@@ -1233,6 +1290,9 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
           {
             const int transposeIdx0 = pClass ? (pClass[j + 4 * k + 2 * l + 0] & 0x3) : 0;
             const int classIdx0     = pClass ? (pClass[j + 4 * k + 2 * l + 0] >> 2) : 0;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l * 2] = scaleFactor[k * 8 + l * 2 + 1] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx0]];
+#endif
 
             rawCoeffTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoeffTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -1265,6 +1325,9 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
 
             const int transposeIdx1 = pClass ? (pClass[j + 4 * k + 2 * l + 8] & 0x3) : 0;
             const int classIdx1     = pClass ? (pClass[j + 4 * k + 2 * l + 8] >> 2) : 0;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l * 2 + 4] = scaleFactor[k * 8 + l * 2 + 5] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
             rawCoeffTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoeffTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -1348,8 +1411,13 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
           pImg8 = pImg6 - srcStride;
 
           __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          __m256i accumA = _mm256_setzero_si256();
+          __m256i accumB = _mm256_setzero_si256();
+#else
           __m256i accumA = mmOffset;
           __m256i accumB = mmOffset;
+#endif
 
           auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
             {
@@ -1400,6 +1468,14 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
           process2coeffs(8, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
           process2coeffs(9, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          accumA = _mm256_mullo_epi32(accumA, _mm256_loadu_si256((const __m256i*) scaleFactor));
+          accumB = _mm256_mullo_epi32(accumB, _mm256_loadu_si256((const __m256i*) (scaleFactor + 8)));
+
+          accumA = _mm256_add_epi32(accumA, mmOffset);
+          accumB = _mm256_add_epi32(accumB, mmOffset);
+#endif
+
           accumA = _mm256_srai_epi32(accumA, shift);
           accumB = _mm256_srai_epi32(accumB, shift);
 
@@ -1429,6 +1505,9 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
       for (size_t j = 0; j < width; j += stepX)
       {
         __m128i params[2][2][10];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[8];
+#endif
         for (int k = 0; k < 2; k++)
         {
           __m128i rawCoeff[2][3], rawClip[2][3], s0, s1, s2, s3, rawTmp0, rawTmp1;
@@ -1437,6 +1516,9 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
           {
             const int transposeIdx = pClass ? (pClass[j + 4 * k + 2 * l] & 0x3 ) : 0;
             const int classIdx = pClass ? (pClass[j + 4 * k + 2 * l] >> 2): 0;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 4 + l * 2] = scaleFactor[k * 4 + l * 2 + 1] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
             rawCoeff[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
             rawCoeff[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -1506,8 +1588,13 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
           pImg8 = pImg6 - srcStride;
 
           __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          __m128i accumA = _mm_setzero_si128();
+          __m128i accumB = _mm_setzero_si128();
+#else
           __m128i accumA = mmOffset;
           __m128i accumB = mmOffset;
+#endif
 
           auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
             const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -1556,6 +1643,13 @@ static void simdFilter9x9BlkNoFix(AlfClassifier **classifier, const PelUnitBuf &
           process2coeffs(7, pImg1 - 2, pImg2 + 2, pImg1 - 3, pImg2 + 3);
           process2coeffs(8, pImg0 + 4, pImg0 - 4, pImg0 + 3, pImg0 - 3);
           process2coeffs(9, pImg0 + 2, pImg0 - 2, pImg0 + 1, pImg0 - 1);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+          accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+          accumA = _mm_add_epi32(accumA, mmOffset);
+          accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
 
           accumA = _mm_srai_epi32(accumA, shift);
           accumB = _mm_srai_epi32(accumB, shift);
@@ -1614,6 +1708,9 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
   )
 {
   const CPelBuf srcBuffer = recSrc.get(compId);
@@ -1623,13 +1720,14 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
   const size_t dstStride = dstBuffer.stride;
 
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 
   const size_t width = blk.width;
   const size_t height = blk.height;
@@ -1677,6 +1775,9 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 #else
         __m256i params[2][2][10];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[16];
+#endif
         for (int k = 0; k < 2; k++)
         {
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
@@ -1691,6 +1792,9 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
           {
             const int transposeIdx0 = pClass ? (pClass[j + 4 * k + 2 * l + 0] & 0x3) : 0;
             const int classIdx0     = pClass ? (pClass[j + 4 * k + 2 * l + 0] >> 2) : 0;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l * 2] = scaleFactor[k * 8 + l * 2 + 1] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx0]];
+#endif
 
             rawCoeffTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoeffTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -1732,6 +1836,9 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 
             const int transposeIdx1 = pClass ? (pClass[j + 4 * k + 2 * l + 8] & 0x3) : 0;
             const int classIdx1     = pClass ? (pClass[j + 4 * k + 2 * l + 8] >> 2) : 0;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l * 2 + 4] = scaleFactor[k * 8 + l * 2 + 5] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
             rawCoeffTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoeffTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -1845,8 +1952,13 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
           const Pel *pImg4FixedBased = fixedFilterResults[fixedFilterSetIdx][blkDst.y + i + ii + padSize - 2] + blkDst.x + j + padSize;
 #endif
           __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          __m256i accumA = _mm256_setzero_si256();
+          __m256i accumB = _mm256_setzero_si256();
+#else
           __m256i accumA = mmOffset;
           __m256i accumB = mmOffset;
+#endif
 
           auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
           {
@@ -1920,6 +2032,13 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
           accumA           = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
           accumB           = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          accumA = _mm256_mullo_epi32(accumA, _mm256_loadu_si256((const __m256i*) scaleFactor));
+          accumB = _mm256_mullo_epi32(accumB, _mm256_loadu_si256((const __m256i*) (scaleFactor + 8)));
+
+          accumA = _mm256_add_epi32(accumA, mmOffset);
+          accumB = _mm256_add_epi32(accumB, mmOffset);
+#endif
 
           accumA = _mm256_srai_epi32(accumA, shift);
           accumB = _mm256_srai_epi32(accumB, shift);
@@ -1954,6 +2073,10 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
 #else
       __m128i params[2][2][10];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
+
       for (int k = 0; k < 2; k++)
       {
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
@@ -1966,6 +2089,10 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         {
           const int transposeIdx = pClass ? (pClass[j + 4 * k + 2 * l] & 0x3 ) : 0;
           const int classIdx = pClass ? (pClass[j + 4 * k + 2 * l] >> 2): 0;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l * 2] = scaleFactor[k * 4 + l * 2 + 1] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoeff[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoeff[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -2061,8 +2188,13 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         const Pel *pImg4FixedBased = fixedFilterResults[fixedFilterSetIdx][blkDst.y + i + ii + padSize - 2] + blkDst.x + j + padSize;
 #endif
         __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m128i accumA = _mm_setzero_si128();
+        __m128i accumB = _mm_setzero_si128();
+#else
         __m128i accumA = mmOffset;
         __m128i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
           const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -2135,6 +2267,13 @@ static void simdFilter9x9Blk(AlfClassifier **classifier, const PelUnitBuf &recDs
         accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
         accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+        accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+        accumA = _mm_add_epi32(accumA, mmOffset);
+        accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
 
         accumA = _mm_srai_epi32(accumA, shift);
         accumB = _mm_srai_epi32(accumB, shift);
@@ -2194,6 +2333,9 @@ static void simdFilter9x9BlkExt(AlfClassifier **classifier, const PelUnitBuf &re
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
   )
 {
   const CPelBuf srcBuffer = recSrc.get(compId);
@@ -2202,13 +2344,14 @@ static void simdFilter9x9BlkExt(AlfClassifier **classifier, const PelUnitBuf &re
   const size_t srcStride = srcBuffer.stride;
   const size_t dstStride = dstBuffer.stride;
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
   const size_t width = blk.width;
   const size_t height = blk.height;
 
@@ -2238,6 +2381,9 @@ static void simdFilter9x9BlkExt(AlfClassifier **classifier, const PelUnitBuf &re
 #else
       __m128i params[2][2][11];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; k++)
       {
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -2249,6 +2395,10 @@ static void simdFilter9x9BlkExt(AlfClassifier **classifier, const PelUnitBuf &re
         {
           const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
           const int classIdx = pClass[j + 4 * k + l] >> 2;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -2383,8 +2533,13 @@ static void simdFilter9x9BlkExt(AlfClassifier **classifier, const PelUnitBuf &re
 #endif
 
       __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      __m128i accumA = _mm_setzero_si128();
+      __m128i accumB = _mm_setzero_si128();
+#else
       __m128i accumA = mmOffset;
       __m128i accumB = mmOffset;
+#endif
 
       auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
         const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -2467,6 +2622,14 @@ static void simdFilter9x9BlkExt(AlfClassifier **classifier, const PelUnitBuf &re
 #endif
       accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
       accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+      accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+      accumA = _mm_add_epi32(accumA, mmOffset);
+      accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
 
       accumA = _mm_srai_epi32(accumA, shift);
       accumB = _mm_srai_epi32(accumB, shift);
@@ -2825,6 +2988,9 @@ static void simdFilter9x9BlkExtDb(AlfClassifier **classifier, const PelUnitBuf &
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
   )
 {
   const CPelBuf srcBuffer = recSrc.get(compId);
@@ -2835,13 +3001,14 @@ static void simdFilter9x9BlkExtDb(AlfClassifier **classifier, const PelUnitBuf &
   const size_t dstStride = dstBuffer.stride;
   const size_t srcBeforeDbStride = scrBufferBeforeDb.stride;
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
   const size_t width = blk.width;
   const size_t height = blk.height;
 
@@ -2872,6 +3039,9 @@ static void simdFilter9x9BlkExtDb(AlfClassifier **classifier, const PelUnitBuf &
 #else
       __m128i params[2][2][13];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; k++)
       {
         __m128i rawCoef[4][4], rawClip[4][4], s0, s1, s2, s3, rawTmp0, rawTmp1;
@@ -2879,6 +3049,10 @@ static void simdFilter9x9BlkExtDb(AlfClassifier **classifier, const PelUnitBuf &
         {
           const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
           const int classIdx = pClass[j + 4 * k + l] >> 2;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -3003,8 +3177,13 @@ static void simdFilter9x9BlkExtDb(AlfClassifier **classifier, const PelUnitBuf &
 #endif
 
       __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      __m128i accumA = _mm_setzero_si128();
+      __m128i accumB = _mm_setzero_si128();
+#else
       __m128i accumA = mmOffset;
       __m128i accumB = mmOffset;
+#endif
 
       auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
         const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -3133,6 +3312,14 @@ static void simdFilter9x9BlkExtDb(AlfClassifier **classifier, const PelUnitBuf &
       accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
       accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+      accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+      accumA = _mm_add_epi32(accumA, mmOffset);
+      accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
+
       accumA = _mm_srai_epi32(accumA, shift);
       accumB = _mm_srai_epi32(accumB, shift);
 
@@ -3180,6 +3367,9 @@ static void simdFilter13x13BlkExt(AlfClassifier **classifier, const PelUnitBuf &
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
   )
 {
   const CPelBuf srcBuffer = recSrc.get(compId);
@@ -3188,13 +3378,14 @@ static void simdFilter13x13BlkExt(AlfClassifier **classifier, const PelUnitBuf &
   const size_t srcStride = srcBuffer.stride;
   const size_t dstStride = dstBuffer.stride;
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
   const size_t width = blk.width;
   const size_t height = blk.height;
 
@@ -3235,6 +3426,9 @@ static void simdFilter13x13BlkExt(AlfClassifier **classifier, const PelUnitBuf &
 #else
       __m128i params[2][2][11];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; k++)
       {
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -3250,6 +3444,10 @@ static void simdFilter13x13BlkExt(AlfClassifier **classifier, const PelUnitBuf &
         {
           const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
           const int classIdx = pClass[j + 4 * k + l] >> 2;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -3470,8 +3668,13 @@ static void simdFilter13x13BlkExt(AlfClassifier **classifier, const PelUnitBuf &
       }
 #endif
       __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      __m128i accumA = _mm_setzero_si128();
+      __m128i accumB = _mm_setzero_si128();
+#else
       __m128i accumA = mmOffset;
       __m128i accumB = mmOffset;
+#endif
 
       auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
         const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -3662,6 +3865,14 @@ static void simdFilter13x13BlkExt(AlfClassifier **classifier, const PelUnitBuf &
       accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
       accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+      accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+      accumA = _mm_add_epi32(accumA, mmOffset);
+      accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
+
       accumA = _mm_srai_epi32(accumA, shift);
       accumB = _mm_srai_epi32(accumB, shift);
 
@@ -3705,6 +3916,9 @@ static void simdFilter13x13BlkExtDb(AlfClassifier **classifier, const PelUnitBuf
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
   )
 {
   const CPelBuf srcBuffer = recSrc.get(compId);
@@ -3715,13 +3929,14 @@ static void simdFilter13x13BlkExtDb(AlfClassifier **classifier, const PelUnitBuf
   const size_t dstStride = dstBuffer.stride;
   const size_t srcBeforeDbStride = scrBufferBeforeDb.stride;
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
   const size_t width = blk.width;
   const size_t height = blk.height;
 
@@ -3763,6 +3978,9 @@ static void simdFilter13x13BlkExtDb(AlfClassifier **classifier, const PelUnitBuf
 #else
       __m128i params[2][2][13];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; k++)
       {
 #if JVET_AD0222_ALF_LONG_FIXFILTER || JVET_AD0222_ADDITONAL_ALF_FIXFILTER
@@ -3774,6 +3992,10 @@ static void simdFilter13x13BlkExtDb(AlfClassifier **classifier, const PelUnitBuf
         {
           const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
           const int classIdx = pClass[j + 4 * k + l] >> 2;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -3984,8 +4206,13 @@ static void simdFilter13x13BlkExtDb(AlfClassifier **classifier, const PelUnitBuf
       }
 #endif
       __m128i cur = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      __m128i accumA = _mm_setzero_si128();
+      __m128i accumB = _mm_setzero_si128();
+#else
       __m128i accumA = mmOffset;
       __m128i accumB = mmOffset;
+#endif
 
       auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3) {
         const __m128i val00 = _mm_sub_epi16(_mm_loadu_si128((const __m128i *) ptr0), cur);
@@ -4218,6 +4445,14 @@ static void simdFilter13x13BlkExtDb(AlfClassifier **classifier, const PelUnitBuf
       accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
       accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+      accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+      accumA = _mm_add_epi32(accumA, mmOffset);
+      accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
+
       accumA = _mm_srai_epi32(accumA, shift);
       accumB = _mm_srai_epi32(accumB, shift);
 
@@ -4257,6 +4492,9 @@ static void simdFilter13x13BlkExtDbResiDirect(
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 )
 {
   const CPelBuf srcBuffer         = recSrc.get(compId);
@@ -4276,27 +4514,27 @@ static void simdFilter13x13BlkExtDbResiDirect(
     fixedFilterSetIdx = -fixedFilterSetIdx - 1;
     adjustShift -= shiftPrecis; // add more precision
   }
-  const int shift = adjustShift;
+  int shift = adjustShift;
 #if JVET_AJ0237_INTERNAL_12BIT
   const Pel currBase = 1 << (clpRng.bd - 1);
 #else
   const Pel currBase = 512;
 #endif
-  int round = 1 << (shift - 1);
 
 #if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
   __m128i curBase = _mm_set_epi16( currBase, currBase, currBase, currBase, currBase, currBase, currBase, currBase );
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 
   const size_t width  = blk.width;
   const size_t height = blk.height;
@@ -4354,6 +4592,9 @@ static void simdFilter13x13BlkExtDbResiDirect(
 #else
         __m256i params[2][2][13];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[16];
+#endif
         for (int k = 0; k < 2; k++)
         {
 #if JVET_AD0222_ALF_LONG_FIXFILTER || JVET_AD0222_ADDITONAL_ALF_FIXFILTER
@@ -4367,6 +4608,9 @@ static void simdFilter13x13BlkExtDbResiDirect(
           {
             const int transposeIdx0 = pClass[j + 4 * k + l + 0] & 0x3;
             const int classIdx0     = pClass[j + 4 * k + l + 0] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx0]];
+#endif
 
             rawCoefTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -4420,6 +4664,9 @@ static void simdFilter13x13BlkExtDbResiDirect(
 
             const int transposeIdx1 = pClass[j + 4 * k + l + 8] & 0x3;
             const int classIdx1     = pClass[j + 4 * k + l + 8] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l + 4] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
             rawCoefTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -4654,8 +4901,13 @@ static void simdFilter13x13BlkExtDbResiDirect(
         }
 #endif
         __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m256i accumA = _mm256_setzero_si256();
+        __m256i accumB = _mm256_setzero_si256();
+#else
         __m256i accumA = mmOffset;
         __m256i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
         {
@@ -4905,6 +5157,13 @@ static void simdFilter13x13BlkExtDbResiDirect(
         accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
         accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm256_mullo_epi32(accumA, _mm256_loadu_si256((const __m256i*) scaleFactor));
+        accumB = _mm256_mullo_epi32(accumB, _mm256_loadu_si256((const __m256i*) (scaleFactor + 8)));
+
+        accumA = _mm256_add_epi32(accumA, mmOffset);
+        accumB = _mm256_add_epi32(accumB, mmOffset);
+#endif
         accumA = _mm256_srai_epi32(accumA, shift);
         accumB = _mm256_srai_epi32(accumB, shift);
 
@@ -4955,6 +5214,9 @@ static void simdFilter13x13BlkExtDbResiDirect(
 #else
       __m128i params[2][2][13];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; k++)
       {
 #if JVET_AD0222_ALF_LONG_FIXFILTER || JVET_AD0222_ADDITONAL_ALF_FIXFILTER
@@ -4966,6 +5228,10 @@ static void simdFilter13x13BlkExtDbResiDirect(
         {
           const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
           const int classIdx     = pClass[j + 4 * k + l] >> 2;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -5177,8 +5443,13 @@ static void simdFilter13x13BlkExtDbResiDirect(
       }
 #endif
       __m128i cur    = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      __m128i accumA = _mm_setzero_si128();
+      __m128i accumB = _mm_setzero_si128();
+#else
       __m128i accumA = mmOffset;
       __m128i accumB = mmOffset;
+#endif
 
       auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
       {
@@ -5431,6 +5702,14 @@ static void simdFilter13x13BlkExtDbResiDirect(
       accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
       accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+      accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+      accumA = _mm_add_epi32(accumA, mmOffset);
+      accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
+
       accumA = _mm_srai_epi32(accumA, shift);
       accumB = _mm_srai_epi32(accumB, shift);
 
@@ -5479,6 +5758,9 @@ static void simdFilter13x13BlkExtDbResi(
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 )
 {
   const CPelBuf srcBuffer         = recSrc.get(compId);
@@ -5498,27 +5780,27 @@ static void simdFilter13x13BlkExtDbResi(
     fixedFilterSetIdx = -fixedFilterSetIdx - 1;
     adjustShift -= shiftPrecis; // add more precision
   }
-  const int shift = adjustShift;
+  int shift = adjustShift;
 #if JVET_AJ0237_INTERNAL_12BIT
   const Pel currBase = 1 << (clpRng.bd - 1);
 #else
   const Pel currBase = 512;
 #endif
-  int round = 1 << (shift - 1);
 
 #if !( USE_AVX2 && (JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF) )
   __m128i curBase = _mm_set_epi16( currBase, currBase, currBase, currBase, currBase, currBase, currBase, currBase );
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 
   const size_t width  = blk.width;
   const size_t height = blk.height;
@@ -5578,6 +5860,9 @@ static void simdFilter13x13BlkExtDbResi(
 #else
         __m256i params[2][2][13];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[16];
+#endif
         for (int k = 0; k < 2; k++)
         {
 #if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
@@ -5591,6 +5876,9 @@ static void simdFilter13x13BlkExtDbResi(
           {
             const int transposeIdx0 = pClass[j + 4 * k + l + 0] & 0x3;
             const int classIdx0     = pClass[j + 4 * k + l + 0] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx0]];
+#endif
 
             rawCoefTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -5612,6 +5900,9 @@ static void simdFilter13x13BlkExtDbResi(
 
             const int transposeIdx1 = pClass[j + 4 * k + l + 8] & 0x3;
             const int classIdx1     = pClass[j + 4 * k + l + 8] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l + 4] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
             rawCoefTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -5914,8 +6205,13 @@ static void simdFilter13x13BlkExtDbResi(
       }
 #endif
         __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m256i accumA = _mm256_setzero_si256();
+        __m256i accumB = _mm256_setzero_si256();
+#else
         __m256i accumA = mmOffset;
         __m256i accumB = mmOffset;
+#endif
 #if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
         __m256i zero = _mm256_setzero_si256();
 #endif
@@ -6271,6 +6567,13 @@ static void simdFilter13x13BlkExtDbResi(
         accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
         accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm256_mullo_epi32(accumA, _mm256_loadu_si256((const __m256i*) scaleFactor));
+        accumB = _mm256_mullo_epi32(accumB, _mm256_loadu_si256((const __m256i*) (scaleFactor + 8)));
+
+        accumA = _mm256_add_epi32(accumA, mmOffset);
+        accumB = _mm256_add_epi32(accumB, mmOffset);
+#endif
 
         accumA = _mm256_srai_epi32(accumA, shift);
         accumB = _mm256_srai_epi32(accumB, shift);
@@ -6322,6 +6625,9 @@ static void simdFilter13x13BlkExtDbResi(
 #else
       __m128i params[2][2][13];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      int32_t scaleFactor[8];
+#endif
       for (int k = 0; k < 2; k++)
       {
 #if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
@@ -6333,6 +6639,10 @@ static void simdFilter13x13BlkExtDbResi(
         {
           const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
           const int classIdx     = pClass[j + 4 * k + l] >> 2;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+          scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
           rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
           rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -6567,8 +6877,13 @@ static void simdFilter13x13BlkExtDbResi(
       }
 #endif
       __m128i cur    = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      __m128i accumA = _mm_setzero_si128();
+      __m128i accumB = _mm_setzero_si128();
+#else
       __m128i accumA = mmOffset;
       __m128i accumB = mmOffset;
+#endif
 #if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
       __m128i zero = _mm_setzero_si128();
 #endif
@@ -6928,7 +7243,13 @@ static void simdFilter13x13BlkExtDbResi(
       accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
       accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+      accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
 
+      accumA = _mm_add_epi32(accumA, mmOffset);
+      accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
       accumA = _mm_srai_epi32(accumA, shift);
       accumB = _mm_srai_epi32(accumB, shift);
 
@@ -6977,6 +7298,9 @@ static void simdFilter13x13BlkDbResiDirect(
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 )
 {
   const CPelBuf srcBuffer         = recSrc.get(compId);
@@ -6996,27 +7320,27 @@ static void simdFilter13x13BlkDbResiDirect(
     fixedFilterSetIdx = -fixedFilterSetIdx - 1;
     adjustShift -= shiftPrecis; // add more precision
   }
-  const int shift = adjustShift;
+  int shift = adjustShift;
 #if JVET_AJ0237_INTERNAL_12BIT
   const Pel currBase = 1 << (clpRng.bd - 1);
 #else
   const Pel currBase = 512;
 #endif
-  int round = 1 << (shift - 1);
 
 #if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
   __m128i curBase = _mm_set_epi16( currBase, currBase, currBase, currBase, currBase, currBase, currBase, currBase );
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 
   const size_t width  = blk.width;
   const size_t height = blk.height;
@@ -7060,6 +7384,9 @@ static void simdFilter13x13BlkDbResiDirect(
       for (size_t j = 0; j < width; j += stepX * 2)
       {
         __m256i params[2][2][10];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[16];
+#endif
         for (int k = 0; k < 2; k++)
         {
           __m256i rawCoef[4][3], rawClip[4][3], s0, s1;
@@ -7069,6 +7396,9 @@ static void simdFilter13x13BlkDbResiDirect(
           {
             const int transposeIdx0 = pClass[j + 4 * k + l + 0] & 0x3;
             const int classIdx0     = pClass[j + 4 * k + l + 0] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx0]];
+#endif
 
             rawCoefTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -7101,6 +7431,9 @@ static void simdFilter13x13BlkDbResiDirect(
 
             const int transposeIdx1 = pClass[j + 4 * k + l + 8] & 0x3;
             const int classIdx1     = pClass[j + 4 * k + l + 8] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l + 4] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
             rawCoefTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -7219,8 +7552,13 @@ static void simdFilter13x13BlkDbResiDirect(
           }
         }
         __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m256i accumA = _mm256_setzero_si256();
+        __m256i accumB = _mm256_setzero_si256();
+#else
         __m256i accumA = mmOffset;
         __m256i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
           {
@@ -7314,6 +7652,13 @@ static void simdFilter13x13BlkDbResiDirect(
         coeff01B = params[1][0][9];
         accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
         accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm256_mullo_epi32(accumA, _mm256_loadu_si256((const __m256i*) scaleFactor));
+        accumB = _mm256_mullo_epi32(accumB, _mm256_loadu_si256((const __m256i*) (scaleFactor + 8)));
+
+        accumA = _mm256_add_epi32(accumA, mmOffset);
+        accumB = _mm256_add_epi32(accumB, mmOffset);
+#endif
 
         accumA = _mm256_srai_epi32(accumA, shift);
         accumB = _mm256_srai_epi32(accumB, shift);
@@ -7352,6 +7697,9 @@ static void simdFilter13x13BlkDbResiDirect(
       for (size_t j = 0; j < width; j += stepX)
       {
         __m128i params[2][2][10];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[8];
+#endif
         for (int k = 0; k < 2; k++)
         {
           __m128i rawCoef[4][3], rawClip[4][3], s0, s1, s2, s3, rawTmp0, rawTmp1;
@@ -7359,6 +7707,9 @@ static void simdFilter13x13BlkDbResiDirect(
           {
             const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
             const int classIdx     = pClass[j + 4 * k + l] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
             rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
             rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -7463,8 +7814,13 @@ static void simdFilter13x13BlkDbResiDirect(
         }
 
         __m128i cur    = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m128i accumA = _mm_setzero_si128();
+        __m128i accumB = _mm_setzero_si128();
+#else
         __m128i accumA = mmOffset;
         __m128i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
           {
@@ -7557,6 +7913,13 @@ static void simdFilter13x13BlkDbResiDirect(
         coeff01B = params[1][0][9];
         accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
         accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+        accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+        accumA = _mm_add_epi32(accumA, mmOffset);
+        accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
 
         accumA = _mm_srai_epi32(accumA, shift);
         accumB = _mm_srai_epi32(accumB, shift);
@@ -7606,6 +7969,9 @@ static void simdFilter13x13BlkDbResi(
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  , const char* scaleIdxSet
+#endif
 )
 {
   const CPelBuf srcBuffer         = recSrc.get(compId);
@@ -7625,27 +7991,27 @@ static void simdFilter13x13BlkDbResi(
     fixedFilterSetIdx = -fixedFilterSetIdx - 1;
     adjustShift -= shiftPrecis; // add more precision
   }
-  const int shift = adjustShift;
+  int shift = adjustShift;
 #if JVET_AJ0237_INTERNAL_12BIT
   const Pel currBase = 1 << (clpRng.bd - 1);
 #else
   const Pel currBase = 512;
 #endif
-  int round = 1 << (shift - 1);
 
 #if !( USE_AVX2 && JVET_AJ0188_CODING_INFO_CLASSIFICATION )
   __m128i curBase = _mm_set_epi16( currBase, currBase, currBase, currBase, currBase, currBase, currBase, currBase );
 #endif
 #else
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
-  int shift = coeffBits;
-  shift -= 1;
-  int round = 1 << (shift - 1);
+  int shift = coeffBits - 1;
 #else
-  constexpr int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
-  constexpr int round = 1 << (shift - 1);
+  int shift = AdaptiveLoopFilter::m_NUM_BITS - 1;
 #endif
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  shift += AdaptiveLoopFilter::m_SCALE_SHIFT;
+#endif
+  const int round = 1 << (shift - 1);
 
   const size_t width  = blk.width;
   const size_t height = blk.height;
@@ -7687,6 +8053,9 @@ static void simdFilter13x13BlkDbResi(
       for (size_t j = 0; j < width; j += stepX * 2)
       {
         __m256i params[2][2][8];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[16];
+#endif
         for (int k = 0; k < 2; k++)
         {
           __m256i rawCoef[4][2], rawClip[4][2], s0, s1;
@@ -7695,6 +8064,9 @@ static void simdFilter13x13BlkDbResi(
           {
             const int transposeIdx0 = pClass[j + 4 * k + l + 0] & 0x3;
             const int classIdx0     = pClass[j + 4 * k + l + 0] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx0]];
+#endif
 
             rawCoefTmp[0][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[0][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx0 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -7704,6 +8076,9 @@ static void simdFilter13x13BlkDbResi(
 
             const int transposeIdx1 = pClass[j + 4 * k + l + 8] & 0x3;
             const int classIdx1     = pClass[j + 4 * k + l + 8] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 8 + l + 4] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx1]];
+#endif
 
             rawCoefTmp[1][l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF));
             rawCoefTmp[1][l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx1 * MAX_NUM_ALF_LUMA_COEFF + 8));
@@ -7823,8 +8198,13 @@ static void simdFilter13x13BlkDbResi(
           }
         }
         __m256i cur    = _mm256_loadu_si256((const __m256i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m256i accumA = _mm256_setzero_si256();
+        __m256i accumB = _mm256_setzero_si256();
+#else
         __m256i accumA = mmOffset;
         __m256i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
           {
@@ -7916,6 +8296,13 @@ static void simdFilter13x13BlkDbResi(
 
         accumA = _mm256_add_epi32(accumA, _mm256_madd_epi16(val01A, coeff01A));
         accumB = _mm256_add_epi32(accumB, _mm256_madd_epi16(val01B, coeff01B));
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm256_mullo_epi32(accumA, _mm256_loadu_si256((const __m256i*) scaleFactor));
+        accumB = _mm256_mullo_epi32(accumB, _mm256_loadu_si256((const __m256i*) (scaleFactor + 8)));
+
+        accumA = _mm256_add_epi32(accumA, mmOffset);
+        accumB = _mm256_add_epi32(accumB, mmOffset);
+#endif
 
         accumA = _mm256_srai_epi32(accumA, shift);
         accumB = _mm256_srai_epi32(accumB, shift);
@@ -7954,6 +8341,9 @@ static void simdFilter13x13BlkDbResi(
       for (size_t j = 0; j < width; j += stepX)
       {
         __m128i params[2][2][8];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        int32_t scaleFactor[8];
+#endif
         for (int k = 0; k < 2; k++)
         {
           __m128i rawCoef[4][2], rawClip[4][2], s0, s1, s2, s3, rawTmp0, rawTmp1;
@@ -7961,6 +8351,9 @@ static void simdFilter13x13BlkDbResi(
           {
             const int transposeIdx = pClass[j + 4 * k + l] & 0x3;
             const int classIdx     = pClass[j + 4 * k + l] >> 2;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+            scaleFactor[k * 4 + l] = AdaptiveLoopFilter::m_SCALE_FACTOR[(int)scaleIdxSet[classIdx]];
+#endif
 
             rawCoef[l][0] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF));
             rawCoef[l][1] = _mm_loadu_si128((const __m128i *) (filterSet + classIdx * MAX_NUM_ALF_LUMA_COEFF + 8));            
@@ -8047,8 +8440,13 @@ static void simdFilter13x13BlkDbResi(
           }
         }
         __m128i cur    = _mm_loadu_si128((const __m128i *) pImg0);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        __m128i accumA = _mm_setzero_si128();
+        __m128i accumB = _mm_setzero_si128();
+#else
         __m128i accumA = mmOffset;
         __m128i accumB = mmOffset;
+#endif
 
         auto process2coeffs = [&](const int i, const Pel *ptr0, const Pel *ptr1, const Pel *ptr2, const Pel *ptr3)
           {
@@ -8138,6 +8536,13 @@ static void simdFilter13x13BlkDbResi(
 
         accumA = _mm_add_epi32(accumA, _mm_madd_epi16(val01A, coeff01A));
         accumB = _mm_add_epi32(accumB, _mm_madd_epi16(val01B, coeff01B));
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+        accumA = _mm_mullo_epi32(accumA, _mm_loadu_si128((const __m128i*) scaleFactor));
+        accumB = _mm_mullo_epi32(accumB, _mm_loadu_si128((const __m128i*) (scaleFactor + 4)));
+
+        accumA = _mm_add_epi32(accumA, mmOffset);
+        accumB = _mm_add_epi32(accumB, mmOffset);
+#endif
 
         accumA = _mm_srai_epi32(accumA, shift);
         accumB = _mm_srai_epi32(accumB, shift);
@@ -14197,6 +14602,69 @@ static void simdFilterBatchTAlf(Pel inputBatch[NUM_TALF_COEFF + 1][TALF_SBB_SIZE
 }
 #endif
 
+#if ENABLE_SIMD_OPT_ALF_CHOLESKY
+template<X86_VEXT vext>
+static int simdFastCholeskyDec(AdaptiveLoopFilter::cholesky_matrix inpMatr, AdaptiveLoopFilter::cholesky_matrix outMatr, int numEq)
+{
+  for (int i = 0; i < numEq; i++)
+  {
+    AdaptiveLoopFilter::cholesky_float_t scale = inpMatr[i][i];
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    for (int k = 0; k < i; k++)
+#else
+    for (int k = i - 1; k >= 0; k--)
+#endif
+    {
+      scale -= outMatr[k][i] * outMatr[k][i];
+    }
+
+    if (scale <= AdaptiveLoopFilter::cholesky_reg_sqr) // inpMatr is singular
+    {
+      return 0;
+    }
+
+    outMatr[i][i] = sqrt(scale);
+    AdaptiveLoopFilter::cholesky_float_t tmp = (AdaptiveLoopFilter::cholesky_float_t)1 / outMatr[i][i];
+
+    int j = i + 1;
+    for (; j + 4 < numEq; j += 4)
+    {
+      __m128 scale = _mm_loadu_ps(inpMatr[i] + j);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      for (int k = 0; k < i; k++)
+#else
+      for (int k = i - 1; k >= 0; k--)
+#endif
+      {
+        __m128 outMatrJ = _mm_loadu_ps(outMatr[k] + j);
+        __m128 outMatrI = _mm_set1_ps(outMatr[k][i]);
+        scale = _mm_sub_ps(scale, _mm_mul_ps(outMatrJ, outMatrI));
+      }
+      scale = _mm_mul_ps(scale, _mm_set1_ps(tmp));
+      _mm_storeu_ps(outMatr[i] + j, scale); // Upper triangular
+    }
+
+    for (; j < numEq; j++)
+    {
+      scale = inpMatr[i][j];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      for (int k = 0; k < i; k++)
+#else
+      for (int k = i - 1; k >= 0; k--)
+#endif
+      {
+        scale -= outMatr[k][j] * outMatr[k][i];
+      }
+
+      outMatr[i][j] = scale * tmp; // Upper triangular
+    }
+  }
+
+  return 1; // Signal that Cholesky factorization is successfully performed
+}
+#endif
+
 template <X86_VEXT vext>
 void AdaptiveLoopFilter::_initAdaptiveLoopFilterX86()
 {
@@ -14316,6 +14784,9 @@ void AdaptiveLoopFilter::_initAdaptiveLoopFilterX86()
     m_groupSumTAlf    = simdGroupSumTAlf;
     m_filterBatchTAlf = simdFilterBatchTAlf;
   }
+#endif
+#if ENABLE_SIMD_OPT_ALF_CHOLESKY
+  m_fastCholeskyDec = simdFastCholeskyDec<vext>;
 #endif
 }
 

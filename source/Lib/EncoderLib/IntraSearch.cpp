@@ -432,7 +432,11 @@ void IntraSearch::init( EncCfg*        pcEncCfg,
   const ChromaFormat cform = pcEncCfg->getChromaFormatIdc();
 
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  IntraPrediction::init(cform, pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA), pcEncCfg->getNnipMode(), m_pcReshape, m_bilateralFilter );
+#else
   IntraPrediction::init(cform, pcEncCfg->getBitDepth(CHANNEL_TYPE_LUMA), pcEncCfg->getNnipMode());
+#endif
 #else
   IntraPrediction::init( cform, pcEncCfg->getBitDepth( CHANNEL_TYPE_LUMA ) );
 #endif
@@ -1479,7 +1483,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
               initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+              predIntraAng(COMPONENT_Y, piPred, pu, true, false);
+#else
               predIntraAng(COMPONENT_Y, piPred, pu, false);
+#endif
 #else
               predIntraAng(COMPONENT_Y, piPred, pu);
 #endif
@@ -1574,7 +1582,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
                 initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                predIntraAng(COMPONENT_Y, piPred, pu, true, false);
+#else
                 predIntraAng(COMPONENT_Y, piPred, pu, false);
+#endif
 #else
                 predIntraAng(COMPONENT_Y, piPred, pu);
 #endif
@@ -1648,7 +1660,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
                     initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                    predIntraAng(COMPONENT_Y, piPred, pu, true, false);
+#else
                     predIntraAng(COMPONENT_Y, piPred, pu, false);
+#endif
 #else
                     predIntraAng(COMPONENT_Y, piPred, pu);
 #endif
@@ -1798,7 +1814,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   initPredIntraParams(pu, pu.Y(), sps);
 
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                  predIntraAng(COMPONENT_Y, piPred, pu, true, false);
+#else
                   predIntraAng(COMPONENT_Y, piPred, pu, false);
+#endif
 #else
                   predIntraAng(COMPONENT_Y, piPred, pu);
 #endif
@@ -2725,7 +2745,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                     initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AB0157_INTRA_FUSION
 #if JVET_AH0209_PDP
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                    predIntraAng( COMPONENT_Y, piPred, pu, true, false, false );
+#else
                     predIntraAng( COMPONENT_Y, piPred, pu, false, false );
+#endif
 #else
                     predIntraAng(COMPONENT_Y, piPred, pu, false);
 #endif
@@ -2746,7 +2770,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AB0157_INTRA_FUSION
 #if JVET_AH0209_PDP
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                  predIntraAng( COMPONENT_Y, piPred, pu, true, false, false );
+#else
                   predIntraAng( COMPONENT_Y, piPred, pu, false, false );
+#endif
 #else
                   predIntraAng(COMPONENT_Y, piPred, pu, false);
 #endif
@@ -2775,7 +2803,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AB0157_INTRA_FUSION
 #if JVET_AH0209_PDP
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                  predIntraAng( COMPONENT_Y, piPred, pu, true, false, false );
+#else
                   predIntraAng( COMPONENT_Y, piPred, pu, false, false );
+#endif
 #else
                   predIntraAng(COMPONENT_Y, piPred, pu, false);
 #endif
@@ -3227,7 +3259,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
                         initPredIntraParams(pu, pu.Y(), sps);
 #if JVET_AH0209_PDP
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+                        predIntraAng(COMPONENT_Y, piPred, pu, true, false, false);
+#else
                         predIntraAng(COMPONENT_Y, piPred, pu, false, false);
+#endif
 #elif JVET_AB0157_INTRA_FUSION
                         predIntraAng(COMPONENT_Y, piPred, pu, false);
 #else
@@ -5264,8 +5300,8 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AK0076_EXTENDED_OBMC_IBC
       if (cu.tmpLicFlag)
       {
-         cu.licScale[0][COMPONENT_Y] = bestTmpLicParam[0];
-         cu.licOffset[0][COMPONENT_Y] = bestTmpLicParam[1];
+        cu.licScale[0][COMPONENT_Y] = bestTmpLicParam[0];
+        cu.licOffset[0][COMPONENT_Y] = bestTmpLicParam[1];
       }
       else
       {

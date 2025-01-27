@@ -88,7 +88,11 @@ inline void simdBifApplyLut(__m256i& val, __m256i& acc, __m256i& lut, int lutShi
 
 #if JVET_AJ0237_INTERNAL_12BIT
 template<X86_VEXT vext>
-void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift)
+void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  , bool isIntraPredBf
+#endif
+  )
 #else
 template<X86_VEXT vext>
 void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum)
@@ -98,7 +102,11 @@ void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, 
   if (uiWidth < 4)
   {
 #if JVET_AJ0237_INTERNAL_12BIT
-    return blockBilateralFilterDiamond5x5(uiWidth, uiHeight, block, blkFilt, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRDO, lutRowPtr, noClip, cutBitsNum, bdShift);
+    return blockBilateralFilterDiamond5x5(uiWidth, uiHeight, block, blkFilt, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRDO, lutRowPtr, noClip, cutBitsNum, bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      , isIntraPredBf
+#endif
+      );
 #else
     return blockBilateralFilterDiamond5x5(uiWidth, uiHeight, block, blkFilt, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRDO, lutRowPtr, noClip, cutBitsNum);
 #endif
@@ -266,7 +274,11 @@ void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, 
 #endif
 
       // Instead we add our input values to the delta
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      if ( isRDO || isIntraPredBf )
+#else
       if (isRDO)
+#endif
       {
         acc = _mm256_add_epi16(acc, center);
       }
@@ -289,6 +301,12 @@ void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, 
       _mm256_storeu_si256((__m256i*)(blkFilt + (row + pad) * padwidth + col + pad), acc);
     }
   }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  if( isIntraPredBf )
+  {
+    return;
+  }
+#endif
 
   // Copy back from tempbufFilter to recBuf
   int onerow = uiWidth * sizeof(Pel);
@@ -386,7 +404,11 @@ inline void simdBifApplyLut(__m128i& val, __m128i& acc, __m128i& lut, int lutShi
 
 #if JVET_AJ0237_INTERNAL_12BIT
 template<X86_VEXT vext>
-void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift)
+void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  , bool isIntraPredBf
+#endif
+  )
 #else
 template<X86_VEXT vext>
 void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum)
@@ -396,7 +418,11 @@ void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, 
   if( uiWidth < 4 )
   {
 #if JVET_AJ0237_INTERNAL_12BIT
-    return blockBilateralFilterDiamond5x5(uiWidth, uiHeight, block, blkFilt, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRDO, lutRowPtr, noClip, cutBitsNum, bdShift);
+    return blockBilateralFilterDiamond5x5(uiWidth, uiHeight, block, blkFilt, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRDO, lutRowPtr, noClip, cutBitsNum, bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      , isIntraPredBf
+#endif
+    );
 #else
     return blockBilateralFilterDiamond5x5(uiWidth, uiHeight, block, blkFilt, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRDO, lutRowPtr, noClip, cutBitsNum);
 #endif
@@ -558,7 +584,11 @@ void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, 
 #endif
 
       // Instead we add our input values to the delta
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      if( isRDO || isIntraPredBf )
+#else
       if(isRDO)
+#endif
       {
         acc = _mm_add_epi16(acc, center);
       }
@@ -581,7 +611,12 @@ void BilateralFilter::simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, 
       _mm_storeu_si128((__m128i*)(blkFilt + (row + pad) * padwidth + col + pad), acc);
     }
   }
-  
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  if( isIntraPredBf )
+  {
+    return;
+  }
+#endif
   // Copy back from tempbufFilter to recBuf
   int onerow = uiWidth * sizeof(Pel);
   // Copy back parameters

@@ -45,7 +45,9 @@
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "CommonLib/CodingStatistics.h"
 #endif
+#if !JVET_AK0123_ALF_COEFF_RESTRICTION
 #include "CommonLib/AdaptiveLoopFilter.h"
+#endif
 
 #if ENABLE_TRACING
 
@@ -1175,6 +1177,10 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
       READ_CODE(2, code, "alf_luma_bits");
       param.coeffBits[altIdx] = code + 6;
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      READ_CODE(1, code, "alf_luma_mantissa");
+      param.coeffMantissa[altIdx] = code + 1;
+#endif
 #else
       READ_FLAG(code, "alf_luma_classifier");
       param.lumaClassifierIdx[altIdx] = code;
@@ -1206,7 +1212,8 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
 #else
       AlfFilterShape alfShape(param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_5 ? 5 : (param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_9_EXT ? size_ALF_FILTER_9_EXT : ((param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_7 ? 7 : (param.filterType[CHANNEL_TYPE_LUMA] == ALF_FILTER_EXT ? size_ALF_FILTER_EXT : 9)))));
 #endif
-      int bestK[2] = { 0 };
+      int bestK[2] = { 0, 0 };
+#if !JVET_AK0123_ALF_COEFF_RESTRICTION
       for(int orderIdx = 0; orderIdx < alfShape.numOrder; orderIdx++)
       {
         READ_CODE(2, code, "alf_luma_coeff_exp_golomb_order");
@@ -1214,6 +1221,7 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
       }
       bestK[1] += ALF_ORDER;
       bestK[0] += alfShape.offset0;
+#endif
       alfFilter(param, false, altIdx, bestK[0], bestK[1]);
     }
 #else
@@ -1276,7 +1284,8 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
 #else
       AlfFilterShape alfShape(param.filterType[CHANNEL_TYPE_CHROMA] == ALF_FILTER_5 ? 5 : (param.filterType[CHANNEL_TYPE_CHROMA] == ALF_FILTER_9_EXT ? size_ALF_FILTER_9_EXT : ((param.filterType[CHANNEL_TYPE_CHROMA] == ALF_FILTER_7 ? 7 : (param.filterType[CHANNEL_TYPE_CHROMA] == ALF_FILTER_EXT ? size_ALF_FILTER_EXT : 9)))));
 #endif
-      int bestK[2] = { 0 };
+      int bestK[2] = { 0, 0 };
+#if !JVET_AK0123_ALF_COEFF_RESTRICTION
       for (int orderIdx = 0; orderIdx < alfShape.numOrder; orderIdx++)
       {
         READ_CODE(2, code, "alf_chroma_coeff_exp_golomb_order");
@@ -1284,6 +1293,7 @@ void HLSyntaxReader::parseAlfAps( APS* aps )
       }
       bestK[1] += ALF_ORDER;
       bestK[0] += alfShape.offset0;
+#endif
       alfFilter( param, true, altIdx, bestK[0], bestK[1] );
 #else
       alfFilter( param, true, altIdx );
@@ -2258,6 +2268,18 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     pcSPS->setAlfLumaFixedFilterAdjust( false );
   }
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  if( pcSPS->getALFEnabledFlag() )
+  {
+    READ_FLAG( uiCode, "sps_inloop_offset_refine_flag" );                 pcSPS->setInloopOffsetRefineFlag( uiCode ? true : false );
+    READ_FLAG( uiCode, "sps_inloop_offset_refine_func" );                 pcSPS->setInloopOffsetRefineFunc( uiCode ? true : false );
+  }
+  else
+  {
+    pcSPS->setInloopOffsetRefineFlag( false );
+    pcSPS->setInloopOffsetRefineFunc( false );
+  }
+#endif
   if (pcSPS->getALFEnabledFlag() && pcSPS->getChromaFormatIdc() != CHROMA_400)
   {
     READ_FLAG( uiCode, "sps_ccalf_enabled_flag" );                      pcSPS->setCCALFEnabledFlag ( uiCode ? true : false );
@@ -2698,6 +2720,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     }
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    READ_FLAG(uiCode, "sps_temporal_affine_opt"); pcSPS->setUseTemporalAffineOpt(uiCode != 0);
+    READ_FLAG(uiCode, "sps_synthetic_affine"); pcSPS->setUseSyntheticAffine(uiCode != 0);
+#endif
   }
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
   pcSPS->setUseTMMMVD(false);
@@ -2759,6 +2785,13 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
       {
         pcSPS->setMaxNumGeoCand(2);
       }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      if (pcSPS->getUseGeoBlend())
+      {
+        READ_FLAG(uiCode, "sps_gpm_blend_intra_flag");
+        pcSPS->setUseGeoBlendIntra(uiCode != 0);
+      }
+#endif
 
 #if JVET_AG0164_AFFINE_GPM
       if (pcSPS->getUseAffine() && pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
@@ -2849,6 +2882,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #endif
 #if JVET_AG0058_EIP
   READ_FLAG(uiCode, "sps_eip_enabled_flag");                        pcSPS->setUseEip(uiCode != 0);
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  READ_FLAG(uiCode, "sps_intra_pred_bf_enabled_flag");              pcSPS->setUseIntraPredBf(uiCode != 0);
 #endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   READ_FLAG(uiCode, "sps_inter_ccp_merge_zero_luma_cbf");           pcSPS->setUseInterCcpMergeZeroLumaCbf( uiCode != 0 );
@@ -6080,6 +6116,43 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     pcSlice->setLumaPelMin(deltaMin);
   }
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool sliceTypeConditionDbf = true;
+  if( sps->getALFEnabledFlag() && !pcSlice->getDeblockingFilterDisable() && sliceTypeConditionDbf )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_dbf");
+    pcSlice->setOffsetRefinementDbf( uiCode );
+  }
+  else
+  {
+    pcSlice->setOffsetRefinementDbf( false );
+  }
+
+  pcSlice->setOffsetRefinementDbfIdx( false );
+  if( pcSlice->getOffsetRefinementDbf() )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_dbf_idx");
+    pcSlice->setOffsetRefinementDbfIdx( uiCode );
+  }
+
+  bool sliceTypeConditionAlf = !pcSlice->isIntra();
+  if( sps->getALFEnabledFlag() && pcSlice->getTileGroupAlfEnabledFlag( COMPONENT_Y ) && sliceTypeConditionAlf  )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_alf");
+    pcSlice->setOffsetRefinementAlf( uiCode );
+  }
+  else
+  {
+    pcSlice->setOffsetRefinementAlf( false );
+  }
+
+  pcSlice->setOffsetRefinementAlfIdx( false );
+  if( pcSlice->getOffsetRefinementAlf() )
+  {
+    READ_FLAG(uiCode, "offset_refinement_for_alf_idx");
+    pcSlice->setOffsetRefinementAlfIdx( uiCode );
+  }
+#endif
 
   std::vector<uint32_t> entryPointOffset;
 
@@ -6336,6 +6409,9 @@ void HLSyntaxReader::parseConstraintInfo(ConstraintInfo *cinfo)
 #endif
 #if JVET_AG0058_EIP
     READ_FLAG(symbol, "gci_no_eip_constraint_flag");                     cinfo->setNoTmrlConstraintFlag(symbol > 0 ? true : false);
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    READ_FLAG(symbol, "gci_no_intra_pred_bf_constraint_flag");           cinfo->setNoIntraPredBfConstraintFlag(symbol > 0 ? true : false);
 #endif
     /* inter */
     READ_FLAG(symbol, "gci_no_ref_pic_resampling_constraint_flag");      cinfo->setNoRprConstraintFlag(symbol > 0 ? true : false);
@@ -7447,6 +7523,21 @@ int HLSyntaxReader::alfGolombDecode(const int k, const bool signed_val)
   return symbol;
 }
 
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+int HLSyntaxReader::alfHuffmanDecode(HuffmanForALF& huffman)
+{
+  HuffmanForALF::Node* node = nullptr;
+  uint32_t b;
+  uint32_t buf = 0;
+  do
+  {
+    READ_FLAG(b, "alf_coeff_huffman");
+    buf = (buf << 1) | b;
+  } while (!huffman.decodeBit(b, node));
+  return huffman.getCoeff(node);
+}
+#endif
+
 void HLSyntaxReader::alfFilter( AlfParam& alfParam, const bool isChroma, const int altIdx, int order0, int order1 )
 #else
 void HLSyntaxReader::alfFilter( AlfParam& alfParam, const bool isChroma, const int altIdx )
@@ -7463,6 +7554,9 @@ void HLSyntaxReader::alfFilter( AlfParam& alfParam, const bool isChroma, const i
   AlfFilterShape alfShape(alfFilterType == ALF_FILTER_5 ? 5 : ( alfFilterType == ALF_FILTER_9_EXT ? size_ALF_FILTER_9_EXT : ((alfFilterType == ALF_FILTER_7 ? 7 : (alfFilterType == ALF_FILTER_EXT ? size_ALF_FILTER_EXT :9 )))));
 #endif
   const int numFilters = isChroma ? 1 : alfParam.numLumaFilters[altIdx];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  char* scaleIdx = isChroma ? alfParam.chromaScaleIdx[altIdx] : alfParam.lumaScaleIdx[altIdx];
+#endif
   short* coeff = isChroma ? alfParam.chromaCoeff[altIdx] : alfParam.lumaCoeff[altIdx];
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
   Pel*   clipp = isChroma ? alfParam.chromaClipp[altIdx] : alfParam.lumaClipp[altIdx];
@@ -7482,11 +7576,33 @@ void HLSyntaxReader::alfFilter( AlfParam& alfParam, const bool isChroma, const i
 
 #if ALF_IMPROVEMENT
   int offset = isChroma ? MAX_NUM_ALF_CHROMA_COEFF : MAX_NUM_ALF_LUMA_COEFF ;
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  HuffmanForALF huffman(!isChroma,
+    isChroma ? AdaptiveLoopFilter::m_NUM_BITS_CHROMA : alfParam.coeffBits[altIdx],
+    isChroma ? 1 : alfParam.coeffMantissa[altIdx],
+    0);
+  huffman.init();
+#endif
   // Filter coefficients
   for( int ind = 0; ind < numFilters; ++ind )
   {
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    READ_CODE(AdaptiveLoopFilter::m_SCALE_BITS_NUM, code, isChroma ? "alf_chroma_scale_factor" : "alf_luma_scale_factor");
+    scaleIdx[ind] = (char)code;
+#endif
     for( int i = 0; i < alfShape.numCoeff - 1; i++ )
     {
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      if (i == 0)
+      {
+        huffman.setGroup(0);
+      }
+      else if (i == alfShape.indexSecOrder)
+      {
+        huffman.setGroup(1);
+      }
+      coeff[ind * offset + i] = alfHuffmanDecode(huffman);
+#else
       if (i < alfShape.indexSecOrder)
       {
         coeff[ind * offset + i] = alfGolombDecode(order0);
@@ -7495,9 +7611,14 @@ void HLSyntaxReader::alfFilter( AlfParam& alfParam, const bool isChroma, const i
       {
         coeff[ind * offset + i] = alfGolombDecode(order1);
       }
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+      // the check of [min, max] and m*2^b is done in AdaptiveLoopFilter::reconstructCoeff
+#else
       CHECK( isChroma &&
              ( coeff[ind * offset + i] > 127 || coeff[ind * offset + i] < -128 )
              , "AlfCoeffC shall be in the range of -128 to 127, inclusive" );
+#endif
     }
   }
 #else

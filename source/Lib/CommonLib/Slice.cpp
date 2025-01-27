@@ -275,6 +275,12 @@ void Slice::initSlice()
   m_ccSaoComParam.reset();
   resetCcSaoEnabledFlag();
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_offsetRefinementDbf = false;
+  m_offsetRefinementAlf = false;
+  m_offsetRefinementDbfIdx = false;
+  m_offsetRefinementAlfIdx = false;
+#endif
   resetTileGroupAlfEnabledFlag();
   m_ccAlfFilterParam.reset();
   m_tileGroupCcAlfCbEnabledFlag = 0;
@@ -2185,6 +2191,12 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
   m_lumaPelMax                              = pSrc->m_lumaPelMax;
   m_lumaPelMin                              = pSrc->m_lumaPelMin;
   m_adaptiveClipQuant                       = pSrc->m_adaptiveClipQuant;
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  m_offsetRefinementDbf                     = pSrc->m_offsetRefinementDbf;
+  m_offsetRefinementAlf                     = pSrc->m_offsetRefinementAlf;
+  m_offsetRefinementDbfIdx                  = pSrc->m_offsetRefinementDbfIdx;
+  m_offsetRefinementAlfIdx                  = pSrc->m_offsetRefinementAlfIdx;
 #endif
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   for ( int c=0 ; c<MAX_NUM_COMPONENT ; c++ )
@@ -4366,6 +4378,9 @@ SPS::SPS()
 , m_tmNoninterToolsEnableFlag ( false )
 #if JVET_AG0058_EIP
 , m_eip(false)
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+, m_intraPredBf               ( false )
 #endif
 #if JVET_AD0085_MPM_SORTING
 , m_mpmSorting                      ( false )

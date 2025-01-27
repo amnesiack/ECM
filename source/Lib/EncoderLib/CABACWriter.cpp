@@ -5995,6 +5995,12 @@ void CABACWriter::merge_idx( const PredictionUnit& pu )
 #if JVET_AJ0274_REGRESSION_GPM_TM
         m_BinEncoder.encodeBin(pu.geoBlendTmFlag, Ctx::GeoBlendTMFlag());
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+        if (!pu.geoBlendTmFlag && CU::isGeoBlendIntraAvailable(*pu.cu))
+        {
+          m_BinEncoder.encodeBin(pu.geoBlendIntraFlag, Ctx::GeoBlendIntraFlag());
+        }
+#endif
         return;
       }
 #endif

@@ -339,6 +339,9 @@ class ConstraintInfo
 #if JVET_AG0058_EIP
   bool              m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool              m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool              m_noObmcConstraintFlag;
 #endif
@@ -660,6 +663,10 @@ public:
 #if JVET_AG0058_EIP
   bool          getNoEipConstraintFlag() const { return m_noEipConstraintFlag; }
   void          setNoEipConstraintFlag(bool bVal) { m_noEipConstraintFlag = bVal; }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool          getNoIntraPredBfConstraintFlag() const { return m_noIntraPredBfConstraintFlag; }
+  void          setNoIntraPredBfConstraintFlag(bool bVal) { m_noIntraPredBfConstraintFlag = bVal; }
 #endif
 #if ENABLE_OBMC
   bool          getNoObmcConstraintFlag() const { return m_noObmcConstraintFlag; }
@@ -1625,6 +1632,9 @@ private:
 #endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   bool              m_useGeoBlend;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool              m_useGeoBlendIntra;
+#endif
 #endif
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   bool              m_enableMaxMttIncrease;
@@ -1789,6 +1799,10 @@ private:
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool              m_alfLumaFixedFilterAdjust;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool              m_inloopOffsetRefineFlag;
+  bool              m_inloopOffsetRefineFunc;
+#endif
   bool              m_wrapAroundEnabledFlag;
   unsigned          m_IBCFlag;
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -1860,6 +1874,9 @@ private:
 #endif
 #if JVET_AG0058_EIP
   bool              m_eip;
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool              m_intraPredBf;
 #endif
 #if JVET_AD0085_MPM_SORTING
   bool              m_mpmSorting;
@@ -1963,6 +1980,10 @@ private:
 #endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   bool              m_fastSubTmvp;
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  bool              m_useTemporalAffineOpt;
+  bool              m_useSyntheticAffine;
 #endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   bool              m_armcRefinedMotion;
@@ -2282,6 +2303,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool                    getAlfLumaFixedFilterAdjust() const                                             { return m_alfLumaFixedFilterAdjust; }
   void                    setAlfLumaFixedFilterAdjust( bool b )                                           { m_alfLumaFixedFilterAdjust = b; }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool                    getInloopOffsetRefineFlag() const                                               { return m_inloopOffsetRefineFlag; }
+  void                    setInloopOffsetRefineFlag( bool b )                                             { m_inloopOffsetRefineFlag = b; }
+  bool                    getInloopOffsetRefineFunc() const                                               { return m_inloopOffsetRefineFunc; }
+  void                    setInloopOffsetRefineFunc( bool b )                                             { m_inloopOffsetRefineFunc = b; }
 #endif
   void                    setJointCbCrEnabledFlag(bool bVal)                                              { m_JointCbCrEnabledFlag = bVal; }
   bool                    getJointCbCrEnabledFlag() const                                                 { return m_JointCbCrEnabledFlag; }
@@ -2664,6 +2691,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   void      setUseEip          (bool b)                                          { m_eip = b; }
   bool      getUseEip()                                                const     { return m_eip; }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  void      setUseIntraPredBf  (bool b)                                          { m_intraPredBf = b; }
+  bool      getUseIntraPredBf()                                        const     { return m_intraPredBf; }
+#endif
 #if JVET_AD0085_MPM_SORTING
   void      setUseMpmSorting   (bool b)                                          { m_mpmSorting = b; }
   bool      getUseMpmSorting   ()                                      const     { return m_mpmSorting; }
@@ -2695,6 +2726,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   bool      getUseGeoBlend     ()                                      const     { return m_useGeoBlend; }
   void      setUseGeoBlend     ( bool b )                                        { m_useGeoBlend = b; }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool      getUseGeoBlendIntra()                                      const     { return m_useGeoBlendIntra; }
+  void      setUseGeoBlendIntra(bool b)                                          { m_useGeoBlendIntra = b; }
+#endif
 #endif
 #if JVET_AH0135_TEMPORAL_PARTITIONING
   bool      getEnableMaxMttIncrease()                                  const     { return m_enableMaxMttIncrease; }
@@ -2784,6 +2819,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   void      setUseFastSubTmvp     ( bool b )                                        { m_fastSubTmvp = b; }
   bool      getUseFastSubTmvp     ()                                      const     { return m_fastSubTmvp; }
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  void      setUseTemporalAffineOpt( bool b )                                       { m_useTemporalAffineOpt = b; }
+  bool      getUseTemporalAffineOpt()                                     const     { return m_useTemporalAffineOpt; }
+  void      setUseSyntheticAffine  ( bool b )                                       { m_useSyntheticAffine = b; }
+  bool      getUseSyntheticAffine  ()                                     const     { return m_useSyntheticAffine; }
 #endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
   void      setUseExtAmvp         ( bool b )                                        { m_useExtAmvp = b; }
@@ -3968,6 +4009,12 @@ private:
   int                        m_lumaPelMin;
   bool                       m_adaptiveClipQuant;
 #endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool                       m_offsetRefinementDbf;
+  bool                       m_offsetRefinementAlf;
+  uint8_t                    m_offsetRefinementDbfIdx;
+  uint8_t                    m_offsetRefinementAlfIdx;
+#endif
 #if MULTI_HYP_PRED
   int                        m_numMultiHypRefPics = 0;
 
@@ -4614,7 +4661,18 @@ public:
   void                        setAdaptiveClipQuant(bool b)                        { m_adaptiveClipQuant = b; };
   bool                        getAdaptiveClipQuant()                        const { return m_adaptiveClipQuant; };
 #endif
-#if JVET_AJ0249_NEURAL_NETWORK_BASED 
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void                        setOffsetRefinementDbf(bool b)                      { m_offsetRefinementDbf = b; }
+  bool                        getOffsetRefinementDbf()                      const { return m_offsetRefinementDbf; }
+  void                        setOffsetRefinementAlf(bool b)                      { m_offsetRefinementAlf = b; }
+  bool                        getOffsetRefinementAlf()                      const { return m_offsetRefinementAlf; }
+  void                        setOffsetRefinementDbfIdx(uint8_t b)                { m_offsetRefinementDbfIdx = b; }
+  uint8_t                     getOffsetRefinementDbfIdx()                   const { return m_offsetRefinementDbfIdx; }
+  void                        setOffsetRefinementAlfIdx(uint8_t b)                { m_offsetRefinementAlfIdx = b; }
+  uint8_t                     getOffsetRefinementAlfIdx()                   const { return m_offsetRefinementAlfIdx; }
+#endif
+
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool getPnnMode() const { return m_pnnMode; }
   void setPnnMode(const bool pnnMode) { m_pnnMode = pnnMode; }
 #endif

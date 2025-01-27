@@ -261,6 +261,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool      m_noObmcConstraintFlag;
 #endif
@@ -543,6 +546,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_eip;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_intraPredBf;
+#endif
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;
 #endif
@@ -571,6 +577,9 @@ protected:
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool      m_geoInterIbc;
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool      m_geoBlendIntra;
 #endif
   bool      m_allowDisFracMMVD;
   bool      m_AffineAmvr;
@@ -736,6 +745,10 @@ protected:
 #endif
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool      m_alfLumaFixedFilterAdjust;
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool      m_inloopOffsetRefineFlag;
+  bool      m_inloopOffsetRefineFunc;
 #endif
   bool      m_bTestSAODisableAtPictureLevel;
   double    m_saoEncodingRate;       // When non-0 SAO early picture termination is enabled for luma and chroma
@@ -1376,6 +1389,10 @@ public:
   bool      getNoEipConstraintFlag() const { return m_noEipConstraintFlag; }
   void      setNoEipConstraintFlag(bool val) { m_noEipConstraintFlag = val; }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      getNoIntraPredBfConstraintFlag() const { return m_noIntraPredBfConstraintFlag; }
+  void      setNoIntraPredBfConstraintFlag(bool val) { m_noIntraPredBfConstraintFlag = val; }
+#endif
 #if ENABLE_OBMC
   bool      getNoObmcConstraintFlag() const { return m_noObmcConstraintFlag; }
   void      setNoObmcConstraintFlag(bool bVal) { m_noObmcConstraintFlag = bVal; }
@@ -1879,6 +1896,10 @@ public:
   void      setUseEip                    (bool b)         { m_eip = b; }
   bool      getUseEip                    ()         const { return m_eip; }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  void      setUseIntraPredBf            (bool b)         { m_intraPredBf = b; }
+  bool      getUseIntraPredBf            ()         const { return m_intraPredBf; }
+#endif
 #if JVET_AD0085_MPM_SORTING
   void      setUseMpmSorting             (bool b)         { m_mpmSorting = b; }
   bool      getUseMpmSorting             () const         { return m_mpmSorting; }
@@ -1918,6 +1939,10 @@ public:
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   void      setUseGeoInterIbc               ( bool b )       { m_geoInterIbc = b; }
   bool      getUseGeoInterIbc               ()         const { return m_geoInterIbc; }
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  void      setUseGeoBlendIntra             ( bool b )       { m_geoBlendIntra = b; }
+  bool      getUseGeoBlendIntra             ()         const { return m_geoBlendIntra; }
 #endif
   void      setAllowDisFracMMVD             ( bool b )       { m_allowDisFracMMVD = b;    }
   bool      getAllowDisFracMMVD             ()         const { return m_allowDisFracMMVD; }
@@ -2459,6 +2484,12 @@ public:
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   void      setAlfLumaFixedFilterAdjust(bool b)                      { m_alfLumaFixedFilterAdjust = b; }
   bool      getAlfLumaFixedFilterAdjust()                      const { return m_alfLumaFixedFilterAdjust; }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void      setInloopOffsetRefineFlag(bool b)                          { m_inloopOffsetRefineFlag = b; }
+  bool      getInloopOffsetRefineFlag()                          const { return m_inloopOffsetRefineFlag; }
+  void      setInloopOffsetRefineFunc(bool b)                          { m_inloopOffsetRefineFunc = b; }
+  bool      getInloopOffsetRefineFunc()                          const { return m_inloopOffsetRefineFunc; }
 #endif
   void  setTestSAODisableAtPictureLevel (bool bVal)                  { m_bTestSAODisableAtPictureLevel = bVal; }
   bool  getTestSAODisableAtPictureLevel ( ) const                    { return m_bTestSAODisableAtPictureLevel; }

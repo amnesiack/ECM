@@ -97,7 +97,11 @@ void BilateralFilter::destroy()
 {
 }
 #if JVET_V0094_BILATERAL_FILTER
-const char* BilateralFilter::getFilterLutParameters(int16_t* block, const int stride, const int width, const int height, const PredMode predMode, const int32_t qp, int& bfac)
+const char* BilateralFilter::getFilterLutParameters(int16_t* block, const int stride, const int width, const int height, const PredMode predMode, const int32_t qp, int& bfac
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  , int& madValue
+#endif
+  )
 {
 #if JVET_AF0112_BIF_DYNAMIC_SCALING
   int w = floorLog2(width);
@@ -113,6 +117,9 @@ const char* BilateralFilter::getFilterLutParameters(int16_t* block, const int st
   w = std::min(w, 7);
   h = std::min(h, 7);
   mad = std::min(mad >> 4, 15);
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  madValue = mad;
+#endif
 
   bfac = m_tuSizeFactor[predMode == MODE_INTER][w * 8 + h];
   if (bfac) // BIF is not applied if tuSizeFactor[(w, h)] = 0
@@ -198,7 +205,11 @@ inline void bifApplyLut(int diff, int& res, int cutBitsNum, int bitsRound, int b
 }
 
 #if JVET_AJ0237_INTERNAL_12BIT
-void BilateralFilter::blockBilateralFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift)
+void BilateralFilter::blockBilateralFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  , bool isIntraPredBf
+#endif
+  )
 #else
 void BilateralFilter::blockBilateralFilterDiamond5x5( uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum)
 #endif
@@ -379,6 +390,23 @@ void BilateralFilter::blockBilateralFilterDiamond5x5( uint32_t uiWidth, uint32_t
 #endif
     }
   }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  if( isIntraPredBf )
+  {
+    Pel* srcPtr = block + pad * padwidth + pad;
+    Pel* dstPtr = blkFilt + pad * padwidth + pad;
+    for(int yy = 0; yy < uiHeight; yy++)
+    {
+      for(int xx = 0; xx < uiWidth; xx++)
+      {
+        dstPtr[xx] = noClip ? dstPtr[xx] + srcPtr[xx] : ClipPel( dstPtr[xx] + srcPtr[xx], clpRng);
+      }
+      srcPtr += padwidth;
+      dstPtr += padwidth;
+    }
+    return;
+  }
+#endif
 
   // Copy back
   Pel* tempBlockPtr = blkFilt + pad * padwidth + pad;
@@ -481,6 +509,10 @@ void BilateralFilter::bilateralFilterRDOdiamond5x5(const ComponentID compID, Pel
   
   memset(tempblock, 0, iWidthExtSIMD*uiHeightExt * sizeof(Pel));
   Pel *tempBlockPtr = tempblock + NUMBER_PADDED_SAMPLES* iWidthExtSIMD + NUMBER_PADDED_SAMPLES;
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  int lumaMadValue = 0;
+  bool isIntraPredBf = false;
+#endif
   
   //// Clip and move block to temporary block
   if( useReco )
@@ -655,7 +687,11 @@ void BilateralFilter::bilateralFilterRDOdiamond5x5(const ComponentID compID, Pel
 
   if (isLuma(compID))
   {
-    lutRowPtr = getFilterLutParameters(tempblock + iWidthExtSIMD * 2 + 2, iWidthExtSIMD, uiWidth, uiHeight, currTU.cu->predMode, qp + currTU.cs->pps->getBIFQPOffset(), bfac);
+    lutRowPtr = getFilterLutParameters(tempblock + iWidthExtSIMD * 2 + 2, iWidthExtSIMD, uiWidth, uiHeight, currTU.cu->predMode, qp + currTU.cs->pps->getBIFQPOffset(), bfac
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    , lumaMadValue
+#endif
+    );
   }
   else
   {
@@ -679,7 +715,11 @@ void BilateralFilter::bilateralFilterRDOdiamond5x5(const ComponentID compID, Pel
   }
 #if JVET_AJ0237_INTERNAL_12BIT
   int bdShift = std::max(0, internalBitDepth - 10);
-  m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, piReco, uiRecStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, true, lutRowPtr, false, cutBitsNum, bdShift);
+  m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, piReco, uiRecStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, true, lutRowPtr, false, cutBitsNum, bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  , isIntraPredBf
+#endif
+    );
 #else
   m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, piReco, uiRecStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, true, lutRowPtr, false, cutBitsNum);
 #endif
@@ -711,6 +751,10 @@ void BilateralFilter::bilateralFilterDiamond5x5( const ComponentID compID, const
 {
 #if JVET_AJ0237_INTERNAL_12BIT
   int bdShift = std::max(0, internalBitDepth - 10);
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  int lumaMadValue = 0;
+  bool isIntraPredBf = false;
 #endif
 #if JVET_Z0105_LOOP_FILTER_VIRTUAL_BOUNDARY
   const int scaleX = getChannelTypeScaleX( toChannelType( compID ), currTU.cu->cs->pcv->chrFormat );
@@ -971,7 +1015,11 @@ void BilateralFilter::bilateralFilterDiamond5x5( const ComponentID compID, const
         int cutBitsNum = 3;
         if (isLuma(compID))
         {
-          lutRowPtr = getFilterLutParameters(tempblock + iWidthExtSIMD * 2 + 2, iWidthExtSIMD, uiWidth, uiHeight, currTU.cu->predMode, qp + currTU.cs->pps->getBIFQPOffset(), bfac);
+          lutRowPtr = getFilterLutParameters(tempblock + iWidthExtSIMD * 2 + 2, iWidthExtSIMD, uiWidth, uiHeight, currTU.cu->predMode, qp + currTU.cs->pps->getBIFQPOffset(), bfac
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+            , lumaMadValue
+#endif
+          );
         }
         else
         {
@@ -996,7 +1044,11 @@ void BilateralFilter::bilateralFilterDiamond5x5( const ComponentID compID, const
         int bifRoundShift = BIF_ROUND_SHIFT - currTU.cs->pps->getBIFStrength();
 
 #if JVET_AJ0237_INTERNAL_12BIT
-        m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, false, lutRowPtr, false, cutBitsNum, bdShift);
+        m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, false, lutRowPtr, false, cutBitsNum, bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+          , isIntraPredBf
+#endif
+        );
 #else
         m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, false, lutRowPtr, false, cutBitsNum);
 #endif
@@ -1242,7 +1294,11 @@ void BilateralFilter::bilateralFilterDiamond5x5( const ComponentID compID, const
 
     if (isLuma(compID))
     {
-      lutRowPtr = getFilterLutParameters(tempblock + iWidthExtSIMD * 2 + 2, iWidthExtSIMD, uiWidth, uiHeight, currTU.cu->predMode, qp + currTU.cs->pps->getBIFQPOffset(), bfac);
+      lutRowPtr = getFilterLutParameters(tempblock + iWidthExtSIMD * 2 + 2, iWidthExtSIMD, uiWidth, uiHeight, currTU.cu->predMode, qp + currTU.cs->pps->getBIFQPOffset(), bfac
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+        , lumaMadValue
+#endif
+        );
     }
     else
     {
@@ -1266,7 +1322,11 @@ void BilateralFilter::bilateralFilterDiamond5x5( const ComponentID compID, const
     int bifRoundAdd = BIF_ROUND_ADD >> currTU.cs->pps->getBIFStrength();
     int bifRoundShift = BIF_ROUND_SHIFT - currTU.cs->pps->getBIFStrength();
 #if JVET_AJ0237_INTERNAL_12BIT
-    m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, false, lutRowPtr, noClip, cutBitsNum, bdShift);
+    m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, false, lutRowPtr, noClip, cutBitsNum, bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      , isIntraPredBf
+#endif
+    );
 #else
     m_bilateralFilterDiamond5x5(uiWidth, uiHeight, tempblock, tempblockFiltered, clpRng, recPtr, recStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, false, lutRowPtr, noClip, cutBitsNum);
 #endif

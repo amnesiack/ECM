@@ -339,6 +339,9 @@ struct CodingUnit : public UnitArea
   bool obicIsBlended;
   int obicMode[OBIC_FUSION_NUM];
   int obicFusionWeight[OBIC_FUSION_NUM];
+#if JVET_AK0056_WEIGHTED_OBIC
+  int obicLocDep[OBIC_FUSION_NUM];
+#endif
 #endif
 #if JVET_AG0146_DIMD_ITMP_IBC
   bool           isBvDimd;
@@ -716,6 +719,9 @@ struct InterPredictionData
 #if JVET_Y0065_GPM_INTRA
   bool        gpmIntraFlag;
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool        geoBlendIntraFlag;
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool        gpmInterIbcFlag;
 #endif
@@ -957,6 +963,9 @@ struct GeoBlendInfo
   int         idxBufGeo;  // index of storage in m_acMergeBuffer[]
   int         iOrder;     // before re-ordering
   int         iMergeIdx;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool        isIntra[2] = { false , false };
+#endif
 
   bool isSame( MvField mvOtherFieldA[2], MvField mvOtherFieldB[2] 
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG

@@ -1990,12 +1990,25 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     if ( cs.sps->getUseGeoBlend() && (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) ) // ensure sequential and parallel simulation generate same output
     {
       spsTmp->setUseGeoBlend(!isSCC);
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      spsTmp->setUseGeoBlendIntra(!isSCC);
+#endif
     }
 #endif
 #if JVET_AG0164_AFFINE_GPM
     if (m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand() > 0 && isSCC)
     {
       spsTmp->setMaxNumGpmAffCand(m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand());
+    }
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE 
+    if (cs.sps->getUseSyntheticAffine() && isSCC)
+    {
+      spsTmp->setUseSyntheticAffine(false);
+    }
+    if (cs.sps->getPLTMode())
+    {
+      spsTmp->setUseTemporalAffineOpt(false);
     }
 #endif
   }
@@ -2096,6 +2109,18 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #else
     cs.eipLut.lutEip.resize(0);
 #endif
+  }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  if( m_pcCuEncoder->getEncCfg()->getUseIntraPredBf() )
+  {
+    if (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) // ensure sequential and parallel simulation generate same output
+    {
+      SPS* spsTmp = const_cast<SPS*>(cs.sps);
+      hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
+      bool isScreenContent = hashBlkHitPerc >= 20;
+      spsTmp->setUseIntraPredBf( !isScreenContent );
+    }
   }
 #endif
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS

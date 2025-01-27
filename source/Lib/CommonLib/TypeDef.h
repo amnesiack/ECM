@@ -166,6 +166,7 @@
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
 #define JVET_AH0076_OBIC                                  1 // JVET_AH0076: OBIC
+#define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET_AK0056: Weighted OBIC
 #endif
 
 #endif
@@ -237,6 +238,7 @@
 #define JVET_AK0061_PDP_MPM                               1 // JVET-AK0061: On MPM with matrix-based position dependent intra prediction
 #define JVET_AI0136_ADAPTIVE_DUAL_TREE                    1 // JVET-AI0136: Adaptive dual tree in inter slices
 #define JVET_AJ0057_HL_INTRA_METHOD_CONTROL               1 // JVET-AJ0057: High-level control of intra prediction methods
+#define JVET_AK0118_BF_FOR_INTRA_PRED                     1 // JVET-AK0118: Bilateral Filtering for Intra Prediction
 
 //IBC
 #define JVET_Y0058_IBC_LIST_MODIFY                        1 // JVET-Y0058: Modifications of IBC merge/AMVP list construction, ARMC-TM-IBC part is included under JVET_W0090_ARMC_TM
@@ -365,6 +367,7 @@
 #define JVET_AF0057                                       1 // JVET-AF0057: Encoder only. DMVR with robust MV derivation.
 #define JVET_AG0112_REGRESSION_BASED_GPM_BLENDING         1 // JVET-AG0112: Regression-based GPM blending
 #define JVET_AJ0274_REGRESSION_GPM_TM                     1 // JVET-AJ0274: Regression-based GPM with TM extension
+#define JVET_AK0101_REGRESSION_GPM_INTRA                  1 // JVET-AK0101: Regression-based GPM with intra and inter prediction
 #define JVET_AG0135_AFFINE_CIIP                           1 // JVET-AG0135: CIIP with affine prediction 
 #define JVET_AG0164_AFFINE_GPM                            1 // JVET-AG0164: GPM with affine prediction
 #if JVET_AG0164_AFFINE_GPM
@@ -391,6 +394,9 @@
 #define JVET_AJ0158_SUBBLOCK_INTER_EXTENSION              1 // JVET-AJ0158 Sub-block Inter mode improvement
 #define JVET_AJ0126_INTER_AMVP_ENHANCEMENT                1 // JVET-AJ0126: Enhanced inter AMVP (inter TM part is controlled by EnableTMTools)
 #define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
+#define JVET_AK0095_ENHANCED_AFFINE_CANDIDATE             1 // JVET-AK0095: Additional temporal affine candidates and synthetic affine candidates
+#define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185 : TMVP selection for Merge and AMVP
+
 // Inter template matching tools
 #define JVET_AJ0096_SATD_REORDER_INTER                    1 // JVET-AJ0096: SATD-based reordering for inter coding
 #define ENABLE_INTER_TEMPLATE_MATCHING                    1 // It controls whether template matching is enabled for inter prediction
@@ -513,6 +519,8 @@
 #define JVET_AJ0188_CODING_INFO_CLASSIFICATION            1 // JVET-AJ0188: Coding Information based Classification for ALF
 #define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
 #define JVET_AK0065_TALF                                  1 // JVET-AK0065: Temporal ALF
+#define JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT          1 // JVET-AK0121: Boundary-Aware Offset Refinement for Loop-Filters
+#define JVET_AK0123_ALF_COEFF_RESTRICTION                 1 // JVET-AK0123: Restrictions on ALF coefficient values
 
 // SIMD optimizations
 #if IF_12TAP
@@ -827,6 +835,7 @@ typedef std::pair<int, int>  TrCost;
 #define ENABLE_SIMD_OPT_DIST                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for the distortion calculations(SAD,SSE,HADAMARD), no impact on RD performance
 #define ENABLE_SIMD_OPT_AFFINE_ME                       ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for affine ME, no impact on RD performance
 #define ENABLE_SIMD_OPT_ALF                             ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for ALF
+#define ENABLE_SIMD_OPT_ALF_CHOLESKY                    ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD for Cholesky Decomposition in ALF, no impact on RD performance, introduced in JVET-AK0123
 #if ENABLE_SIMD_OPT_BUFFER
 #define ENABLE_SIMD_OPT_BCW                               1                                                 ///< SIMD optimization for Bcw
 #endif

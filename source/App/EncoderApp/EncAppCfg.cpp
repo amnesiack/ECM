@@ -941,6 +941,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AG0058_EIP
   ("NoEipConstraintFlag",                              m_noEipConstraintFlag,                           false, "Indicate that EIP is deactivated")
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  ("NoIntraPredBfConstraintFlag",                      m_noIntraPredBfConstraintFlag,                   false, "Indicate that Intra Pred Bf is deactivated")
+#endif
 #if ENABLE_OBMC
   ("NoObmcConstraintFlag",                             m_noObmcConstraintFlag,                            false, "Indicate that OBMC is deactivated")
 #endif
@@ -1188,6 +1191,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AG0058_EIP
   ("EIP",                                             m_eip,                                             true, "Enable extrapolation filter-based intra prediction\n")
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  ("IntraPredBf",                                     m_intraPredBf,                                     true, "Enable intra prediction bilateral filtering\n")
+#endif
 #if JVET_AD0085_MPM_SORTING
   ( "MPMSorting",                                     m_mpmSorting,                                      true,  "Enable template-based intra MPM list construction\n" )
 #endif
@@ -1216,6 +1222,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   ("GeoInterIbc",                                     m_geoInterIbc,                                    false, "GPM with inter and IBC (0:off, 1:on)  [default: off]" )
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  ("GeoBlendIntra",                                   m_geoBlendIntra,                                  false, "Regression-based GPM with intra and inter (0:off, 1:on)  [default: off]" )
 #endif
   ("HashME",                                          m_HashME,                                         false, "Enable hash motion estimation (0:off, 1:on)")
 
@@ -1593,6 +1602,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   ("AlfLumaFixedFilterAdjust",                        m_alfLumaFixedFilterAdjust,                         true, "Alf Luma Fixed Filter Adjustment" )
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  ("InloopOffsetRefineFlag",                          m_inloopOffsetRefineFlag,                           true, "Inloop Filter Offset Refinement Flag" )
+  ("InloopOffsetRefineFunc",                          m_inloopOffsetRefineFunc,                           true, "Inloop Filter Offset Refinement Func" )
 #endif
   ("TestSAODisableAtPictureLevel",                    m_bTestSAODisableAtPictureLevel,                  false, "Enables the testing of disabling SAO at the picture level after having analysed all blocks")
   ("SaoEncodingRate",                                 m_saoEncodingRate,                                 0.75, "When >0 SAO early picture termination is enabled for luma and chroma")
@@ -5758,6 +5771,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
     msg( VERBOSE, "GeoInterIbc:%d ", m_geoInterIbc );
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+    msg( VERBOSE, "GeoBlendIntra:%d ", m_geoBlendIntra );
 #endif
     m_allowDisFracMMVD = m_MMVD ? m_allowDisFracMMVD : false;
     if ( m_MMVD )

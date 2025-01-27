@@ -860,6 +860,9 @@ struct AlfParam
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   char                         coeffBits[MAX_NUM_ALF_ALTERNATIVES_LUMA];
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  char                         coeffMantissa[MAX_NUM_ALF_ALTERNATIVES_LUMA];
+#endif
   AlfFilterType                filterType[MAX_NUM_CHANNEL_TYPE];
   bool                         nonLinearFlag[MAX_NUM_CHANNEL_TYPE][32]; // alf_[luma/chroma]_clip_flag
   int                          numAlternativesLuma;
@@ -893,6 +896,10 @@ struct AlfParam
   bool                         alfLumaCoeffDeltaFlag;                                   // alf_luma_coeff_delta_flag
   std::vector<AlfFilterShape>* filterShapes;
   bool                         newFilterFlag[MAX_NUM_CHANNEL_TYPE];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  char                         lumaScaleIdx[MAX_NUM_ALF_ALTERNATIVES_LUMA][MAX_NUM_ALF_CLASSES];
+  char                         chromaScaleIdx[MAX_NUM_ALF_ALTERNATIVES_CHROMA][1];
+#endif
 
   AlfParam()
   {
@@ -908,6 +915,9 @@ struct AlfParam
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     std::memset( coeffBits, 0, sizeof( coeffBits ) );
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    std::memset(coeffMantissa, 0, sizeof(coeffMantissa));
 #endif
     std::memset( lumaCoeff, 0, sizeof( lumaCoeff ) );
     std::memset( lumaClipp, 0, sizeof( lumaClipp ) );
@@ -928,6 +938,10 @@ struct AlfParam
 #endif
     alfLumaCoeffDeltaFlag = false;
     memset(newFilterFlag, 0, sizeof(newFilterFlag));
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    std::memset(lumaScaleIdx, 0, sizeof(lumaScaleIdx));
+    std::memset(chromaScaleIdx, 0, sizeof(chromaScaleIdx));
+#endif
   }
 
   const AlfParam& operator = ( const AlfParam& src )
@@ -939,6 +953,9 @@ struct AlfParam
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     std::memcpy( coeffBits, src.coeffBits, sizeof( coeffBits ) );
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    std::memcpy(coeffMantissa, src.coeffMantissa, sizeof(coeffMantissa));
 #endif
     std::memcpy( lumaCoeff, src.lumaCoeff, sizeof( lumaCoeff ) );
     std::memcpy( lumaClipp, src.lumaClipp, sizeof( lumaClipp ) );
@@ -957,6 +974,10 @@ struct AlfParam
     alfLumaCoeffDeltaFlag = src.alfLumaCoeffDeltaFlag;
     filterShapes = src.filterShapes;
     std::memcpy(newFilterFlag, src.newFilterFlag, sizeof(newFilterFlag));
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    std::memcpy(lumaScaleIdx, src.lumaScaleIdx, sizeof(lumaScaleIdx));
+    std::memcpy(chromaScaleIdx, src.chromaScaleIdx, sizeof(chromaScaleIdx));
+#endif
     return *this;
   }
 
@@ -983,6 +1004,12 @@ struct AlfParam
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     if( memcmp( coeffBits, other.coeffBits, sizeof( coeffBits ) ) )
+    {
+      return false;
+    }
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    if (memcmp(coeffMantissa, other.coeffMantissa, sizeof(coeffMantissa)))
     {
       return false;
     }
@@ -1039,6 +1066,16 @@ struct AlfParam
     {
       return false;
     }
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    if (memcmp(lumaScaleIdx, other.lumaScaleIdx, sizeof(lumaScaleIdx)))
+    {
+      return false;
+    }
+    if (memcmp(chromaScaleIdx, other.chromaScaleIdx, sizeof(chromaScaleIdx)))
+    {
+      return false;
+    }
+#endif
 
     return true;
   }

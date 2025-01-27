@@ -217,6 +217,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool      m_noObmcConstraintFlag;
 #endif
@@ -539,6 +542,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_eip;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_intraPredBf;
+#endif
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;
 #endif
@@ -567,6 +573,9 @@ protected:
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   bool      m_geoInterIbc;
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool      m_geoBlendIntra;
 #endif
   bool      m_HashME;
   bool      m_allowDisFracMMVD;
@@ -783,6 +792,10 @@ protected:
 #endif
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   bool      m_alfLumaFixedFilterAdjust;
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  bool      m_inloopOffsetRefineFlag;
+  bool      m_inloopOffsetRefineFunc;
 #endif
   bool      m_bTestSAODisableAtPictureLevel;
   double    m_saoEncodingRate;                                ///< When >0 SAO early picture termination is enabled for luma and chroma

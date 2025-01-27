@@ -1730,6 +1730,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AG0058_EIP
   cinfo->setNoEipConstraintFlag(m_noEipConstraintFlag);
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  cinfo->setNoIntraPredBfConstraintFlag(m_noIntraPredBfConstraintFlag);
+#endif
 #if ENABLE_OBMC
   cinfo->setNoObmcConstraintFlag(m_noObmcConstraintFlag);
 #endif
@@ -2094,6 +2097,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AG0058_EIP
   sps.setUseEip             ( m_eip );
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  sps.setUseIntraPredBf     ( m_intraPredBf );
+#endif
 #if JVET_AD0085_MPM_SORTING
   sps.setUseMpmSorting      ( m_mpmSorting );
 #endif
@@ -2137,9 +2143,16 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
   }
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  sps.setUseTemporalAffineOpt  ( m_sourceWidth * m_sourceHeight > 832 * 480 && getBaseQP() > 22 );
+  sps.setUseSyntheticAffine    ( m_sourceWidth * m_sourceHeight < 3840 * 2160 && getBaseQP() > 22 );
+#endif
   sps.setUseGeo                ( m_Geo );
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   sps.setUseGeoBlend           ( m_Geo && m_tmToolsEnableFlag );
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  sps.setUseGeoBlendIntra      ( m_Geo && m_tmToolsEnableFlag && m_geoBlendIntra && getBaseQP() < 37);
+#endif
 #endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   sps.setUseGeoInterIbc        ( m_Geo ? m_geoInterIbc : false );
@@ -2295,6 +2308,10 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   sps.setAlfLumaFixedFilterAdjust( m_intraPeriod < 0 ? false : true );
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  sps.setInloopOffsetRefineFlag( m_intraPeriod < 0 ? false : true );
+  sps.setInloopOffsetRefineFunc( m_intraPeriod < 0 ? ( getBaseQP() < 30 ? 1 : 0 ) : 0 );
 #endif
   sps.setJointCbCrEnabledFlag( m_JointCbCrMode );
   sps.setMaxTLayers( m_maxTempLayer );

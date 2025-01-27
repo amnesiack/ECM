@@ -100,6 +100,9 @@ public:
 #endif
   }
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  static bool isCoeffRestricted(short coeff, bool luma);
+#endif
 #if JVET_AA0095_ALF_LONGER_FILTER
   void mirroredPaddingForAlf(CodingStructure& cs, const PelUnitBuf& src, int paddingSize, bool enableLuma, bool enableChroma);
 #endif
@@ -115,6 +118,11 @@ public:
 #endif
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
   PelUnitBuf callCodingInfoBuf( CodingStructure &cs ) { return m_tempBufCodingInfo; }
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  PelUnitBuf callRecAfterSaoBuf() { return m_tempBufSAO; }
+  PelUnitBuf callRecBeforeAlfBuf() { return m_tempBuf; }
+  PelUnitBuf callRecBeforeDbfBuf(){ return  m_tempBufBeforeDb; }
 #endif
 
   static constexpr int AlfNumClippingValues[MAX_NUM_CHANNEL_TYPE] = { 4, 4 };
@@ -133,6 +141,12 @@ public:
 #endif
   static constexpr int m_ALF_UNUSED_CLASSIDX = 255;
   static constexpr int m_ALF_UNUSED_TRANSPOSIDX = 255;
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  static constexpr int m_SCALE_BITS_NUM = 4;
+  static constexpr int m_SCALE_FACTOR[1 << m_SCALE_BITS_NUM] = {16, 17, 18, 19, 21, 23, 25, 27, 29, 15, 14, 13, 12, 11, 10, 9,};
+  static constexpr int m_SCALE_SHIFT = 4;
+#endif
 
   AdaptiveLoopFilter();
   virtual ~AdaptiveLoopFilter() {}
@@ -273,6 +287,14 @@ public:
 
   static void calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
   void(  *m_calcAlfLumaCodingInfoBlk )( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
+#endif
+#if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
+  void calcOffsetRefinement(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, int stageIdx, int refineIdx);
+  void copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst );
+  void copyOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst, const Area& blk );
+
+  static void calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, PelUnitBuf& srcCodingInfo, int stageIdx, const Area& blk, int refineIdx, PelUnitBuf& codingInfo);
+  void ( *m_calcOffsetRefinementBlk )(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, PelUnitBuf& srcCodingInfo, int stageIdx, const Area& blk, int refineIdx, PelUnitBuf& codingInfo);
 #endif
 #if JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   void paddingLaplacianResultsPic(Pel ***laplacianPic, const int storeIdx);
@@ -480,6 +502,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
    );
 #else
   void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, int vbCTUHeight, int vbPos);
@@ -508,6 +533,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
   );
   void (*m_filter7x7Blk)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -522,6 +550,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
   );
   void alfFiltering(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, AlfFilterType filterType, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -535,6 +566,9 @@ public:
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
 #endif
   );
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
@@ -563,6 +597,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
   );
   void (*m_filter9x9BlkExt)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -576,6 +613,9 @@ public:
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
 #endif
   );
   void (*m_filterBlkExt)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
@@ -591,6 +631,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
   );
   void (*m_filter9x9BlkExtDb)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -604,6 +647,9 @@ public:
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
 #endif
   );
 #if JVET_AA0095_ALF_LONGER_FILTER
@@ -620,6 +666,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
   );
   void (*m_filter13x13BlkExt)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -633,6 +682,9 @@ public:
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
 #endif
   );
 #endif
@@ -649,6 +701,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
   );
 #if FIXFILTER_CFG
   void (*m_filter13x13BlkDbResiDirect)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
@@ -664,6 +719,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
     );
   void (*m_filter13x13BlkDbResi)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
 #if JVET_AB0184_ALF_MORE_FIXED_FILTER_OUTPUT_TAPS
@@ -677,6 +735,9 @@ public:
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
 #endif
     );
   void (*m_filter9x9BlkNoFix)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
@@ -692,6 +753,9 @@ public:
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
 #endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
+#endif
     );
 #endif
   void (*m_filter13x13BlkExtDbResi)(AlfClassifier **classifier, const PelUnitBuf &recDst, const PelUnitBuf &recBeforeDb, const PelUnitBuf &resi, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blk, const ComponentID compId, const short *filterSet, const Pel *fClipSet, const ClpRng &clpRng, CodingStructure &cs, Pel ***fixedFilterResults, Pel ***fixedFilterResiResults, int fixedFilterSetIdx
@@ -706,6 +770,9 @@ public:
 #endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
     , char coeffBits
+#endif
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+    , const char* scaleIdxSet
 #endif
   );
 #else
@@ -957,6 +1024,9 @@ protected:
 #endif
   bool                         m_created = false;
   short                        m_chromaCoeffFinal[MAX_NUM_ALF_ALTERNATIVES_CHROMA][MAX_NUM_ALF_CHROMA_COEFF];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  char                         m_chromaScaleIdxFinal[MAX_NUM_ALF_ALTERNATIVES_LUMA][1];
+#endif
   AlfParam*                    m_alfParamChroma;
   Pel                          m_alfClippingValues[MAX_NUM_CHANNEL_TYPE][MaxAlfNumClippingValues];
   std::vector<AlfFilterShape>  m_filterShapesCcAlf;
@@ -999,6 +1069,10 @@ protected:
   short                        m_clippApsLuma[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA][MAX_NUM_ALF_LUMA_COEFF * MAX_NUM_ALF_CLASSES];
 #endif
   short                        m_coeffFinal[MAX_NUM_ALF_ALTERNATIVES_LUMA][MAX_NUM_ALF_CLASSES * MAX_NUM_ALF_LUMA_COEFF];
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  char                         m_scaleIdxApsLuma[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA][MAX_NUM_ALF_CLASSES];
+  char                         m_scaleIdxFinal[MAX_NUM_ALF_ALTERNATIVES_LUMA][MAX_NUM_ALF_CLASSES];
+#endif
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
   Pel                          m_clippFinal[MAX_NUM_ALF_ALTERNATIVES_LUMA][MAX_NUM_ALF_CLASSES * MAX_NUM_ALF_LUMA_COEFF];
 #else
@@ -1106,6 +1180,157 @@ protected:
   std::vector<int>             m_scaleCorrChroma;
   std::vector<int>             m_idxCorrPrev[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA];
 #endif
+
+#if ENABLE_SIMD_OPT_ALF_CHOLESKY
+  public:
+#if JVET_AF0177_ALF_COV_FLOAT
+  using cholesky_float_t = float;
+#else
+  using cholesky_float_t = double;
+#endif
+  using cholesky_matrix = cholesky_float_t[MAX_NUM_ALF_LUMA_COEFF][MAX_NUM_ALF_LUMA_COEFF];
+  static constexpr cholesky_float_t cholesky_reg_sqr = cholesky_float_t(0.0000001);
+  static int(*m_fastCholeskyDec)(cholesky_matrix inpMatr, cholesky_matrix outMatr, int numEq);
+  static int fastCholeskyDec(cholesky_matrix inpMatr, cholesky_matrix outMatr, int numEq);
+#endif
 };
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+
+class ALFCoeffRestriction
+{
+public:
+  struct InputParam
+  {
+    int8_t bitWidth;
+    int8_t mantissa;
+
+    InputParam(int8_t bitWidth, int8_t mantissa) : bitWidth(bitWidth), mantissa(mantissa)
+    {
+    }
+
+    bool operator<(const InputParam& right) const
+    {
+      if (bitWidth != right.bitWidth)
+      {
+        return bitWidth < right.bitWidth;
+      }
+      return mantissa < right.mantissa;
+    }
+  };
+
+  struct Param
+  {
+    int16_t minValue, maxValue;
+    std::vector<int16_t> idxToCoeff;
+    std::vector<int16_t> coeffToIdx;
+  };
+
+private:
+  static std::map<InputParam, Param> m_cache;
+
+  InputParam m_inputParam;
+  Param* m_param;
+
+  void build();
+public:
+  ALFCoeffRestriction(int bitWidth, int mantissa);
+  void init();
+
+  const InputParam& getInputParam() { return m_inputParam; }
+  const Param& getParam() { return *m_param; }
+};
+
+class HuffmanForALF
+{
+public:
+  struct InputParam
+  {
+    bool isLuma;
+    int8_t bitWidth;
+    int8_t mantissa;
+    int8_t coeffGroup;
+
+    InputParam(bool isLuma, int8_t bitWidth, int8_t mantissa, int8_t coeffGroup) : isLuma(isLuma), bitWidth(bitWidth), mantissa(mantissa), coeffGroup(coeffGroup)
+    {
+    }
+
+    bool operator<(const InputParam& right) const
+    {
+      if (isLuma != right.isLuma)
+      {
+        return isLuma < right.isLuma;
+      }
+      if (bitWidth != right.bitWidth)
+      {
+        return bitWidth < right.bitWidth;
+      }
+      if (mantissa != right.mantissa)
+      {
+        return mantissa < right.mantissa;
+      }
+      return coeffGroup < right.coeffGroup;
+    }
+  };
+
+  struct Node
+  {
+    int16_t coeffIdx;
+    Node* zero;
+    Node* one;
+  };
+
+  struct Param
+  {
+    Node* root;
+    std::vector<std::pair<uint32_t, int8_t>> codeTableAndLength;
+
+    Param() : root(nullptr)
+    {
+    }
+
+    void dfsDelete(Node* node)
+    {
+      if (node)
+      {
+        dfsDelete(node->zero);
+        dfsDelete(node->one);
+        delete node;
+      }
+    }
+
+    ~Param()
+    {
+      dfsDelete(root);
+    }
+  };
+
+private:
+  static std::map<InputParam, std::vector<int>> m_stats;
+  static std::map<InputParam, Param> m_cache;
+
+  InputParam m_inputParam;
+  ALFCoeffRestriction m_coeff;
+  Param* m_param;
+
+  void build();
+  void buildHuffmanTree();
+  void buildCodeTable();
+  void buildCodeTable(Node* node, uint32_t code, int level);
+public:
+  HuffmanForALF(bool isLuma, int bitWidth, int mantissa, int coeffGroup);
+  void init();
+
+  const InputParam& getInputParam() { return m_inputParam; }
+  const Param& getParam() { return *m_param; }
+
+  void setGroup(int coeffGroup);
+
+  bool encodeCoeff(int16_t coeff, uint32_t& symbol, int& length);
+  bool decodeBit(int8_t bit, Node*& node);
+  int16_t getCoeff(Node* node);
+};
+
+#endif
 
 #endif

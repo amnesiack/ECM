@@ -120,6 +120,11 @@
 #define NSIGCTX                                           6
 #define NGTXCTX                                           7
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+static const int AFFINE_TMVP_MAX_NUM              = 20;
+static const int AFFINE_TMVP_FINAL_MAX_NUM        = 6;
+static const int CONSTRUCTED_CANDIDATE_MAX_NUM    = 5;
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
 #if JVET_AH0119_SUBBLOCK_TM
 static const double REFINE_THRESHOLD_AFFINE_MERGE = 0.80;
@@ -1641,6 +1646,9 @@ static const int GEO_NUM_INTRA_RDO_BUFFER =                         23;
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
 static const int GEO_BLEND_MAX_NUM_CANDS =                        ((GEO_MAX_NUM_UNI_CANDS + 1) >> 1) * ((GEO_MAX_NUM_UNI_CANDS + 1) >> 1) / 2;
 static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_UNI_CANDS + 67 + 1 + 1;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+static const int GEO_BLEND_MAX_NUM_INTRA_CANDS =                    6;
+#endif
 #else
 #if JVET_AC0112_IBC_CIIP || JVET_AC0112_IBC_GPM
 static const int GEO_NUM_RDO_BUFFER =                               GEO_MAX_NUM_UNI_CANDS + 67;
@@ -2466,6 +2474,25 @@ static const int INIT_TL_POS      = (MTMP_NUM - TL_NUM_SPARSE);
 #if JVET_AG0152_SGPM_ITMP_IBC
 static const int SGPM_NUM_BVS = 6; // maximum BVs to be considered into the list for Itmp-Sgpm
 static const int SGPM_BV_START_IDX = NUM_LUMA_MODE;
+#endif
+
+
+#if JVET_AK0185_TMVP_SELECTION
+static const int COLLECT_REF_FIRST = 4;
+static const int COLLECT_POS_FIRST = 8;
+
+static const int COLLECT_TMVP_REF  = 1;
+static const int COLLECT_TMVP_POS  = 2;
+static const int COLLECT_TMVP_BOTH = (COLLECT_TMVP_REF | COLLECT_TMVP_POS);
+#endif
+
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+// Parameters for Simulated Annealing (SA)
+static const int ALF_SA_SOLUTION_POOL_SIZE_MIN = 3; // the number of (best known) solutions used as starting points
+static const int ALF_SA_SOLUTION_POOL_SIZE_MAX = 8;
+static const int ALF_SA_RUNS_COUNT = 100; // how many times the full SA-process (from a start point until it converges) is tried
+static const int ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP = 8; // ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP * parametersNumber is the number of non-improving iterations that has to happen before SA run is stopped
+static const int ALF_SA_CHANGES_PER_ITERATION = 3; // the maximal number of changed parameters in one iteration
 #endif
 
 #endif // end of #ifndef  __COMMONDEF__

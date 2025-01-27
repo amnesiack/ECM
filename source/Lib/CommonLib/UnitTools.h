@@ -184,6 +184,9 @@ namespace CU
 #if JVET_AJ0274_REGRESSION_GPM_TM
   bool    checkGeoBlendTmAvail        (const CodingUnit& currCU, const CodingStructure* bestCS);
 #endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool    checkGeoBlendIntraAvail(const CodingUnit& currCU, const CodingStructure* bestCS);
+#endif
 #if JVET_AI0050_SBT_LFNST
   void    getSBTPosAndSize            (const CodingUnit &cu, Position& pos, Size& size, uint8_t sbtMode);
 #endif
@@ -212,6 +215,9 @@ namespace CU
 #endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   bool isGeoBlendAvailable(const CodingUnit& cu);
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+  bool isGeoBlendIntraAvailable(const CodingUnit& cu);
+#endif
 #endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   bool interCcpMergeZeroRootCbfAllowed(const CodingUnit& cu);
@@ -451,6 +457,41 @@ namespace PU
                          , bool checkAllRefValid = false
   );
 #endif
+  
+#if JVET_AK0185_TMVP_SELECTION
+  bool collectTMVP(
+    const PredictionUnit& pu,
+    const std::vector<Position>& posList,
+    const std::vector<bool>& availList,
+    int iRefIdx,
+    int col,
+
+    MergeCtx& mrgCtx,
+    int mrgCandIdx,
+    int& cnt,
+
+    const Slice& slice,
+    int maxNumMergeCand,
+    int mvdThreshold,
+
+    MergeCtx* tmpMrgCtx,
+    int* tmpMrgCtxcnt,
+
+    int  tmvpFlag,
+    bool useNullRefIdx,
+
+    bool checkBiPredFromDifferentDirEqDistPoc = false,
+
+    bool checkValidMergeMvCand = false,
+    bool useAmvpMergeMode = false,
+    int  amvpMergeCtxMergeDir = -1,
+    int  amvpRefList = -1
+  );
+
+  void addTmvp2AMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, int colIdx, AMVPInfo* pInfo, bool oneTmvpFlag = false);
+  void addTmvp2AffineAMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, AffineAMVPInfo& affiAMVPInfo, bool oneTmvpFlag = false);
+#endif
+
 #if JVET_AE0159_FIBC
   bool checkIsIBCFilterCandidateValid(const PredictionUnit &pu, const MotionInfo miNeighbor, int  filterIdx = 0, bool isRefTemplate = false, bool isRefAbove = false);
 #endif
@@ -488,6 +529,10 @@ namespace PU
   );
 #if JVET_AI0197_AFFINE_TMVP
   bool getColocatedAffineCMVP(const PredictionUnit &pu, const RefPicList &eRefPicList, const Position &pos, Mv rcMv[3],
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+                              Mv rcMvAlt[3],
+                              bool isAlt,
+#endif
                               const int &refIdx, bool sbFlag
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
@@ -729,6 +774,9 @@ namespace PU
     AffineMergeCtx affineRMVFOriCtx,
     uint16_t numCandtoAdd,
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    AffineMergeCtx* tmvpMrgCtx = NULL,
+#endif
 #if AFFINE_MMVD
                            int mrgCandIdx = -1, bool isAfMmvd = false
 #else
@@ -741,6 +789,9 @@ namespace PU
                           , bool noSbTMVP = false
 #endif
   );
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  void getAffineTMVPMergeCand(const PredictionUnit &pu, AffineMergeCtx& affMrgCtx);
+#endif
 #if JVET_AG0276_NLIC
   void getAltLMAffineMergeCand(const PredictionUnit &pu, AltLMAffineMergeCtx& altLMAffMrgCtx);
 #if JVET_AG0276_LIC_FLAG_SIGNALING

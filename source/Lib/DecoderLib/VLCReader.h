@@ -42,6 +42,9 @@
 #include "CommonLib/BitStream.h"
 #include "CommonLib/Slice.h"
 #include "CommonLib/SampleAdaptiveOffset.h"
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+#include "CommonLib/AdaptiveLoopFilter.h"
+#endif
 #include "CommonLib/ParameterSetManager.h"
 #include "CABACReader.h"
 
@@ -226,6 +229,9 @@ public:
 #endif
 #if ALF_IMPROVEMENT
   int  alfGolombDecode( const int k, const bool signed_val = true );
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  int  alfHuffmanDecode(HuffmanForALF& huffman);
+#endif
   void alfFilter( AlfParam& alfParam, const bool isChroma, const int altIdx, int order0, int order1 );
 #else
   void alfFilter( AlfParam& alfParam, const bool isChroma, const int altIdx );
