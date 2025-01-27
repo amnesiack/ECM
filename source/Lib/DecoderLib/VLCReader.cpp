@@ -2710,6 +2710,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     }
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    READ_FLAG(uiCode, "sps_temporal_affine_opt"); pcSPS->setUseTemporalAffineOpt(uiCode != 0);
+    READ_FLAG(uiCode, "sps_synthetic_affine"); pcSPS->setUseSyntheticAffine(uiCode != 0);
+#endif
   }
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
   pcSPS->setUseTMMMVD(false);

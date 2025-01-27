@@ -19302,13 +19302,21 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
     }
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
     bool lowPrio = false;
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    if (uiMergeCand >= affMrgCtx.numAffCandToTestEnc && !affMrgCtx.m_isConstructed[uiMergeCand])
+#else
     if (uiMergeCand >= affMrgCtx.numAffCandToTestEnc)
+#endif
     {
       affMrgCtx.candCost[uiMergeCand] = MAX_UINT64 >> 1;
       uiCost = MAX_UINT >> 1;
       lowPrio = true;
     }
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    if (affMrgCtx.candCost[uiMergeCand] == MAX_UINT64 || affMrgCtx.m_isConstructed[uiMergeCand])
+#else
     if (affMrgCtx.candCost[uiMergeCand] == MAX_UINT64)
+#endif
     {
 #endif
     uiCost = 0;
@@ -19397,7 +19405,13 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
 
       getAffAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
-        , pu.cs->sps->getUseFastSubTmvp(), affMrgCtx
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+        , true,
+#else
+        , pu.cs->sps->getUseFastSubTmvp(), 
+#endif
+        
+        affMrgCtx
 #endif
       );
 
@@ -19524,7 +19538,12 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
   updateAffineCandInfo(pu, affMrgCtx, rdCandList
     , mrgCandIdx
   );
-
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  for (int idx = 0; idx < affMrgCtx.numValidMergeCand; idx++)
+  {
+    affMrgCtx.candCost[idx] = candCostList[0][idx];
+  }
+#endif
 }
 
 void  InterPrediction::updateAffineCandInfo(PredictionUnit &pu, AffineMergeCtx& affMrgCtx, 
@@ -19612,6 +19631,9 @@ void  InterPrediction::updateAffineCandInfo(PredictionUnit &pu, AffineMergeCtx& 
     affMrgCtxTmp.copyLICParamFromCtx(uiMergeCand, affMrgCtx, uiMergeCand);
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    affMrgCtxTmp.m_isConstructed[uiMergeCand] = affMrgCtx.m_isConstructed[uiMergeCand];
+#endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     affMrgCtxTmp.obmcFlags[uiMergeCand] = affMrgCtx.obmcFlags[uiMergeCand];
 #endif
@@ -19654,6 +19676,9 @@ void  InterPrediction::updateAffineCandInfo(PredictionUnit &pu, AffineMergeCtx& 
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG && JVET_AG0164_AFFINE_GPM
     affMrgCtx.copyLICParamFromCtx(uiMergeCand, affMrgCtxTmp, srcCand);
 #endif
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    affMrgCtx.m_isConstructed[uiMergeCand] = affMrgCtxTmp.m_isConstructed[srcCand];
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     affMrgCtx.obmcFlags[uiMergeCand] = affMrgCtxTmp.obmcFlags[srcCand];
@@ -19715,6 +19740,9 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
     altLMAffMergeCand.mergeType[altLMAffMergeCand.numValidMergeCand] = MRG_TYPE_DEFAULT_N;
     altLMAffMergeCand.affineType[altLMAffMergeCand.numValidMergeCand] = altLMAffMrgCtx.affineType[mrgIdx];
     altLMAffMergeCand.bcwIdx[altLMAffMergeCand.numValidMergeCand] = altLMAffMrgCtx.bcwIdx[mrgIdx];
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    altLMAffMergeCand.m_isConstructed[altLMAffMergeCand.numValidMergeCand] = altLMAffMrgCtx.m_isConstructed[mrgIdx];
+#endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     altLMAffMergeCand.obmcFlags[altLMAffMergeCand.numValidMergeCand] = altLMAffMrgCtx.obmcFlags[mrgIdx];
 #endif
@@ -19753,6 +19781,9 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
     altLMRMVFCand.mergeType[altLMRMVFCand.numValidMergeCand] = MRG_TYPE_DEFAULT_N;
     altLMRMVFCand.affineType[altLMRMVFCand.numValidMergeCand] = altLMRMVFMrgCtx.affineType[mrgIdx];
     altLMRMVFCand.bcwIdx[altLMRMVFCand.numValidMergeCand] = altLMRMVFMrgCtx.bcwIdx[mrgIdx];
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    altLMRMVFCand.m_isConstructed[altLMRMVFCand.numValidMergeCand] = altLMRMVFMrgCtx.m_isConstructed[mrgIdx];
+#endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     altLMRMVFCand.obmcFlags[altLMRMVFCand.numValidMergeCand] = altLMRMVFMrgCtx.obmcFlags[mrgIdx];
 #endif
@@ -19890,7 +19921,12 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
 #endif
           getAffAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
-            , pu.cs->sps->getUseFastSubTmvp(), affMrgCtx
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+            , true,
+#else
+            , pu.cs->sps->getUseFastSubTmvp(),
+#endif
+            affMrgCtx
 #endif
           );
 
@@ -20006,7 +20042,12 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
 #endif
           getAffAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
-            , pu.cs->sps->getUseFastSubTmvp(), affMrgCtx
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+            , true,
+#else
+            , pu.cs->sps->getUseFastSubTmvp(),
+#endif
+            affMrgCtx
 #endif
           );
           if (m_bAMLTemplateAvailabe[0])
@@ -20119,7 +20160,12 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
 #endif
           getAffAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
-            , pu.cs->sps->getUseFastSubTmvp(), affMrgCtx
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+            , true,
+#else
+            , pu.cs->sps->getUseFastSubTmvp(),
+#endif
+            affMrgCtx
 #endif
           );
           if (m_bAMLTemplateAvailabe[0])
@@ -20239,6 +20285,12 @@ void InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMerg
   }
 #endif
   updateAffineCandInThreeGrp(pu, affMrgCtx, altLMAffMergeCand, altLMRMVFCand, rdCandList, candCategory, maxNumAffineMergeCand);
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  for (int idx = 0; idx < affMrgCtx.numValidMergeCand; idx++)
+  {
+    affMrgCtx.candCost[idx] = candCostList[idx];
+  }
+#endif
 }
 
 void InterPrediction::updateAffineCandInThreeGrp(PredictionUnit &pu, AffineMergeCtx& affMrgCtx, AffineMergeCtx& altLMAffMrgCtx, AffineMergeCtx& altLMAffMrgCtx1, uint32_t* rdCandList, uint32_t* rdCandGrpList, int listsize)
@@ -20266,6 +20318,9 @@ void InterPrediction::updateAffineCandInThreeGrp(PredictionUnit &pu, AffineMerge
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG && JVET_AG0164_AFFINE_GPM
     affMrgCtxTmp.copyLICParamFromCtx(uiMergeCand, affMrgCtx, uiMergeCand);
 #endif
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    affMrgCtxTmp.m_isConstructed[uiMergeCand] = affMrgCtx.m_isConstructed[uiMergeCand];
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     affMrgCtxTmp.obmcFlags[uiMergeCand] = affMrgCtx.obmcFlags[uiMergeCand];
@@ -20296,6 +20351,9 @@ void InterPrediction::updateAffineCandInThreeGrp(PredictionUnit &pu, AffineMerge
       affMrgCtx.copyLICParamFromCtx(uiMergeCand, affMrgCtxTmp, rdCandList[uiMergeCand]);
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+      affMrgCtx.m_isConstructed[uiMergeCand] = affMrgCtxTmp.m_isConstructed[rdCandList[uiMergeCand]];
+#endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
       affMrgCtx.obmcFlags[uiMergeCand] = affMrgCtxTmp.obmcFlags[rdCandList[uiMergeCand]];
 #endif
@@ -20322,6 +20380,9 @@ void InterPrediction::updateAffineCandInThreeGrp(PredictionUnit &pu, AffineMerge
       affMrgCtx.copyLICParamFromCtx(uiMergeCand, altLMAffMrgCtx1, rdCandList[uiMergeCand]);
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+      affMrgCtx.m_isConstructed[uiMergeCand] = altLMAffMrgCtx1.m_isConstructed[rdCandList[uiMergeCand]];
+#endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
       affMrgCtx.obmcFlags[uiMergeCand] = altLMAffMrgCtx1.obmcFlags[rdCandList[uiMergeCand]];
 #endif
@@ -20347,6 +20408,9 @@ void InterPrediction::updateAffineCandInThreeGrp(PredictionUnit &pu, AffineMerge
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG && JVET_AG0164_AFFINE_GPM
       affMrgCtx.copyLICParamFromCtx(uiMergeCand, altLMAffMrgCtx, rdCandList[uiMergeCand]);
 #endif
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+      affMrgCtx.m_isConstructed[uiMergeCand] = altLMAffMrgCtx.m_isConstructed[rdCandList[uiMergeCand]];
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
       affMrgCtx.obmcFlags[uiMergeCand] = altLMAffMrgCtx.obmcFlags[rdCandList[uiMergeCand]];
@@ -22476,6 +22540,9 @@ void  InterPrediction::updateAffineCandInfo2(PredictionUnit &pu, AffineMergeCtx&
     affMrgCtxTmp.copyLICParamFromCtx(uiMergeCand, affMrgCtx, uiMergeCand);
 #endif
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    affMrgCtxTmp.m_isConstructed[uiMergeCand] = affMrgCtx.m_isConstructed[uiMergeCand];
+#endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     affMrgCtxTmp.obmcFlags[uiMergeCand] = affMrgCtx.obmcFlags[uiMergeCand];
 #endif
@@ -22501,6 +22568,9 @@ void  InterPrediction::updateAffineCandInfo2(PredictionUnit &pu, AffineMergeCtx&
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG && JVET_AG0164_AFFINE_GPM
     affMrgCtx.copyLICParamFromCtx(uiMergeCand, affMrgCtxTmp, rdCandList[uiMergeCand / listsize][uiMergeCand%listsize]);
 #endif
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+    affMrgCtx.m_isConstructed[uiMergeCand] = affMrgCtxTmp.m_isConstructed[rdCandList[uiMergeCand / listsize][uiMergeCand % listsize]];
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
     affMrgCtx.obmcFlags[uiMergeCand] = affMrgCtxTmp.obmcFlags[rdCandList[uiMergeCand / listsize][uiMergeCand % listsize]];

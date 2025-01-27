@@ -392,6 +392,7 @@
 #define JVET_AJ0158_SUBBLOCK_INTER_EXTENSION              1 // JVET-AJ0158 Sub-block Inter mode improvement
 #define JVET_AJ0126_INTER_AMVP_ENHANCEMENT                1 // JVET-AJ0126: Enhanced inter AMVP (inter TM part is controlled by EnableTMTools)
 #define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
+#define JVET_AK0095_ENHANCED_AFFINE_CANDIDATE             1 // JVET-AK0095: Additional temporal affine candidates and synthetic affine candidates
 #define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185 : TMVP selection for Merge and AMVP
 
 // Inter template matching tools

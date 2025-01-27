@@ -120,6 +120,11 @@
 #define NSIGCTX                                           6
 #define NGTXCTX                                           7
 #endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+static const int AFFINE_TMVP_MAX_NUM              = 20;
+static const int AFFINE_TMVP_FINAL_MAX_NUM        = 6;
+static const int CONSTRUCTED_CANDIDATE_MAX_NUM    = 5;
+#endif
 #if JVET_AF0163_TM_SUBBLOCK_REFINEMENT
 #if JVET_AH0119_SUBBLOCK_TM
 static const double REFINE_THRESHOLD_AFFINE_MERGE = 0.80;
