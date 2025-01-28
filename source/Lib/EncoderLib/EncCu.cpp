@@ -3745,7 +3745,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   int obicLocDep[OBIC_FUSION_NUM] = {0};
 #endif
 #endif
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  static_vector<int, 2> candModeListForTransformTmp;
+#endif 
   if (isLuma(partitioner.chType))
   {
     CodingUnit cu(tempCS->area);
@@ -3767,7 +3769,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     {
       const CompArea &area = cu.Y();
       IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu);
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+      candModeListForTransformTmp = cu.candModeListForTransform;
+#endif
       dimdDerived = true;
       dimdBlending = cu.dimdBlending;
 #if JVET_AC0098_LOC_DEP_DIMD
@@ -4038,6 +4042,9 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
           cu.predMode         = MODE_INTRA;
           cu.chromaQpAdj      = m_cuChromaQpOffsetIdxPlus1;
           cu.qp               = encTestMode.qp;
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+          cu.candModeListForTransform = candModeListForTransformTmp;
+#endif 
 #if ENABLE_DIMD
           cu.dimd = false;
           if( dimdDerived )

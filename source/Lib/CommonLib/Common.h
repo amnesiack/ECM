@@ -643,7 +643,9 @@ struct EipModelCandidate
 #else
   int     eipDimdMode            = PLANAR_IDX;
 #endif
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  int eipDimdMode2nd = PLANAR_IDX;
+#endif
   inline bool isTheSameParams(const EipModelCandidate& p) const
   {
     if (filterShape != p.filterShape) 

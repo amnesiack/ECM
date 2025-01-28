@@ -374,6 +374,9 @@ struct CodingUnit : public UnitArea
   int8_t         dimdRelWeight[3]; // max number of predictions to blend
 #endif
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  static_vector<int, 2> candModeListForTransform;
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   int8_t         dimdBlendModeChroma[DIMD_FUSION_NUM - 1];
   uint8_t        chromaList[7];
@@ -1009,7 +1012,9 @@ struct TransformUnit : public UnitArea
 #if JVET_AE0102_LFNST_CTX
   int            lastPosition[ MAX_NUM_TBLOCKS ];
 #endif
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  std::pair<uint32_t, uint32_t> intraDirStat;
+#endif
 #if JVET_AE0059_INTER_CCCM
   int8_t         interCccm;
 #endif

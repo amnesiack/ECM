@@ -51,7 +51,6 @@
 #include <cassert>
 #include <cstdint>
 
-
 #define AHG7_LN_TOOLOFF_CFG                               1
 #define FIXFILTER_CFG                                     1
 #define AHG7_MTS_TOOLOFF_CFG                              1
@@ -444,6 +443,7 @@
 #define JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX               1 // JVET-AI0096: Fix to sign prediction for handling bit depths other than 10
 #endif
 #define JVET_AJ0257_IMPLICIT_MTS_LUT                      1 // JVET-AJ0257: Improved Implicit MTS
+#define JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION            1 // JVET-AK0187: Extended Implicit MTS
 #define JVET_W0103_INTRA_MTS                              1 // JVET-W0103: Extended Intra MTS
 #if JVET_W0103_INTRA_MTS
 #define JVET_Y0142_ADAPT_INTRA_MTS                        1 // JVET-Y0142: Adaptive Intra MTS

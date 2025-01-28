@@ -1191,6 +1191,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AJ0112_REGRESSION_SGPM
     int bestSgpmDimd = 0;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    int bestSgpmDimd2nd = 0;
+#endif
 #if JVET_W0123_TIMD_FUSION
     bool bestTimdMode = false;
 #if JVET_AJ0146_TIMDSAD
@@ -3579,6 +3582,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AJ0082_MM_EIP
                       m_eipMergeModel[i].eipDimdMode = -1;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+                      m_eipMergeModel[i].eipDimdMode2nd = -1;
+#endif
                     }
                     else
                     {
@@ -4564,22 +4570,46 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           const auto modeIdx = cu.eipMmFlag ? (pu.intraDir[0] + m_numSigEip): pu.intraDir[0];
           if(cu.eipMerge)
           {
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             PelBuf eipSaveBuf(m_eipMergePredBuf[modeIdx], pu.Y());
             cu.eipModel.eipDimdMode = m_eipMergeModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
 #if JVET_AI0050_INTER_MTSS
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode
+#else
               , cu.dimdDerivedIntraDir2nd
 #endif
+#endif
             );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = secondMode;
+            m_eipMergeModel[modeIdx].eipDimdMode2nd = secondMode;
+#endif
             CHECK(modeIdx >= NUM_EIP_MERGE_SIGNAL, "modeIdx >= NUM_EIP_MERGE_SIGNAL");
           }
           else
           {
             PelBuf eipSaveBuf(m_eipPredBuf[modeIdx], pu.Y());
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             cu.eipModel.eipDimdMode = m_eipModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
 #if JVET_AI0050_INTER_MTSS
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode
+#else
               , cu.dimdDerivedIntraDir2nd
 #endif
+#endif
             );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = secondMode;
+            m_eipModel[modeIdx].eipDimdMode2nd = secondMode;
+#endif
             CHECK(modeIdx >= NUM_DERIVED_EIP, "modeIdx >= NUM_DERIVED_EIP");
           }
         }
@@ -5118,6 +5148,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           {
             CodingUnit* curCu = csBest->getCU(partitioner.currArea().lumaPos(), partitioner.chType);
             bestSgpmDimd = curCu->sgpmDimdMode;
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            bestSgpmDimd2nd = curCu->dimdDerivedIntraDir2nd;
+#endif
           }
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
@@ -5339,6 +5372,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AJ0112_REGRESSION_SGPM
       cu.sgpmDimdMode = bestSgpmDimd;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+      cu.dimdDerivedIntraDir2nd = bestSgpmDimd2nd;
+#endif
       cu.bdpcmMode = bestBDPCMMode;
 #if JVET_W0123_TIMD_FUSION
       cu.timd = bestTimdMode;
@@ -5434,22 +5470,46 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
           if(cu.eipMerge)
           {
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             PelBuf eipSaveBuf(m_eipMergePredBuf[modeIdx], pu.Y());
             cu.eipModel.eipDimdMode = m_eipMergeModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
 #if JVET_AI0050_INTER_MTSS
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode
+#else
               , cu.dimdDerivedIntraDir2nd
 #endif
+#endif
             );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = secondMode;
+            m_eipMergeModel[modeIdx].eipDimdMode2nd = secondMode;
+#endif
             CHECK(modeIdx >= NUM_EIP_MERGE_SIGNAL, "modeIdx >= NUM_EIP_MERGE_SIGNAL");
           }
           else
           {
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             PelBuf eipSaveBuf(m_eipPredBuf[modeIdx], pu.Y());
             cu.eipModel.eipDimdMode = m_eipModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
 #if JVET_AI0050_INTER_MTSS
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode
+#else
               , cu.dimdDerivedIntraDir2nd
 #endif
+#endif
             );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = secondMode;
+            m_eipModel[modeIdx].eipDimdMode2nd = secondMode;
+#endif
             CHECK(modeIdx >= NUM_DERIVED_EIP, "modeIdx >= NUM_DERIVED_EIP");
           }
         }
@@ -11404,6 +11464,12 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
   {
     piResi.subtract(piPred);
   }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if( !tu.cu->ispMode && !tu.cu->lfnstIdx && !tu.mtsIdx[0] && tu.cs->sps->getUseImplicitMTS())
+  {
+    tu.intraDirStat = PU::getFinalIntraModeForTransform(tu, COMPONENT_Y);
+  }
+#endif
   // do transform and calculate Coeff AbsSum for all MTS candidates
 #if JVET_Y0142_ADAPT_INTRA_MTS
 #if AHG7_MTS_TOOLOFF_CFG
@@ -11764,7 +11830,17 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
                   , secondDimdIntraDir
 #endif
                 );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+                pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
+#endif
               }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              else
+              {
+                pu.cu->dimdDerivedIntraDir2nd = 0;
+                pu.cu->dimdDerivedIntraDir = deriveIpmForTransform(piPred, *pu.cu, pu.cu->dimdDerivedIntraDir2nd );
+              }
+#endif
 #endif
             }
             else
@@ -11937,7 +12013,12 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
     crResi = cs.getResiBuf ( crArea );
     crReco = cs.getRecoBuf ( crArea );
   }
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if( isLuma(compID) && !tu.cu->ispMode && !tu.cu->lfnstIdx && !tu.mtsIdx[0] && tu.cs->sps->getUseImplicitMTS())
+  {
+    tu.intraDirStat = PU::getFinalIntraModeForTransform(tu, COMPONENT_Y);
+  }
+#endif
   if ( jointCbCr )
   {
     // Lambda is loosened for the joint mode with respect to single modes as the same residual is used for both chroma blocks

@@ -3513,6 +3513,11 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #else
     m_if.m_weightedSgpm(pu, width, height, compID, splitDir, piPred, piPred, predFusion);
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    int secondDimd = 0;
+    pu.cu->dimdDerivedIntraDir    = deriveIpmForTransform(piPred, *pu.cu, secondDimd);
+    pu.cu->dimdDerivedIntraDir2nd = secondDimd;
+#endif
   }
 #endif
 
@@ -15118,7 +15123,10 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
     }
   }
 #endif
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  cu.candModeListForTransform[0] = mode[0];
+  cu.candModeListForTransform[1] = mode[1];
+#endif
 
   cu.dimdMode = mode[0];
 
@@ -15684,7 +15692,10 @@ void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompA
       }
     }
   }
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  cu.candModeListForTransform[0] = mode[0];
+  cu.candModeListForTransform[1] = mode[1];
+#endif
   cu.dimdMode = mode[0];
 
   cu.dimdBlending = true;
