@@ -165,7 +165,7 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
     {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
       m_pcInterPred->setDIMDForOBMC(false);
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
       m_pcInterPred->setIntraObmcPred(false);
 #endif
       m_pcInterPred->setModeGetCheck(0, false);
@@ -179,6 +179,10 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #endif
 #if JVET_AD0213_LIC_IMP
       m_pcInterPred->resetFillLicTpl();
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      m_pcInterPred->m_neighbSccChecked = false;
+      m_pcInterPred->m_intraObmcReload = false;
 #endif
 
 #if JVET_Z0118_GDR
@@ -2144,8 +2148,10 @@ void DecCu::xReconInter(CodingUnit &cu)
       , m_mvBufBDMVR
       , m_mvBufBDOF4GPM
   #endif
-#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA || JVET_AK0212_GPM_OBMC_MODIFICATION
       , m_pcIntraPred
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
       , (cu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag()) ? &m_pcReshape->getFwdLUT() : nullptr
 #endif
     );
@@ -2603,6 +2609,9 @@ void DecCu::xReconInter(CodingUnit &cu)
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
     && (!cu.firstPU->geoBlendIntraFlag)
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    && (!(cu.geoFlag && cu.slice->getCheckUseSepOBMC()))
 #endif
     )
 #else

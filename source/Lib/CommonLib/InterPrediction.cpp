@@ -224,6 +224,15 @@ InterPrediction::InterPrediction()
   }
 #endif
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_geoOBMC = false;
+  m_obmcLoadMode = false;
+  m_nbIsSCC = false;
+  m_pixelRefine = false;
+  m_neighbSccChecked = false;
+  m_intraObmcReload = false;
+#endif
+
 #if MULTI_PASS_DMVR
   int mvSearchIdx_bilMrg = 0;
 #if JVET_X0049_BDMVR_SW_OPT
@@ -448,7 +457,14 @@ void InterPrediction::destroy()
   m_tmpObmcBufL0.destroy();
   m_tmpObmcBufT0.destroy();
   m_tmpSubObmcBuf.destroy();
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_tmpNbObmcBufA.destroy();
+  m_tmpNbObmcBufL.destroy();
+
+  m_tmpNbIntraObmcBufA.destroy();
+  m_tmpNbIntraObmcBufL.destroy();
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
   m_tmpIntraObmcBufL0.destroy();
   m_tmpIntraObmcBufT0.destroy();
 #endif
@@ -481,7 +497,9 @@ void InterPrediction::destroy()
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
   for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
   {
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
     xFree(m_intraOBMCBuf[ch]); m_intraOBMCBuf[ch] = nullptr;
+#endif
     xFree(m_beforeOBMCBuf[ch]); m_beforeOBMCBuf[ch] = nullptr;
   }
 #endif
@@ -681,7 +699,9 @@ void InterPrediction::init( RdCost* pcRdCost, ChromaFormat chromaFormatIDC, cons
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
     for( uint32_t c = 0; c < MAX_NUM_COMPONENT; c++ )
     {
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
       m_intraOBMCBuf[c] = (Pel*)xMalloc(Pel, MAX_CU_SIZE * MAX_CU_SIZE);
+#endif
       m_beforeOBMCBuf[c] = (Pel*)xMalloc(Pel, MAX_CU_SIZE * MAX_CU_SIZE);
     }
 #endif
@@ -753,13 +773,50 @@ void InterPrediction::init( RdCost* pcRdCost, ChromaFormat chromaFormatIDC, cons
     m_tmpObmcBufL0.create(UnitArea(chromaFormatIDC, Area(0, 0, 4, MAX_CU_SIZE)));
     m_tmpObmcBufT0.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, 4)));
     m_tmpSubObmcBuf.create(UnitArea(chromaFormatIDC, Area(0, 0, 20, 4)));
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_tmpNbObmcBufL.create(UnitArea(chromaFormatIDC, Area(0, 0, 4, MAX_CU_SIZE)));
+    m_tmpNbObmcBufA.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, 4)));
+
+    m_tmpNbObmcBufA.bufs[0].memset(0);
+    m_tmpNbObmcBufL.bufs[0].memset(0);
+
+    if (chromaFormatIDC != CHROMA_400)
+    {
+      m_tmpNbObmcBufA.bufs[1].memset(0);
+      m_tmpNbObmcBufA.bufs[2].memset(0);
+
+      m_tmpNbObmcBufL.bufs[1].memset(0);
+      m_tmpNbObmcBufL.bufs[2].memset(0);
+    }
+    m_tmpNbIntraObmcBufL.create(UnitArea(chromaFormatIDC, Area(0, 0, 4, MAX_CU_SIZE)));
+    m_tmpNbIntraObmcBufA.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, 4)));
+
+    m_tmpNbIntraObmcBufA.bufs[0].memset(0);
+    m_tmpNbIntraObmcBufL.bufs[0].memset(0);
+
+    if (chromaFormatIDC != CHROMA_400)
+    {
+      m_tmpNbIntraObmcBufA.bufs[1].memset(0);
+      m_tmpNbIntraObmcBufA.bufs[2].memset(0);
+
+      m_tmpNbIntraObmcBufL.bufs[1].memset(0);
+      m_tmpNbIntraObmcBufL.bufs[2].memset(0);
+    }
+#endif
     m_tmpSubObmcBuf.bufs[0].memset(0);
     if(chromaFormatIDC != CHROMA_400)
     {
       m_tmpSubObmcBuf.bufs[1].memset(0);
       m_tmpSubObmcBuf.bufs[2].memset(0);
     }
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_tmpSubBuf1 = m_tmpSubObmcBuf.subBuf(UnitArea(chromaFormatIDC, Area( 0, 0, 4, 4)));
+    m_tmpSubBuf2 = m_tmpSubObmcBuf.subBuf(UnitArea(chromaFormatIDC, Area( 4, 0, 4, 4)));
+    m_tmpSubBuf3 = m_tmpSubObmcBuf.subBuf(UnitArea(chromaFormatIDC, Area( 8, 0, 4, 4)));
+    m_tmpSubBuf4 = m_tmpSubObmcBuf.subBuf(UnitArea(chromaFormatIDC, Area(12, 0, 4, 4)));
+    m_tmpSubBuf0 = m_tmpSubObmcBuf.subBuf(UnitArea(chromaFormatIDC, Area(16, 0, 4, 4)));
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
     m_tmpIntraObmcBufL0.create(UnitArea(chromaFormatIDC, Area(0, 0, 4, MAX_CU_SIZE)));
     m_tmpIntraObmcBufT0.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, 4)));
 #endif
@@ -951,6 +1008,15 @@ void InterPrediction::init( RdCost* pcRdCost, ChromaFormat chromaFormatIDC, cons
   {
     m_mbvdTestedCandsList = ( bool* ) xMalloc( bool, IBC_MBVD_AD_NUM );
   }
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_geoOBMC = false;
+  m_obmcLoadMode = false;
+  m_nbIsSCC = false;
+  m_pixelRefine = false;
+  m_neighbSccChecked = false;
+  m_intraObmcReload = false;
 #endif
 }
 
@@ -3506,7 +3572,11 @@ void InterPrediction::xPredInterBi(PredictionUnit &pu, PelUnitBuf &pcYuvPred, co
       }
       else
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        xPredInterUni(pu, eRefPicList, pcMbBuf, !pu.cu->slice->getCheckUseSepOBMC() ? pu.cu->geoFlag : false, bioApplied, luma, chroma);
+#else
         xPredInterUni(pu, eRefPicList, pcMbBuf, pu.cu->geoFlag, bioApplied, luma, chroma);
+#endif
       }
     }
   }
@@ -4035,9 +4105,17 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
 {
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  const bool useBiFilter = frac64 || m_geoOBMC ? false : bi;
+#else
   const bool useBiFilter = frac64 ? false : bi;
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  const bool useBiFilter = m_geoOBMC ? false : bi;
 #else
   const bool useBiFilter = bi;
+#endif
 #endif
 #endif
 
@@ -5351,7 +5429,11 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
   {
 #endif
 #if JVET_AD0213_LIC_IMP
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (compID == COMPONENT_Y && pu.cu->cs->sps->getUseOBMC() == true && pu.cu->obmcFlag == true && (!pu.cu->geoFlag || (pu.cu->geoFlag && !pu.cu->slice->getCheckUseSepOBMC())))
+#else
     if (compID == COMPONENT_Y && pu.cu->cs->sps->getUseOBMC() == true && pu.cu->obmcFlag == true)
+#endif
 #else  
     if (compID == COMPONENT_Y && pu.cu->licFlag == false && pu.cu->cs->sps->getUseOBMC() == true && pu.cu->obmcFlag == true)
 #endif
@@ -5470,6 +5552,13 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
   enablePROF &= ((pu.mmvdEncOptMode & 3) != 3); // encoder-only
 #endif
 #if JVET_AC0158_PIXEL_AFFINE_MC
+  }
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (pu.cu->geoFlag && pu.cu->slice->getCheckUseSepOBMC() && !m_pixelRefine && (compID == COMPONENT_Y))
+  {
+    m_pixelRefine = (enablePROF || enable1x1) ? true : false;
   }
 #endif
 
@@ -8032,7 +8121,11 @@ void InterPrediction::xWeightedAverage(
   }
   else if( iRefIdx0 >= 0 && iRefIdx1 < 0 )
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (pu.cu->geoFlag && !pu.cu->slice->getCheckUseSepOBMC())
+#else
     if( pu.cu->geoFlag )
+#endif
     {
 #if JVET_W0097_GPM_MMVD_TM
       pcYuvDst.copyFrom(pcYuvSrc0, lumaOnly, chromaOnly);
@@ -8051,7 +8144,11 @@ void InterPrediction::xWeightedAverage(
   }
   else if( iRefIdx0 < 0 && iRefIdx1 >= 0 )
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (pu.cu->geoFlag && !pu.cu->slice->getCheckUseSepOBMC())
+#else
     if( pu.cu->geoFlag )
+#endif
     {
 #if JVET_W0097_GPM_MMVD_TM
       pcYuvDst.copyFrom(pcYuvSrc1, lumaOnly, chromaOnly);
@@ -8930,7 +9027,11 @@ void InterPrediction::motionCompensation( PredictionUnit &pu, PelUnitBuf &predBu
   }
 
 #if JVET_AE0046_BI_GPM
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (pu.cu->geoFlag && (pu.interDir == 3) && !pu.cu->slice->getCheckUseSepOBMC())
+#else
   if (pu.cu->geoFlag && pu.interDir == 3)
+#endif
   {
     const bool lumaOnly = luma && !chroma;
     const bool chromaOnly = !luma && chroma;
@@ -8972,9 +9073,17 @@ void InterPrediction::motionCompensation( PredictionUnit &pu, const RefPicList &
 */
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterPrediction::subBlockOBMC(PredictionUnit& pu, PelUnitBuf* pDst, IntraPrediction* pcIntraPred, bool lumaOnly, bool chromaOnly, bool usePreCheck, bool saveMode)
+#else
 void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst, IntraPrediction *pcIntraPred, bool lumaOnly)
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterPrediction::subBlockOBMC(PredictionUnit& pu, PelUnitBuf* pDst, IntraPrediction* pcIntraPred, bool lumaOnly, bool chromaOnly, bool usePreCheck, bool saveMode)
 #else
 void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst, IntraPrediction *pcIntraPred)
+#endif
 #endif
 #else
 void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
@@ -9000,12 +9109,29 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (saveMode || (pu.cu->predMode == MODE_INTER && pu.mergeFlag) || CU::isIBC(*pu.cu) || PU::isTmp(pu))
+#else
   if ((pu.cu->predMode == MODE_INTER && pu.mergeFlag) || CU::isIBC(*pu.cu) || PU::isTmp(pu))
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (saveMode || (pu.cu->predMode == MODE_INTER && pu.mergeFlag))
 #else
   if (pu.cu->predMode == MODE_INTER && pu.mergeFlag)
 #endif
+#endif
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (!m_neighbSccChecked)
+    {
+      m_nbIsSCC = isSCC(pu);
+      m_neighbSccChecked = true;
+    }
+    if (m_nbIsSCC)
+#else
     if (isSCC(pu))
+#endif
     {
       return;
     }
@@ -9020,10 +9146,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
     m_dimdForOBMCFilled = true;
   }
-
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
   PelUnitBuf predIntra = PelUnitBuf(pu.chromaFormat, PelBuf(m_intraOBMCBuf[COMPONENT_Y], pu.blocks[COMPONENT_Y].width, pu.blocks[COMPONENT_Y].height),
     PelBuf(m_intraOBMCBuf[COMPONENT_Cb], pu.blocks[COMPONENT_Cb].width, pu.blocks[COMPONENT_Cb].height),
     PelBuf(m_intraOBMCBuf[COMPONENT_Cr], pu.blocks[COMPONENT_Cr].width, pu.blocks[COMPONENT_Cr].height));
+#endif
 #endif
 
   const UnitArea   orgPuArea = pu;
@@ -9039,12 +9166,45 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
 #if MULTI_PASS_DMVR
 #if JVET_AG0098_AMVP_WITH_SBTMVP
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool bSubMotion = pu.cu->affine || pu.bdmvrRefine || pu.amvpSbTmvpFlag;
+#else
   const bool bSubMotion = pu.cu->affine || pu.bdmvrRefine || pu.amvpSbTmvpFlag;
+#endif
 #else
   const bool bSubMotion = pu.cu->affine || pu.bdmvrRefine;
 #endif
 #else
   const bool bSubMotion = pu.cu->affine || PU::checkDMVRCondition(pu);
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  const int compStart = chromaOnly ? 1 : 0;
+  const int compEnd   = lumaOnly ? 1 : MAX_NUM_COMPONENT;
+  bool isInter = (CU::isIBC(*pu.cu) || PU::isTmp(pu)) ? false : true;
+  bool skipTM = false;
+
+  m_geoOBMC = false;
+
+  if (saveMode)
+  {
+    skipTM = true;
+    m_geoOBMC = true;
+    bSubMotion = false;
+
+    nbEachLength[0].clear();
+    nbEachLength[1].clear();
+  }
+  else if (pu.cu->geoFlag && pu.cu->slice->getCheckUseSepOBMC())
+  {
+    skipTM = !pu.cu->slice->getCheckLDC();
+    m_geoOBMC = true;
+
+    if (pu.cu->affine && m_pixelRefine)
+    {
+      bSubMotion = false;
+    }
+  }
 #endif
 
   MotionInfo NeighMi = MotionInfo();
@@ -9111,6 +9271,14 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
   PelUnitBuf pcYuvPred = pDst == nullptr ? pu.cs->getPredBuf(pu) : *pDst;
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  UnitArea localUnitAreaL(pu.chromaFormat, Area(0, 0, uiMinCUW, pu.lheight()));
+  UnitArea localUnitAreaT(pu.chromaFormat, Area(0, 0, pu.lwidth(), uiMinCUW));
+  PelUnitBuf pcYuvTmpIntraPredL0 = m_tmpNbIntraObmcBufL.getBuf(localUnitAreaL);
+  PelUnitBuf pcYuvTmpIntraPredT0 = m_tmpNbIntraObmcBufA.getBuf(localUnitAreaT);
+  PelUnitBuf pcYuvTmpPredL0 = (m_obmcLoadMode || saveMode) ? m_tmpNbObmcBufL.getBuf(localUnitAreaL) : m_tmpObmcBufL0.getBuf(localUnitAreaL);
+  PelUnitBuf pcYuvTmpPredT0 = (m_obmcLoadMode || saveMode) ? m_tmpNbObmcBufA.getBuf(localUnitAreaT) : m_tmpObmcBufT0.getBuf(localUnitAreaT);
+#else
 #if JVET_AK0076_EXTENDED_OBMC_IBC
   UnitArea localUnitAreaL(pu.chromaFormat, Area(0, 0, uiMinCUW, pu.lheight()));
   UnitArea localUnitAreaT(pu.chromaFormat, Area(0, 0, pu.lwidth(), uiMinCUW));
@@ -9122,21 +9290,33 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
   PelUnitBuf pcYuvTmpPredL0 = m_tmpObmcBufL0.subBuf(UnitAreaRelative(*pu.cu, pu));
   PelUnitBuf pcYuvTmpPredT0 = m_tmpObmcBufT0.subBuf(UnitAreaRelative(*pu.cu, pu));
 #endif
+#endif
 
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
   PelUnitBuf beforeOBMC = PelUnitBuf(pu.chromaFormat, PelBuf(m_beforeOBMCBuf[COMPONENT_Y], pu.blocks[COMPONENT_Y].width, pu.blocks[COMPONENT_Y].height),
     PelBuf(m_beforeOBMCBuf[COMPONENT_Cb], pu.blocks[COMPONENT_Cb].width, pu.blocks[COMPONENT_Cb].height),
     PelBuf(m_beforeOBMCBuf[COMPONENT_Cr], pu.blocks[COMPONENT_Cr].width, pu.blocks[COMPONENT_Cr].height));
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (!m_geoOBMC)
+  {
+#endif
 #if JVET_AK0076_EXTENDED_OBMC_IBC
   beforeOBMC.copyFrom(pcYuvPred, lumaOnly);
 #else
   beforeOBMC.copyFrom(pcYuvPred);
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  }
 #endif
 #endif
 
   for (int iBlkBoundary = 0; iBlkBoundary < 2; iBlkBoundary++)  // 0 - top; 1 - left
   {
     unsigned int uiLengthInBlock = ((iBlkBoundary == 0) ? uiWidthInBlock : uiHeightInBlock);
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    uint8_t offIdx = 0;
+#endif
 
     int iSub = 0, iState = 0;
 
@@ -9168,7 +9348,24 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         }
       }
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if (saveMode)
+      {
+        iState = PU::getSameNeigMotion(pu, NeighMi, curOffset, iBlkBoundary, iLength, uiLengthInBlock - iSub, 1);
+        nbEachLength[iBlkBoundary].push_back(iLength);
+      }
+      else if (usePreCheck)
+      {
+        iState = PU::getSameNeigMotion(pu, NeighMi, curOffset, iBlkBoundary, iLength, uiLengthInBlock - iSub, 2, offIdx, &nbEachLength[iBlkBoundary]);
+        offIdx++;
+      }
+      else
+      {
+        iState = PU::getSameNeigMotion(pu, NeighMi, curOffset, iBlkBoundary, iLength, uiLengthInBlock - iSub);
+      }
+#else
       iState = PU::getSameNeigMotion(pu, NeighMi, curOffset, iBlkBoundary, iLength, uiLengthInBlock - iSub);
+#endif
 
       if (iState == 2)  // do OBMC
       {
@@ -9203,19 +9400,42 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if JVET_Z0061_TM_OBMC
         bool isAbove   = (iBlkBoundary == 0) ? 1 : 0;
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        int  iOBMCmode = (skipTM || CU::isIBC(*pu.cu) || NeighMi.isIBCmot) ? 2 : selectOBMCmode(pu, subPu, isAbove, iLength, uiMinCUW, curOffset);
+#else
         int  iOBMCmode = (CU::isIBC(*pu.cu) || NeighMi.isIBCmot) ? 2 : selectOBMCmode(pu, subPu, isAbove, iLength, uiMinCUW, curOffset);
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        int  iOBMCmode = skipTM ? 2 : selectOBMCmode(pu, subPu, isAbove, iLength, uiMinCUW, curOffset);
 #else
         int  iOBMCmode = selectOBMCmode(pu, subPu, isAbove, iLength, uiMinCUW, curOffset);
 #endif
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
 #if JVET_AK0076_EXTENDED_OBMC_IBC
         std::vector<Pel>* lut = nullptr;
+        PredMode modeBak = subPu.cu->predMode;
+        int imv = subPu.cu->imv;
+#endif
+        if (!m_obmcLoadMode)
+        {
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
+        std::vector<Pel>* lut = nullptr;
+#endif
         if (m_pcReshape->getSliceReshaperInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
         {
           lut = (CU::isIBC(*pu.cu) && !NeighMi.isIBCmot) ? &m_pcReshape->getFwdLUT() : (!CU::isIBC(*pu.cu) && NeighMi.isIBCmot) ? &m_pcReshape->getInvLUT() : nullptr;
         }
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        subPu.cu->predMode = (subPu.refIdx[0] == MAX_NUM_REF) ? MODE_IBC : MODE_INTER;
+#else
         PredMode modeBak = subPu.cu->predMode;
         subPu.cu->predMode = (subPu.refIdx[0] == MAX_NUM_REF) ? MODE_IBC : MODE_INTER;
         int imv = subPu.cu->imv;
+#endif
         if (NeighMi.isIBCmot)
         {
           subPu.cu->imv = 0;
@@ -9264,6 +9484,23 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         subPu.cu->altLMFlag = neighPu->cu->altLMFlag;
         subPu.cu->altLMParaUnit = neighPu->cu->secAltLMParaUnit;
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        }
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        if (saveMode)
+        {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+          xSubBlockMotionCompensation(subPu, cTmp1, false, false, lut);
+#else
+          xSubBlockMotionCompensation(subPu, cTmp1);
+#endif
+          iSub += iLength;
+        }
+        else
+        {
+#endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
         PelUnitBuf cTmpBeforeOBMC = beforeOBMC.subBuf(predArea);
 #endif
@@ -9271,11 +9508,27 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         if (iOBMCmode == -1)
         {
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          if (!m_obmcLoadMode)
+          {
+            xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly, lut);
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
+#else
           xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, lut);
           for (int compID = 0; compID < numComp; compID++)
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          if (!m_obmcLoadMode)
+          {
+            xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly);
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
 #else
           xSubBlockMotionCompensation(subPu, cTmp1);
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
 #endif
           {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
@@ -9299,13 +9552,29 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         else if (iOBMCmode == 2)   // 2: neighbour;
         {
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          if (!m_obmcLoadMode)
+          {
+            xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly, lut);
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
+#else
           xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, lut);
 
           for (int compID = 0; compID < numComp; compID++)
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          if (!m_obmcLoadMode)
+          {
+            xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly);
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
 #else
           xSubBlockMotionCompensation(subPu, cTmp1);
 
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
 #endif
           {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
@@ -9323,13 +9592,29 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
         else   // 3: blend (OBMC) or default 0: best has not been found;
         {
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          if (!m_obmcLoadMode)
+          {
+            xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly, lut);
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
+#else
           xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, lut);
 
           for (int compID = 0; compID < numComp; compID++)
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          if (!m_obmcLoadMode)
+          {
+            xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly);
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
 #else
           xSubBlockMotionCompensation(subPu, cTmp1);
 
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
 #endif
           {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
@@ -9344,6 +9629,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
           }
           iSub += iLength;
         }
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        }
+#endif
+
 #else
 #if JVET_AD0213_LIC_IMP
         PredictionUnit* neighPu = pu.cs->getPU(posNeighbor, pu.chType);
@@ -9388,7 +9678,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
       }
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      else if ( (!saveMode || (saveMode && !m_intraObmcReload)) && (iState == 1 && m_modeGetCheck[iBlkBoundary]))
+#else
       else if (iState == 1 && m_modeGetCheck[iBlkBoundary])
+#endif
       {
         int cumLength = 0;
         while (cumLength < iLength)
@@ -9421,8 +9715,20 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
           const UnitArea predArea = UnitAreaRelative(orgPuArea, subPu);
           PelUnitBuf     cPredForBlend = pcYuvPred.subBuf(predArea);
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          PelUnitBuf cTmp = (iBlkBoundary == 0) ? pcYuvTmpIntraPredT0.subBuf(predArea) : pcYuvTmpIntraPredL0.subBuf(predArea);
+          if ( ( !m_intraObmcReload && (pu.cu->slice->getSliceType() == I_SLICE || isInter) ) || (pu.cu->slice->getSliceType() != I_SLICE && !isInter) )
+          {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+            subBlockIntraForOBMC(subPu, iSub, (iBlkBoundary == 0), cTmp, pcIntraPred, (pu.cu->slice->getSliceType() == I_SLICE || !isInter) ? lumaOnly : false);
+#else
+            subBlockIntraForOBMC(subPu, iSub, (iBlkBoundary == 0), cTmp, pcIntraPred);
+#endif
+          }
+          for (int compID = compStart; compID < compEnd; compID++)
+#else
           PelUnitBuf cTmp = predIntra.subBuf(predArea);
-         
+
 #if JVET_AK0076_EXTENDED_OBMC_IBC
           PelUnitBuf cTmp1 = iBlkBoundary == 0 ? pcYuvIntraTmpPredT0.subBuf(predArea) : pcYuvIntraTmpPredL0.subBuf(predArea);
           if (m_intraObmcPred && pu.cu->cs->pcv->isEncoder && pu.cu->slice->getSliceType() == I_SLICE)
@@ -9442,7 +9748,12 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #else
           subBlockIntraForOBMC(subPu, iSub, (iBlkBoundary == 0), cTmp, pcIntraPred);
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          for (int compID = compStart; compID < compEnd; compID++)
+#else
           for (int compID = 0; compID < MAX_NUM_COMPONENT; compID++)
+#endif
+#endif
 #endif
           {
             PelUnitBuf cTmpBeforeOBMC = beforeOBMC.subBuf(predArea);
@@ -9470,7 +9781,7 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
     CHECK(iSub != uiLengthInBlock, "not all sub-blocks are merged");
   }
 
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
   if (pu.cu->cs->pcv->isEncoder)
   {
     m_intraObmcPred = true;
@@ -9515,6 +9826,13 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
     pu.cu->affine = affine;
     pu.cu->geoFlag = geo;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (!m_intraObmcReload && (pu.cu->slice->getSliceType() == I_SLICE || isInter))
+    {
+      m_intraObmcReload = true;
+    }
+    m_geoOBMC = false;
+#endif
     return;
   }
 
@@ -9576,7 +9894,16 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
       bool bCURBoundary = (iSubX == uiWidthInBlock - 1);
       bool bCUBBoundary = (iSubY == uiHeightInBlock - 1);
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      const int posX = iSubX * uiMinCUW;
+      const int posY = iSubY * uiMinCUW;
+      Position posSubBlock = pu.lumaPos().offset(posX, posY);
+      MotionInfo currMi = pu.getMotionInfo(posSubBlock);
+
+      subPu.UnitArea::operator=(UnitArea(pu.chromaFormat, Area(orgPuArea.lumaPos().offset(posX, posY), Size{ uiMinCUW, uiMinCUW })));
+#else
       subPu.UnitArea::operator=(UnitArea(pu.chromaFormat, Area(orgPuArea.lumaPos().offset(iSubX * uiMinCUW, iSubY * uiMinCUW), Size{ uiMinCUW, uiMinCUW })));
+#endif
       const UnitArea predArea = UnitAreaRelative(orgPuArea, subPu);
       PelUnitBuf     cPred = pcYuvPred.subBuf(predArea);
 
@@ -9585,53 +9912,89 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
       // above
       if (iSubY)
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        isAboveAvail = PU::getNeighborMotion(pu, currMi, NeighMi, posSubBlock.offset(0, -1));
+#else
         isAboveAvail = PU::getNeighborMotion(pu, NeighMi, Position(iSubX * uiMinCUW, iSubY * uiMinCUW), Size(uiMinCUW, uiMinCUW), 0);
+#endif
         if (isAboveAvail)
         {
           subPu = NeighMi;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          xSubBlockMotionCompensation(subPu, cTmp1, lumaOnly, chromaOnly);
+#else
           xSubBlockMotionCompensation(subPu, cTmp1);
+#endif
         }
       }
 
       // left
       if (iSubX)
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        isLeftAvail = PU::getNeighborMotion(pu, currMi, NeighMi, posSubBlock.offset(-1, 0));
+#else
         isLeftAvail = PU::getNeighborMotion(pu, NeighMi, Position(iSubX * uiMinCUW, iSubY * uiMinCUW), Size(uiMinCUW, uiMinCUW), 1);
+#endif
         if (isLeftAvail)
         {
           subPu = NeighMi;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          xSubBlockMotionCompensation(subPu, cTmp2, lumaOnly, chromaOnly);
+#else
           xSubBlockMotionCompensation(subPu, cTmp2);
+#endif
         }
       }
 
       // below
       if (!bCUBBoundary)
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        isBelowAvail = PU::getNeighborMotion(pu, currMi, NeighMi, posSubBlock.offset(0, uiMinCUW));
+#else
         isBelowAvail = PU::getNeighborMotion(pu, NeighMi, Position(iSubX * uiMinCUW, iSubY * uiMinCUW), Size(uiMinCUW, uiMinCUW), 2);
+#endif
         if (isBelowAvail)
         {
           subPu = NeighMi;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          xSubBlockMotionCompensation(subPu, cTmp3, lumaOnly, chromaOnly);
+#else
           xSubBlockMotionCompensation(subPu, cTmp3);
+#endif
         }
       }
 
       // right
       if (!bCURBoundary)
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        isRightAvail = PU::getNeighborMotion(pu, currMi, NeighMi, posSubBlock.offset(uiMinCUW, 0));
+#else
         isRightAvail = PU::getNeighborMotion(pu, NeighMi, Position(iSubX * uiMinCUW, iSubY * uiMinCUW), Size(uiMinCUW, uiMinCUW), 3);
+#endif
         if (isRightAvail)
         {
           subPu = NeighMi;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+          xSubBlockMotionCompensation(subPu, cTmp4, lumaOnly, chromaOnly);
+#else
           xSubBlockMotionCompensation(subPu, cTmp4);
+#endif
         }
       }
 
       if( isAboveAvail || isLeftAvail || isBelowAvail || isRightAvail )
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        for (int compID = compStart; compID < compEnd; compID++)
+#else
 #if JVET_AK0076_EXTENDED_OBMC_IBC
         for (int compID = 0; compID < numComp; compID++)
 #else
         for( int compID = 0; compID < MAX_NUM_COMPONENT; compID++ )
+#endif
 #endif
         {
           xSubblockOBMCBlending( ComponentID( compID ), subPu, cPred, isAboveAvail ? cTmp1: zero, isLeftAvail ? cTmp2: zero, isBelowAvail ? cTmp3: zero, isRightAvail ? cTmp4: zero, isAboveAvail, isLeftAvail, isBelowAvail, isRightAvail, true );
@@ -9668,6 +10031,14 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
   pu.cu->affine = affine;
   pu.cu->geoFlag = geo;
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (!m_intraObmcReload && (pu.cu->slice->getSliceType() == I_SLICE || isInter))
+  {
+    m_intraObmcReload = true;
+  }
+  m_geoOBMC = false;
+#endif
+
   return;
 }
 
@@ -9703,9 +10074,17 @@ void InterPrediction::xSubblockOBMC(const ComponentID eComp, PredictionUnit &pu,
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (!bIsIntra && !m_geoOBMC && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp)), lmcsLut))
+#else
   if (!bIsIntra && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp)), lmcsLut))
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (!bIsIntra && !m_geoOBMC && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp))))
 #else
   if (!bIsIntra && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp))))
+#endif
 #endif
 #else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pOrgDst, strideDst, pu.cs->sps->getBitDepth(toChannelType(eComp))))
@@ -9714,7 +10093,9 @@ void InterPrediction::xSubblockOBMC(const ComponentID eComp, PredictionUnit &pu,
     return;
   }
 #endif
-
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  weightObmcBoundary(pOrgDst, pOrgSrc, strideDst, strideSrc, iWidth, iHeight, iDir, eComp, -1, bSubMotion);
+#else
   if (iDir == 0) //above
   {
     for (int i = 0; i < iWidth; i++)
@@ -9802,6 +10183,7 @@ void InterPrediction::xSubblockOBMC(const ComponentID eComp, PredictionUnit &pu,
       pSrc += strideSrc;
     }
   }
+#endif
 }
 
 #if ENABLE_OBMC
@@ -9824,6 +10206,9 @@ void InterPrediction::xSubblockOBMCBlending(const ComponentID eComp, PredictionU
   const int strideDst = pcYuvPredDst.bufs[eComp].stride;
   const int strideSrc = pcYuvPredSrc1.bufs[eComp].stride;
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  weightObmcInnerBoundary(eComp, pOrgDst, pOrgSrc1, pOrgSrc2, pOrgSrc3, pOrgSrc4, strideDst, strideSrc, iWidth, iHeight, isAboveAvail, isLeftAvail, isBelowAvail, isRightAvail);
+#else
   unsigned int isChroma = !isLuma( eComp );
   unsigned int aboveWeight[4], leftWeight[4], belowWeight[4], rightWeight[4];
 
@@ -9914,6 +10299,7 @@ void InterPrediction::xSubblockOBMCBlending(const ComponentID eComp, PredictionU
     pDst[0] = ((sumWeight - leftWeight[0] - belowWeight[0]) * pDst[0] + leftWeight[0] * pSrc2[0] + belowWeight[0] * pSrc3[0] + add) >> shift;
     pDst[1] = ((sumWeight - belowWeight[0] - rightWeight[0]) * pDst[1] + belowWeight[0] * pSrc3[1] + rightWeight[0] * pSrc4[1] + add) >> shift;
   }
+#endif
 }
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
@@ -10084,9 +10470,17 @@ bool InterPrediction::skipObmcConditionByPixel(PredictionUnit& pu, ComponentID c
 #endif
 
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterPrediction::xSubBlockMotionCompensation(PredictionUnit& pu, PelUnitBuf& pcYuvPred, bool lumaOnly, bool chromaOnly, std::vector<Pel>* lmcsLut)
+#else
 void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf &pcYuvPred, bool lumaOnly, std::vector<Pel>* lmcsLut)
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterPrediction::xSubBlockMotionCompensation(PredictionUnit& pu, PelUnitBuf& pcYuvPred, bool lumaOnly, bool chromaOnly)
 #else
 void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf &pcYuvPred)
+#endif
 #endif
 {
 #if JVET_AK0076_EXTENDED_OBMC_IBC
@@ -10095,10 +10489,14 @@ void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf
   if (xCheckIdenticalMotion(pu))
 #endif
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    xPredInterUni(pu, REF_PIC_LIST_0, pcYuvPred, false, false, !chromaOnly, !lumaOnly);
+#else
 #if JVET_AK0076_EXTENDED_OBMC_IBC
     xPredInterUni(pu, REF_PIC_LIST_0, pcYuvPred, false, false, true, !lumaOnly);
 #else
     xPredInterUni(pu, REF_PIC_LIST_0, pcYuvPred, false, false, true, true);
+#endif
 #endif
 #if JVET_AG0276_NLIC
     if (pu.cu->altLMFlag)
@@ -10111,6 +10509,16 @@ void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf
       {
         ComponentID compID = (ComponentID)comp;
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        if (compID == COMPONENT_Y && chromaOnly)
+        {
+          continue;
+        }
+        if (compID != COMPONENT_Y && lumaOnly)
+        {
+          continue;
+        }
+#endif
         int scale = pu.cu->altLMParaUnit.scale[comp];
         int shift = 5;
         int offset = pu.cu->altLMParaUnit.offset[comp];
@@ -10121,10 +10529,14 @@ void InterPrediction::xSubBlockMotionCompensation(PredictionUnit &pu, PelUnitBuf
   }
   else
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    xPredInterBi(pu, pcYuvPred, !chromaOnly, !lumaOnly);
+#else
 #if JVET_AK0076_EXTENDED_OBMC_IBC
     xPredInterBi(pu, pcYuvPred, true, !lumaOnly);
 #else
     xPredInterBi(pu, pcYuvPred, true);
+#endif
 #endif
   }
 #if JVET_AK0076_EXTENDED_OBMC_IBC
@@ -10889,8 +11301,10 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
                                           , Mv(&subMvBuf)[MRG_MAX_NUM_CANDS << 1][MAX_NUM_SUBCU_DMVR]
                                           , Mv(&subBdofBuf)[MRG_MAX_NUM_CANDS][BDOF_SUBPU_MAX_NUM]
 #endif
-#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA || JVET_AK0212_GPM_OBMC_MODIFICATION
                                           , IntraPrediction* pcIntraPred
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
                                           , std::vector<Pel>* reshapeLUT
 #endif
   )
@@ -11057,6 +11471,20 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
   int numPu = 0;
   for (auto& pu : CU::traversePUs(cu))
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (pu.cu->slice->getCheckUseSepOBMC())
+    {
+      cu.isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      subBlockOBMC(pu, nullptr, pcIntraPred, false, false, false, true);
+#else
+      subBlockOBMC(pu, nullptr, false, false, false, true);
+#endif
+      m_obmcLoadMode = true;
+      cu.isobmcMC = false;
+    }
+#endif
+
     const UnitArea localUnitArea(cu.cs->area.chromaFormat, Area(0, 0, pu.lwidth(), pu.lheight()));
     PelUnitBuf tmpGeoBuf0 = m_geoPartBuf[0].getBuf(localUnitArea);
     PelUnitBuf tmpGeoBuf1 = m_geoPartBuf[1].getBuf(localUnitArea);
@@ -11108,12 +11536,38 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         pu.gpmDmvrRefinePart0 = pu.bdmvrRefine;
       }
 #endif
-
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      m_pixelRefine = false;
+#endif
       motionCompensation( pu, tmpGeoBuf0, REF_PIC_LIST_X, true, isChromaEnabled(pu.chromaFormat) );
 
 #if JVET_AE0046_BI_GPM
       pu.bdmvrRefine = false;
       ::memcpy(subBdofBuf[geoBI.mergeCand[0]], getBdofSubPuMvOffset(), sizeof(Mv) * BDOF_SUBPU_MAX_NUM);
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if (pu.cu->slice->getCheckUseSepOBMC())
+      {
+        pu.gpmDmvrRefinePart0 = refinePossible0;
+        pu.gpmDmvrRefinePart1 = false;
+        PU::spanMotionInfo2(pu, MergeCtx(), 0, nullptr, nullptr, subBdofBuf[geoBI.mergeCand[0]]);
+        cu.isobmcMC = true;
+        pu.bdmvrRefine = refinePossible0;
+        subBlockOBMC(pu, &tmpGeoBuf0, pcIntraPred);
+        cu.isobmcMC = false;
+        pu.bdmvrRefine = false;
+        m_pixelRefine = false;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+        if (reshapeLUT && geoBI.isIntra[1] && pu.geoBlendIntraFlag)
+        {
+          tmpGeoBuf0.Y().rspSignal(*reshapeLUT);
+        }
+#endif
+      }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      else
+#endif
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
       if (geoBI.isIntra[1])
@@ -11202,6 +11656,30 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
       pu.bdmvrRefine = false;
       ::memcpy(subBdofBuf[geoBI.mergeCand[1]], getBdofSubPuMvOffset(), sizeof(Mv) * BDOF_SUBPU_MAX_NUM);
 #endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if (pu.cu->slice->getCheckUseSepOBMC())
+      {
+        pu.gpmDmvrRefinePart0 = false;
+        pu.gpmDmvrRefinePart1 = refinePossible1;
+        PU::spanMotionInfo2(pu, MergeCtx(), 0, nullptr, nullptr, subBdofBuf[geoBI.mergeCand[1]]);
+        cu.isobmcMC = true;
+        pu.bdmvrRefine = refinePossible1;
+        subBlockOBMC(pu, &tmpGeoBuf1, pcIntraPred);
+        cu.isobmcMC = false;
+        pu.bdmvrRefine = false;
+        m_pixelRefine = false;
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+        if (reshapeLUT && geoBI.isIntra[0] && pu.geoBlendIntraFlag)
+        {
+          tmpGeoBuf1.Y().rspSignal(*reshapeLUT);
+        }
+#endif
+      }
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+      else
+#endif
+#endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
       if (geoBI.isIntra[0])
       {
@@ -11247,12 +11725,20 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
     cu.blendModel.copy( geoBI.blendModel );
 
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    weightedBlend(pu, predBuf, tmpGeoBuf0, tmpGeoBuf1, false, false, pu.cu->slice->getCheckUseSepOBMC() || pu.geoBlendIntraFlag ? false : true);
+#else
     weightedBlend( pu, predBuf, tmpGeoBuf0, tmpGeoBuf1, false, false, pu.geoBlendIntraFlag ? false : true );
+#endif
 
     int geoMergeIdx0 = geoBI.isIntra[0] ? (geoBI.mergeCand[0] + GEO_MAX_NUM_UNI_CANDS) : geoBI.mergeCand[0];
     int geoMergeIdx1 = geoBI.isIntra[1] ? (geoBI.mergeCand[1] + GEO_MAX_NUM_UNI_CANDS) : geoBI.mergeCand[1];
 #else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    weightedBlend(pu, predBuf, tmpGeoBuf0, tmpGeoBuf1, false, false, !pu.cu->slice->getCheckUseSepOBMC() ? true : false);
+#else
     weightedBlend( pu, predBuf, tmpGeoBuf0, tmpGeoBuf1, false, false, true );
+#endif
 
     int geoMergeIdx0 = geoBI.mergeCand[0];
     int geoMergeIdx1 = geoBI.mergeCand[1];
@@ -11338,6 +11824,11 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
     CHECK( mergeIdx >= pu.cs->sps->getMaxNumGeoCand(), "geoBlend idx should be < sps->getMaxNumGeoCand()");
 
     numPu++;
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_obmcLoadMode = false;
+    m_pixelRefine = false;
+#endif
   }
 
   if ( numPu > 1 ) 
@@ -11495,6 +11986,22 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
     bool isIntra0 = candIdx0 >= GEO_MAX_NUM_UNI_CANDS;
     bool isIntra1 = candIdx1 >= GEO_MAX_NUM_UNI_CANDS;
 #endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (pu.cu->slice->getCheckUseSepOBMC())
+    {
+      cu.isobmcMC = true;
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+      subBlockOBMC(pu, nullptr, pcIntraPred, false, false, false, true);
+#else
+      subBlockOBMC(pu, nullptr, false, false, false, true);
+#endif
+      m_obmcLoadMode = true;
+      cu.isobmcMC = false;
+    }
+    m_pixelRefine = false;
+#endif
+
 #if JVET_AI0082_GPM_WITH_INTER_IBC
 #if JVET_AG0164_AFFINE_GPM
     bool isIbc0 = candIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
@@ -11628,6 +12135,9 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
     }
 #endif
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_pixelRefine = false;
+#endif
     motionCompensation(pu, tmpGeoBuf0, REF_PIC_LIST_X, true, isChromaEnabled(pu.chromaFormat)); // TODO: check 4:0:0 interaction with weighted prediction.
 
 #if JVET_AG0164_AFFINE_GPM
@@ -11647,15 +12157,37 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #if JVET_AG0164_AFFINE_GPM
       || pu.affineGPM[0] || pu.affineGPM[1]
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      || pu.cu->slice->getCheckUseSepOBMC()
+#endif
       )
     {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if (!pu.cu->slice->getCheckUseSepOBMC())
+      {
+        tmpGeoBuf0.roundToOutputBitdepth(tmpGeoBuf0, cu.slice->clpRngs());
+      }
+#else
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
       tmpGeoBuf0.roundToOutputBitdepth(tmpGeoBuf0, cu.slice->clpRngs());
-
+#endif
+#endif
 
 #if JVET_AG0164_AFFINE_GPM
       if (pu.affineGPM[0])
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        if (geoTmFlag0)
+        {
+          gpmAffTmMrgCtx.setAffMergeInfo(pu, candIdx0, geoMMVDFlag0 ? geoMMVDIdx0 : -1);
+        }
+        else
+        {
+#endif
         gpmAffMrgCtx.setAffMergeInfo(pu, candIdx0, geoMMVDFlag0 ? geoMMVDIdx0 : -1);
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        }
+#endif
         pu.gpmDmvrRefinePart0 = pu.gpmDmvrRefinePart1 = false;
         PU::spanMotionInfo2(pu);
       }
@@ -11680,12 +12212,25 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
         PU::spanMotionInfo(pu);
 #endif
 #if JVET_AJ0274_GPM_AFFINE_TM
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if ((!geoTmFlag0 && !pu.cu->slice->getCheckUseSepOBMC()) || pu.cu->slice->getCheckUseSepOBMC())
+#else
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
       if (!geoTmFlag0)
+#endif
+#endif
       {
 #endif
       cu.isobmcMC = true;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pu.bdmvrRefine = pu.cu->slice->getCheckUseSepOBMC() ? pu.gpmDmvrRefinePart0 : false;
+#endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      subBlockOBMC(pu, &tmpGeoBuf0, pcIntraPred, false, false, !pu.cu->slice->getCheckUseSepOBMC() ? false : pu.geoMMVDFlag0);
+#else
       subBlockOBMC(pu, &tmpGeoBuf0, pcIntraPred);
+#endif
 #else
       subBlockOBMC(pu, &tmpGeoBuf0);
 #endif
@@ -11699,9 +12244,17 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
         pu.cu->affine = false;
       }
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pu.bdmvrRefine = false;
+      m_pixelRefine = false;
+#endif
 #endif
     }
     }
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    pu.gpmDmvrRefinePart0 = pu.gpmDmvrRefinePart1 = false;
+#endif
 
 #if JVET_AI0082_GPM_WITH_INTER_IBC
     if (isIbc1)
@@ -11829,6 +12382,10 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
     }
 #endif
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_pixelRefine = false;
+#endif
+
     motionCompensation(pu, tmpGeoBuf1, REF_PIC_LIST_X, true, isChromaEnabled(pu.chromaFormat)); // TODO: check 4:0:0 interaction with weighted prediction.
 #if JVET_AG0164_AFFINE_GPM
     pu.cu->affine = false;
@@ -11847,14 +12404,36 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #if JVET_AG0164_AFFINE_GPM
       || pu.affineGPM[0] || pu.affineGPM[1]
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      || pu.cu->slice->getCheckUseSepOBMC()
+#endif
       )
     {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if (!pu.cu->slice->getCheckUseSepOBMC())
+      {
+        tmpGeoBuf1.roundToOutputBitdepth(tmpGeoBuf1, cu.slice->clpRngs());
+      }
+#else
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
       tmpGeoBuf1.roundToOutputBitdepth(tmpGeoBuf1, cu.slice->clpRngs());
-
+#endif
+#endif
 #if JVET_AG0164_AFFINE_GPM
       if (pu.affineGPM[1])
       {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        if (geoTmFlag1)
+        {
+          gpmAffTmMrgCtx.setAffMergeInfo(pu, candIdx1, geoMMVDFlag1 ? geoMMVDIdx1 : -1);
+        }
+        else
+        {
+#endif
         gpmAffMrgCtx.setAffMergeInfo(pu, candIdx1, geoMMVDFlag1 ? geoMMVDIdx1 : -1);
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+        }
+#endif
         pu.gpmDmvrRefinePart0 = pu.gpmDmvrRefinePart1 = false;
         PU::spanMotionInfo2(pu);
       }
@@ -11879,16 +12458,32 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
         PU::spanMotionInfo(pu);
 #endif
 #if JVET_AJ0274_GPM_AFFINE_TM
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if ((!geoTmFlag1 && !pu.cu->slice->getCheckUseSepOBMC()) || pu.cu->slice->getCheckUseSepOBMC())
+#else
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
       if (!geoTmFlag1)
+#endif
+#endif
       {
 #endif
       cu.isobmcMC = true;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pu.bdmvrRefine = pu.cu->slice->getCheckUseSepOBMC() ? pu.gpmDmvrRefinePart1 : false;
+#endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      subBlockOBMC(pu, &tmpGeoBuf1, pcIntraPred, false, false, !pu.cu->slice->getCheckUseSepOBMC() ? false : pu.geoMMVDFlag1);
+#else
       subBlockOBMC(pu, &tmpGeoBuf1, pcIntraPred);
+#endif
 #else
       subBlockOBMC(pu, &tmpGeoBuf1);
 #endif
       cu.isobmcMC = false;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      m_pixelRefine = false;
+#endif
 #if JVET_AJ0274_GPM_AFFINE_TM
       }
 #endif
@@ -11898,7 +12493,9 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
         pu.cu->affine = false;
       }
 #endif
-
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pu.bdmvrRefine = false;
+#endif
 #endif
     }
     }
@@ -11922,7 +12519,11 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #endif
     }
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    else if (pu.affineGPM[0] || pu.affineGPM[1] || pu.cu->slice->getCheckUseSepOBMC())
+#else
     else if(pu.affineGPM[0] || pu.affineGPM[1])
+#endif
     {
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
       weightedGeoBlkRounded(pu, splitDir, bldIdx, isChromaEnabled(pu.chromaFormat) ? MAX_NUM_CHANNEL_TYPE : CHANNEL_TYPE_LUMA, predBuf, tmpGeoBuf0, tmpGeoBuf1);
@@ -11942,6 +12543,11 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #if JVET_AG0164_AFFINE_GPM
     pu.gpmDmvrRefinePart0 = pu.affineGPM[0]? false: savedgpmDMVRRefine[0];
     pu.gpmDmvrRefinePart1 = pu.affineGPM[1]? false: savedgpmDMVRRefine[1];
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_obmcLoadMode = false;
+    m_pixelRefine  = false;
 #endif
 }
 }
@@ -12556,6 +13162,18 @@ void InterPrediction::weightedBlend(const PredictionUnit& pu, PelUnitBuf& predDs
   int32_t channel = (lumaOnly ? 0 : 1);
   channel += (chromaOnly ? 1 : 2);;
   weightedBlendBlk( pu, channel, predDst, predSrc0, predSrc1, bufWeight, geoBlendingLog2WeightBase, roundOutputBD );
+}
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void  InterPrediction::weightObmcBoundary(Pel* orgDst, Pel* orgSrc, const int strideDst, const int strideSrc, const int width, const int height, const int dir, const ComponentID comp, const int blendMode, const bool subMotion)
+{
+  m_if.m_weightObmcBoundary(orgDst, orgSrc, strideDst, strideSrc, width, height, dir, comp, blendMode, subMotion);
+}
+
+void InterPrediction::weightObmcInnerBoundary(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int dstStride, const int srcStride, const int width, const int height, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail)
+{
+  m_if.m_weightObmcInnerBoundary(comp, pOrgDst, pOrgSrc1, pOrgSrc2, pOrgSrc3, pOrgSrc4, dstStride, srcStride, width, height, isAboveAvail, isLeftAvail, isBelowAvail, isRightAvail);
 }
 #endif
 
@@ -23430,9 +24048,17 @@ void InterPrediction::xSubblockTMOBMC(const ComponentID eComp, PredictionUnit &p
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (!m_geoOBMC && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp)), lmcsLut))
+#else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp)), lmcsLut))
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (!m_geoOBMC && skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp))))
 #else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pBefore, strideBefore, pu.cs->sps->getBitDepth(toChannelType(eComp))))
+#endif
 #endif
 #else
   if (skipObmcConditionByPixel(pu, eComp, iWidth, iHeight, pOrgSrc, strideSrc, pOrgDst, strideDst, pu.cs->sps->getBitDepth(toChannelType(eComp))))
@@ -23442,6 +24068,9 @@ void InterPrediction::xSubblockTMOBMC(const ComponentID eComp, PredictionUnit &p
   }
 #endif
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  weightObmcBoundary(pOrgDst, pOrgSrc, strideDst, strideSrc, iWidth, iHeight, iDir, eComp, iOBMCmode, false);
+#else
   if (iDir == 0)   // above
   {
     for (int i = 0; i < iWidth; i++)
@@ -23538,6 +24167,7 @@ void InterPrediction::xSubblockTMOBMC(const ComponentID eComp, PredictionUnit &p
       pSrc += strideSrc;
     }
   }
+#endif
 }
 #endif
 void InterPrediction::xFillIBCBuffer(CodingUnit &cu)

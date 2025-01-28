@@ -5516,6 +5516,333 @@ void  xWeightAffineBlk_SSE( const PredictionUnit& pu, WeightBuf& bufWeight, cons
 
 #endif
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+template< X86_VEXT vext >
+void  xWeightObmcBoundary_SSE(Pel* orgDst, Pel* orgSrc, const int strideDst, const int strideSrc, const int width, const int height, const int dir, const ComponentID comp, const int blendMode, const bool subMotion)
+{
+  CHECK(subMotion, "subMotion shoud be false when invoking xWeightObmcBoundary_SSE");
+
+  const int weight0[3] = { 26, 28, 30 };
+  const int weight1[3] = {  6,  4,  2 };
+  const int rowStart = (blendMode == 2 || blendMode == -1) ? 0 : ((blendMode == 4) ? 1 : 2);
+
+    if (dir == 0) //above
+    {
+      const int round[4] = { 5, 3, 4, 5 };
+      if (comp == COMPONENT_Y)
+      {
+#if USE_AVX2
+        if ((width % 8) == 0)
+        {
+          __m256i rows[4], offsets[4];
+          rows[0] = _mm256_set_epi16(6, 26, 6, 26, 6, 26, 6, 26, 6, 26, 6, 26, 6, 26, 6, 26);
+          rows[1] = _mm256_set_epi16(1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7);
+          rows[2] = _mm256_set_epi16(1, 15, 1, 15, 1, 15, 1, 15, 1, 15, 1, 15, 1, 15, 1, 15);
+          rows[3] = _mm256_set_epi16(1, 31, 1, 31, 1, 31, 1, 31, 1, 31, 1, 31, 1, 31, 1, 31);
+
+          offsets[0] = _mm256_set1_epi32(16);
+          offsets[1] = _mm256_set1_epi32(4);
+          offsets[2] = _mm256_set1_epi32(8);
+          offsets[3] = _mm256_set1_epi32(16);
+
+          for (int i = 0; i < width; i += 8)
+          {
+            Pel* pOrgDst = orgDst + i;
+            Pel* pOrgSrc = orgSrc + i;
+
+            for (int j = rowStart; j < 4; j++)
+            {
+              __m256i pDst = _mm256_loadu_si256((__m256i*)pOrgDst);
+              __m256i pSrc = _mm256_loadu_si256((__m256i*)pOrgSrc);
+              __m256i pDstLo = _mm256_unpacklo_epi16(pDst, pSrc);
+              __m256i pDstHi = _mm256_unpackhi_epi16(pDst, pSrc);
+              pDst = _mm256_permute2x128_si256(pDstLo, pDstHi, 0x20);
+              pDst = _mm256_madd_epi16(pDst, rows[j]);
+              pDst = _mm256_srai_epi32(_mm256_add_epi32(pDst, offsets[j]), round[j]);
+              _mm_storeu_si128((__m128i*) pOrgDst, _mm256_castsi256_si128(_mm256_permute4x64_epi64(_mm256_packs_epi32(pDst, pDst), _MM_SHUFFLE(3, 1, 2, 0))));
+              pOrgDst += strideDst;
+              pOrgSrc += strideSrc;
+            }
+          }
+        }
+        else
+        {
+#endif
+          __m128i rows[4], offsets[4];
+
+          rows[0] = _mm_set_epi16(6, 26, 6, 26, 6, 26, 6, 26);
+          rows[1] = _mm_set_epi16(1, 7, 1, 7, 1, 7, 1, 7);
+          rows[2] = _mm_set_epi16(1, 15, 1, 15, 1, 15, 1, 15);
+          rows[3] = _mm_set_epi16(1, 31, 1, 31, 1, 31, 1, 31);
+
+          offsets[0] = _mm_set1_epi32(16);
+          offsets[1] = _mm_set1_epi32(4);
+          offsets[2] = _mm_set1_epi32(8);
+          offsets[3] = _mm_set1_epi32(16);
+
+          for (int i = 0; i < width; i += 4)
+          {
+            Pel* pOrgDst = orgDst + i;
+            Pel* pOrgSrc = orgSrc + i;
+
+            for (int j = rowStart; j < 4; j++)
+            {
+              __m128i pDst = _mm_loadu_si128((__m128i*)pOrgDst);
+              __m128i pSrc = _mm_loadu_si128((__m128i*)pOrgSrc);
+              pDst = _mm_unpacklo_epi16(pDst, pSrc);
+              pDst = _mm_madd_epi16(pDst, rows[j]);
+              pDst = _mm_srai_epi32(_mm_add_epi32(pDst, offsets[j]), round[j]);
+              _mm_storel_epi64((__m128i*) pOrgDst, _mm_packs_epi32(pDst, pDst));
+
+              pOrgDst += strideDst;
+              pOrgSrc += strideSrc;
+            }
+          }
+#if USE_AVX2
+        }
+#endif
+      }
+      else
+      {
+        if ( (width % 4) == 0 )
+        {
+          __m128i rows[4], offsets[4];
+
+          rows[0] = _mm_set_epi16(6, 26, 6, 26, 6, 26, 6, 26);
+          rows[1] = _mm_set_epi16(1, 7, 1, 7, 1, 7, 1, 7);
+          rows[2] = _mm_set_epi16(1, 15, 1, 15, 1, 15, 1, 15);
+
+          offsets[0] = _mm_set1_epi32(16);
+          offsets[1] = _mm_set1_epi32(4);
+          offsets[2] = _mm_set1_epi32(8);
+
+          for (int i = 0; i < width; i += 4)
+          {
+            Pel* pOrgDst = orgDst + i;
+            Pel* pOrgSrc = orgSrc + i;
+
+            __m128i pDst = _mm_loadu_si128((__m128i*)pOrgDst);
+            __m128i pSrc = _mm_loadu_si128((__m128i*)pOrgSrc);
+            pDst = _mm_unpacklo_epi16(pDst, pSrc);
+            pDst = _mm_madd_epi16(pDst, rows[rowStart]);
+            pDst = _mm_srai_epi32(_mm_add_epi32(pDst, offsets[rowStart]), round[rowStart]);
+            _mm_storel_epi64((__m128i*) pOrgDst, _mm_packs_epi32(pDst, pDst));
+          }
+        }
+        else
+        {
+          for (int i = 0; i < width; i++)
+          {
+            Pel* pDst = orgDst;
+            Pel* pSrc = orgSrc;
+            pDst[i] = (weight0[rowStart] * pDst[i] + weight1[rowStart] * pSrc[i] + 16) >> 5;
+          }
+        }
+      }
+    }
+
+    if (dir == 1) //left
+    {
+      if (comp == COMPONENT_Y)
+      {
+        Pel* pOrgDst = orgDst;
+        Pel* pOrgSrc = orgSrc;
+
+        __m128i offset0 = _mm_set1_epi32(16);
+        __m128i rows[3];
+        rows[0] = _mm_set_epi16(1, 31, 2, 30, 4, 28, 6, 26);
+        rows[1] = _mm_set_epi16(0, 32, 1, 31, 2, 30, 4, 28);
+        rows[2] = _mm_set_epi16(0, 32, 0, 32, 1, 31, 2, 30);
+
+        for (int i = 0; i < height; i++)
+        {
+          __m128i pDst = _mm_loadu_si128((__m128i*)pOrgDst);
+          __m128i pSrc = _mm_loadu_si128((__m128i*)pOrgSrc);
+          pDst = _mm_unpacklo_epi16(pDst, pSrc);
+          pDst = _mm_madd_epi16(pDst, rows[rowStart]);
+          pDst = _mm_srai_epi32(_mm_add_epi32(pDst, offset0), 5);
+          _mm_storel_epi64((__m128i*) pOrgDst, _mm_packs_epi32(pDst, pDst));
+
+          pOrgDst += strideDst;
+          pOrgSrc += strideSrc;
+        }
+      }
+      else
+      {
+        Pel* pDst = orgDst;
+        Pel* pSrc = orgSrc;
+
+        for (int i = 0; i < height; i++)
+        {
+          pDst[0] = (weight0[rowStart] * pDst[0] + weight1[rowStart] * pSrc[0] + 16) >> 5;
+
+          pDst += strideDst;
+          pSrc += strideSrc;
+        }
+      }
+    }
+}
+
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+template< X86_VEXT vext >
+void  xWeightObmcInnerBoundary_SSE(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int strideDst, const int strideSrc, const int iWidth, const int iHeight, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail)
+{
+  unsigned int shift = 7;
+  unsigned int sumWeight = 1 << shift;
+  unsigned int add = 1 << (shift - 1);
+
+  Pel* pDst = pOrgDst;
+  Pel* pSrc1 = pOrgSrc1;
+  Pel* pSrc2 = pOrgSrc2;
+  Pel* pSrc3 = pOrgSrc3;
+  Pel* pSrc4 = pOrgSrc4;
+
+  if (isLuma(comp))
+  {
+    __m128i ones = _mm_set1_epi16(1);
+
+    const int16_t* curW = currWeights[isAboveAvail][isLeftAvail][isBelowAvail][isRightAvail];
+
+    const int16_t* curA = neigWeights[isAboveAvail ? 1 : 0];
+    const int16_t* curL = neigWeights[isLeftAvail  ? 2 : 0];
+    const int16_t* curB = neigWeights[isBelowAvail ? 3 : 0];
+    const int16_t* curR = neigWeights[isRightAvail ? 4 : 0];
+
+#if USE_AVX2
+    __m256i w5 = _mm256_set1_epi16(add);
+
+    __m256i wC = _mm256_loadu_si256((__m256i*)(curW));
+    __m256i wA = _mm256_loadu_si256((__m256i*)(curA));
+    __m256i wL = _mm256_loadu_si256((__m256i*)(curL));
+    __m256i wB = _mm256_loadu_si256((__m256i*)(curB));
+    __m256i wR = _mm256_loadu_si256((__m256i*)(curR));
+
+    __m256i wCLow  = _mm256_unpacklo_epi16(wC, wA);
+    __m256i wCHigh = _mm256_unpackhi_epi16(wC, wA);
+
+    __m256i wLLow = _mm256_unpacklo_epi16(wL, wB);
+    __m256i wLHigh = _mm256_unpackhi_epi16(wL, wB);
+
+    __m256i wRLow  = _mm256_unpacklo_epi16(wR, w5);
+    __m256i wRHigh = _mm256_unpackhi_epi16(wR, w5);
+
+    __m128i dstRow1 = _mm_loadl_epi64((__m128i*)pDst);
+    __m128i src1Row1 = _mm_loadl_epi64((__m128i*)pSrc1);
+    __m128i dstRow3 = _mm_loadl_epi64((__m128i*)(pDst + 2 * strideDst));
+    __m128i src1Row3 = _mm_loadl_epi64((__m128i*)(pSrc1 + 2 * strideSrc));
+    __m256i dstLow = _mm256_set_m128i(_mm_unpacklo_epi16(dstRow3, src1Row3), _mm_unpacklo_epi16(dstRow1, src1Row1));
+
+    __m128i src2Row1 = _mm_loadl_epi64((__m128i*)pSrc2);
+    __m128i src3Row1 = _mm_loadl_epi64((__m128i*)pSrc3);
+    __m128i src2Row3 = _mm_loadl_epi64((__m128i*)(pSrc2 + 2 * strideSrc));
+    __m128i src3Row3 = _mm_loadl_epi64((__m128i*)(pSrc3 + 2 * strideSrc));
+    __m256i src2Low = _mm256_set_m128i(_mm_unpacklo_epi16(src2Row3, src3Row3), _mm_unpacklo_epi16(src2Row1, src3Row1));
+
+    __m256i src4Low = _mm256_set_m128i(_mm_unpacklo_epi16(_mm_loadl_epi64((__m128i*)(pSrc4 + 2 * strideSrc)), ones), _mm_unpacklo_epi16(_mm_loadl_epi64((__m128i*)pSrc4), ones));
+
+    dstRow1  = _mm_loadl_epi64((__m128i*)( pDst +     strideDst));
+    src1Row1 = _mm_loadl_epi64((__m128i*)(pSrc1 +     strideSrc));
+    dstRow3  = _mm_loadl_epi64((__m128i*)( pDst + 3 * strideDst));
+    src1Row3 = _mm_loadl_epi64((__m128i*)(pSrc1 + 3 * strideSrc));
+    __m256i dstHigh = _mm256_set_m128i(_mm_unpacklo_epi16(dstRow3, src1Row3), _mm_unpacklo_epi16(dstRow1, src1Row1));
+
+    src2Row1 = _mm_loadl_epi64((__m128i*)(pSrc2 +     strideSrc));
+    src3Row1 = _mm_loadl_epi64((__m128i*)(pSrc3 +     strideSrc));
+    src2Row3 = _mm_loadl_epi64((__m128i*)(pSrc2 + 3 * strideSrc));
+    src3Row3 = _mm_loadl_epi64((__m128i*)(pSrc3 + 3 * strideSrc));
+    __m256i src2High = _mm256_set_m128i(_mm_unpacklo_epi16(src2Row3, src3Row3), _mm_unpacklo_epi16(src2Row1, src3Row1));
+
+    __m256i src4High = _mm256_set_m128i(_mm_unpacklo_epi16(_mm_loadl_epi64((__m128i*)(pSrc4 + 3 * strideSrc)), ones), _mm_unpacklo_epi16(_mm_loadl_epi64((__m128i*)(pSrc4 + strideSrc)), ones));
+
+    dstLow = _mm256_madd_epi16(dstLow, wCLow);
+    src2Low = _mm256_madd_epi16(src2Low, wLLow);
+    src4Low = _mm256_madd_epi16(src4Low, wRLow);
+
+    dstLow = _mm256_add_epi32(dstLow, src2Low);
+    dstLow = _mm256_add_epi32(dstLow, src4Low);
+    dstLow = _mm256_srai_epi32(dstLow, shift);
+
+    dstLow = _mm256_packs_epi32(dstLow, dstLow);
+
+    dstHigh = _mm256_madd_epi16(dstHigh, wCHigh);
+    src2High = _mm256_madd_epi16(src2High, wLHigh);
+    src4High = _mm256_madd_epi16(src4High, wRHigh);
+
+    dstHigh = _mm256_add_epi32(dstHigh, src2High);
+    dstHigh = _mm256_add_epi32(dstHigh, src4High);
+    dstHigh = _mm256_srai_epi32(dstHigh, shift);
+
+    dstHigh = _mm256_packs_epi32(dstHigh, dstHigh);
+
+    _mm_storel_epi64((__m128i*)pDst, _mm256_castsi256_si128(dstLow));
+    _mm_storel_epi64((__m128i*)(pDst + strideDst), _mm256_castsi256_si128(dstHigh));
+    _mm_storel_epi64((__m128i*)(pDst + 2 * strideDst), _mm256_extracti128_si256(dstLow, 1));
+    _mm_storel_epi64((__m128i*)(pDst + 3 * strideDst), _mm256_extracti128_si256(dstHigh, 1));
+#else
+    __m128i w5 = _mm_set1_epi16(add);
+
+    for (int j = 0; j < iHeight; j++)
+    {
+      __m128i dst  = _mm_loadl_epi64((__m128i*)pDst);
+      __m128i src1 = _mm_loadl_epi64((__m128i*)pSrc1);
+      src1 = _mm_unpacklo_epi16(dst, src1);
+
+      __m128i src2 = _mm_loadl_epi64((__m128i*)pSrc2);
+      __m128i src3 = _mm_loadl_epi64((__m128i*)pSrc3);
+      src2 = _mm_unpacklo_epi16(src2, src3);
+
+      __m128i src4 = _mm_loadl_epi64((__m128i*)pSrc4);
+      src4 = _mm_unpacklo_epi16(src4, ones);
+
+      __m128i wC = _mm_loadl_epi64((__m128i*)(curW + 4 * j));
+      __m128i w1 = _mm_loadl_epi64((__m128i*)(curA + 4 * j));
+      wC = _mm_unpacklo_epi16(wC, w1);
+
+      __m128i w2 = _mm_loadl_epi64((__m128i*)(curL + 4 * j));
+      __m128i w3 = _mm_loadl_epi64((__m128i*)(curB + 4 * j));
+      w2 = _mm_unpacklo_epi16(w2, w3);
+
+      __m128i w4 = _mm_loadl_epi64((__m128i*)(curR + 4 * j));
+      w4 = _mm_unpacklo_epi16(w4, w5);
+
+      dst  = _mm_madd_epi16(src1, wC);
+      src3 = _mm_madd_epi16(src2, w2);
+      src4 = _mm_madd_epi16(src4, w4);
+
+      dst = _mm_add_epi32(dst, src3);
+      dst = _mm_add_epi32(dst, src4);
+
+
+      dst = _mm_srai_epi32(dst, shift);
+      _mm_storel_epi64((__m128i*)pDst, _mm_packs_epi32(dst, dst));
+
+      pDst += strideDst;
+      pSrc1 += strideSrc;
+      pSrc2 += strideSrc;
+      pSrc3 += strideSrc;
+      pSrc4 += strideSrc;
+    }
+#endif
+  }
+  else
+  {
+    pDst[0] = ((sumWeight - weightsChroma[isAboveAvail ? 1 : 0] - weightsChroma[isLeftAvail  ? 1 : 0]) * pDst[0] + weightsChroma[isAboveAvail ? 1 : 0] * pSrc1[0] + weightsChroma[isLeftAvail  ? 1 : 0] * pSrc2[0] + add) >> shift;
+    pDst[1] = ((sumWeight - weightsChroma[isAboveAvail ? 1 : 0] - weightsChroma[isRightAvail ? 1 : 0]) * pDst[1] + weightsChroma[isAboveAvail ? 1 : 0] * pSrc1[1] + weightsChroma[isRightAvail ? 1 : 0] * pSrc4[1] + add) >> shift;
+
+    pDst += strideDst;
+    pSrc2 += strideSrc;
+    pSrc3 += strideSrc;
+    pSrc4 += strideSrc;
+
+    pDst[0] = ((sumWeight - weightsChroma[isLeftAvail  ? 1 : 0] - weightsChroma[isBelowAvail ? 1 : 0]) * pDst[0] + weightsChroma[isLeftAvail  ? 1 : 0] * pSrc2[0] + weightsChroma[isBelowAvail ? 1 : 0] * pSrc3[0] + add) >> shift;
+    pDst[1] = ((sumWeight - weightsChroma[isBelowAvail ? 1 : 0] - weightsChroma[isRightAvail ? 1 : 0]) * pDst[1] + weightsChroma[isBelowAvail ? 1 : 0] * pSrc3[1] + weightsChroma[isRightAvail ? 1 : 0] * pSrc4[1] + add) >> shift;
+  }
+}
+#endif
+
+
 template <X86_VEXT vext>
 void InterpolationFilter::_initInterpolationFilterX86()
 {
@@ -5687,6 +6014,10 @@ void InterpolationFilter::_initInterpolationFilterX86()
   m_weightedSgpm = xWeightedSgpm_SSE<vext>;
   m_sadTM = xSadTM_SSE<vext>;
   m_sgpmSadTM = xSgpmSadTM_SSE<vext>;
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_weightObmcBoundary = xWeightObmcBoundary_SSE<vext>;
+  m_weightObmcInnerBoundary = xWeightObmcInnerBoundary_SSE<vext>;
 #endif
 }
 

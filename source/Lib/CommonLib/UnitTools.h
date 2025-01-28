@@ -909,9 +909,18 @@ namespace PU
 
   void restrictBiPredMergeCandsOne    (PredictionUnit &pu);
 #if ENABLE_OBMC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  unsigned int getSameNeigMotion(PredictionUnit& pu, MotionInfo& mi, Position off, int  iDir, int& iLength, int iMaxLength,
+                                 uint8_t checkLevel = 0, int offIdx = 0, std::vector<uint8_t>* nbEachLength = nullptr);
+#else
   unsigned int getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position off, int  iDir, int& iLength, int iMaxLength);
+#endif
   bool identicalMvOBMC(MotionInfo curMI, MotionInfo neighMI, bool bLD);
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool getNeighborMotion(PredictionUnit& pu, MotionInfo& currMi, MotionInfo& mi, Position nbPos);
+#else
   bool getNeighborMotion(PredictionUnit &pu, MotionInfo& mi, Position off, Size unitSize, int iDir);
+#endif
 #endif
   bool isLMCMode                      (                          unsigned mode);
 #if MMLM

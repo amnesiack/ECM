@@ -1544,6 +1544,10 @@ InterpolationFilter::InterpolationFilter()
   m_weightedGeoTplA = xWeightedGeoTpl<true>;
   m_weightedGeoTplL = xWeightedGeoTpl<false>;
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_weightObmcBoundary      = xWeightObmcBoundary;
+  m_weightObmcInnerBoundary = xWeightObmcInnerBoundary;
+#endif
 }
 
 
@@ -3151,6 +3155,123 @@ void InterpolationFilter::xWeightAffineBlk( const PredictionUnit& pu, WeightBuf&
   }
 }
 
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterpolationFilter::xWeightObmcBoundary(Pel* orgDst, Pel* orgSrc, const int strideDst, const int strideSrc, const int width, const int height, const int dir, const ComponentID comp, const int blendMode, const bool subMotion)
+{
+  const int weight0[4] = { 26, 28, 30, 31};
+  const int weight1[4] = {  6,  4,  2,  1};
+  const int rowStart = (blendMode == 2 || blendMode == -1) ? 0 : ((blendMode == 4) ? 1 : 2);
+
+    if (dir == 0) //above
+    {
+      if (comp == COMPONENT_Y)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          Pel* pDst = orgDst;
+          Pel* pSrc = orgSrc;
+
+          for (int j = rowStart; j < 4; j++)
+          {
+            pDst[i] = (weight0[j] * pDst[i] + weight1[j] * pSrc[i] + 16) >> 5;
+            pDst += strideDst;
+            pSrc += strideSrc;
+          }
+        }
+      }
+      else
+      {
+        for (int i = 0; i < width; i++)
+        {
+          Pel* pDst = orgDst;
+          Pel* pSrc = orgSrc;
+          pDst[i] = (weight0[rowStart] * pDst[i] + weight1[rowStart] * pSrc[i] + 16) >> 5;
+        }
+      }
+    }
+
+    if (dir == 1) //left
+    {
+      Pel* pDst = orgDst;
+      Pel* pSrc = orgSrc;
+
+      if (comp == COMPONENT_Y)
+      {
+        for (int i = 0; i < height; i++)
+        {
+          for (int j = rowStart; j < 4; j++)
+          {
+            pDst[j - rowStart] = (weight0[j] * pDst[j - rowStart] + weight1[j] * pSrc[j - rowStart] + 16) >> 5;
+          }
+          pDst += strideDst;
+          pSrc += strideSrc;
+        }
+      }
+      else
+      {
+        for (int i = 0; i < height; i++)
+        {
+          pDst[0] = (weight0[rowStart] * pDst[0] + weight1[rowStart] * pSrc[0] + 16) >> 5;
+          pDst += strideDst;
+          pSrc += strideSrc;
+        }
+      }
+    }
+}
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterpolationFilter::xWeightObmcInnerBoundary(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int strideDst, const int strideSrc, const int iWidth, const int iHeight, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail)
+{
+  unsigned int shift = 7;
+  unsigned int sumWeight = 1 << shift;
+  unsigned int add = 1 << (shift - 1);
+
+  Pel* pDst = pOrgDst;
+  Pel* pSrc1 = pOrgSrc1;
+  Pel* pSrc2 = pOrgSrc2;
+  Pel* pSrc3 = pOrgSrc3;
+  Pel* pSrc4 = pOrgSrc4;
+
+  if (isLuma(comp))
+  {
+    for (int j = 0; j < iHeight; j++)
+    {
+      for (int i = 0; i < iWidth; i++)
+      {
+        int pos = j * 4 + i;
+
+        unsigned int currentWeight = currWeights[isAboveAvail][isLeftAvail][isBelowAvail][isRightAvail][pos];
+
+        if (currentWeight == sumWeight)
+        {
+          continue;
+        }
+        pDst[i] = (currentWeight * pDst[i] + neigWeights[isAboveAvail ? 1 : 0][pos] * pSrc1[i] + neigWeights[isLeftAvail ? 2 : 0][pos] * pSrc2[i] + neigWeights[isBelowAvail ? 3 : 0][pos] * pSrc3[i] + neigWeights[isRightAvail ? 4 : 0][pos] * pSrc4[i] + add) >> shift;
+      }
+      pDst += strideDst;
+      pSrc1 += strideSrc;
+      pSrc2 += strideSrc;
+      pSrc3 += strideSrc;
+      pSrc4 += strideSrc;
+    }
+  }
+  else
+  {
+    pDst[0] = ((sumWeight - weightsChroma[isAboveAvail ? 1 : 0] - weightsChroma[isLeftAvail  ? 1 : 0]) * pDst[0] + weightsChroma[isAboveAvail ? 1 : 0] * pSrc1[0] + weightsChroma[isLeftAvail  ? 1 : 0] * pSrc2[0] + add) >> shift;
+    pDst[1] = ((sumWeight - weightsChroma[isAboveAvail ? 1 : 0] - weightsChroma[isRightAvail ? 1 : 0]) * pDst[1] + weightsChroma[isAboveAvail ? 1 : 0] * pSrc1[1] + weightsChroma[isRightAvail ? 1 : 0] * pSrc4[1] + add) >> shift;
+
+    pDst += strideDst;
+    pSrc2 += strideSrc;
+    pSrc3 += strideSrc;
+    pSrc4 += strideSrc;
+
+    pDst[0] = ((sumWeight - weightsChroma[isLeftAvail  ? 1 : 0] - weightsChroma[isBelowAvail ? 1 : 0]) * pDst[0] + weightsChroma[isLeftAvail  ? 1 : 0] * pSrc2[0] + weightsChroma[isBelowAvail ? 1 : 0] * pSrc3[0] + add) >> shift;
+    pDst[1] = ((sumWeight - weightsChroma[isBelowAvail ? 1 : 0] - weightsChroma[isRightAvail ? 1 : 0]) * pDst[1] + weightsChroma[isBelowAvail ? 1 : 0] * pSrc3[1] + weightsChroma[isRightAvail ? 1 : 0] * pSrc4[1] + add) >> shift;
+  }
+}
 #endif
 
 /**

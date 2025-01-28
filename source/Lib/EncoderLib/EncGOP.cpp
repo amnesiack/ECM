@@ -2694,6 +2694,9 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
       }
       pcSlice->setCheckLDB(bLowDelayB);
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pcSlice->setCheckUseSepOBMC(bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
+#endif
 #endif
     }
     else

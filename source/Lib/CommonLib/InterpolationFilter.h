@@ -217,6 +217,10 @@ public:
   static void xWeightAffineBlk(const PredictionUnit& pu, WeightBuf& bufWeight, const int log2WeightBase, AffineBlendingModel& blendModel);
   void weightAffineBlk(const PredictionUnit& pu, WeightBuf& bufWeight, const int log2WeightBase, AffineBlendingModel& blendModel);
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  static void xWeightObmcBoundary(Pel* dst, Pel* src, const int dstStride, const int srcStride, const int width, const int height, const int dir, const ComponentID compID, const int blendMode, const bool subMotion);
+  static void xWeightObmcInnerBoundary(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int dstStride, const int srcStride, const int width, const int height, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail);
+#endif
 protected:
 #if JVET_J0090_MEMORY_BANDWITH_MEASURE
   static CacheModel* m_cacheModel;
@@ -288,6 +292,10 @@ public:
   static int xSgpmSadTM(const PredictionUnit &pu, const int width, const int height, const int templateWidth,
                             const int templateHeight, const ComponentID compIdx, const uint8_t splitDir,
                               PelBuf &adBuf);
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void (*m_weightObmcBoundary)(Pel* dst, Pel* src, const int dstStride, const int srcStride, const int width, const int height, const int dir, const ComponentID compID, const int blendMode, const bool subMotion);
+  void (*m_weightObmcInnerBoundary)(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int dstStride, const int srcStride, const int width, const int height, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail);
 #endif
 
   void initInterpolationFilter( bool enable );
