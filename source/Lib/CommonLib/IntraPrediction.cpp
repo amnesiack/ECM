@@ -2546,7 +2546,21 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #else
       xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
 #endif
-    } 
+    }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+    if( applyBf )
+    {
+      applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+    }
+
+    if( applyBf )
+    {
+      int blkWidth = piPred.width;
+      int blkHeight = piPred.height;
+      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+    }
+#endif
 #else
     const int log2WeightSum = 6;
     Pel *pelPred = piPred.buf;
@@ -2578,21 +2592,6 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
         pelFusion[i] += predFusion[i].stride;
       }
     }
-
-#if JVET_AK0118_BF_FOR_INTRA_PRED
-    applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
-    if( applyBf )
-    {
-      applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
-    }
-
-    if( applyBf )
-    {
-      int blkWidth = piPred.width;
-      int blkHeight = piPred.height;
-      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
-    }
-#endif
 
     return;
 #endif
@@ -5693,8 +5692,19 @@ void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit 
 #else
     xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
 #endif
-    } 
-  #else
+  }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  int blkQp = pu.cu->qp;
+  int blkWidth = piPred.width;
+  int blkHeight = piPred.height;
+  CodingStructure &cs = *pu.cu->cs;
+  bool applyBf = checkBfApplication(blkQp, blkWidth, blkHeight);
+  if( applyBf && cs.slice->isIntra() && cs.sps->getUseIntraPredBf() )
+  {
+    bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, cs.slice->clpRng(COMPONENT_Y), true, *pu.cu );
+  }
+#endif
+#else
   const int log2WeightSum = 6;
   Pel *pelPred = piPred.buf;
   Pel *pelFusion[OBIC_FUSION_NUM - 1];
@@ -5734,18 +5744,6 @@ void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit 
     }
     pelFusionBv += predFusionBV.stride;
   }
-
-#if JVET_AK0118_BF_FOR_INTRA_PRED
-  int blkQp = pu.cu->qp;
-  int blkWidth = piPred.width;
-  int blkHeight = piPred.height;
-  CodingStructure &cs = *pu.cu->cs;
-  bool applyBf = checkBfApplication(blkQp, blkWidth, blkHeight);
-  if( applyBf && cs.slice->isIntra() && cs.sps->getUseIntraPredBf() )
-  {
-    bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, cs.slice->clpRng(COMPONENT_Y), true, *pu.cu );
-  }
-#endif
 
   return;
 #endif
