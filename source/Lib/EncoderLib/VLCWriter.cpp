@@ -1315,7 +1315,7 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     WRITE_FLAG(pcSPS->getUseInterMTS() ? 1 : 0, "sps_explicit_mts_inter_enabled_flag");
 #if AHG7_MTS_TOOLOFF_CFG
     WRITE_FLAG(pcSPS->getUseMTSExt() ? 1 : 0, "sps_explicit_mts_extension_enabled_flag");
-    if (pcSPS->getUseIntraMTS())
+    if (pcSPS->getUseIntraMTS() || pcSPS->getUseImplicitMTS())
     {
       uint32_t intraMTSMaxCU = pcSPS->getIntraMTSMaxSize();
       CHECK((intraMTSMaxCU != 32 && intraMTSMaxCU != 64 && intraMTSMaxCU != 128 && intraMTSMaxCU != 256), "intraMTSMaxSize != 32 or 64 or 128 or 256");

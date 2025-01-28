@@ -318,7 +318,11 @@ namespace PU
   uint32_t getFinalIntraMode              (const PredictionUnit &pu, const ChannelType &chType);
 #endif
 #if JVET_AC0130_NSPT
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  std::pair<uint32_t,uint32_t>  getFinalIntraModeForTransform  ( const TransformUnit &tu, const ComponentID compID );
+#else
   uint32_t getFinalIntraModeForTransform  ( const TransformUnit &tu, const ComponentID compID );
+#endif
   uint32_t getNSPTIntraMode               ( int wideAngPredMode );
 #endif
 #if JVET_W0119_LFNST_EXTENSION

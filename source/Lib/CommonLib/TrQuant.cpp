@@ -1372,7 +1372,11 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
 {
   const bool isExplicitMTS = (CU::isIntra(*tu.cu) ? tu.cs->sps->getUseIntraMTS() : tu.cs->sps->getUseInterMTS() && CU::isInter(*tu.cu)) && isLuma(compID);
 #if JVET_AJ0257_IMPLICIT_MTS_LUT
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  const bool isImplicitMTS = CU::isIntra(*tu.cu) && tu.cs->sps->getUseImplicitMTS() && isLuma(compID) && !tu.cu->lfnstIdx;
+#else
   const bool isImplicitMTS = CU::isIntra(*tu.cu) && tu.cs->sps->getUseImplicitMTS() && isLuma(compID) && !tu.cu->lfnstIdx && !tu.cu->mipFlag && !tu.cu->eipFlag && !tu.cu->tmpFlag && !tu.cu->sgpm;
+#endif
 #else
   const bool isImplicitMTS = CU::isIntra(*tu.cu) && tu.cs->sps->getUseImplicitMTS() && isLuma(compID) && tu.cu->lfnstIdx == 0 && tu.cu->mipFlag == 0;
 #endif
@@ -1410,21 +1414,10 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
   {
     int  width = tu.blocks[compID].width;
     int  height = tu.blocks[compID].height;
-  
-#if JVET_AJ0257_IMPLICIT_MTS_LUT    
-    const CompArea& area = tu.blocks[compID];
-    int predMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
-
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-    if (predMode == PNN_IDX)
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    if (isISP || width < 4 || height < 4)
     {
-      return;
-    }
-#endif
-
-    if (isISP || width < 4 || height < 4  || tu.cu->dimd || tu.cu->timd)
-    {
-      bool widthDstOk = width >= 4 && width <= 16;
+      bool widthDstOk  = width >= 4 && width <= 16;
       bool heightDstOk = height >= 4 && height <= 16;
 
       if (widthDstOk)
@@ -1434,7 +1427,154 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       if (heightDstOk)
       {
         trTypeVer = DST7;
-      }     
+      }
+      return;
+    }
+
+    int             intraBlMode = 0;
+    const CompArea &area        = tu.blocks[compID];
+    if (tu.cu->dimd)
+    {
+      intraBlMode = 0;
+    }
+    else if (tu.cu->timd)
+    {
+      intraBlMode = 1;
+    }
+    else if (tu.cu->mipFlag)
+    {
+      intraBlMode = 2;
+    }
+    else if (tu.cu->tmpFlag)
+    {
+      intraBlMode = 3;
+    }
+    else if (tu.cu->sgpm)
+    {
+      intraBlMode = 4;
+    }
+    else if (tu.cu->eipFlag)
+    {
+      intraBlMode = 5;
+    }
+    else if (PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)) == PNN_IDX)
+    {
+      intraBlMode = 6;
+    }
+    else
+    {
+      int predMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
+#if JVET_AD0085_TMRL_EXTENSION
+      if (tu.cu->tmrlFlag)
+      {
+        predMode = MAP131TO67(predMode);
+      }
+#endif
+
+      predMode = PU::getWideAngle(tu, (uint32_t) predMode, compID);
+      CHECK(predMode < -(NUM_EXT_LUMA_MODE >> 1) || predMode >= NUM_LUMA_MODE + (NUM_EXT_LUMA_MODE >> 1),
+            "luma mode out of range");
+
+#if JVET_AC0105_DIRECTIONAL_PLANAR
+      if (predMode == PLANAR_IDX)
+      {
+        if (tu.cu->plIdx == 2)
+        {
+          predMode = HOR_IDX;
+        }
+        else if (tu.cu->plIdx == 1)
+        {
+          predMode = VER_IDX;
+        }
+      }
+#endif
+      int     modeImplicit   = predMode < 0                ? predMode + NUM_LUMA_MODE
+                               : predMode >= NUM_LUMA_MODE ? predMode - NUM_LUMA_MODE + 2
+                                                           : predMode;
+      int     modeIdx        = modeImplicit > DIA_IDX ? (NUM_LUMA_MODE + 1 - modeImplicit) : modeImplicit;
+      bool    isTrTransposed = modeImplicit > DIA_IDX ? true : false;
+      uint8_t nSzIdxW        = std::min(3, (floorLog2(width) - 2));
+      uint8_t nSzIdxH        = std::min(3, (floorLog2(height) - 2));
+      uint8_t nSzIdx         = isTrTransposed ? (nSzIdxH * 4 + nSzIdxW) : (nSzIdxW * 4 + nSzIdxH);
+      int     nTrType        = g_aucImplicitToTrSet[nSzIdx][modeIdx];
+
+      trTypeHor = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 1 : 0];
+      trTypeVer = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 0 : 1];
+
+      return;
+    }
+
+    int  predMode        = tu.intraDirStat.first;
+    int  predModeSecond = tu.intraDirStat.second;
+    int  idxMap[18]      = { 0, 1, 2, 3, -1, 4, 5, 6, -1, -1, 7, 8, -1, -1, -1, 9, 10, 11 };
+    bool blockSym        = (height > width);
+    bool predModeSym     = blockSym && predMode > 1;
+    int  log2BlockWidth  = floorLog2(blockSym ? height : width) - 2;
+    int  log2BlockHeight = floorLog2(blockSym ? width : height) - 2;
+    int  blIndSize;
+    if (log2BlockWidth < 4 && log2BlockHeight < 4)
+    {
+      blIndSize = log2BlockHeight * 4 + log2BlockWidth;
+    }
+    else
+    {
+      blIndSize = 16 + (log2BlockWidth - 4);
+    }
+    blIndSize = idxMap[blIndSize];
+    int predModeDiff, temp = abs(predMode - predModeSecond);
+    if (temp <= 8)
+    {
+      predModeDiff = 0;
+    }
+    else if (temp <= 16)
+    {
+      predModeDiff = 1;
+    }
+    else
+    {
+      predModeDiff = 2;
+    }
+    int TrIdx = 0;
+    switch (intraBlMode)
+    {
+    case 0: TrIdx = g_aucIpmToTrSetModDimd[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    case 1: TrIdx = g_aucIpmToTrSetModTimd[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    case 2: TrIdx = g_aucIpmToTrSetModMip[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    case 3: TrIdx = g_aucIpmToTrSetModTmp[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    case 4: TrIdx = g_aucIpmToTrSetModSgpm[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    case 5: TrIdx = g_aucIpmToTrSetModEip[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    case 6: TrIdx = g_aucIpmToTrSetModPnn[predModeDiff][blIndSize][predModeSym ? 34 * 2 - predMode : predMode]; break;
+    default:
+      CHECK(true,"Invalid ImplicitMTS Transform set!");
+      break;
+    }
+    trTypeVer = (blockSym || predModeSym) ? TrIdx / 6 : TrIdx % 6;
+    trTypeHor = (blockSym || predModeSym) ? TrIdx % 6 : TrIdx / 6;
+    return;
+#else
+#if JVET_AJ0257_IMPLICIT_MTS_LUT
+    const CompArea &area = tu.blocks[compID];
+    int predMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (predMode == PNN_IDX)
+    {
+      return;
+    }
+#endif
+
+    if (isISP || width < 4 || height < 4 || tu.cu->dimd || tu.cu->timd)
+    {
+      bool widthDstOk  = width >= 4 && width <= 16;
+      bool heightDstOk = height >= 4 && height <= 16;
+
+      if (widthDstOk)
+      {
+        trTypeHor = DST7;
+      }
+      if (heightDstOk)
+      {
+        trTypeVer = DST7;
+      }
       return;
     }
 
@@ -1445,8 +1585,9 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
     }
 #endif
 
-    predMode = PU::getWideAngle(tu, (uint32_t)predMode, compID);
-    CHECK(predMode < -(NUM_EXT_LUMA_MODE >> 1) || predMode >= NUM_LUMA_MODE + (NUM_EXT_LUMA_MODE >> 1), "luma mode out of range");
+    predMode = PU::getWideAngle(tu, (uint32_t) predMode, compID);
+    CHECK(predMode < -(NUM_EXT_LUMA_MODE >> 1) || predMode >= NUM_LUMA_MODE + (NUM_EXT_LUMA_MODE >> 1),
+          "luma mode out of range");
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
     if (predMode == PLANAR_IDX)
@@ -1461,23 +1602,22 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       }
     }
 #endif
-    int modeImplicit = predMode < 0 ? predMode + NUM_LUMA_MODE : predMode >= NUM_LUMA_MODE ? predMode - NUM_LUMA_MODE + 2 : predMode;
-    int modeIdx = modeImplicit > DIA_IDX ? (NUM_LUMA_MODE + 1 - modeImplicit) : modeImplicit;
-    bool isTrTransposed = modeImplicit > DIA_IDX ? true :  false;      
-    uint8_t nSzIdxW = std::min(3, (floorLog2(width) - 2));
-    uint8_t nSzIdxH = std::min(3, (floorLog2(height) - 2));
-    uint8_t nSzIdx = isTrTransposed ? (nSzIdxH * 4 + nSzIdxW) : (nSzIdxW * 4 + nSzIdxH);
-    int nTrType = g_aucImplicitToTrSet[nSzIdx][modeIdx];
-      
-    trTypeHor = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 1 : 0];      
+    int     modeImplicit   = predMode < 0                ? predMode + NUM_LUMA_MODE
+                             : predMode >= NUM_LUMA_MODE ? predMode - NUM_LUMA_MODE + 2
+                                                         : predMode;
+    int     modeIdx        = modeImplicit > DIA_IDX ? (NUM_LUMA_MODE + 1 - modeImplicit) : modeImplicit;
+    bool    isTrTransposed = modeImplicit > DIA_IDX ? true : false;
+    uint8_t nSzIdxW        = std::min(3, (floorLog2(width) - 2));
+    uint8_t nSzIdxH        = std::min(3, (floorLog2(height) - 2));
+    uint8_t nSzIdx         = isTrTransposed ? (nSzIdxH * 4 + nSzIdxW) : (nSzIdxW * 4 + nSzIdxH);
+    int     nTrType        = g_aucImplicitToTrSet[nSzIdx][modeIdx];
+
+    trTypeHor = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 1 : 0];
     trTypeVer = g_aucImplicitTrIdxToTr[nTrType][isTrTransposed ? 0 : 1];
-#if AHG7_MTS_TOOLOFF_CFG
-    trTypeHor = (width > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeHor;
-    trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
-#endif
-    return;    
+
+    return;
 #else
-    bool widthDstOk = width >= 4 && width <= 16;
+    bool widthDstOk  = width >= 4 && width <= 16;
     bool heightDstOk = height >= 4 && height <= 16;
 
     if (widthDstOk)
@@ -1489,6 +1629,7 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       trTypeVer = DST7;
     }
     return;
+#endif
 #endif
   }
 
@@ -1744,7 +1885,11 @@ void TrQuant::xT( const TransformUnit &tu, const ComponentID &compID, const CPel
   int trTypeVer = DCT2;
 
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if (tu.cu->timdMrg && !tu.cu->lfnstIdx && !tu.cs->sps->getUseImplicitMTS())
+#else
   if (tu.cu->timdMrg && !tu.cu->lfnstIdx)
+#endif
   {
     // Timd-Mrg CUs inherit transform type from their cands
     int implicitDst7 = PU::canTimdMergeImplicitDst7(tu);
@@ -1895,7 +2040,11 @@ void TrQuant::xIT( const TransformUnit &tu, const ComponentID &compID, const CCo
   int trTypeVer = DCT2;
 
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if (tu.cu->timdMrg && !tu.cu->lfnstIdx && !tu.cs->sps->getUseImplicitMTS())
+#else
   if (tu.cu->timdMrg && !tu.cu->lfnstIdx)
+#endif
   {
     // Timd-Mrg CUs inherit transform type from their cands
     int implicitDst7 = PU::canTimdMergeImplicitDst7(tu);
@@ -2029,8 +2178,11 @@ void TrQuant::xFwdNspt( const TransformUnit &tu, TCoeff* src, TCoeff* dst, const
   const uint32_t  height = area.height;
 
   const ScanElement * scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ SCAN_DIAG ][ gp_sizeIdxInfo->idxFrom( width ) ][ gp_sizeIdxInfo->idxFrom( height ) ];
-  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
+#else
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(tu, compID);
+#endif
   bool transposeFlag = getTransposeFlag( intraMode );
 
   TCoeff*          nsptIn = m_nsptTempInMatrix;
@@ -2088,8 +2240,11 @@ void TrQuant::xInvNspt( const TransformUnit &tu, const TCoeff* src, TCoeff* dst,
   const uint32_t  height = area.height;
  
   const ScanElement * scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ SCAN_DIAG ][ gp_sizeIdxInfo->idxFrom( width ) ][ gp_sizeIdxInfo->idxFrom( height ) ];
-  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
+#else
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(tu, compID);
+#endif
 #if RExt__DECODER_DEBUG_TOOL_STATISTICS
   CodingStatistics::IncrementStatisticTool( CodingStatisticsClassType { STATS__TOOL_LFNST, width, height, compID } );
 #endif
@@ -3071,7 +3226,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   {
     int trHor, trVer;
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    if (tu.cu->timdMrg && !tu.cu->lfnstIdx && !tu.cs->sps->getUseImplicitMTS())
+#else
     if (tu.cu->timdMrg && !tu.cu->lfnstIdx)
+#endif
     {
       // Timd-Mrg CUs inherit transform type from their cands
       int implicitDst7 = PU::canTimdMergeImplicitDst7(tu);

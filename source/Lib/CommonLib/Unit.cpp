@@ -299,6 +299,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = other.plIdx;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  candModeListForTransform = other.candModeListForTransform;
+#endif
 #if ENABLE_DIMD
 #if JVET_AH0076_OBIC
   obicFlag = other.obicFlag;
@@ -645,6 +648,11 @@ void CodingUnit::initData()
 #endif
 #endif
   lfnstIdx          = 0;
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  candModeListForTransform.resize(2);
+  candModeListForTransform[0] = 0;
+  candModeListForTransform[1] = 0;
+#endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   for (auto it{indicesRepresentationPnn.begin()}; it != indicesRepresentationPnn.end(); it++)
   {
@@ -2248,6 +2256,10 @@ void TransformUnit::initData()
 #endif
 #endif
   }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    intraDirStat.first = 0;
+    intraDirStat.second = 0;
+#endif
   depth              = 0;
   noResidual         = false;
   jointCbCr          = 0;
@@ -2347,6 +2359,10 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
 #endif
 #endif
   }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    intraDirStat.first = other.intraDirStat.first;
+    intraDirStat.second = other.intraDirStat.second;
+#endif
   depth              = other.depth;
   noResidual         = other.noResidual;
   jointCbCr          = other.jointCbCr;
@@ -2395,6 +2411,10 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
 #if JVET_AI0050_INTER_MTSS
   lfnstIntra[i]    = other.lfnstIntra[i];
 #endif
+#endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    intraDirStat.first = other.intraDirStat.first;
+    intraDirStat.second = other.intraDirStat.second;
 #endif
   noResidual       = other.noResidual;
   jointCbCr        = isChroma( i ) ? other.jointCbCr : jointCbCr;

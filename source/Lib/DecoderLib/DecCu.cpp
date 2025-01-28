@@ -1416,6 +1416,9 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AI0050_INTER_MTSS
         pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        pu.cu->eipModel.eipDimdMode2nd = secondDimdIntraDir;
+#endif
       }
     }
 #endif
@@ -1463,11 +1466,18 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AI0050_INTER_MTSS
         int secondDimdIntraDir = 0;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        int firstDimdIntraDir =
+#endif
         m_pcIntraPred->IntraPrediction::deriveIpmForTransform(piPred, *pu.cu
 #if JVET_AI0050_INTER_MTSS
           , secondDimdIntraDir
 #endif
         );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        pu.cu->dimdDerivedIntraDir    = firstDimdIntraDir;
+        pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
+#endif
       }
 #endif
     }
@@ -1580,7 +1590,12 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
   PelBuf piResi = cs.getResiBuf( area );
 
   const QpParam cQP( tu, compID );
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if (chType == CHANNEL_TYPE_LUMA && !tu.cu->ispMode && !tu.cu->lfnstIdx && !tu.mtsIdx[0] && tu.cs->sps->getUseImplicitMTS())
+  {
+    tu.intraDirStat = PU::getFinalIntraModeForTransform(tu, COMPONENT_Y);
+  }
+#endif
 #if SIGN_PREDICTION
   bool bJccrWithCr = tu.jointCbCr && !(tu.jointCbCr >> 1);
   bool bIsJccr     = tu.jointCbCr && isChroma(compID);
