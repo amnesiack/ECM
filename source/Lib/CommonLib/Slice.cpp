@@ -96,6 +96,9 @@ Slice::Slice()
 #if JVET_AF0128_LIC_MERGE_TM
 , m_bCheckLDB                     ( false )
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+, m_bSepObmc4GPM                 ( false )
+#endif
 , m_biDirPred                    ( false )
 , m_iSliceQpDelta                 ( 0 )
 , m_iDepth                        ( 0 )
@@ -247,6 +250,9 @@ void Slice::initSlice()
   m_bCheckLDC = false;
 #if JVET_AF0128_LIC_MERGE_TM
   m_bCheckLDB = false;
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_bSepObmc4GPM = false;
 #endif
 
   m_biDirPred = false;
@@ -2049,6 +2055,9 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
   m_bCheckLDC             = pSrc->m_bCheckLDC;
 #if JVET_AF0128_LIC_MERGE_TM
   m_bCheckLDB             = pSrc->m_bCheckLDB;
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_bSepObmc4GPM          = pSrc->m_bSepObmc4GPM;
 #endif
   m_iSliceQpDelta        = pSrc->m_iSliceQpDelta;
 

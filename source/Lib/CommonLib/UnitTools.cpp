@@ -34142,7 +34142,12 @@ bool CU::isMTSAllowed(const CodingUnit &cu, const ComponentID compID)
 }
 
 #if ENABLE_OBMC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+unsigned int PU::getSameNeigMotion(PredictionUnit& pu, MotionInfo& mi, Position off, int iDir, int& iLength, int iMaxLength,
+                                   uint8_t checkLevel, int offIdx, std::vector<uint8_t>* nbEachLength)
+#else
 unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position off, int iDir, int& iLength, int iMaxLength)
+#endif
 {
 
   PredictionUnit* tmpPu = nullptr;
@@ -34176,6 +34181,12 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
   mi = tmpPu->getMotionInfo(posNeighborMotion);
 
   iLength = 1;
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  if (checkLevel == 2)
+  {
+    iLength = (*nbEachLength)[offIdx];
+  }
+#endif
 #if JVET_AK0076_EXTENDED_OBMC_IBC
   PredictionUnit subPu = pu;
   subPu.UnitArea::operator=(CS::getArea(*pu.cs, UnitArea(pu.chromaFormat, Area(posSubBlock, Size{ uiMinCUW, uiMinCUW })), pu.chType));
@@ -34186,10 +34197,21 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
   if (mi.isInter && !mi.isIBCmot) // inter
 #endif
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    MotionInfo currMi;
+
+    bool bIsSimilarMV = false;
+    if (checkLevel == 0 || checkLevel == 2)
+    {
+      currMi = pu.getMotionInfo(posSubBlock);
+      bIsSimilarMV = PU::identicalMvOBMC(currMi, mi, pu.cs->slice->getCheckLDC());
+    }
+#else
     MotionInfo currMi = pu.getMotionInfo(posSubBlock);
     // check similar MV
 
     bool bIsSimilarMV = PU::identicalMvOBMC(currMi, mi, pu.cs->slice->getCheckLDC());
+#endif
 #if JVET_AD0213_LIC_IMP
 #if JVET_AF0190_RPR_TMP_REORDER_LIC
     if (bIsSimilarMV)
@@ -34252,7 +34274,11 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
       }
     }
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    for (unsigned int idx = 1; (idx < iMaxLength) && (checkLevel != 2); idx++)
+#else
     for (unsigned int idx = 1; idx < iMaxLength; idx++)
+#endif
     {
 
       if (iDir == 0)//top
@@ -34371,7 +34397,11 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
 #endif
       }
 #if JVET_AD0213_LIC_IMP
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      if (bSameMv && (checkLevel == 0))
+#else
       if (bSameMv)
+#endif
       {
         Position  posSubBlock1;
         if (iDir == 0)//top
@@ -34422,6 +34452,10 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
   }
   else             // intra
   {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    if (checkLevel != 2)
+    {
+#endif
     for (unsigned int idx = 1; idx < iMaxLength; idx++)
     {
       if (iDir == 0)
@@ -34457,6 +34491,9 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
         break;
       }
     }
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    }
+#endif
     return 1;
   }
 }
@@ -34483,8 +34520,15 @@ bool PU::identicalMvOBMC(MotionInfo curMI, MotionInfo neighMI, bool bLD)
   }
 }
 
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+bool PU::getNeighborMotion(PredictionUnit& pu, MotionInfo& currMotion, MotionInfo& mi, Position posNeighborMotion)
+#else
 bool PU::getNeighborMotion(PredictionUnit &pu, MotionInfo& mi, Position off, Size unitSize, int iDir)
+#endif
 {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  mi = pu.getMotionInfo(posNeighborMotion);
+#else
   PredictionUnit* tmpPu = &pu;
   Position posNeighborMotion = Position(0, 0);
   const Position posSubBlock(pu.lumaPos().offset(off));
@@ -34518,6 +34562,7 @@ bool PU::getNeighborMotion(PredictionUnit &pu, MotionInfo& mi, Position off, Siz
 
   mi = tmpPu->getMotionInfo(posNeighborMotion);
   const MotionInfo currMotion = pu.getMotionInfo(posSubBlock);
+#endif
 
   if (mi.interDir)
   {
@@ -35392,7 +35437,7 @@ bool CU::isDirectionalPlanarAvailable(const CodingUnit &cu)
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
 bool CU::isGeoBlendAvailable( const CodingUnit& cu )
 {
-  return cu.slice->getSPS()->getUseGeoBlend(); 
+  return cu.slice->getSPS()->getUseGeoBlend();
 }
 #if JVET_AK0101_REGRESSION_GPM_INTRA
 bool CU::isGeoBlendIntraAvailable(const CodingUnit& cu)

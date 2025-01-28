@@ -313,6 +313,7 @@
 #define JVET_AC0335_CONTENT_ADAPTIVE_OBMC_ENABLING        1 // JVET-AC0335: Content adaptive OBMC enabling
 #define JVET_AD0193_ADAPTIVE_OBMC_CONTROL                 1 // JVET-AD0193: Adaptive OBMC control
 #define JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED              1 // JVET-AJ0161: OBMC extension with intra prediction
+#define JVET_AK0212_GPM_OBMC_MODIFICATION                 1 // JVET-AK0212: Apply OBMC for each GPM partition before blending
 #endif
 
 #if JVET_X0049_BDMVR_SW_OPT

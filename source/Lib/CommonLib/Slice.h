@@ -3865,6 +3865,9 @@ private:
 #if JVET_AF0128_LIC_MERGE_TM
   bool                       m_bCheckLDB;
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool                       m_bSepObmc4GPM;
+#endif
 
   bool                       m_biDirPred;
   int                        m_symRefIdx[2];
@@ -4300,6 +4303,9 @@ public:
 #if JVET_AF0128_LIC_MERGE_TM
   bool                        getCheckLDB() const                                    { return m_bCheckLDB;                                           }
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool                        getCheckUseSepOBMC() const                             { return m_bSepObmc4GPM;                                        }
+#endif
   int                         getList1IdxToList0Idx( int list1Idx ) const            { return m_list1IdxToList0Idx[list1Idx];                        }
   void                        setPOC( int i )                                        { m_iPOC              = i;                                      }
   bool                        getPictureHeaderInSliceHeader() const                  { return m_pictureHeaderInSliceHeader;                         }
@@ -4391,6 +4397,9 @@ public:
   void                        setCheckLDC( bool b )                                  { m_bCheckLDC = b;                                              }
 #if JVET_AF0128_LIC_MERGE_TM
   void                        setCheckLDB( bool b )                                  { m_bCheckLDB = b;                                              }
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void                        setCheckUseSepOBMC( bool b )                           { m_bSepObmc4GPM = b;                                           }
 #endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   void                        setColFromL0Flag2nd(bool colFromL0)                    { m_colFromL0Flag2nd = colFromL0;                               }
