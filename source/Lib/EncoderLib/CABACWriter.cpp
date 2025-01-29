@@ -9915,19 +9915,112 @@ void CABACWriter::last_sig_coeff( CoeffCodingContext& cctx, const TransformUnit&
   }
   if( GroupIdxX > 3 )
   {
-    posX -= g_uiMinInGroup[ GroupIdxX ];
-    for (int i = ( ( GroupIdxX - 2 ) >> 1 ) - 1 ; i >= 0; i-- )
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool isMaxX = false;
+    bool isMaxXisSignaled=false;
+
+    if( (cctx.width()>=SECONDARY_PREFIX_START_SIZE) && GroupIdxX==maxLastPosX ) 
     {
-      m_BinEncoder.encodeBinEP( ( posX >> i ) & 1 );
+      CHECK(GroupIdxX >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      CHECKD(GroupIdxX >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      isMaxX = (posX == (g_uiMinInGroup[GroupIdxX + 1] - 1));
+      int ctxId = compID==0 ? g_aucLog2[cctx.width()/SECONDARY_PREFIX_START_SIZE] : (5 + compID - 1);
+      m_BinEncoder.encodeBin(isMaxX?1:0,Ctx::lastXSecondaryPrefix(ctxId));
+      isMaxXisSignaled = true;
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() isMaxX=%d\n", isMaxX?1:0);
     }
+
+    if(!isMaxX)
+    {
+#endif
+    posX -= g_uiMinInGroup[ GroupIdxX ];
+
+
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool allTo1=true;
+    for ( int i = ( ( GroupIdxX - 2 ) >> 1 ) - 1 ; i >= 1; i-- )
+#else
+    for (int i = ( ( GroupIdxX - 2 ) >> 1 ) - 1 ; i >= 0; i-- )
+#endif
+    {
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( i==( ((GroupIdxX-2)>>1) - 1) )
+      {
+        int ctxOf = g_aucLog2[(cctx.width()/ID_SUFFIX_CTX_START_SIZE)];
+        CHECK(ctxOf<0 || ctxOf>g_aucLog2[128/ID_SUFFIX_CTX_START_SIZE],"Abnormal value of ctxOf");
+        m_BinEncoder.encodeBin( ( posX >> i ) & 1 , Ctx::lastXSuffix[compID](ctxOf));
+      }
+      else
+      {
+        m_BinEncoder.encodeBinEP( ( posX >> i ) & 1 );
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() lastXSuffixBin(%d)=%d\n", i, (posX>>i)&1);
+      allTo1 &= ((( posX >> i ) & 1)==1);
+#else
+      m_BinEncoder.encodeBinEP( ( posX >> i ) & 1 );
+#endif
+    }
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( !isMaxXisSignaled || !allTo1 )
+      {
+        m_BinEncoder.encodeBinEP( ( posX >> 0 ) & 1 );
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() uiTempX=%d\n", posX);
+    }
+#endif
   }
   if( GroupIdxY > 3 )
   {
-    posY -= g_uiMinInGroup[ GroupIdxY ];
-    for ( int i = ( ( GroupIdxY - 2 ) >> 1 ) - 1 ; i >= 0; i-- )
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool isMaxY = false;
+    bool isMaxYisSignaled=false;
+    if((cctx.height()>=SECONDARY_PREFIX_START_SIZE) && GroupIdxY==maxLastPosY)
     {
-      m_BinEncoder.encodeBinEP( ( posY >> i ) & 1 );
+      CHECK(GroupIdxY >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      CHECKD(GroupIdxY >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      isMaxY = (posY == (g_uiMinInGroup[GroupIdxY + 1] - 1));
+      int ctxId = compID==0 ? g_aucLog2[cctx.height()/SECONDARY_PREFIX_START_SIZE] : (5 + compID - 1);
+      m_BinEncoder.encodeBin(isMaxY?1:0,Ctx::lastYSecondaryPrefix(ctxId));
+      isMaxYisSignaled = true;
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() isMaxY=%d\n", isMaxY?1:0);
     }
+    if(!isMaxY)
+    {
+#endif
+    posY -= g_uiMinInGroup[ GroupIdxY ];
+
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool allTo1 = true;
+    for ( int i = ( ( GroupIdxY - 2 ) >> 1 ) - 1 ; i >= 1; i-- )
+#else
+    for ( int i = ( ( GroupIdxY - 2 ) >> 1 ) - 1 ; i >= 0; i-- )
+#endif
+    {
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( i==( ((GroupIdxY-2)>>1) - 1) )
+      {
+        int ctxOf = g_aucLog2[(cctx.height()/ID_SUFFIX_CTX_START_SIZE)];
+        CHECK(ctxOf<0 || ctxOf>g_aucLog2[128/ID_SUFFIX_CTX_START_SIZE],"Abnormal value of ctxOf");
+        m_BinEncoder.encodeBin( ( posY >> i ) & 1 , Ctx::lastYSuffix[compID](ctxOf) );
+      }
+      else
+      {
+        m_BinEncoder.encodeBinEP( ( posY >> i ) & 1 );
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() lastYSuffixBin(%d)=%d\n", i, (posY>>i)&1);
+      allTo1 &= ((( posY >> i ) & 1)==1);
+#else
+      m_BinEncoder.encodeBinEP( ( posY >> i ) & 1 );
+#endif
+    }
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( !isMaxYisSignaled || !allTo1 )
+      {
+        m_BinEncoder.encodeBinEP( ( posY >> 0 ) & 1 );
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() uiTempY=%d\n", posY);
+    }
+#endif
   }
   DTRACE(g_trace_ctx, D_SYNTAX_RESI, "last_sig_coeff() scan_pos_last=%d\n", cctx.scanPosLast());
 }

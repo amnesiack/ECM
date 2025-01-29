@@ -174,6 +174,11 @@ static const int32_t BIF_ROUND_ADD =         32;
 static const int32_t BIF_ROUND_SHIFT =        6;
 #endif
 
+#if JVET_AK0097_LAST_POS_SIGNALING 
+static const uint32_t SECONDARY_PREFIX_START_SIZE = 8;
+static const uint32_t ID_SUFFIX_CTX_START_SIZE = 16;
+#endif
+
 // ====================================================================================================================
 // Common constants
 // ====================================================================================================================

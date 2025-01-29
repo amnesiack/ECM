@@ -10042,23 +10042,125 @@ int CABACReader::last_sig_coeff( CoeffCodingContext& cctx, TransformUnit& tu, Co
   }
   if( PosLastX > 3 )
   {
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool isMaxX=false;
+    bool isMaxXisSignaled=false;
+
+    if ( (cctx.width() >= SECONDARY_PREFIX_START_SIZE) && PosLastX == maxLastPosX )
+    {
+      int ctxId = compID==0 ? g_aucLog2[cctx.width()/SECONDARY_PREFIX_START_SIZE] : (5 + compID - 1);
+      isMaxX = (m_BinDecoder.decodeBin(Ctx::lastXSecondaryPrefix(ctxId)) == 1 ? true : false);
+      isMaxXisSignaled = true;
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() isMaxX=%d\n", isMaxX ? 1 : 0);
+    }
+
+    if( isMaxX )
+    {
+      CHECKD(PosLastX >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      PosLastX = g_uiMinInGroup[PosLastX + 1] - 1;
+    }
+    else
+    {
+#endif
     uint32_t uiTemp  = 0;
     uint32_t uiCount = ( PosLastX - 2 ) >> 1;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool allTo1=true;
+    for ( int i = uiCount - 1; i >= 1; i-- )
+#else
     for ( int i = uiCount - 1; i >= 0; i-- )
+#endif
     {
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( i==(uiCount-1) )
+      {
+        int ctxOf = g_aucLog2[(cctx.width()/ID_SUFFIX_CTX_START_SIZE)];
+        CHECKD(ctxOf<0 || ctxOf>g_aucLog2[128/ID_SUFFIX_CTX_START_SIZE],"Abnormal value of ctxOf");
+        uiTemp += m_BinDecoder.decodeBin( Ctx::lastXSuffix[compID](ctxOf) ) << i;
+      }
+      else
+      {
+        uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() lastXSuffixBin(%d)=%d\n", i, (uiTemp>>i)&1);
+      allTo1 &= ( ( (uiTemp >> i)&1 ) ==1 );
+#else
       uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+#endif
     }
+#if JVET_AK0097_LAST_POS_SIGNALING
+    if( !isMaxXisSignaled || !allTo1 )
+    {
+      uiTemp += m_BinDecoder.decodeBinEP( ) << 0;
+    }
+    DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() uiTempX=%d\n", uiTemp);
+#endif
     PosLastX = g_uiMinInGroup[ PosLastX ] + uiTemp;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    }
+#endif
+
   }
   if( PosLastY > 3 )
   {
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool isMaxY=false;
+    bool isMaxYisSignaled=false;
+
+    if (cctx.height() >= SECONDARY_PREFIX_START_SIZE && PosLastY == maxLastPosY)
+    {
+      int ctxId = compID==0 ? g_aucLog2[cctx.height()/SECONDARY_PREFIX_START_SIZE] : (5 + compID - 1);
+      isMaxY = (m_BinDecoder.decodeBin(Ctx::lastYSecondaryPrefix(ctxId)) == 1 ? true : false);
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() isMaxY=%d\n", isMaxY ? 1 : 0);
+      isMaxYisSignaled=true;
+    }
+
+    if( isMaxY )
+    {
+      CHECK(PosLastY >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      CHECKD(PosLastY >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      PosLastY = g_uiMinInGroup[PosLastY + 1] - 1;
+    }
+    else
+    {
+#endif
     uint32_t uiTemp  = 0;
     uint32_t uiCount = ( PosLastY - 2 ) >> 1;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool allTo1=true;
+    for ( int i = uiCount - 1; i >= 1; i-- )
+#else
     for ( int i = uiCount - 1; i >= 0; i-- )
+#endif
     {
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( i==(uiCount-1) )
+      {
+        int ctxOf = g_aucLog2[(cctx.height()/ID_SUFFIX_CTX_START_SIZE)];
+        CHECK(ctxOf<0 || ctxOf>g_aucLog2[128/ID_SUFFIX_CTX_START_SIZE],"Abnormal value of ctxOf");
+        uiTemp += m_BinDecoder.decodeBin( Ctx::lastYSuffix[compID](ctxOf) ) << i;
+      }
+      else
+      {
+        uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() lastYSuffixBin(%d)=%d\n", i, (uiTemp>>i)&1);
+      allTo1 &= ( ( (uiTemp >> i)&1 ) ==1 );
+#else
       uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+#endif
     }
+#if JVET_AK0097_LAST_POS_SIGNALING
+    if ( !isMaxYisSignaled || !allTo1 )
+    {
+      uiTemp += m_BinDecoder.decodeBinEP( ) << 0;
+    }
+    DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() uiTempY=%d\n", uiTemp);
+#endif
     PosLastY = g_uiMinInGroup[ PosLastY ] + uiTemp;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    }
+#endif
   }
 
   int blkPos;
