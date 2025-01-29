@@ -4969,6 +4969,10 @@ void IntraPrediction::xPredIntraAng(
   Pel  refAbove[2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
   Pel  refLeft [2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
 #else
+#if JVET_AK0087_INTRA_8TAP
+  Pel refAbove[(MAX_CU_SIZE << 3) + 7 + 33 * MAX_REF_LINE_IDX];
+  Pel refLeft[(MAX_CU_SIZE << 3) + 7 + 33 * MAX_REF_LINE_IDX];
+#else
   // 2 pixels more for 6 tap filter.
 #if JVET_AC0094_REF_SAMPLES_OPT
   Pel refAbove[(MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX];
@@ -4976,6 +4980,7 @@ void IntraPrediction::xPredIntraAng(
 #else
   Pel  refAbove[2 * MAX_CU_SIZE + 5 + 33 * MAX_REF_LINE_IDX];
   Pel  refLeft[2 * MAX_CU_SIZE + 5 + 33 * MAX_REF_LINE_IDX];
+#endif
 #endif
 #if JVET_AB0157_INTRA_FUSION
   if( !bRefL1Only)
@@ -4989,6 +4994,10 @@ void IntraPrediction::xPredIntraAng(
 
   Pel *refMain2nd = NULL;
   Pel *refSide2nd = NULL;
+#if JVET_AK0087_INTRA_8TAP
+  Pel refAbove2nd[(MAX_CU_SIZE << 3) + 12 + 33 * (MAX_REF_LINE_IDX + 1)];
+  Pel refLeft2nd[(MAX_CU_SIZE << 3) + 12 + 33 * (MAX_REF_LINE_IDX + 1)];
+#else
 #if JVET_AC0094_REF_SAMPLES_OPT
   Pel refAbove2nd[(MAX_CU_SIZE << 3) + 10 + 33 * (MAX_REF_LINE_IDX + 1)];
   Pel refLeft2nd[(MAX_CU_SIZE << 3) + 10 + 33 * (MAX_REF_LINE_IDX + 1)];
@@ -4998,11 +5007,24 @@ void IntraPrediction::xPredIntraAng(
 #endif
 #endif
 #endif
+#endif
 
   // Initialize the Main and Left reference array.
   if (intraPredAngle < 0)
   {
 #if INTRA_6TAP
+#if JVET_AK0087_INTRA_8TAP
+    const Pel *src = pSrc.buf;
+    Pel *dst = refAbove + height + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (width + 3 + multiRefIdx + 1));
+
+    src = pSrc.buf + pSrc.stride;
+    dst = refLeft + width + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (height + 3 + multiRefIdx + 1));
+
+    refMain = bIsModeVer ? refAbove + height + 2 : refLeft + width + 2;
+    refSide = bIsModeVer ? refLeft + width + 2: refAbove + height + 2;
+#else
     // x, y range increase by 1 (right extend)
     const Pel *src = pSrc.buf;
     Pel *dst = refAbove + height + 1;
@@ -5014,6 +5036,7 @@ void IntraPrediction::xPredIntraAng(
 
     refMain = bIsModeVer ? refAbove + height + 1 : refLeft + width + 1;
     refSide = bIsModeVer ? refLeft + width + 1: refAbove + height + 1;
+#endif
 
     // Extend the Main reference to the left.
     int sizeSide = bIsModeVer ? height : width;
@@ -5027,8 +5050,12 @@ void IntraPrediction::xPredIntraAng(
       }
     }
 #endif
+#if JVET_AK0087_INTRA_8TAP
+    for (int k = -(sizeSide + 2); k <= -1; k++)
+#else
     // left extend by 1
     for (int k = -(sizeSide + 1); k <= -1; k++)
+#endif
     {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
       if (m_refSampleForOBMC && !(m_intraOBMCNeighState == INTRA_OBMC_ONLY_LEFT_AVAIL && intraPredAngle == -32))
@@ -5088,6 +5115,36 @@ void IntraPrediction::xPredIntraAng(
   else
   {
 #if INTRA_6TAP
+#if JVET_AK0087_INTRA_8TAP
+    const Pel *src = pSrc.buf;
+    Pel *dst = refAbove + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx + 2));
+
+    src = pSrc.buf + pSrc.stride;
+    dst = refLeft + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + multiRefIdx + 2));
+
+    refAbove[1] = refAbove[2];
+    refAbove[0] = refAbove[1];
+    refLeft[1] = refLeft[2];
+    refLeft[0] = refLeft[1];
+    refMain = bIsModeVer ? refAbove + 2 : refLeft + 2;
+    refSide = bIsModeVer ? refLeft + 2 : refAbove + 2;
+
+    const int log2Ratio = floorLog2(width) - floorLog2(height);
+    const int s = std::max<int>(0, bIsModeVer ? log2Ratio : -log2Ratio);
+#if JVET_W0123_TIMD_FUSION
+    const int maxIndex  = (multiRefIdx << s) + 6;
+#else
+    const int maxIndex = (multiRefIdx << s) + 2;
+#endif
+    const int refLength = bIsModeVer ? m_topRefLength : m_leftRefLength;
+    const Pel val = refMain[refLength + multiRefIdx];
+    for (int z = 1; z <= (maxIndex+2); z++)
+    {
+      refMain[refLength + multiRefIdx + z] = val;
+    }
+#else
     const Pel *src = pSrc.buf;
     Pel *dst = refAbove + 1;
     ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx + 1));
@@ -5117,6 +5174,7 @@ void IntraPrediction::xPredIntraAng(
     {
       refMain[refLength + multiRefIdx + z] = val;
     }
+#endif
 #else
     for (int x = 0; x <= m_topRefLength + multiRefIdx; x++)
     {
@@ -5157,6 +5215,18 @@ void IntraPrediction::xPredIntraAng(
     // Initialize the Main and Left reference array.
     if (intraPredAngle < 0)
     {
+#if JVET_AK0087_INTRA_8TAP
+      const Pel *src = pSrc2nd.buf;
+      Pel *      dst = refAbove2nd + height + 3;
+      ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + 2 + multiRefIdx2nd));
+
+      src = pSrc2nd.buf + pSrc2nd.stride;
+      dst = refLeft2nd + width + 3;
+      ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + 2 + multiRefIdx2nd));
+
+      refMain2nd = bIsModeVer ? refAbove2nd + height + 3 : refLeft2nd + width + 3;
+      refSide2nd = bIsModeVer ? refLeft2nd + width + 3 : refAbove2nd + height + 3;
+#else
       // x, y range increase by 1 (right extend)
       const Pel *src = pSrc2nd.buf;
       Pel *      dst = refAbove2nd + height + 2;
@@ -5168,12 +5238,17 @@ void IntraPrediction::xPredIntraAng(
 
       refMain2nd = bIsModeVer ? refAbove2nd + height + 2 : refLeft2nd + width + 2;
       refSide2nd = bIsModeVer ? refLeft2nd + width + 2 : refAbove2nd + height + 2;
+#endif
 
       // Extend the Main reference to the left.
       int sizeSide = bIsModeVer ? height : width;
       int sizeSideRange = bIsModeVer ? m_leftRefLength + multiRefIdx2nd : m_topRefLength + multiRefIdx2nd;
+#if JVET_AK0087_INTRA_8TAP
+      for (int k = -(sizeSide + 3); k <= -1; k++)
+#else
       // left extend by 1
       for (int k = -(sizeSide + 2); k <= -1; k++)
+#endif
       {
         int frac32precision = (-k * absInvAngle + 8) >> 4;
         int intpel          = frac32precision >> 5;
@@ -5202,6 +5277,37 @@ void IntraPrediction::xPredIntraAng(
     }
     else
     {
+#if JVET_AK0087_INTRA_8TAP
+      const Pel *src = pSrc2nd.buf;
+      Pel *      dst = refAbove2nd + 2;
+      ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx2nd + 2));
+
+      src = pSrc2nd.buf + pSrc2nd.stride;
+      dst = refLeft2nd + 2;
+      ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + multiRefIdx2nd + 2));
+
+      refAbove2nd[1] = refAbove2nd[2];
+      refAbove2nd[0] = refAbove2nd[1];
+      refLeft2nd[1]  = refLeft2nd[2];
+      refLeft2nd[0]  = refLeft2nd[1];
+      refMain2nd     = bIsModeVer ? refAbove2nd + 2 : refLeft2nd + 2;
+      refSide2nd     = bIsModeVer ? refLeft2nd + 2 : refAbove2nd + 2;
+
+      const int log2Ratio = floorLog2(width) - floorLog2(height);
+      const int s = std::max<int>(0, bIsModeVer ? log2Ratio : -log2Ratio);
+
+#if JVET_W0123_TIMD_FUSION
+      const int maxIndex = (multiRefIdx2nd << s) + 6 + 4;
+#else
+      const int maxIndex = (multiRefIdx2nd << s) + 2;
+#endif
+      const int refLength = bIsModeVer ? m_topRefLength : m_leftRefLength;
+      const Pel val       = refMain2nd[refLength + multiRefIdx2nd];
+      for (int z = 1; z <= (maxIndex + 2); z++)
+      {
+        refMain2nd[refLength + multiRefIdx2nd + z] = val;
+      }
+#else
       const Pel *src = pSrc2nd.buf;
       Pel *      dst = refAbove2nd + 1;
       ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx2nd + 1));
@@ -5232,6 +5338,7 @@ void IntraPrediction::xPredIntraAng(
       {
         refMain2nd[refLength + multiRefIdx2nd + z] = val;
       }
+#endif
     }
 
 
@@ -5305,6 +5412,16 @@ void IntraPrediction::xPredIntraAng(
         {
           const bool useCubicFilter = !m_ipaParam.interpolationFlag;
 
+#if JVET_AK0087_INTRA_8TAP
+          bool use8TapFilter=false;
+          if (useCubicFilter)
+          {
+            const int log2Size = (floorLog2(width) + floorLog2(height)) >> 1;
+            const int diff = std::min( abs( intraPredAngle - (bExtIntraDir ? EXT_HOR_IDX : HOR_IDX) ), abs( intraPredAngle - (bExtIntraDir ? EXT_VER_IDX : VER_IDX) ) );
+            use8TapFilter = (diff > (bExtIntraDir ? log2Size: log2Size/2)) && (log2Size < (bExtIntraDir ? 6 : 4));
+          }
+#endif
+
 #if INTRA_6TAP
           const TFilterCoeff        intraSmoothingFilter[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract << 1)), TFilterCoeff(128 - (deltaFract << 1)), TFilterCoeff(64 + (deltaFract << 1)), TFilterCoeff(deltaFract << 1), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2[6] = { TFilterCoeff(16 - (deltaFract >> 1)), TFilterCoeff(64 - 3*(deltaFract >> 1)), TFilterCoeff(96 - (deltaFract)), TFilterCoeff(64 + (deltaFract)),
@@ -5313,7 +5430,14 @@ void IntraPrediction::xPredIntraAng(
           const TFilterCoeff        intraSmoothingFilterExt[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract)), TFilterCoeff(128 - (deltaFract)), TFilterCoeff(64 + (deltaFract)), TFilterCoeff(deltaFract), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2Ext[6] = { TFilterCoeff(16 - (deltaFract >> 2)), TFilterCoeff(64 - 3*(deltaFract >> 2)), TFilterCoeff(96 - (deltaFract >> 1)), TFilterCoeff(64 + (deltaFract >> 1)),
             TFilterCoeff(16 + 3*(deltaFract >> 2)), TFilterCoeff((deltaFract >> 2)) };
+#if JVET_AK0087_INTRA_8TAP
+          const TFilterCoeff* const f = (useCubicFilter)  ? (use8TapFilter  ? ( bExtIntraDir ? InterpolationFilter::getExtIntra8tapCubicFilter(deltaFract) : InterpolationFilter::getIntra8tapCubicFilter(deltaFract) )
+                                                                            : ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract) : InterpolationFilter::getIntraLumaFilterTable(deltaFract) ) )
+                                                          : (width >= 32 && height >= 32) ? (bExtIntraDir ? intraSmoothingFilter2Ext : intraSmoothingFilter2) 
+                                                                                          : (bExtIntraDir ? intraSmoothingFilterExt  : intraSmoothingFilter);
+#else
           const TFilterCoeff* const f = (useCubicFilter) ? ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract) : InterpolationFilter::getIntraLumaFilterTable(deltaFract)) : (width >=32 && height >=32)? (bExtIntraDir ? intraSmoothingFilter2Ext : intraSmoothingFilter2) : (bExtIntraDir ? intraSmoothingFilterExt : intraSmoothingFilter);
+#endif
 #else
           const TFilterCoeff* const f = (useCubicFilter) ? InterpolationFilter::getIntraLumaFilterTable(deltaFract) : (width >=32 && height >=32)? intraSmoothingFilter2 : intraSmoothingFilter;
 #endif
@@ -5342,9 +5466,60 @@ void IntraPrediction::xPredIntraAng(
           const TFilterCoeff        intraSmoothingFilterExtRL[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract2nd)), TFilterCoeff(128 - (deltaFract2nd)), TFilterCoeff(64 + (deltaFract2nd)), TFilterCoeff(deltaFract2nd), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2ExtRL[6] = { TFilterCoeff(16 - (deltaFract2nd >> 2)), TFilterCoeff(64 - 3*(deltaFract2nd >> 2)), TFilterCoeff(96 - (deltaFract2nd >> 1)), TFilterCoeff(64 + (deltaFract2nd >> 1)),
             TFilterCoeff(16 + 3*(deltaFract2nd >> 2)), TFilterCoeff((deltaFract2nd >> 2)) };
+#if JVET_AK0087_INTRA_8TAP
+          const TFilterCoeff* const fRL = (useCubicFilter)  ? ( use8TapFilter  ? ( bExtIntraDir ? InterpolationFilter::getExtIntra8tapCubicFilter(deltaFract2nd) : InterpolationFilter::getIntra8tapCubicFilter(deltaFract2nd))
+                                                                               : ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract2nd) : InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd)) )
+                                                            : (width >=32 && height >=32) ? (bExtIntraDir ? intraSmoothingFilter2ExtRL : intraSmoothingFilter2RL) 
+                                                                                          : (bExtIntraDir ? intraSmoothingFilterExtRL  : intraSmoothingFilterRL);
+#else
           const TFilterCoeff* const fRL = (useCubicFilter) ? ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract2nd) : InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd)) : (width >=32 && height >=32)? (bExtIntraDir ? intraSmoothingFilter2ExtRL : intraSmoothingFilter2RL) : (bExtIntraDir ? intraSmoothingFilterExtRL : intraSmoothingFilterRL);
+#endif
 #else
           const TFilterCoeff* const fRL = (useCubicFilter) ? InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd) : (width >=32 && height >=32)? intraSmoothingFilter2RL : intraSmoothingFilterRL;
+#endif
+#if JVET_AK0087_INTRA_8TAP
+          if ( use8TapFilter )
+          {
+            const int normNum = 128; 
+            const int bitShift = 8;
+            if (weightMode == 0)
+            {
+              for (int x = 0; x < width; x++)
+              {
+                Pel *q = refMain2nd + deltaInt2nd + x - 2;
+                const int val32 = ( ((int) fRL[0] * q[0] + (int) fRL[1] * q[1] + (int) fRL[2] * q[2] + (int) fRL[3] * q[3] + (int) fRL[4] * q[4] + (int) fRL[5] * q[5] + (int) fRL[6] * q[6] + (int) fRL[7] * q[7]) + normNum) >> bitShift;
+                const Pel val   = (Pel)ClipPel(val32, clpRng);
+                pDsty[x]        = ClipPel(val, clpRng);   // always clip even though not always needed
+              }
+            }
+            else if(weightMode == 4)
+            {
+              for (int x = 0; x < width; x++)
+              {
+                Pel *p = refMain + deltaInt + x - 2;
+                const int val32 = ((int) f[0] * p[0] + (int) f[1] * p[1] + (int) f[2] * p[2] + (int) f[3] * p[3] + (int) f[4] * p[4] + (int) f[5] * p[5]  + (int) f[6] * p[6] + (int) f[7] * p[7] + normNum) >> bitShift;
+                const Pel val   = (Pel)ClipPel(val32, clpRng);
+                pDsty[x]        = ClipPel(val, clpRng);   // always clip even though not always needed
+              }
+            }
+            else
+            {
+              for (int x = 0; x < width; x++)
+              {
+                const int w0 = weightMode;
+                const int w1 = 4 - weightMode;
+                Pel *q     = refMain2nd + deltaInt2nd + x - 2;
+                Pel *p     = refMain + deltaInt + x - 2;
+                const int val32 = (w0*((int) f[0] * p[0] + (int) f[1] * p[1] + (int) f[2] * p[2] + (int) f[3] * p[3] + (int) f[4] * p[4] + (int) f[5] * p[5] + (int) f[6] * p[6] + (int) f[7] * p[7])
+                                 + w1*((int) fRL[0] * q[0] + (int) fRL[1] * q[1] + (int) fRL[2] * q[2] + (int) fRL[3] * q[3] + (int) fRL[4] * q[4] + (int) fRL[5] * q[5] + (int) fRL[6] * q[6] + (int) fRL[7] * q[7])
+                                 + normNum*4 ) >> (bitShift+2);
+                const Pel val   = (Pel)ClipPel(val32, clpRng);
+                pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
+              }
+            }
+          }
+          else //6-tap non-smoothing interpolation filter or smoothing interpolation filters
+          {
 #endif
           if (weightMode == 0)
           {
@@ -5384,6 +5559,9 @@ void IntraPrediction::xPredIntraAng(
               pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
             }
           }
+#if JVET_AK0087_INTRA_8TAP
+          }
+#endif
 #else
           for (int x = 0; x < width; x++)
           {
