@@ -4443,6 +4443,9 @@ SPS::SPS()
 #if JVET_AA0133_INTER_MTS_OPT
 , m_interMTSMaxSize           ( 32 )
 #endif
+#if AHG7_MTS_TOOLOFF_CFG
+, m_intraMTSMaxSize           ( 128 )
+#endif
 #if MULTI_HYP_PRED
 , m_InterMultiHyp(false)
 , m_maxNumAddHyps(0)
