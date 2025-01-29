@@ -543,6 +543,12 @@ public:
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   static const CtxSet PnnLuminanceFlag;
 #endif
+#if JVET_AK0097_LAST_POS_SIGNALING
+  static const CtxSet lastXSecondaryPrefix;
+  static const CtxSet lastYSecondaryPrefix;
+  static const CtxSet lastXSuffix[3];
+  static const CtxSet lastYSuffix[3];
+#endif
 #if JVET_V0130_INTRA_TMP
   static const CtxSet   TmpFlag;
 #if JVET_AD0086_ENHANCED_INTRA_TMP
