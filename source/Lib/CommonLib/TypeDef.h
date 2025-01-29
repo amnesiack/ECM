@@ -471,6 +471,8 @@
 #define JVET_AJ0260_SBT_CORNER_MODE                       1 // JVET-AJ0260: Corner mode for SBT
 #define JVET_AK0064_CCP_LFNST_NSPT                        1 // JVET-AK0064: LFNST/NSPT set derivation for CCP coded block
 #define JVET_AK0097_LAST_POS_SIGNALING                    1 // JVET-AK0097: Secondary prefix in last XY binarization 
+#define JVET_AK0217_INTRA_MTSS                            1 // JVET-AK0217: Multiple transform set selection for intra LFNST/NSPT with subsampled DIMD 
+#define JVET_AK0222_SGPM_DIMD_LFNST                       1 // JVET-AK0222: Improved LFNST/NSPT kernel set selection for SGPM
 
 // Entropy Coding
 #define EC_HIGH_PRECISION                                 1 // CABAC high precision

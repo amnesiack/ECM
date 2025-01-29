@@ -299,9 +299,13 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = other.plIdx;
 #endif
-#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION 
   candModeListForTransform = other.candModeListForTransform;
-#endif
+#endif 
+#if JVET_AK0217_INTRA_MTSS 
+  candModeListForTransformMtss = other.candModeListForTransformMtss;
+  candCostListForTransformMtss = other.candCostListForTransformMtss;
+#endif 
 #if ENABLE_DIMD
 #if JVET_AH0076_OBIC
   obicFlag = other.obicFlag;
@@ -2261,6 +2265,10 @@ void TransformUnit::initData()
     lfnstIntra[i]    = 0;
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    mdirIdx[i] = 0;
+    secondNSPTSet[i] = false;
+#endif 
   }
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
     intraDirStat.first = 0;
@@ -2364,6 +2372,10 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
     lfnstIntra[i]    = other.lfnstIntra[i];
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    mdirIdx[i] = other.mdirIdx[i];
+    secondNSPTSet[i] = other.secondNSPTSet[i];
+#endif
   }
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
     intraDirStat.first = other.intraDirStat.first;
@@ -2418,6 +2430,10 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
   lfnstIntra[i]    = other.lfnstIntra[i];
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+  mdirIdx[i] = other.mdirIdx[i];
+  secondNSPTSet[i] = other.secondNSPTSet[i];
+#endif 
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
     intraDirStat.first = other.intraDirStat.first;
     intraDirStat.second = other.intraDirStat.second;

@@ -956,6 +956,10 @@ static const int SGPM_NUM = RSGPM_CAND_NUM + SGPM_CAND_NUM;
 static const int SGPM_NUM = 16;
 #endif
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE + SGPM_NUM);   ///< maximum number of RD comparison in fast-UDI estimation loop
+#if JVET_AK0222_SGPM_DIMD_LFNST
+static const int SGPM_VIPM_TH = 2;
+static const int MAX_SGPM_VIPM_SIZE = 256;
+#endif
 #else
 
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE); ///< maximum number of RD comparison in fast-UDI estimation loop
@@ -974,6 +978,13 @@ static const int LFNST_LAST_SIG_CHROMA_INTER =                      0;
 static const int NUM_LFNST_NUM_PER_SET =                            4;
 #else
 static const int NUM_LFNST_NUM_PER_SET =                            3;
+#endif
+
+#if JVET_AK0217_INTRA_MTSS
+static const int MIN_MTSS_SIZE          =                         128;
+static const int MIN_SGPM_MTSS_SIZE     =                         256;
+static const int MTSS_LIST_SIZE         =                           3;
+static const int MTSS_CAND_NUM[2]       =                    { 1, 3 };
 #endif
 
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES

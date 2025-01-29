@@ -948,6 +948,9 @@ public:
    void predChromaTM                      (const CompArea &areaCb, const CompArea &areaCr, PredictionUnit &pu, uint8_t predMode, PelBuf predCb, PelBuf predCr, TemplateType eTplType, InterPrediction *pcInterPred);
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+   static void deriveDimdModeList(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, static_vector<int, MTSS_LIST_SIZE>& candModeList, static_vector<int, MTSS_LIST_SIZE>& candCostList);
+#endif 
 #if ENABLE_DIMD && (JVET_AB0067_MIP_DIMD_LFNST || JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST || JVET_AG0058_EIP || JVET_AG0061_INTER_LFNST_NSPT)
   static int deriveIpmForTransform        (CPelBuf predBuf, CodingUnit& cu
 #if JVET_AI0050_INTER_MTSS

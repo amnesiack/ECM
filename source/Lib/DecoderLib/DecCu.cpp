@@ -673,6 +673,13 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         }
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+        if (currCU.firstTU->mdirIdx[COMPONENT_Y])
+        {
+          const CompArea& area = currCU.Y();
+          IntraPrediction::deriveDimdModeList(currCU.cs->picture->getRecoBuf(area), area, currCU, currCU.candModeListForTransformMtss, currCU.candCostListForTransformMtss);
+        }
+#endif 
         xReconIntraQT( currCU );
 #if JVET_AF0079_STORING_INTRATMP
         if (currCU.tmpFlag)
@@ -1420,7 +1427,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AI0050_INTER_MTSS
         pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
 #endif
-#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
         pu.cu->eipModel.eipDimdMode2nd = secondDimdIntraDir;
 #endif
       }
@@ -1470,7 +1477,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AI0050_INTER_MTSS
         int secondDimdIntraDir = 0;
 #endif
-#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
         int firstDimdIntraDir =
 #endif
         m_pcIntraPred->IntraPrediction::deriveIpmForTransform(piPred, *pu.cu
@@ -1478,7 +1485,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
           , secondDimdIntraDir
 #endif
         );
-#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
         pu.cu->dimdDerivedIntraDir    = firstDimdIntraDir;
         pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
 #endif
@@ -1594,10 +1601,15 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
   PelBuf piResi = cs.getResiBuf( area );
 
   const QpParam cQP( tu, compID );
-#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
   if (chType == CHANNEL_TYPE_LUMA && !tu.cu->ispMode && !tu.cu->lfnstIdx && !tu.mtsIdx[0] && tu.cs->sps->getUseImplicitMTS())
   {
+#if JVET_AK0217_INTRA_MTSS
+    bool secondBucket = false;
+    tu.intraDirStat = PU::getFinalIntraModeForTransform(secondBucket, tu, COMPONENT_Y);
+#else
     tu.intraDirStat = PU::getFinalIntraModeForTransform(tu, COMPONENT_Y);
+#endif
   }
 #endif
 #if SIGN_PREDICTION
