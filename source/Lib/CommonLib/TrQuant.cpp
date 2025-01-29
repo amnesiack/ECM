@@ -464,30 +464,6 @@ void TrQuant::invLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32
 #endif
 }
 
-uint32_t TrQuant::getLFNSTIntraMode( int wideAngPredMode )
-{
-  uint32_t intraMode;
-
-  if( wideAngPredMode < 0 )
-  {
-    intraMode = ( uint32_t ) ( wideAngPredMode + ( NUM_EXT_LUMA_MODE >> 1 ) + NUM_LUMA_MODE );
-  }
-  else if( wideAngPredMode >= NUM_LUMA_MODE )
-  {
-    intraMode = ( uint32_t ) ( wideAngPredMode + ( NUM_EXT_LUMA_MODE >> 1 ) );
-  }
-  else
-  {
-    intraMode = ( uint32_t ) wideAngPredMode;
-  }
-
-#if JVET_W0119_LFNST_EXTENSION
-  CHECK( intraMode >= NUM_LFNST_INTRA_MODES, "Wrong intra mode for LFNST" );
-#endif
-
-  return intraMode;
-}
-
 bool TrQuant::getTransposeFlag( uint32_t intraMode )
 {
   return ( ( intraMode >= NUM_LUMA_MODE ) && ( intraMode >= ( NUM_LUMA_MODE + ( NUM_EXT_LUMA_MODE >> 1 ) ) ) ) ||
@@ -540,142 +516,19 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
     const bool whge3 = width >= 8 && height >= 8;
     const ScanElement * scan = whge3 ? g_coefTopLeftDiagScan8x8[ gp_sizeIdxInfo->idxFrom( width ) ] : g_scanOrder[ SCAN_GROUPED_4x4 ][ SCAN_DIAG ][ gp_sizeIdxInfo->idxFrom( width ) ][ gp_sizeIdxInfo->idxFrom( height ) ];
 #endif
-    uint32_t intraMode = PU::getFinalIntraMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) );
-
-#if JVET_W0123_TIMD_FUSION
-    if( compID != COMPONENT_Y && PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
+#if JVET_AK0217_INTRA_MTSS 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID).first;
 #else
-    if( PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
-#endif
-    {
-#if JVET_AK0064_CCP_LFNST_NSPT
-      intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
-#else
-      intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
-#endif
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-      if (intraMode == PNN_IDX)
-      {
-        intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
-      }
-#endif
-    }
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-    else if (intraMode == PNN_IDX)
-    {
-      const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
-      intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0];
-      if (isLuma(compID) && isAllowedMultiple(width, height) && (tu.cu)->lfnstSecFlag)
-      {
-        intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? (tu.cu)->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
-      }
-    }
-#endif
-    if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-    {
-#if JVET_AB0067_MIP_DIMD_LFNST
-      intraMode = tu.cu->mipDimdMode;
-#else
-      intraMode = PLANAR_IDX;
-#endif
-    }
-#if JVET_AG0061_INTER_LFNST_NSPT
-    if (CU::isInter(*tu.cu))
-    {
-      intraMode = tu.cu->dimdDerivedIntraDir;
-    }
-    if (tu.cu->geoFlag)
-    {
-#if JVET_AI0050_INTER_MTSS
-      intraMode = tu.cu->dimdDerivedIntraDir;
-#else
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-      intraMode = g_geoAngle2IntraAng[g_geoParams[g_gpmSplitDir[whIdx][tu.cu->firstPU->geoSplitDir]][0]];
-#else
-      intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
-#endif
-#endif
-    }
-#endif
-#if JVET_AI0050_INTER_MTSS
-    if (tu.cu->lfnstIntra)
-    {
-      intraMode = tu.cu->dimdDerivedIntraDir2nd;
-    }
-#endif
-#if JVET_AB0155_SGPM
-    if (PU::isSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-    {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-      CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
-#if JVET_AJ0112_REGRESSION_SGPM
-      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
-#else
-      intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID);
 #endif
 #else
-#if JVET_AJ0112_REGRESSION_SGPM
-      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
 #else
-      intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
 #endif
 #endif
-    }
-#endif
-#if JVET_V0130_INTRA_TMP
-    if( PU::isTmp( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
-    {
-#if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
-      intraMode = tu.cu->intraTmpDimdMode;
-#else
-      intraMode = PLANAR_IDX;
-#endif
-    }
-#endif
-#if JVET_W0123_TIMD_FUSION
-    if (tu.cu->timd && compID == COMPONENT_Y)
-    {
-      intraMode = MAP131TO67(intraMode);
-    }
-#endif
-#if JVET_AC0071_DBV
-#if JVET_AH0136_CHROMA_REORDERING
-    if (compID != COMPONENT_Y && PU::isDbvMode(intraMode))
-#else
-    if (compID != COMPONENT_Y && intraMode == DBV_CHROMA_IDX)
-#endif
-    {
-      intraMode = PLANAR_IDX;
-    }
-#endif
-#if JVET_AD0085_TMRL_EXTENSION
-    if (tu.cu->tmrlFlag && compID == COMPONENT_Y)
-    {
-      intraMode = MAP131TO67(intraMode);
-    }
-#endif
-    CHECK( intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode" );
-
-#if JVET_AC0105_DIRECTIONAL_PLANAR
-    if (compID == COMPONENT_Y && intraMode == PLANAR_IDX)
-    {
-      if (tu.cu->plIdx == 2)
-      {
-        intraMode = HOR_IDX;
-      }
-      else if (tu.cu->plIdx == 1)
-      {
-        intraMode = VER_IDX;
-      }
-    }
-#endif
-#if JVET_AG0058_EIP
-    if (PU::isEIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-    {
-      intraMode = tu.cu->eipModel.eipDimdMode;
-    }
-#endif
-
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
 #if AHG7_LN_TOOLOFF_CFG
     if( lfnstIdx < ( tu.cu->cs->sps->getUseLFNSTExt() ? 4 : 3 ) )
@@ -686,10 +539,9 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
     if( lfnstIdx < 3 )
 #endif
     {
-      intraMode = getLFNSTIntraMode( PU::getWideAngle( tu, intraMode, compID ) );
 #if RExt__DECODER_DEBUG_TOOL_STATISTICS
       CodingStatistics::IncrementStatisticTool( CodingStatisticsClassType { STATS__TOOL_LFNST, width, height, compID } );
-#endif
+#endif      
       bool          transposeFlag   = getTransposeFlag( intraMode );
 #if JVET_W0119_LFNST_EXTENSION
       const int     sbSize          = whge4 ? 16 : ( whge3 ? 8 : 4 );
@@ -919,142 +771,19 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
     const bool whge3 = width >= 8 && height >= 8;
     const ScanElement * scan = whge3 ? g_coefTopLeftDiagScan8x8[ gp_sizeIdxInfo->idxFrom( width ) ] : g_scanOrder[ SCAN_GROUPED_4x4 ][ SCAN_DIAG ][ gp_sizeIdxInfo->idxFrom( width ) ][ gp_sizeIdxInfo->idxFrom( height ) ];
 #endif
-    uint32_t intraMode = PU::getFinalIntraMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) );
-
-#if JVET_W0123_TIMD_FUSION
-    if( compID != COMPONENT_Y && PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
+#if JVET_AK0217_INTRA_MTSS 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+      uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID).first;
 #else
-    if( PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
-#endif
-    {
-#if JVET_AK0064_CCP_LFNST_NSPT
-      intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
-#else
-      intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
-#endif
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-      if (intraMode == PNN_IDX)
-      {
-        intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
-      }
-#endif
-    }
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-    else if (intraMode == PNN_IDX)
-    {
-      const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
-      intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0];
-      if (isLuma(compID) && isAllowedMultiple(width, height) && (tu.cu)->lfnstSecFlag)
-      {
-        intraMode = (tu.cu)->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? (tu.cu)->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
-      }
-    }
-#endif
-    if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-    {
-#if JVET_AB0067_MIP_DIMD_LFNST
-      intraMode = tu.cu->mipDimdMode;
-#else
-      intraMode = PLANAR_IDX;
-#endif
-    }
-#if JVET_V0130_INTRA_TMP
-    if( PU::isTmp( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
-    {
-#if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
-      intraMode = tu.cu->intraTmpDimdMode;
-#else
-      intraMode = PLANAR_IDX;
-#endif
-    }
-#endif
-#if JVET_AG0061_INTER_LFNST_NSPT
-    if (CU::isInter(*tu.cu))
-    {
-      intraMode = tu.cu->dimdDerivedIntraDir;
-    }
-    if (tu.cu->geoFlag)
-    {
-#if JVET_AI0050_INTER_MTSS
-      intraMode = tu.cu->dimdDerivedIntraDir;
-#else
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-      intraMode = g_geoAngle2IntraAng[g_geoParams[g_gpmSplitDir[whIdx][tu.cu->firstPU->geoSplitDir]][0]];
-#else
-      intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
-#endif
-#endif
-    }
-#endif
-#if JVET_AI0050_INTER_MTSS
-    if (tu.cu->lfnstIntra)
-    {
-      intraMode = tu.cu->dimdDerivedIntraDir2nd;
-    }
-#endif
-#if JVET_AB0155_SGPM
-    if (PU::isSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-    {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-      CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
-#if JVET_AJ0112_REGRESSION_SGPM
-      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
-#else
-      intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+      uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID);
 #endif
 #else
-#if JVET_AJ0112_REGRESSION_SGPM
-      intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+      uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
 #else
-      intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+      uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
 #endif
 #endif
-    }
-#endif
-#if JVET_W0123_TIMD_FUSION
-    if (tu.cu->timd && compID == COMPONENT_Y)
-    {
-      intraMode = MAP131TO67(intraMode);
-    }
-#endif
-#if JVET_AC0071_DBV
-#if JVET_AH0136_CHROMA_REORDERING
-    if (compID != COMPONENT_Y && PU::isDbvMode(intraMode))
-#else
-    if (compID != COMPONENT_Y && intraMode == DBV_CHROMA_IDX)
-#endif
-    {
-      intraMode = PLANAR_IDX;
-    }
-#endif
-#if JVET_AD0085_TMRL_EXTENSION
-    if (tu.cu->tmrlFlag && compID == COMPONENT_Y)
-    {
-      intraMode = MAP131TO67(intraMode);
-    }
-#endif
-    CHECK( intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode" );
-
-#if JVET_AC0105_DIRECTIONAL_PLANAR
-    if (compID == COMPONENT_Y && intraMode == PLANAR_IDX)
-    {
-      if (tu.cu->plIdx == 2)
-      {
-        intraMode = HOR_IDX;
-      }
-      else if (tu.cu->plIdx == 1)
-      {
-        intraMode = VER_IDX;
-      }
-    }
-#endif
-#if JVET_AG0058_EIP
-    if (PU::isEIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-    {
-      intraMode = tu.cu->eipModel.eipDimdMode;
-    }
-#endif
-
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
 #if AHG7_LN_TOOLOFF_CFG
     if( lfnstIdx < ( tu.cu->cs->sps->getUseLFNSTExt() ? 4 : 3 ) )
@@ -1065,7 +794,6 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
     if( lfnstIdx < 3 )
 #endif
     {
-      intraMode = getLFNSTIntraMode( PU::getWideAngle( tu, intraMode, compID ) );
 
       bool            transposeFlag   = getTransposeFlag( intraMode );
 #if JVET_W0119_LFNST_EXTENSION
@@ -2178,11 +1906,20 @@ void TrQuant::xFwdNspt( const TransformUnit &tu, TCoeff* src, TCoeff* dst, const
   const uint32_t  height = area.height;
 
   const ScanElement * scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ SCAN_DIAG ][ gp_sizeIdxInfo->idxFrom( width ) ][ gp_sizeIdxInfo->idxFrom( height ) ];
+#if JVET_AK0217_INTRA_MTSS 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID).first;
+#else
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID);
+#endif
+#else
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
   uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
 #else
-  uint32_t intraMode = PU::getFinalIntraModeForTransform(tu, compID);
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
 #endif
+#endif
+
   bool transposeFlag = getTransposeFlag( intraMode );
 
   TCoeff*          nsptIn = m_nsptTempInMatrix;
@@ -2216,7 +1953,11 @@ void TrQuant::xFwdNspt( const TransformUnit &tu, TCoeff* src, TCoeff* dst, const
   computeFwdNspt( m_nsptTempInMatrix, m_nsptTempOutMatrix, nsptSetIdx, transposeFlag ? height : width, transposeFlag ? width : height, shift_1st, shift_2nd, zeroOutSize, nsptIdx
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+#if JVET_AK0217_INTRA_MTSS
+    , PU::getNSPTBucket(tu, secondBucket)
+#else
     , PU::getNSPTBucket(tu)
+#endif
 #endif
   );
 
@@ -2240,11 +1981,20 @@ void TrQuant::xInvNspt( const TransformUnit &tu, const TCoeff* src, TCoeff* dst,
   const uint32_t  height = area.height;
  
   const ScanElement * scan = g_scanOrder[ SCAN_GROUPED_4x4 ][ SCAN_DIAG ][ gp_sizeIdxInfo->idxFrom( width ) ][ gp_sizeIdxInfo->idxFrom( height ) ];
+#if JVET_AK0217_INTRA_MTSS 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID).first;
+#else
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID);
+#endif
+#else
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
   uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
 #else
-  uint32_t intraMode = PU::getFinalIntraModeForTransform(tu, compID);
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
 #endif
+#endif
+
 #if RExt__DECODER_DEBUG_TOOL_STATISTICS
   CodingStatistics::IncrementStatisticTool( CodingStatisticsClassType { STATS__TOOL_LFNST, width, height, compID } );
 #endif
@@ -2277,7 +2027,11 @@ void TrQuant::xInvNspt( const TransformUnit &tu, const TCoeff* src, TCoeff* dst,
 #endif
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+#if JVET_AK0217_INTRA_MTSS
+    , PU::getNSPTBucket(tu, secondBucket)
+#else
     , PU::getNSPTBucket(tu)
+#endif
 #endif
   );
 
@@ -3172,7 +2926,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
     bool spsIntraLfnstEnabled = ( ( tu.cu->slice->getSliceType() == I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTISlice() ) ||
                                 ( tu.cu->slice->getSliceType() != I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTPBSlice() ) );
     bool allowNSPT = CU::isNSPTAllowed(tu, comp, width, height, spsIntraLfnstEnabled && CU::isIntra(*(tu.cu)));
+#if JVET_AK0217_INTRA_MTSS
+    int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket) : 0;
+#else
     int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu) : 0;
+#endif
     g_resiBorderTemplateLFNST[nsptBucketIdx][log2Width - 2][log2Height - 2][lfnstIdx] = templateBuf.buf;
 #else
     g_resiBorderTemplateLFNST[log2Width - 2][log2Height - 2][lfnstIdx] = templateBuf.buf;
@@ -3210,7 +2968,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
     actualLfnstIdx = getLfnstIdx(tu, residCompID);
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
     bool allowNSPT = CU::isNSPTAllowed(tu, compID, uiWidth, uiHeight, spsIntraLfnstEnabled && CU::isIntra(*(tu.cu)));
+#if JVET_AK0217_INTRA_MTSS
+    int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket) : 0;
+#else
     int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu) : 0;
+#endif
     if (!g_resiBorderTemplateLFNST[nsptBucketIdx][log2Width - 2][log2Height - 2][actualLfnstIdx])
     {
       createTemplateLFNST(residCompID, uiWidth, uiHeight, actualLfnstIdx);
@@ -3289,7 +3051,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
   bool allowNSPT = CU::isNSPTAllowed( tu, compID, uiWidth, uiHeight, spsIntraLfnstEnabled && CU::isIntra( *( tu.cu ) ) );
+#if JVET_AK0217_INTRA_MTSS
+  int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket) : 0;
+#else
   int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu) : 0;
+#endif
 #if JVET_AJ0237_INTERNAL_12BIT
   AreaBuf<const int16_t> templateLfnstNormalizedBuf =
     (lfnstEnabled ? AreaBuf<const int16_t>(g_resiBorderTemplateLFNST[nsptBucketIdx][log2Width - 2][log2Height - 2][actualLfnstIdx],
@@ -3574,152 +3340,25 @@ int TrQuant::getLfnstIdx(const TransformUnit &tu, ComponentID compID)
 {
   const CompArea& area = tu.blocks[compID];
   const uint32_t  lfnstIdx = tu.cu->lfnstIdx;
-  uint32_t intraMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
-#if JVET_W0123_TIMD_FUSION
-  if (compID != COMPONENT_Y && PU::isLMCMode(tu.cs->getPU(area.pos(), toChannelType(compID))->intraDir[toChannelType(compID)]))
+#if JVET_AK0217_INTRA_MTSS 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID).first;
 #else
-  if (PU::isLMCMode(tu.cs->getPU(area.pos(), toChannelType(compID))->intraDir[toChannelType(compID)]))
-#endif
-  {
-#if JVET_AK0064_CCP_LFNST_NSPT
-    intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
-#else
-    intraMode = PU::getCoLocatedIntraLumaMode(*tu.cs->getPU(area.pos(), toChannelType(compID)));
-#endif
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-    if (intraMode == PNN_IDX)
-    {
-      intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
-    }
-#endif
-  }
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
-  else if (intraMode == PNN_IDX)
-  {
-    const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
-    intraMode = tu.cs->getPU(area.pos(), toChannelType(compIdEffective))->cu->indicesRepresentationPnn[compIdEffective][0];
-    if (isLuma(compID) && isAllowedMultiple(area.width, area.height) && (tu.cu)->lfnstSecFlag)
-    {
-      intraMode = tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
-    }
-  }
-#endif
-  if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-  {
-#if JVET_AB0067_MIP_DIMD_LFNST
-    intraMode = tu.cu->mipDimdMode;
-#else
-    intraMode = PLANAR_IDX;
-#endif
-  }
-#if JVET_V0130_INTRA_TMP
-  if (PU::isTmp(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-  {
-#if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
-    intraMode = tu.cu->intraTmpDimdMode;
-#else
-    intraMode = PLANAR_IDX;
-#endif
-  }
-#endif
-#if JVET_AG0061_INTER_LFNST_NSPT
-  if (CU::isInter(*tu.cu))
-  {
-    intraMode = tu.cu->dimdDerivedIntraDir;
-  }
-  if (tu.cu->geoFlag)
-  {
-#if JVET_AI0050_INTER_MTSS
-    intraMode = tu.cu->dimdDerivedIntraDir;
-#else
-    intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
-#endif
-  }
-#endif
-#if JVET_AI0050_INTER_MTSS
-  if (tu.cu->lfnstIntra)
-  {
-    intraMode = tu.cu->dimdDerivedIntraDir2nd;
-  }
-#endif
-#if JVET_AB0155_SGPM
-  if (PU::isSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-  {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-    CHECK(tu.cu->sgpmSplitDir >= SGPM_TOTAL_NUM_PARTITIONS, "Invalid splitDir for SGPM");
-#if JVET_AJ0112_REGRESSION_SGPM
-    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
-#else
-    intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+  uint32_t intraMode = PU::getFinalIntraModeForTransform(secondBucket, tu, compID);
 #endif
 #else
-#if JVET_AJ0112_REGRESSION_SGPM
-    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID ).first;
 #else
-    intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+  uint32_t intraMode = PU::getFinalIntraModeForTransform( tu, compID );
 #endif
 #endif
-  }
-#endif
-#if JVET_W0123_TIMD_FUSION
-  if (tu.cu->timd && compID == COMPONENT_Y)
-  {
-    intraMode = MAP131TO67(intraMode);
-  }
-#endif
-#if JVET_AC0071_DBV
-#if JVET_AH0136_CHROMA_REORDERING
-  if (compID != COMPONENT_Y && PU::isDbvMode(intraMode))
-#else
-  if (compID != COMPONENT_Y && intraMode == DBV_CHROMA_IDX)
-#endif
-  {
-    intraMode = PLANAR_IDX;
-  }
-#endif
-#if JVET_AD0085_TMRL_EXTENSION
-  if (tu.cu->tmrlFlag && compID == COMPONENT_Y)
-  {
-    intraMode = MAP131TO67(intraMode);
-  }
-#endif
-#if JVET_AC0105_DIRECTIONAL_PLANAR
-  if (compID == COMPONENT_Y && intraMode == PLANAR_IDX)
-  {
-    if (tu.cu->plIdx == 2)
-    {
-      intraMode = HOR_IDX;
-    }
-    else if (tu.cu->plIdx == 1)
-    {
-      intraMode = VER_IDX;
-    }
-  }
-#endif
-#if JVET_AG0058_EIP
-  if (PU::isEIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
-  {
-    intraMode = tu.cu->eipModel.eipDimdMode;
-  }
-#endif
-
-  CHECK(intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode");
-#if JVET_W0119_LFNST_EXTENSION || EXTENDED_LFNST
-  CHECK(!(lfnstIdx >= 1 && lfnstIdx <= 3), "invalid lfnst idx");
-#else
-  CHECK((lfnstIdx != 1) && (lfnstIdx != 2), "invalid lfnst idx");
-#endif
-#if JVET_AC0130_NSPT
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   bool spsIntraLfnstEnabled = ( ( tu.cu->slice->getSliceType() == I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTISlice() ) ||
                                 ( tu.cu->slice->getSliceType() != I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTPBSlice() ) );
   bool allowNSPT = CU::isNSPTAllowed( tu, compID, area.width, area.height, spsIntraLfnstEnabled && CU::isIntra( *( tu.cu ) ) );
 #else
   bool allowNSPT = CU::isNSPTAllowed( tu, compID, area.width, area.height, CU::isIntra( *( tu.cu ) ) );
-#endif
-  intraMode = allowNSPT ? PU::getNSPTIntraMode( PU::getWideAngle( tu, intraMode, compID ) ) : getLFNSTIntraMode( PU::getWideAngle( tu, intraMode, compID ) );
-#else
-  intraMode = getLFNSTIntraMode(PU::getWideAngle(tu, intraMode, compID));
 #endif
   bool transposeFlag = getTransposeFlag(intraMode);
 #if JVET_AC0130_NSPT

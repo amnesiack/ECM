@@ -377,6 +377,10 @@ struct CodingUnit : public UnitArea
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
   static_vector<int, 2> candModeListForTransform;
 #endif
+#if JVET_AK0217_INTRA_MTSS 
+  static_vector<int, MTSS_LIST_SIZE> candModeListForTransformMtss;
+  static_vector<int, MTSS_LIST_SIZE> candCostListForTransformMtss;
+#endif 
 #if JVET_AH0136_CHROMA_REORDERING
   int8_t         dimdBlendModeChroma[DIMD_FUSION_NUM - 1];
   uint8_t        chromaList[7];
@@ -1005,6 +1009,10 @@ struct TransformUnit : public UnitArea
 #if JVET_AI0050_INTER_MTSS
   uint8_t        lfnstIntra [ MAX_NUM_TBLOCKS ];
 #endif
+#endif
+#if JVET_AK0217_INTRA_MTSS
+  uint8_t        mdirIdx    [MAX_NUM_TBLOCKS];
+  bool           secondNSPTSet[MAX_NUM_TBLOCKS];
 #endif
   bool           noResidual;
   uint8_t        jointCbCr;

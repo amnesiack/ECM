@@ -128,6 +128,9 @@ namespace CU
   uint8_t deriveBcwIdx                (uint8_t bcwLO, uint8_t bcwL1);
   bool bdpcmAllowed                   (const CodingUnit& cu, const ComponentID compID);
   bool isMTSAllowed                   (const CodingUnit& cu, const ComponentID compID);
+#if JVET_AK0217_INTRA_MTSS
+  bool isMdirAllowed(const CodingUnit& cu);
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   bool isLfnstAllowed                 (const CodingUnit &cu, const ComponentID compID);
 #endif
@@ -230,6 +233,9 @@ namespace CU
 // PU tools
 namespace PU
 {
+#if JVET_AK0217_INTRA_MTSS
+  bool     getTransposeFlag(uint32_t intraMode);
+#endif
 #if JVET_AJ0061_TIMD_MERGE
   int canTimdMergeImplicitDst7(const TransformUnit &tu);
   bool canTimdMerge(const PredictionUnit &pu);
@@ -318,10 +324,18 @@ namespace PU
   uint32_t getFinalIntraMode              (const PredictionUnit &pu, const ChannelType &chType);
 #endif
 #if JVET_AC0130_NSPT
+#if JVET_AK0217_INTRA_MTSS
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-  std::pair<uint32_t,uint32_t>  getFinalIntraModeForTransform  ( const TransformUnit &tu, const ComponentID compID );
+  std::pair<uint32_t,uint32_t> getFinalIntraModeForTransform(bool& secondBucket, const TransformUnit& tu, const ComponentID compID);
+#else
+  uint32_t getFinalIntraModeForTransform(bool& secondBucket, const TransformUnit& tu, const ComponentID compID);
+#endif
+#else
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  std::pair<uint32_t,uint32_t> getFinalIntraModeForTransform  ( const TransformUnit &tu, const ComponentID compID );
 #else
   uint32_t getFinalIntraModeForTransform  ( const TransformUnit &tu, const ComponentID compID );
+#endif
 #endif
   uint32_t getNSPTIntraMode               ( int wideAngPredMode );
 #endif
@@ -335,7 +349,11 @@ namespace PU
   int      getNSPTMatrixDim           ( int width, int height );
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+#if JVET_AK0217_INTRA_MTSS
+  int      getNSPTBucket(const TransformUnit& tu, bool secondBucket);
+#else
   int      getNSPTBucket              ( const TransformUnit &tu );
+#endif
 #endif
   bool     getUseLFNST8               ( int width, int height );
   uint8_t  getLFNSTIdx                ( int intraMode, int mtsMode = 0 );
@@ -1321,6 +1339,56 @@ uint32_t updateCandList(T uiMode, uint64_t uiCost, static_vector<T, N>& candMode
 }
 #endif
 
+#if JVET_AK0217_INTRA_MTSS
+template<typename T, size_t N>
+uint32_t updateCandListB2S(T uiMode, int uiCost, static_vector<T, N>& candModeList, static_vector<int, N>& candCostList
+  , size_t uiFastCandNum = N, int* iserttPos = nullptr)
+{
+  CHECK(std::min(uiFastCandNum, candModeList.size()) != std::min(uiFastCandNum, candCostList.size()), "Sizes do not match!");
+  CHECK(uiFastCandNum > candModeList.capacity(), "The vector is to small to hold all the candidates!");
+
+  size_t i;
+  size_t shift = 0;
+  size_t currSize = std::min(uiFastCandNum, candCostList.size());
+
+  while (shift < uiFastCandNum && shift < currSize && uiCost > candCostList[currSize - 1 - shift])
+  {
+    shift++;
+  }
+
+  if (candModeList.size() >= uiFastCandNum && shift != 0)
+  {
+    for (i = 1; i < shift; i++)
+    {
+      candModeList[currSize - i] = candModeList[currSize - 1 - i];
+      candCostList[currSize - i] = candCostList[currSize - 1 - i];
+    }
+    candModeList[currSize - shift] = uiMode;
+    candCostList[currSize - shift] = uiCost;
+    if (iserttPos != nullptr)
+    {
+      *iserttPos = int(currSize - shift);
+    }
+    return 1;
+  }
+  else if (currSize < uiFastCandNum)
+  {
+    candModeList.insert(candModeList.end() - shift, uiMode);
+    candCostList.insert(candCostList.end() - shift, uiCost);
+    if (iserttPos != nullptr)
+    {
+      *iserttPos = int(candModeList.size() - shift - 1);
+    }
+    return 1;
+  }
+  if (iserttPos != nullptr)
+  {
+    *iserttPos = -1;
+  }
+  return 0;
+}
+#endif
+
 #if JVET_W0097_GPM_MMVD_TM
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
 template<size_t N>
@@ -1656,6 +1724,9 @@ bool isFwdTAlf(const int tAlfMode);
 int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t uiWidth, int *piHistogram, int direction, int bw, int bh
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP
                   , const int filterSizeIdx = 0// 0 - default, 1 - small
+#endif  
+#if  JVET_AK0217_INTRA_MTSS
+                  , const bool subsampling = 0
 #endif  
 );
 #endif

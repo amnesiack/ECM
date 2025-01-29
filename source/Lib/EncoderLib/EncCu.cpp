@@ -3771,6 +3771,10 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
   static_vector<int, 2> candModeListForTransformTmp;
 #endif 
+#if JVET_AK0217_INTRA_MTSS 
+  static_vector<int, MTSS_LIST_SIZE> candModeListForTransformMtssTmp;
+  static_vector<int, MTSS_LIST_SIZE> candCostListForTransformMtssTmp;
+#endif
   if (isLuma(partitioner.chType))
   {
     CodingUnit cu(tempCS->area);
@@ -3794,6 +3798,11 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
       IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu);
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
       candModeListForTransformTmp = cu.candModeListForTransform;
+#endif
+#if JVET_AK0217_INTRA_MTSS
+      IntraPrediction::deriveDimdModeList(bestCS->picture->getRecoBuf(area), area, cu, cu.candModeListForTransformMtss, cu.candCostListForTransformMtss);
+      candCostListForTransformMtssTmp = cu.candCostListForTransformMtss;
+      candModeListForTransformMtssTmp = cu.candModeListForTransformMtss;
 #endif
       dimdDerived = true;
       dimdBlending = cu.dimdBlending;
@@ -4072,6 +4081,10 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
           cu.dimd = false;
           if( dimdDerived )
           {
+#if JVET_AK0217_INTRA_MTSS
+            cu.candModeListForTransformMtss = candModeListForTransformMtssTmp;
+            cu.candCostListForTransformMtss = candCostListForTransformMtssTmp;
+#endif
             cu.dimdBlending = dimdBlending;
 #if JVET_AC0098_LOC_DEP_DIMD
 #if JVET_AB0157_INTRA_FUSION
@@ -28237,6 +28250,12 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
       {
         const CompArea &area = cu.Y();
         IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu);
+#if JVET_AK0217_INTRA_MTSS
+        if (cu.firstTU->mdirIdx[COMPONENT_Y])
+        {
+          IntraPrediction::deriveDimdModeList(bestCS->picture->getRecoBuf(area), area, cu, cu.candModeListForTransformMtss, cu.candCostListForTransformMtss);
+        }
+#endif
         if(cu.dimd && !cu.obicFlag)
         {
           PredictionUnit *pu = cu.firstPU;

@@ -34141,6 +34141,18 @@ bool CU::isMTSAllowed(const CodingUnit &cu, const ComponentID compID)
   return mtsAllowed;
 }
 
+#if JVET_AK0217_INTRA_MTSS
+bool CU::isMdirAllowed(const CodingUnit& cu)
+{
+  int minSize = cu.sgpm ? MIN_SGPM_MTSS_SIZE : MIN_MTSS_SIZE;
+  bool mdirAllowed = cu.lfnstIdx && (cu.dimd || cu.timd || cu.mipFlag || cu.tmpFlag || cu.sgpm || cu.eipFlag);
+
+  mdirAllowed &= cu.lwidth()*cu.lheight() >= minSize;
+
+  return mdirAllowed;
+}
+#endif
+
 #if ENABLE_OBMC
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
 unsigned int PU::getSameNeigMotion(PredictionUnit& pu, MotionInfo& mi, Position off, int iDir, int& iLength, int iMaxLength,
@@ -35462,23 +35474,530 @@ int PU::getNSPTMatrixDim( int width, int height )
 }
 
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
-int PU::getNSPTBucket( const TransformUnit &tu )
+#if JVET_AK0217_INTRA_MTSS
+int PU::getNSPTBucket(const TransformUnit& tu, bool secondBucket)
 {
-  const CodingUnit &cu = *tu.cu;
-  if( cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm )
+  const CodingUnit& cu = *tu.cu;
+  int nsptBucket = secondBucket == false ? 0 : 1; // conventional intra mode
+
+#if JVET_AK0222_SGPM_DIMD_LFNST
+  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag)
+#else
+  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm)
+#endif
+  {
+    nsptBucket = secondBucket == false ? 1 : 0;
+  }
+  if (cu.tmpFlag || CU::isInter(cu))
+  {
+    nsptBucket = secondBucket == false ? 2 : 0;
+  }
+
+  return(nsptBucket);
+}
+#else
+int PU::getNSPTBucket(const TransformUnit& tu)
+{
+  const CodingUnit& cu = *tu.cu;
+  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm)
   {
     return 1;
   }
-
-  if( cu.tmpFlag || CU::isInter( cu ) )
+  if (cu.tmpFlag || CU::isInter(cu))
   {
     return 2;
   }
-
   // Conventional intra mode
   return 0;
 }
 #endif
+#endif
+
+#if JVET_AK0217_INTRA_MTSS
+bool PU::getTransposeFlag(uint32_t intraMode)
+{
+  return ((intraMode >= NUM_LUMA_MODE) && (intraMode >= (NUM_LUMA_MODE + (NUM_EXT_LUMA_MODE >> 1)))) ||
+    ((intraMode < NUM_LUMA_MODE) && (intraMode > DIA_IDX));
+}
+
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+std::pair<uint32_t,uint32_t> PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUnit& tu, const ComponentID compID)
+#else
+uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUnit& tu, const ComponentID compID)
+#endif
+{
+  const CompArea& area = tu.blocks[ compID ];
+  uint32_t intraMode = PU::getFinalIntraMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) );
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  uint32_t secondIntraMode = NOT_VALID;
+  bool secModeFound = false;
+#endif
+  secondBucket = false;
+
+#if JVET_W0123_TIMD_FUSION
+  if( compID != COMPONENT_Y && PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
+#else
+  if( PU::isLMCMode( tu.cs->getPU( area.pos(), toChannelType( compID ) )->intraDir[ toChannelType( compID ) ] ) )
+#endif
+  {
+#if JVET_AK0064_CCP_LFNST_NSPT
+    intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+#else
+    intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+#endif
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+    if (intraMode == PNN_IDX)
+    {
+      intraMode = PU::getCoLocatedIdxRepresentationPnn(*tu.cs->getPU(area.pos(), toChannelType(compID)));
+    }
+#endif
+  }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  else if (intraMode == PNN_IDX)
+  {
+    const ComponentID compIdEffective = !isLuma(compID) && tu.jointCbCr ? COMPONENT_Cb : compID;
+    intraMode = tu.cs->getPU(area.pos(), toChannelType(compIdEffective))->cu->indicesRepresentationPnn[compIdEffective][0];
+    if (isLuma(compID) && isAllowedMultiple(area.width, area.height) && (tu.cu)->lfnstSecFlag)
+    {
+      intraMode = tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][0] == PLANAR_IDX ? tu.cs->getPU(area.pos(), CHANNEL_TYPE_LUMA)->cu->indicesRepresentationPnn[compIdEffective][1] : PLANAR_IDX;
+    }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->indicesRepresentationPnn[ 0 ][ 1 ];
+    secModeFound = true;
+    if( intraMode == secondIntraMode )
+    {
+      secModeFound = false;
+    }
+#endif
+  }
+#endif
+  if( PU::isMIP( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
+  {
+#if JVET_AB0067_MIP_DIMD_LFNST
+    intraMode = tu.cu->mipDimdMode;
+#else
+    intraMode = PLANAR_IDX;
+#endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->dimdDerivedIntraDir2nd;
+    secModeFound = true;
+#endif
+  }
+#if JVET_V0130_INTRA_TMP
+  if( PU::isTmp( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
+  {
+#if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
+      intraMode = tu.cu->intraTmpDimdMode;
+#else
+      intraMode = PLANAR_IDX;
+#endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->dimdDerivedIntraDir2nd;
+    secModeFound = true;
+#endif
+  }
+#endif
+#if JVET_AG0061_INTER_LFNST_NSPT
+  if (CU::isInter(*tu.cu))
+  {
+    intraMode = tu.cu->dimdDerivedIntraDir;
+  }
+  if (tu.cu->geoFlag)
+  {
+#if JVET_AI0050_INTER_MTSS
+    intraMode = tu.cu->dimdDerivedIntraDir;
+#else
+    intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->firstPU->geoSplitDir][0]];
+#endif
+  }
+#endif
+#if JVET_AI0050_INTER_MTSS
+  if (tu.cu->lfnstIntra)
+  {
+    intraMode = tu.cu->dimdDerivedIntraDir2nd;
+  }
+#endif
+#if JVET_AB0155_SGPM
+  if (PU::isSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
+  {
+#if JVET_AK0222_SGPM_DIMD_LFNST
+    if (tu.cu->lwidth() * tu.cu->lheight() < MAX_SGPM_VIPM_SIZE)
+    {
+      bool isMode1Invalid = abs(tu.cu->dimdDerivedIntraDir - tu.cu->sgpmMode0) > SGPM_VIPM_TH && abs(tu.cu->dimdDerivedIntraDir - tu.cu->sgpmMode1) > SGPM_VIPM_TH ? true : false;
+      bool isMode2Invalid = abs(tu.cu->dimdDerivedIntraDir2nd - tu.cu->sgpmMode0) > SGPM_VIPM_TH && abs(tu.cu->dimdDerivedIntraDir2nd - tu.cu->sgpmMode1) > SGPM_VIPM_TH ? true : false;
+
+      if (isMode1Invalid && isMode2Invalid)
+      {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+#if JVET_AJ0112_REGRESSION_SGPM
+        intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->dimdDerivedIntraDir : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
+        intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+        intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->dimdDerivedIntraDir : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#else
+        intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
+#endif
+      }
+      else
+      {
+        intraMode = isMode1Invalid ? tu.cu->dimdDerivedIntraDir2nd : tu.cu->dimdDerivedIntraDir;
+      }
+    }
+    else
+    {
+      intraMode = tu.cu->dimdDerivedIntraDir;
+    }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->dimdDerivedIntraDir2nd;
+    secModeFound = true;
+    if (intraMode == secondIntraMode)
+    {
+      secModeFound = false;
+    }
+#endif
+#else
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+#if JVET_AJ0112_REGRESSION_SGPM
+    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
+    intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+    intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#else
+    intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
+#endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->dimdDerivedIntraDir2nd;
+    secModeFound = true;
+    if (intraMode == secondIntraMode)
+    {
+      secModeFound = false;
+    }
+#endif
+#endif
+  }
+#endif
+#if JVET_W0123_TIMD_FUSION
+  if (tu.cu->timd && compID == COMPONENT_Y)
+  {
+    intraMode = MAP131TO67(intraMode);
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        if (isLuma(compID) &&
+      ((((tu.cu->timd && tu.cu->timdIsBlended
+#if JVET_AJ0061_TIMD_MERGE                
+        && !tu.cu->timdMrg
+#endif
+        )
+#if JVET_AJ0061_TIMD_MERGE
+        || (tu.cu->timdMrg && tu.cu->timdMrgIsBlended[tu.cu->timdMrg - 1])
+#endif
+        )
+#if JVET_AJ0146_TIMDSAD
+        && !tu.cu->timdSad
+#endif
+        )
+#if JVET_AJ0146_TIMDSAD
+        || (tu.cu->timdSad && tu.cu->timd && tu.cu->timdIsBlendedSad)
+#endif
+        )
+      )
+    {
+      int timdModeSecondary =
+#if JVET_AJ0061_TIMD_MERGE
+        tu.cu->timdMrg ? tu.cu->timdMrgList[tu.cu->timdMrg - 1][1] :
+#endif
+        (
+#if JVET_AJ0146_TIMDSAD
+          tu.cu->timdSad ? tu.cu->timdModeSecondarySad :
+#endif
+          tu.cu->timdModeSecondary
+          );
+      secondIntraMode = MAP131TO67(timdModeSecondary);
+
+      secModeFound = true;
+    }
+    else
+    {
+      if( !tu.cu->timdMrg && !tu.cu->lfnstIdx)
+      {
+        CHECK( tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size" );
+        secondIntraMode = tu.cu->candModeListForTransform[ 1 ]; //no mapping
+        secModeFound = true;
+      }
+    }
+
+    if (intraMode == secondIntraMode)
+    {
+      secModeFound = false;
+    }
+#endif
+  }
+#endif
+#if JVET_AC0105_DIRECTIONAL_PLANAR
+  if (compID == COMPONENT_Y && intraMode == PLANAR_IDX)
+  {
+    if (tu.cu->plIdx == 2)
+    {
+      intraMode = HOR_IDX;
+    }
+    else if (tu.cu->plIdx == 1)
+    {
+      intraMode = VER_IDX;
+    }
+  }
+#endif
+#if JVET_AC0071_DBV
+  if (compID != COMPONENT_Y
+#if JVET_AH0136_CHROMA_REORDERING
+    && PU::isDbvMode(intraMode)
+#else
+    && intraMode == DBV_CHROMA_IDX
+#endif
+    )
+  {
+    intraMode = PLANAR_IDX;
+  }
+#endif
+#if JVET_AD0085_TMRL_EXTENSION
+  if (tu.cu->tmrlFlag && compID == COMPONENT_Y)
+  {
+    intraMode = MAP131TO67(intraMode);
+  }
+#endif
+#if JVET_AG0058_EIP
+  if (PU::isEIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
+  {
+    intraMode = tu.cu->eipModel.eipDimdMode;
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->eipModel.eipDimdMode2nd;
+    secModeFound = true;
+    if (intraMode == secondIntraMode)
+    {
+      secModeFound = false;
+    }
+#endif
+  }
+#endif
+
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if (tu.cs->sps->getUseImplicitMTS() && !tu.cu->lfnstIdx)
+  {
+    if (tu.cu->obicFlag && tu.cu->obicIsBlended)
+    {
+      int testMode = tu.cu->obicMode[1];
+      if (testMode != intraMode)
+      {
+        secondIntraMode = testMode;
+        secModeFound = true;
+      }
+    }
+    if (secModeFound == false && !tu.cu->sgpm && !tu.cu->eipFlag && intraMode != PNN_IDX && !tu.cu->timd && !tu.cu->lfnstIdx)
+    {
+      CHECK(tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size");
+
+      for (int i = 0; i < 2; i++)
+      {
+        int testMode = tu.cu->candModeListForTransform[i];
+        if (testMode != intraMode)
+        {
+          secondIntraMode = testMode;
+          secModeFound = true;
+          break;
+        }
+      }
+    }
+
+    std::vector<int> stuffingModes = { PLANAR_IDX, DC_IDX, HOR_IDX, VER_IDX };
+
+    if (!secModeFound)
+    {
+      for (auto mode : stuffingModes)
+      {
+        if (mode != intraMode)
+        {
+          secondIntraMode = mode;
+          break;
+        }
+      }
+    }
+    CHECK(intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode");
+    return std::make_pair(intraMode, secondIntraMode);
+  }
+  
+  CHECK(intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode");
+  int intraMode1 = (int)intraMode;
+  intraMode = PU::getNSPTIntraMode(PU::getWideAngle(tu, intraMode, compID));
+  
+  if (tu.mdirIdx[compID] == 0)
+  {
+    return std::make_pair(intraMode,0);
+#else
+    CHECK( intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode" );
+    return intraMode;
+#endif
+  }
+  else
+  {
+    bool allowNSPT = CU::isNSPTAllowed(tu, compID, area.width, area.height, CU::isIntra(*(tu.cu)));
+    int intraMode2, modeDiff = 0; 
+
+    int testMode = -1;
+    bool validMode = false;
+
+    bool transposeFlag = PU::getTransposeFlag(intraMode);
+
+    if (isLuma(compID) &&
+      ((((tu.cu->timd && tu.cu->timdIsBlended
+#if JVET_AJ0061_TIMD_MERGE                
+        && !tu.cu->timdMrg
+#endif
+        )
+#if JVET_AJ0061_TIMD_MERGE
+        || (tu.cu->timdMrg && tu.cu->timdMrgIsBlended[tu.cu->timdMrg - 1])
+#endif
+        )
+#if JVET_AJ0146_TIMDSAD
+        && !tu.cu->timdSad
+#endif
+        )
+#if JVET_AJ0146_TIMDSAD
+        || (tu.cu->timdSad && tu.cu->timd && tu.cu->timdIsBlendedSad)
+#endif
+        )
+      )
+    {
+      int timdModeSecondary =
+#if JVET_AJ0061_TIMD_MERGE
+        tu.cu->timdMrg ? tu.cu->timdMrgList[tu.cu->timdMrg - 1][1] :
+#endif
+        (
+#if JVET_AJ0146_TIMDSAD
+          tu.cu->timdSad ? tu.cu->timdModeSecondarySad :
+#endif
+          tu.cu->timdModeSecondary
+          );
+
+      testMode = MAP131TO67(timdModeSecondary);
+      validMode = true;
+    }
+
+    if (tu.cu->obicFlag && tu.cu->obicIsBlended)
+    {
+      testMode = tu.cu->obicMode[1];
+      validMode = true;
+    }
+
+    if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
+    {
+      testMode = tu.cu->dimdDerivedIntraDir2nd;
+      if (testMode < NUM_LUMA_MODE)
+      {
+        validMode = true;
+      }
+    }
+
+    if (PU::isEIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
+    {
+      testMode = tu.cu->eipModel.eipDimdMode2nd;
+      if (testMode < NUM_LUMA_MODE)
+      {
+        validMode = true;
+      }
+    }
+
+    if (PU::isTmp(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
+    {
+      testMode = tu.cu->dimdDerivedIntraDir2nd;
+      if (testMode < NUM_LUMA_MODE)
+      {
+        validMode = true;
+      }
+    }
+
+    if (tu.cu->sgpm)
+    {
+#if JVET_AK0222_SGPM_DIMD_LFNST
+      bool isMode2Invalid = abs(tu.cu->dimdDerivedIntraDir2nd - tu.cu->sgpmMode0) > SGPM_VIPM_TH && abs(tu.cu->dimdDerivedIntraDir2nd - tu.cu->sgpmMode1) > SGPM_VIPM_TH ? true : false;
+
+      if (!PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) && intraMode == g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]])
+      {
+        testMode = isMode2Invalid ? tu.cu->dimdDerivedIntraDir : tu.cu->dimdDerivedIntraDir2nd;
+      }
+      else
+      {
+        testMode = intraMode == tu.cu->dimdDerivedIntraDir ? tu.cu->dimdDerivedIntraDir2nd : tu.cu->dimdDerivedIntraDir;
+      }
+#else
+      testMode = tu.cu->dimdDerivedIntraDir2nd;
+#endif
+      if (testMode < NUM_LUMA_MODE)
+      {
+        validMode = true;
+      }
+    }
+
+    if (validMode)
+    {
+      intraMode2 = (int)testMode;
+      testMode = PU::getNSPTIntraMode(PU::getWideAngle(tu, testMode, compID));
+
+      if (g_lfnstLut[testMode] != g_lfnstLut[intraMode] || PU::getTransposeFlag(testMode) != transposeFlag)
+      {
+      }
+      else
+      {
+        validMode = false;
+      }
+    }
+
+    if (validMode == false)
+    {
+      for (int i = 0; i < tu.cu->candModeListForTransformMtss.size(); i++)
+      {
+        testMode = tu.cu->candModeListForTransformMtss[i];
+        intraMode2 = (int)testMode;
+
+        testMode = PU::getNSPTIntraMode(PU::getWideAngle(tu, testMode, compID));
+
+        if (g_lfnstLut[testMode] != g_lfnstLut[intraMode] || PU::getTransposeFlag(testMode) != transposeFlag)
+        {
+          validMode = true;
+        }
+      }
+    }
+
+    if (validMode == false)
+    {
+      testMode = tu.cu->candModeListForTransformMtss[0];
+      intraMode2 = (int)testMode;
+
+      testMode = PU::getNSPTIntraMode(PU::getWideAngle(tu, tu.cu->candModeListForTransformMtss[0], compID));
+    }
+
+    modeDiff = abs(intraMode2 - intraMode1);
+
+    if (allowNSPT && modeDiff <= 2)
+    {
+      secondBucket = true;
+    }
+    if (secondBucket)
+    {
+      return std::make_pair(intraMode, 0);
+    }
+    else
+    {
+      return std::make_pair(testMode, 0);
+    }
+  }
+}
+#else
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
 std::pair<uint32_t,uint32_t> PU::getFinalIntraModeForTransform( const TransformUnit &tu, const ComponentID compID )
 #else
@@ -35575,8 +36094,48 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
   }
 #endif
 #if JVET_AB0155_SGPM
-  if( PU::isSgpm( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) ) )
+  if (PU::isSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
   {
+#if JVET_AK0222_SGPM_DIMD_LFNST
+    if (tu.cu->lwidth() * tu.cu->lheight() < MAX_SGPM_VIPM_SIZE)
+    {
+      bool isMode1Invalid = abs(tu.cu->dimdDerivedIntraDir - tu.cu->sgpmMode0) > SGPM_VIPM_TH && abs(tu.cu->dimdDerivedIntraDir - tu.cu->sgpmMode1) > SGPM_VIPM_TH ? true : false;
+      bool isMode2Invalid = abs(tu.cu->dimdDerivedIntraDir2nd - tu.cu->sgpmMode0) > SGPM_VIPM_TH && abs(tu.cu->dimdDerivedIntraDir2nd - tu.cu->sgpmMode1) > SGPM_VIPM_TH ? true : false;
+
+      if (isMode1Invalid && isMode2Invalid)
+      {
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+#if JVET_AJ0112_REGRESSION_SGPM
+        intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->dimdDerivedIntraDir : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#else
+        intraMode = g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
+#endif
+#else
+#if JVET_AJ0112_REGRESSION_SGPM
+        intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->dimdDerivedIntraDir : g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#else
+        intraMode = g_geoAngle2IntraAng[g_geoParams[tu.cu->sgpmSplitDir][0]];
+#endif
+#endif
+      }
+      else
+      {
+        intraMode = isMode1Invalid ? tu.cu->dimdDerivedIntraDir2nd : tu.cu->dimdDerivedIntraDir;
+      }
+    }
+    else
+    {
+      intraMode = tu.cu->dimdDerivedIntraDir;
+    }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    secondIntraMode = tu.cu->dimdDerivedIntraDir2nd;
+    secModeFound = true;
+    if (intraMode == secondIntraMode)
+    {
+      secModeFound = false;
+    }
+#endif
+#else
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
 #if JVET_AJ0112_REGRESSION_SGPM
     intraMode = PU::isRegressionSgpm(*tu.cs->getPU(area.pos(), toChannelType(compID))) ? tu.cu->sgpmDimdMode : g_geoAngle2IntraAng[g_geoParams[g_sgpmSplitDir[tu.cu->sgpmSplitDir]][0]];
@@ -35597,6 +36156,7 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
     {
       secModeFound = false;
     }
+#endif
 #endif
   }
 #endif
@@ -35702,52 +36262,51 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
   }
 #endif
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-  if (tu.cu->obicFlag && tu.cu->obicIsBlended)
+  if (tu.cs->sps->getUseImplicitMTS() && !tu.cu->lfnstIdx)
   {
-    int testMode = tu.cu->obicMode[1];
-    if (testMode != intraMode)
+    if (tu.cu->obicFlag && tu.cu->obicIsBlended)
     {
-      secondIntraMode = testMode;
-      secModeFound = true;
-    }
-  }
-  if (secModeFound == false && !tu.cu->sgpm && !tu.cu->eipFlag && intraMode != PNN_IDX && !tu.cu->timd && !tu.cu->lfnstIdx)
-  {
-    CHECK( tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size" );
-
-    for (int i = 0; i < 2; i++)
-    {
-      int testMode = tu.cu->candModeListForTransform[i];
+      int testMode = tu.cu->obicMode[1];
       if (testMode != intraMode)
       {
         secondIntraMode = testMode;
         secModeFound = true;
-        break;
       }
     }
-  }
-  
-  std::vector<int> stuffingModes = { PLANAR_IDX, DC_IDX, HOR_IDX, VER_IDX };
-
-  if( !secModeFound)
-  {
-    for (auto mode : stuffingModes )
+    if (secModeFound == false && !tu.cu->sgpm && !tu.cu->eipFlag && intraMode != PNN_IDX && !tu.cu->timd && !tu.cu->lfnstIdx)
     {
-      if ( mode != intraMode)
+      CHECK(tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size");
+
+      for (int i = 0; i < 2; i++)
       {
-        secondIntraMode = mode;
-        break;
+        int testMode = tu.cu->candModeListForTransform[i];
+        if (testMode != intraMode)
+        {
+          secondIntraMode = testMode;
+          secModeFound = true;
+          break;
+        }
       }
     }
-  }
-  CHECK( intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode" );
-  if (tu.cs->sps->getUseImplicitMTS() && !tu.cu->lfnstIdx) 
-  {
+
+    std::vector<int> stuffingModes = { PLANAR_IDX, DC_IDX, HOR_IDX, VER_IDX };
+
+    if (!secModeFound)
+    {
+      for (auto mode : stuffingModes)
+      {
+        if (mode != intraMode)
+        {
+          secondIntraMode = mode;
+          break;
+        }
+      }
+    }
+    CHECK(intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode");
     return std::make_pair(intraMode, secondIntraMode);
   }
 
-  intraMode = PU::getNSPTIntraMode( PU::getWideAngle( tu, intraMode, compID ) );
-  
+  intraMode = PU::getNSPTIntraMode( PU::getWideAngle( tu, intraMode, compID ) );  
   return std::make_pair(intraMode,0);
 #else
   CHECK( intraMode >= NUM_INTRA_MODE - 1, "Invalid intra mode" );
@@ -35755,6 +36314,8 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
   return intraMode;
 #endif
 }
+#endif
+
 uint32_t PU::getNSPTIntraMode( int wideAngPredMode )
 {
   uint32_t intraMode;
@@ -36319,9 +36880,17 @@ int buildHistogram(const Pel *pReco, int iStride, uint32_t uiHeight, uint32_t ui
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP 
                  , const int filterSizeIdx
 #endif  
+#if  JVET_AK0217_INTRA_MTSS
+                  , const bool subsampling
+#endif 
 )
 {
+#if  JVET_AK0217_INTRA_MTSS
+  const int wStep = (subsampling && ((uiHeight*uiWidth)>= MIN_MTSS_SIZE)) ? 2 : 1;
+  const int hStep = (subsampling && ((uiHeight*uiWidth)>= MIN_MTSS_SIZE)) ? 2 : 1;
+#else
   const int wStep = 1, hStep = 1;
+#endif
   int       angTable[17]   = { 0,     2048,  4096,  6144,  8192,  12288, 16384, 20480, 24576,
                        28672, 32768, 36864, 40960, 47104, 53248, 59392, 65536 };
   int       offsets[4]     = { HOR_IDX, HOR_IDX, VER_IDX, VER_IDX };

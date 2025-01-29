@@ -9868,6 +9868,13 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
       }
     }
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    const uint32_t idxLFNST = cu.lfnstIdx;
+    if (CU::isMdirAllowed(cu) && idxLFNST <= (cu.lwidth() * cu.lheight() < 256 ? MTSS_CAND_NUM[0] : MTSS_CAND_NUM[1]))
+    {
+      m_BinEncoder.encodeBin(cu.firstTU->mdirIdx[COMPONENT_Y], Ctx::LFNSTIdx(4));
+    }
+#endif 
 #if JVET_AG0061_INTER_LFNST_NSPT
   }
 #endif

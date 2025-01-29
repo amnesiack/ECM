@@ -10003,6 +10003,16 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
       }
     }
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    if (CU::isMdirAllowed(cu) && idxLFNST <= (cu.lwidth() * cu.lheight() < 256 ? MTSS_CAND_NUM[0] : MTSS_CAND_NUM[1]))
+    {
+      int mdirIdx = m_BinDecoder.decodeBin(Ctx::LFNSTIdx(4));
+      for (auto& tmpTu : CU::traverseTUs(cu))
+      {
+        tmpTu.mdirIdx[COMPONENT_Y] = mdirIdx;
+      }
+    }
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   }
 #endif

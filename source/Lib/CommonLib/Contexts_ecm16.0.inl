@@ -5119,7 +5119,7 @@ const CtxSet ContextSetCfg::CcSaoControlIdc = ContextSetCfg::addCtxSet({
  { 150, 148, 115, 229, 244, 116, 163, 148, 116, },
 });
 
-#if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AJ0249_NEURAL_NETWORK_BASED || JVET_AK0217_INTRA_MTSS
 const CtxSet ContextSetCfg::LFNSTIdx = ContextSetCfg::addCtxSet({
 // ctx 1435 to 1439
  { 51, 43, 58, 42, 42, },
