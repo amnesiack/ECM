@@ -1148,7 +1148,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("MTSInterMaxCand",                                 m_MTSInterMaxCand,                                    4, "Number of additional candidates to test in encoder search for MTS in inter slices\n")
   ("MTSImplicit",                                     m_MTSImplicit,                                        0, "Enable implicit MTS (when explicit MTS is off)\n")
   ( "SBT",                                            m_SBT,                                            false, "Enable Sub-Block Transform for inter blocks\n" )
+#if JVET_AJ0260_SBT_CORNER_MODE
+  ( "SBTFast64WidthTh",                               m_SBTFast64WidthTh,                                   0, "Picture width threshold for testing size-64 SBT in RDO (now for HD and above sequences)\n")
+#else
   ( "SBTFast64WidthTh",                               m_SBTFast64WidthTh,                                1920, "Picture width threshold for testing size-64 SBT in RDO (now for HD and above sequences)\n")
+#endif
   ( "ISP",                                            m_ISP,                                            false, "Enable Intra Sub-Partitions\n" )
   ("SMVD",                                            m_SMVD,                                           false, "Enable Symmetric MVD\n")
   ("CompositeLTReference",                            m_compositeRefEnabled,                            false, "Enable Composite Long Term Reference Frame")
