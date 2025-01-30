@@ -5687,6 +5687,31 @@ const CtxSet ContextSetCfg::TimdFlagSad = ContextSetCfg::addCtxSet
  { 134, },
     });
 #endif
+#if JVET_AK0059_MDIP
+const CtxSet ContextSetCfg::MdipFlag = ContextSetCfg::addCtxSet
+({
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+});
+#endif
 const CtxSet ContextSetCfg::SgpmFlag = ContextSetCfg::addCtxSet({
 // ctx 1487 to 1489
  { 26, 34, 34, },

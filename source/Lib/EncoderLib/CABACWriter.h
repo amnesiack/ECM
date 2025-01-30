@@ -165,6 +165,9 @@ public:
 #if JVET_AH0076_OBIC
   void        cu_obic_flag              ( const CodingUnit&             cu );
 #endif
+#if JVET_AK0059_MDIP
+  void        mdip_flag                 ( const CodingUnit&             cu );
+#endif
 #if JVET_W0123_TIMD_FUSION
   void        cu_timd_flag              ( const CodingUnit&             cu );
 #if JVET_AJ0061_TIMD_MERGE

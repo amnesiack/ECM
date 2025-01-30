@@ -764,6 +764,9 @@ public:
   static const CtxSet   TimdFlagSad;
 #endif
 #endif
+#if JVET_AK0059_MDIP
+  static const CtxSet   MdipFlag;
+#endif
 #if JVET_AB0155_SGPM
   static const CtxSet   SgpmFlag;
 #endif

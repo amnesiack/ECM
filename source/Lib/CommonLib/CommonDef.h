@@ -684,6 +684,11 @@ static const int DIMD_FUSION_NUM =                                  6;
 #endif
 #endif
 
+#if JVET_AK0059_MDIP
+static const int MDIP_NUM =                                         1;
+static const int EXCLUDING_MODE_NUM =                               20;
+#endif
+
 #if JVET_Y0116_EXTENDED_MRL_LIST
 static const int MAX_REF_LINE_IDX =                                 13; //highest refLine offset in the list
 static const int MRL_NUM_REF_LINES =                                6; //number of candidates in the array
@@ -777,6 +782,9 @@ static const int TIMD_IDX =                                       199; ///< inde
 static const int TIMDSAD_IDX =                                    241; ///< index for intra TIMD SAD mode
 static const int TIMD_NUM_MODES_SORTED = 						               15;
 static const int TIMDDIFF_MAX_TEMP_SIZE =                           8;
+#endif
+#if JVET_AK0059_MDIP
+static const int MDIP_IDX =                                       300; ///< index for MDIP mode
 #endif
 static const int DIMD_MAX_TEMP_SIZE =                               4;
 static const int EXT_HOR_IDX =                                     34;
@@ -939,7 +947,11 @@ static const int NUM_PRIMARY_MOST_PROBABLE_MODES = 6;
 static const int NUM_SECONDARY_MOST_PROBABLE_MODES = 16;
 static const int NUM_MOST_PROBABLE_MODES = NUM_PRIMARY_MOST_PROBABLE_MODES + NUM_SECONDARY_MOST_PROBABLE_MODES;
 #if SECONDARY_MPM
+#if JVET_AK0059_MDIP
+static const int NUM_NON_MPM_MODES = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - MDIP_NUM - EXCLUDING_MODE_NUM;
+#else
 static const int NUM_NON_MPM_MODES = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES;
+#endif
 #endif
 #else
 static const int NUM_MOST_PROBABLE_MODES = 6;

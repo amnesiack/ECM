@@ -597,6 +597,9 @@ extern const EIPInfo  g_mmEipInfoLut[4][4][9];
 #if JVET_AG0276_LIC_SLOPE_ADJUST
 extern const int g_licSlopeDeltaSet[LIC_SLOPE_MAX_NUM_DELTA + 1];
 #endif
+#if JVET_AK0059_MDIP
+extern uint64_t g_intraModeCost[EXT_VDIA_IDX + 1];
+#endif
 #if JVET_AJ0061_TIMD_MERGE
 extern uint64_t g_timdMrgCost[EXT_VDIA_IDX + 1];
 extern const std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> g_timdMergeOffsetXTable;

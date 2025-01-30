@@ -408,6 +408,12 @@ struct CodingUnit : public UnitArea
 #endif
 #endif
 #endif
+#if JVET_AK0059_MDIP
+  bool           mdip;
+  int            mdipMode;
+  bool           isModeExcluded;
+  int            excludingMode[EXCLUDING_MODE_NUM];
+#endif
 #if JVET_W0123_TIMD_FUSION
   bool           timd;
   int            timdMode;

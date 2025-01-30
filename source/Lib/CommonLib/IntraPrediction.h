@@ -934,10 +934,21 @@ public:
   bool getGradForOBMC                    (const PredictionUnit pu, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, const bool isAbove, const int blkSize, int* modeBuf);
 #endif
 
+#if JVET_AK0059_MDIP
+  void deriveMdipMode                     (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool useExcludingMode = true);
+#endif
 #if ENABLE_DIMD
-  static void deriveDimdMode              (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+  static void deriveDimdMode              (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+    , bool useExcludingMode = false
+#endif
+  );
 #if JVET_AJ0267_ADAPTIVE_HOG
-  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+    , bool useExcludingMode = false
+#endif
+  );
 #endif
 #if JVET_Z0050_DIMD_CHROMA_FUSION && ENABLE_DIMD
   static void deriveDimdChromaMode        (const CPelBuf &recoBufY, const CPelBuf &recoBufCb, const CPelBuf &recoBufCr, const CompArea &areaY, const CompArea &areaCb, const CompArea &areaCr, CodingUnit &cu);
@@ -1062,6 +1073,9 @@ public:
     , const bool& pdpRefAvailable = false, const bool& allPDPMode = false
 #endif
   );
+#endif
+#if JVET_AK0059_MDIP
+  void deriveMdipSorted           (const PredictionUnit& pu, int* list, int& sortedSize, int iStartIdx);
 #endif
 #if JVET_AK0061_PDP_MPM
   bool determinePDPEnable(const ComponentID compId, const PredictionUnit& pu, const uint32_t  uiDirMode);

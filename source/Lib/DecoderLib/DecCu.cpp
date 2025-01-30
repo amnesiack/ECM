@@ -448,6 +448,15 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         }
 #endif
 
+#if JVET_AK0059_MDIP
+        else if (currCU.mdip)
+        {
+          PredictionUnit *pu   = currCU.firstPU;
+          const CompArea &area = currCU.Y();
+          m_pcIntraPred->deriveMdipMode(currCU.cs->picture->getRecoBuf(area), area, currCU, false);
+          pu->intraDir[0] = currCU.mdipMode;          
+        }
+#endif
 #if JVET_AB0155_SGPM
         else if (currCU.sgpm)
         {
@@ -512,7 +521,24 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         else if (currCU.firstPU->parseLumaMode)
         {
           const CompArea &area = currCU.Y();
+#if JVET_AK0059_MDIP
+          IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU, true);
+#if !JVET_AK0061_PDP_MPM
+          if(PU::allowMPMSorted(*currCU.firstPU))
+          {
+            for (int i = 0; i <= EXT_VDIA_IDX; i++)
+            {
+              g_intraModeCost[i] = MAX_UINT64;
+            }
+          }
+#endif
+          if(CU::allowMdip(currCU))
+          {
+            m_pcIntraPred->deriveMdipMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          }
+#else
           IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+#endif          
         }
 
         //redo prediction dir derivation
