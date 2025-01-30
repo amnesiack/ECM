@@ -1924,6 +1924,8 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
   fillNonMPMList(mpm, non_mpm
 #if JVET_AK0061_PDP_MPM
     , pu, pdpRefAvailable
+#elif JVET_AK0059_MDIP
+    , pu
 #endif
   );
 #if JVET_AK0061_PDP_MPM
@@ -35182,6 +35184,9 @@ bool CU::allowTmrl(const CodingUnit& cu)
 #if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
     || cu.dimd
 #endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
+#endif
     )
   {
     bReorder = false;
@@ -35198,6 +35203,21 @@ bool CU::allowTmrl(const CodingUnit& cu)
   }
 
   return bReorder;
+}
+#endif
+#if JVET_AK0059_MDIP
+bool CU::allowMdip(const CodingUnit& cu)
+{
+  bool allowMdip = true;
+  if (!cu.Y().valid() || !isLuma(cu.chType))
+  {
+    allowMdip = false;
+  }
+  if (cu.lwidth() * cu.lheight() > 1024)
+  {
+    allowMdip = false;
+  }
+  return allowMdip;
 }
 #endif
 #if JVET_AC0144_AFFINE_DMVR_REGRESSION
@@ -36493,6 +36513,19 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
   const Position topLeft = area.topLeft();
   int numCand = 0;
   const ChannelType channelType = CHANNEL_TYPE_LUMA;
+#if JVET_AK0059_MDIP
+  if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu))
+  {
+    includedMode[pu.cu->mdipMode] = true;
+  }
+  if(pu.cu->isModeExcluded)
+  {
+    for(int i=0; i < EXCLUDING_MODE_NUM; i++)
+    {
+      includedMode[pu.cu->excludingMode[i]] = true;
+    }
+  }
+#endif
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
   int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
 #endif
@@ -36757,7 +36790,19 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
   {
     includedMode[mpm[idx]] = true;
   }
-  
+#if JVET_AK0059_MDIP
+  if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu))
+  {
+    includedMode[pu.cu->mdipMode] = true;
+  }
+  if(pu.cu->isModeExcluded)
+  {
+    for(int i=0; i<EXCLUDING_MODE_NUM; i++)
+    {
+      includedMode[pu.cu->excludingMode[i]] = true;
+    }
+  }
+#endif  
 
 ///< make sure the planar mode in the mpm list
 #if JVET_AK0061_PDP_MPM 
@@ -36770,6 +36815,45 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
   const int currNumCands = idx;
   const int offset = extPrecision ? EXT_VDIA_IDX - 5 : NUM_LUMA_MODE - 6;
   const int mod = offset + 3;
+#if JVET_AK0059_MDIP
+  if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu))
+  {
+    for (int deltaAngular = 0; deltaAngular < 4; deltaAngular++)
+    {
+      if (idx < maxCands)
+      {
+        auto mode = ((pu.cu->mdipMode + offset - deltaAngular) % mod) + 2;
+#if JVET_AK0061_PDP_MPM
+        if (pdpRefAvailable)
+        {
+          mode = getPDPPredMode(width, height, mode, includedMode);
+        }
+#endif        
+        if (!includedMode[mode])
+        {
+          includedMode[mode] = true;
+          mpm[idx++] = mode;
+        }
+      }
+
+      if (idx < maxCands)
+      {
+        auto mode = ((pu.cu->mdipMode - 1 + deltaAngular) % mod) + 2;
+#if JVET_AK0061_PDP_MPM
+        if (pdpRefAvailable)
+        {
+          mode = getPDPPredMode(width, height, mode, includedMode);
+        }
+#endif
+        if (!includedMode[mode])
+        {
+          includedMode[mode] = true;
+          mpm[idx++] = mode;
+        }
+      }
+    }
+  }
+#endif  
   for (int i = 0; i < currNumCands; i++)
   {
     if (mpm[i] <= DC_IDX)
@@ -36812,8 +36896,19 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
     }
   }
 
+#if JVET_AK0059_MDIP
+  uint8_t mpmDefault[] = { DC_IDX, VER_IDX, HOR_IDX, VER_IDX - 4, VER_IDX + 4, HOR_IDX - 4, HOR_IDX + 4, VER_IDX - 8, VER_IDX + 8, HOR_IDX - 8, HOR_IDX + 8,
+                            VER_IDX - 12, VER_IDX + 12, HOR_IDX - 12, HOR_IDX + 12, VER_IDX - 16, VER_IDX + 16, HOR_IDX - 16, VER_IDX - 2, VER_IDX + 2, HOR_IDX - 2,
+                            HOR_IDX + 2, VER_IDX - 6, VER_IDX + 6, HOR_IDX - 6, HOR_IDX + 6, VER_IDX - 10, VER_IDX + 10, HOR_IDX - 10, HOR_IDX + 10,
+                            VER_IDX - 14, VER_IDX + 14, HOR_IDX - 14, HOR_IDX + 14, VER_IDX - 1, VER_IDX + 1, HOR_IDX - 1, HOR_IDX + 1,
+                            VER_IDX - 3, VER_IDX + 3, HOR_IDX - 3, HOR_IDX + 3, VER_IDX - 5, VER_IDX + 5, HOR_IDX - 5, HOR_IDX + 5,
+                            VER_IDX - 7, VER_IDX + 7, HOR_IDX - 7, HOR_IDX + 7, VER_IDX - 9, VER_IDX + 9, HOR_IDX - 9, HOR_IDX + 9,
+                            VER_IDX - 11, VER_IDX + 11, HOR_IDX - 11, HOR_IDX + 11, VER_IDX - 13, VER_IDX + 13, HOR_IDX - 13, HOR_IDX + 13,
+                            VER_IDX - 15, VER_IDX + 15, HOR_IDX - 15, HOR_IDX + 15};
+#else
   uint8_t mpmDefault[] = { DC_IDX, VER_IDX, HOR_IDX, VER_IDX - 4, VER_IDX + 4, 14, 22, 42, 58, 10, 26,
                             38, 62, 6, 30, 34, 66, 2, 48, 52, 16 };
+#endif
   for (int i = 0; idx < maxCands; i++)
   {
     auto mode = mpmDefault[i];
@@ -36834,6 +36929,8 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
 #if JVET_AK0061_PDP_MPM
   , const PredictionUnit& pu
   , const bool& pdpRefAvailable
+#elif JVET_AK0059_MDIP
+  , const PredictionUnit& pu
 #endif
 )
 {
@@ -36848,6 +36945,20 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
     includedMode[mode] = true;
     CHECK(mode < PLANAR_IDX || mode >= NUM_LUMA_MODE, "");
   }
+#if JVET_AK0059_MDIP
+  if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu))
+  {
+    includedMode[pu.cu->mdipMode] = true;
+  }
+  if(pu.cu->isModeExcluded)
+  {
+    for(int i=0; i<EXCLUDING_MODE_NUM; i++)
+    {
+      includedMode[pu.cu->excludingMode[i]] = true;
+    }
+  }
+  int num_non_mpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+#endif
   
   int numNonMPM = 0;
   for (int i = 0; i < NUM_LUMA_MODE; i++)
@@ -36856,14 +36967,22 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
     if (pdpRefAvailable) 
     {
       auto pdpMode = getPDPPredMode(width, height, i, includedMode);
+#if JVET_AK0059_MDIP
+      if (!includedMode[pdpMode] && numNonMPM < num_non_mpm)
+#else      
       if (!includedMode[pdpMode] && numNonMPM < NUM_NON_MPM_MODES)
+#endif
       {
         non_mpm[numNonMPM++] = pdpMode;
         includedMode[pdpMode] = true;
       }
     }
 #endif
+#if JVET_AK0059_MDIP
+    if (!includedMode[i] && numNonMPM < num_non_mpm)
+#else
     if (!includedMode[i] && numNonMPM < NUM_NON_MPM_MODES)
+#endif
     {
       non_mpm[numNonMPM++] = i;
 #if JVET_AK0061_PDP_MPM
@@ -36871,7 +36990,18 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
 #endif
     }
   }
+#if JVET_AK0059_MDIP
+  if(CU::allowMdip(*pu.cu))
+  {
+    CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - MDIP_NUM - EXCLUDING_MODE_NUM, "");
+  }
+  else
+  {
+    CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - EXCLUDING_MODE_NUM, "");  
+  }
+#else
   CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES, "");
+#endif
 }
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
@@ -37585,6 +37715,77 @@ void buildHistogramAdaptive(const Pel *pReco, int iStride, uint32_t uiHeight, ui
 bool isAllowedMultiple(const SizeType width, const SizeType height)
 {
   return !((height == 4 && width == 4) || (height == 8 && width == 4) || (height == 4 && width == 8));
+}
+#endif
+
+#if JVET_AK0059_MDIP
+void buildExcludingMode(CodingUnit& cu, int *histogram, bool *includedMode)
+{
+  int maxCands = EXCLUDING_MODE_NUM;
+
+  const int REMOVAL_NUM = 32;
+  uint8_t excludingModeCandidates[REMOVAL_NUM] = 
+  { 
+    3,   65,  5,   63,  7,   61,  9,   59,
+    11,  57,  13,  55,  15,  53,  17,  51, 
+    19,  49,  21,  47,  23,  45,  25,  43,
+    27,  41,  29,  39,  31,  37,  33,  35,        
+  };
+
+  int idx = 0;
+  int avgAmp = 0;
+  for (int i = 0; idx < maxCands && i < REMOVAL_NUM; i++)
+  {
+    cu.excludingMode[idx] = excludingModeCandidates[i];
+
+    if( !includedMode[cu.excludingMode[idx]] && histogram[cu.excludingMode[idx]] == 0 && histogram[cu.excludingMode[idx] + 1] == 0)
+    {
+      includedMode[cu.excludingMode[idx++]] = true;
+    }
+  }
+  if(idx == maxCands)
+  {
+    return;
+  }
+
+  for (int mode = 2; mode < NUM_LUMA_MODE; ++mode)
+  {
+    avgAmp += histogram[mode];
+  }
+  avgAmp = avgAmp / 65;
+   
+  int it = 3;
+  if(idx <= (maxCands>>1))
+  {
+    it = 2;
+  }
+  else if(idx <= maxCands)
+  {
+    it = 1;
+  }
+
+  for( ; it >= 0; --it)
+  {
+    int threshold = (avgAmp >> it);
+    for (int i = 0; idx < maxCands && i < REMOVAL_NUM; i++)
+    {
+      cu.excludingMode[idx] = excludingModeCandidates[i]; 
+
+      if( !includedMode[cu.excludingMode[idx]] && histogram[cu.excludingMode[idx]] <= threshold && histogram[cu.excludingMode[idx] + 1] <= threshold)
+      {
+        includedMode[cu.excludingMode[idx++]] = true;
+      }
+    }
+  }
+
+  for (int i = 0; idx < maxCands; i++)
+  {
+    cu.excludingMode[idx] = excludingModeCandidates[i];
+    if(!includedMode[cu.excludingMode[idx]])
+    {
+      includedMode[cu.excludingMode[idx++]] = true;
+    }
+  }
 }
 #endif
 

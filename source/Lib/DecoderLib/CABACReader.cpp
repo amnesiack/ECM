@@ -2434,6 +2434,9 @@ void CABACReader::extend_ref_line(CodingUnit& cu)
 #if JVET_AB0155_SGPM
     || cu.sgpm
 #endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
+#endif
     )
   {
     cu.firstPU->multiRefIdx = 0;
@@ -2597,6 +2600,9 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     return;
   }
 #endif
+#if JVET_AK0059_MDIP
+  mdip_flag(cu);
+#endif
 #if JVET_AB0155_SGPM
   sgpm_flag(cu);
   if (cu.sgpm)
@@ -2637,6 +2643,12 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 #endif
 #if JVET_W0123_TIMD_FUSION
   if (cu.timd)
+  {
+    return;
+  }
+#endif
+#if JVET_AK0059_MDIP
+  if (cu.mdip)
   {
     return;
   }
@@ -2770,7 +2782,12 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       }
       else
       {
+#if JVET_AK0059_MDIP
+        int num_non_mpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xReadTruncBinCode( ipredMode, num_non_mpm );
+#else
         xReadTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );
+#endif
         pu->secondMpmFlag = false;
         pu->ipredIdx = ipredMode;
       }
@@ -2947,6 +2964,33 @@ void CABACReader::cu_eip_flag(CodingUnit& cu)
 }
 #endif
 
+#if JVET_AK0059_MDIP
+void CABACReader::mdip_flag(CodingUnit& cu)
+{
+  cu.mdip = false;
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (cu.dimd)
+  {
+    cu.mdip = false;
+    return;
+  }
+#endif
+  if (!cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType)
+#if JVET_W0123_TIMD_FUSION
+      || cu.timd
+#endif
+   )
+  {
+    cu.mdip = false;
+    return;
+  }
+  if (CU::allowMdip(cu))
+  {
+    cu.mdip = m_BinDecoder.decodeBin( Ctx::MdipFlag() );
+  }
+}
+#endif
+
 #if JVET_W0123_TIMD_FUSION
 void CABACReader::cu_timd_flag( CodingUnit& cu )
 {
@@ -3046,6 +3090,9 @@ void CABACReader::sgpm_flag(CodingUnit &cu)
 #endif
 #if JVET_V0130_INTRA_TMP
     || cu.tmpFlag
+#endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
 #endif
     )
   {

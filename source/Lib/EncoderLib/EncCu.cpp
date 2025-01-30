@@ -3726,6 +3726,11 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
   int  dimdRelWeight[3] = { 0 };
 #endif
   bool dimdDerived = false;
+#if JVET_AK0059_MDIP
+  bool mdipDerived = false;
+  int mdipMode = 0;  
+  int excludingMode[EXCLUDING_MODE_NUM] = {0};
+#endif
 
 #if JVET_Z0050_DIMD_CHROMA_FUSION && (JVET_AC0094_REF_SAMPLES_OPT)
   int8_t dimdChromaMode = -1;
@@ -3795,7 +3800,11 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     if (cu.slice->getSPS()->getUseDimd())
     {
       const CompArea &area = cu.Y();
+#if JVET_AK0059_MDIP
+      IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu, true);
+#else
       IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu);
+#endif
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
       candModeListForTransformTmp = cu.candModeListForTransform;
 #endif
@@ -3840,6 +3849,24 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     for (int i = 0; i <= EXT_VDIA_IDX; i++)
     {
       g_timdMrgCost[i] = MAX_UINT64;
+    }
+#endif
+#if JVET_AK0059_MDIP
+    for (int i = 0; i <= EXT_VDIA_IDX; i++)
+    {
+      g_intraModeCost[i] = MAX_UINT64;
+    }   
+    if (CU::allowMdip(cu))
+    { 
+      cu.firstPU = &pu;
+      const CompArea &area = cu.Y();
+      m_pcIntraSearch->deriveMdipMode(bestCS->picture->getRecoBuf(area), area, cu);     
+      mdipMode = cu.mdipMode;
+      mdipDerived = true;
+    }
+    for (int i=0; i < EXCLUDING_MODE_NUM; i++)
+    {
+      excludingMode[i] = cu.excludingMode[i];
     }
 #endif
 #if JVET_AK0061_PDP_MPM
@@ -4196,6 +4223,17 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
           {
             cu.isBvDimd = isBvDimd;
             cu.bvDimd = bvDimd;
+          }
+#endif
+#if JVET_AK0059_MDIP
+          cu.mdip = false;
+          if(mdipDerived)
+          {
+            cu.mdipMode = mdipMode;
+          }
+          for (int i=0; i < EXCLUDING_MODE_NUM; i++)
+          {
+            cu.excludingMode[i] = excludingMode[i];
           }
 #endif
 #if JVET_W0123_TIMD_FUSION

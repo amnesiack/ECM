@@ -201,6 +201,9 @@ namespace CU
 #if JVET_AB0157_TMRL
   bool allowTmrl(const CodingUnit& cu);
 #endif
+#if JVET_AK0059_MDIP
+  bool allowMdip(const CodingUnit& cu);
+#endif
 #if JVET_AC0094_REF_SAMPLES_OPT
   void getNbModesRemovedFirstLast(const bool &areAboveRightUnavail, const bool &areBelowLeftUnavail, const SizeType &height, const SizeType &width, int &nbRemovedFirst, int &nbRemovedLast);
   bool isIdxModeValid(const bool &areAboveRightUnavail, const bool &areBelowLeftUnavail, const SizeType &height, const SizeType &width, const SizeType &idx_mode_tested, const bool &isForcedValid);
@@ -1685,6 +1688,8 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, co
 void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
 #if JVET_AK0061_PDP_MPM
   , const PredictionUnit& pu, const bool& pdpRefAvailable = false
+#elif JVET_AK0059_MDIP
+  , const PredictionUnit& pu
 #endif
 
 );
@@ -1743,5 +1748,8 @@ void calcGradForOBMC(const PredictionUnit pu, const Pel* pReco, const int iStrid
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
 bool isAllowedMultiple(const SizeType width, const SizeType height);
+#endif
+#if JVET_AK0059_MDIP
+void buildExcludingMode(CodingUnit& cu, int *histogram, bool *includedMode);
 #endif
 #endif

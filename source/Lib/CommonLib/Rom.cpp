@@ -6771,7 +6771,9 @@ uint32_t g_picAmvpSbTmvpEnabledArea = 0;
 #if JVET_AG0276_LIC_SLOPE_ADJUST
 const int g_licSlopeDeltaSet[ LIC_SLOPE_MAX_NUM_DELTA + 1 ] = { 0, 1, -1 };
 #endif
-
+#if JVET_AK0059_MDIP
+uint64_t g_intraModeCost[EXT_VDIA_IDX + 1];
+#endif
 #if JVET_AJ0061_TIMD_MERGE
 uint64_t g_timdMrgCost[ EXT_VDIA_IDX + 1 ];
 static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> timdMergeOffsetXTable()

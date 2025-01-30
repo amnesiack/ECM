@@ -1906,6 +1906,9 @@ void CABACWriter::extend_ref_line(const PredictionUnit& pu)
 #if JVET_AB0155_SGPM
       || cu.sgpm
 #endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
+#endif
     )
   {
     return;
@@ -1989,6 +1992,9 @@ void CABACWriter::extend_ref_line(const CodingUnit& cu)
 #endif
 #if JVET_AB0155_SGPM
     || cu.sgpm
+#endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
 #endif
     )
   {
@@ -2142,6 +2148,9 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
     return;
   }
 #endif
+#if JVET_AK0059_MDIP
+  mdip_flag(cu);
+#endif
 #if JVET_AB0155_SGPM
   sgpm_flag(cu);
   if (cu.sgpm)
@@ -2182,6 +2191,12 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
 #endif
 #if JVET_W0123_TIMD_FUSION
   if (cu.timd)
+  {
+    return;
+  }
+#endif
+#if JVET_AK0059_MDIP
+  if (cu.mdip)
   {
     return;
   }
@@ -2289,7 +2304,12 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
                  
           unsigned nonMPMIdx = pu->ipredIdx;
 
+#if JVET_AK0059_MDIP
+          int num_non_mpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+          xWriteTruncBinCode( nonMPMIdx, num_non_mpm);  // Remaining mode is truncated binary coded
+#else
           xWriteTruncBinCode( nonMPMIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded
+#endif
         }
 #else
         std::sort(mpmPred, mpmPred + numMPMs);
@@ -2400,6 +2420,9 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
     return;
   }
 #endif
+#if JVET_AK0059_MDIP
+  mdip_flag(*pu.cu);
+#endif
 #if JVET_AB0155_SGPM
   sgpm_flag(*pu.cu);
   if (pu.cu->sgpm)
@@ -2440,6 +2463,12 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
 #endif
 #if JVET_W0123_TIMD_FUSION
   if (pu.cu->timd)
+  {
+    return;
+  }
+#endif
+#if JVET_AK0059_MDIP
+  if (pu.cu->mdip)
   {
     return;
   }
@@ -2530,7 +2559,12 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
                 
         unsigned non_mpm_idx = pu.ipredIdx;
 
-        xWriteTruncBinCode(non_mpm_idx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded
+#if JVET_AK0059_MDIP
+        int num_non_mpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xWriteTruncBinCode(non_mpm_idx, num_non_mpm);  // Remaining mode is truncated binary coded  
+#else
+        xWriteTruncBinCode(non_mpm_idx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded  
+#endif
       }
 #else
       unsigned ipredMode = pu.intraDir[0];
@@ -2695,6 +2729,9 @@ void CABACWriter::sgpm_flag(const CodingUnit &cu)
 #if JVET_V0130_INTRA_TMP
     || cu.tmpFlag
 #endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
+#endif
     )
   {
     return;
@@ -2774,6 +2811,30 @@ void CABACWriter::cu_obic_flag(const CodingUnit& cu )
     return;
   }
   m_BinEncoder.encodeBin(cu.obicFlag ? 1 : 0, Ctx::obicFlag(0));
+}
+#endif
+
+#if JVET_AK0059_MDIP
+void CABACWriter::mdip_flag(const CodingUnit& cu)
+{
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (cu.dimd)
+  {
+    return;
+  }
+#endif
+  if (!cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType)
+#if JVET_W0123_TIMD_FUSION
+      || cu.timd
+#endif 
+   )
+  {
+    return;
+  }
+  if (CU::allowMdip(cu))
+  {
+    m_BinEncoder.encodeBin(cu.mdip, Ctx::MdipFlag());
+  }
 }
 #endif
 

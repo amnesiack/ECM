@@ -407,6 +407,15 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #endif
 #endif
 #endif
+#if JVET_AK0059_MDIP
+  mdip              = other.mdip;
+  mdipMode          = other.mdipMode;
+  isModeExcluded    = other.isModeExcluded;
+  for (int i=0; i < EXCLUDING_MODE_NUM; i++)
+  {
+    excludingMode[i] = other.excludingMode[i];
+  }
+#endif
 #if JVET_W0123_TIMD_FUSION
   timd              = other.timd;
   timdMode          = other.timdMode;
@@ -771,6 +780,15 @@ void CodingUnit::initData()
   tmpLicFlag   = false;
 #endif
 #endif
+#endif
+#if JVET_AK0059_MDIP
+  mdip              = false;
+  mdipMode          = -1;
+  isModeExcluded    = true;
+  for (int i=0; i < EXCLUDING_MODE_NUM; i++)
+  {
+    excludingMode[i] = -1;
+  }
 #endif
 #if JVET_W0123_TIMD_FUSION
   timd                     = false;
