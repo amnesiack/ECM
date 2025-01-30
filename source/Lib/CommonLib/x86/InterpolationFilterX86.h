@@ -5552,8 +5552,8 @@ void  xWeightObmcBoundary_SSE(Pel* orgDst, Pel* orgSrc, const int strideDst, con
 
             for (int j = rowStart; j < 4; j++)
             {
-              __m256i pDst = _mm256_loadu_si256((__m256i*)pOrgDst);
-              __m256i pSrc = _mm256_loadu_si256((__m256i*)pOrgSrc);
+              __m256i pDst = _mm256_castsi128_si256(_mm_loadu_si128((__m128i*)pOrgDst));
+              __m256i pSrc = _mm256_castsi128_si256(_mm_loadu_si128((__m128i*)pOrgSrc));
               __m256i pDstLo = _mm256_unpacklo_epi16(pDst, pSrc);
               __m256i pDstHi = _mm256_unpackhi_epi16(pDst, pSrc);
               pDst = _mm256_permute2x128_si256(pDstLo, pDstHi, 0x20);
@@ -5587,8 +5587,8 @@ void  xWeightObmcBoundary_SSE(Pel* orgDst, Pel* orgSrc, const int strideDst, con
 
             for (int j = rowStart; j < 4; j++)
             {
-              __m128i pDst = _mm_loadu_si128((__m128i*)pOrgDst);
-              __m128i pSrc = _mm_loadu_si128((__m128i*)pOrgSrc);
+              __m128i pDst = _mm_loadl_epi64((__m128i*)pOrgDst);
+              __m128i pSrc = _mm_loadl_epi64((__m128i*)pOrgSrc);
               pDst = _mm_unpacklo_epi16(pDst, pSrc);
               pDst = _mm_madd_epi16(pDst, rows[j]);
               pDst = _mm_srai_epi32(_mm_add_epi32(pDst, offsets[j]), round[j]);
@@ -5621,8 +5621,8 @@ void  xWeightObmcBoundary_SSE(Pel* orgDst, Pel* orgSrc, const int strideDst, con
             Pel* pOrgDst = orgDst + i;
             Pel* pOrgSrc = orgSrc + i;
 
-            __m128i pDst = _mm_loadu_si128((__m128i*)pOrgDst);
-            __m128i pSrc = _mm_loadu_si128((__m128i*)pOrgSrc);
+            __m128i pDst = _mm_loadl_epi64((__m128i*)pOrgDst);
+            __m128i pSrc = _mm_loadl_epi64((__m128i*)pOrgSrc);
             pDst = _mm_unpacklo_epi16(pDst, pSrc);
             pDst = _mm_madd_epi16(pDst, rows[rowStart]);
             pDst = _mm_srai_epi32(_mm_add_epi32(pDst, offsets[rowStart]), round[rowStart]);
@@ -5656,8 +5656,8 @@ void  xWeightObmcBoundary_SSE(Pel* orgDst, Pel* orgSrc, const int strideDst, con
 
         for (int i = 0; i < height; i++)
         {
-          __m128i pDst = _mm_loadu_si128((__m128i*)pOrgDst);
-          __m128i pSrc = _mm_loadu_si128((__m128i*)pOrgSrc);
+          __m128i pDst = _mm_loadl_epi64((__m128i*)pOrgDst);
+          __m128i pSrc = _mm_loadl_epi64((__m128i*)pOrgSrc);
           pDst = _mm_unpacklo_epi16(pDst, pSrc);
           pDst = _mm_madd_epi16(pDst, rows[rowStart]);
           pDst = _mm_srai_epi32(_mm_add_epi32(pDst, offset0), 5);
