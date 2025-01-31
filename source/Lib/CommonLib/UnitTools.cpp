@@ -11021,7 +11021,7 @@ void PU::getInterMergeCandidates( const PredictionUnit &pu, MergeCtx& mrgCtx,
         pu,
         posList,
         availList,
-        slice.getCheckLDC() == true ? 0 : -3,
+        (slice.getCheckLDC() ? 0 : -3),
         0,
 
         mrgCtx,
@@ -16118,7 +16118,7 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
             posList, 
             availList, 
             iRefIdx,
-            slice.getCheckLDC(),
+            slice.isInterB(),
 
             mrgCtx,
             -1,
