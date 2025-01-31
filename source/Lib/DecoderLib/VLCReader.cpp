@@ -2314,6 +2314,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   }
 #endif
 #endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  READ_FLAG( uiCode,    "sps_tmbp_enabled_flag" );                               pcSPS->setTMBP                    ( uiCode != 0 );
+#endif
 
 #if JVET_S0074_SPS_REORDER
   READ_FLAG(uiCode, "sps_lmcs_enable_flag");                   pcSPS->setUseLmcs(uiCode == 1);

@@ -1722,6 +1722,10 @@ private:
   int               m_log2MaxTransformSkipBlockSize;
   bool              m_BDPCMEnabledFlag;
   bool              m_JointCbCrEnabledFlag;
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  bool              m_templateMatchingBoundaryPrediction;
+#endif
+
   // Parameter
   BitDepths         m_bitDepths;
   bool              m_entropyCodingSyncEnabledFlag;                    //!< Flag for enabling WPP
@@ -2141,6 +2145,10 @@ public:
   uint16_t                getSubPicId( int i ) const                                                      { return  m_subPicId[i]; }
   void                    setSubPicId(const std::vector<uint16_t> &v)                                     { CHECK(v.size()!=m_numSubPics, "number of vector entries must be equal to numSubPics") ; m_subPicId = v; }
   const std::vector<uint16_t> getSubPicIds() const                                                        { return  m_subPicId; }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  void                    setTMBP( int val)                                                               {m_templateMatchingBoundaryPrediction = val;};
+  bool                    getTMBP() const                                                                 {return m_templateMatchingBoundaryPrediction;};
+#endif
 
   uint32_t                getNumLongTermRefPicSPS() const                                                 { return m_numLongTermRefPicSPS;                                       }
   void                    setNumLongTermRefPicSPS(uint32_t val)                                           { m_numLongTermRefPicSPS = val;                                        }

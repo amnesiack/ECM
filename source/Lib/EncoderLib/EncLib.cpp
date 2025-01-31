@@ -1352,6 +1352,9 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
       pcField->reconstructed = false;
 
       pcField->setBorderExtension( false );// where is this normally?
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+      pcField->setUseTMBP(false);
+#endif
 
       pcField->topField = isTopField;                  // interlaced requirement
 
@@ -1503,6 +1506,9 @@ void EncLib::xGetNewPicBuffer ( std::list<PelUnitBuf*>& rcListPicYuvRecOut, Pict
   }
 
   rpcPic->setBorderExtension( false );
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  rpcPic->setUseTMBP(false);
+#endif
   rpcPic->reconstructed = false;
   rpcPic->referenced = true;
   rpcPic->getHashMap()->clearAll();
@@ -2532,6 +2538,9 @@ void EncLib::xInitSPS( SPS& sps )
       sps.setVirtualBoundariesPosY            ( m_virtualBoundariesPosY[i], i );
     }
   }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  sps.setTMBP(m_templateMatchingBoundaryPrediction);
+#endif
 
   sps.setInterLayerPresentFlag( m_layerId > 0 && m_vps->getMaxLayers() > 1 && !m_vps->getAllIndependentLayersFlag() && !m_vps->getIndependentLayerFlag( m_vps->getGeneralLayerIdx( m_layerId ) ) );
   CHECK( m_vps->getIndependentLayerFlag( m_vps->getGeneralLayerIdx( m_layerId ) ) && sps.getInterLayerPresentFlag(), " When vps_independent_layer_flag[GeneralLayerIdx[nuh_layer_id ]]  is equal to 1, the value of inter_layer_ref_pics_present_flag shall be equal to 0." );

@@ -1442,6 +1442,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   }
 #endif
 #endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  WRITE_FLAG( pcSPS->getTMBP() ? 1: 0,                                                          "sps_tmbp_enabled_flag" );
+#endif
 
 #if JVET_S0074_SPS_REORDER
   WRITE_FLAG(pcSPS->getUseLmcs() ? 1 : 0, "sps_lmcs_enable_flag");
