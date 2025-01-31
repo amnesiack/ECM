@@ -11438,6 +11438,9 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
 #if JVET_AC0094_REF_SAMPLES_OPT
       , true
 #endif
+#if JVET_AK0061_PDP_MPM
+      , true, true
+#endif
       , m_pcIntraPred
     );
     mpmNum = std::min(mpmNum, GEO_BLEND_MAX_NUM_INTRA_CANDS);
