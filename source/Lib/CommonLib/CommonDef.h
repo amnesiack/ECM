@@ -687,6 +687,7 @@ static const int DIMD_FUSION_NUM =                                  6;
 #if JVET_AK0059_MDIP
 static const int MDIP_NUM =                                         1;
 static const int EXCLUDING_MODE_NUM =                               20;
+static const int REMOVAL_NUM =                                      32;
 #endif
 
 #if JVET_Y0116_EXTENDED_MRL_LIST
@@ -895,20 +896,20 @@ static const int DM_CHROMA_IDX =                       NUM_INTRA_MODE; ///< chro
 #endif
 
 #if JVET_Z0131_IBC_BVD_BINARIZATION
-static const int BVD_CODING_GOLOMB_ORDER = 1; 
-static const int NUM_HOR_BVD_CTX         = 5;
-static const int NUM_VER_BVD_CTX         = 5;
-static const int HOR_BVD_CTX_OFFSET      = 0;
+static const int BVD_CODING_GOLOMB_ORDER =  1; 
+static const int NUM_HOR_BVD_CTX         =  5;
+static const int NUM_VER_BVD_CTX         =  5;
+static const int HOR_BVD_CTX_OFFSET      =  0;
 static const int BVD_IBC_MAX_PREFIX      = 16;
-static const int VER_BVD_CTX_OFFSET      = 6;
+static const int VER_BVD_CTX_OFFSET      =  6;
 #endif
 
 #if JVET_AD0140_MVD_PREDICTION
-static const int MVD_CODING_GOLOMB_ORDER = 1;
+static const int MVD_CODING_GOLOMB_ORDER =  1;
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-static const int PNN_IDX = 220;
-static const int NUM_INDICES_REP = 2;
+static const int PNN_IDX =                220;
+static const int NUM_INDICES_REP =          2;
 #endif
 
 #if JVET_W0119_LFNST_EXTENSION
@@ -924,53 +925,51 @@ static const uint32_t  L8H_ZO            = 32;
 #endif
 
 #if JVET_Y0142_ADAPT_INTRA_MTS
-static const uint32_t  MTS_TH_COEFF[2] =                                { 6, 32};
-static const uint32_t  MTS_NCANDS[3] =                                  { 1, 4, 6};
-static const uint32_t  NUM_TRAFO_MODES_MTS =                            8;
+static const uint32_t  MTS_TH_COEFF[2] =                     { 6, 32};
+static const uint32_t  MTS_NCANDS[3] =                     { 1, 4, 6};
+static const uint32_t  NUM_TRAFO_MODES_MTS =                        8;
 #else
-static const uint32_t  NUM_TRAFO_MODES_MTS =                            6; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  NUM_TRAFO_MODES_MTS =                        6; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #endif
 #if TU_256
-static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                         256; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
-static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         256; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                    256; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTER_MAX_CU_SIZE =                    256; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #else
-static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                         32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
-static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                     32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTER_MAX_CU_SIZE =                     32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #endif
 #if JVET_AK0061_PDP_MPM
-static const int MPM_SORT_TEMPLATE_SIZE =                             1;
-static const int NUM_PDP_MODES =                                      6;
+static const int MPM_SORT_TEMPLATE_SIZE =                           1;
+static const int NUM_PDP_MODES =                                    6;
 #endif
 
 #if SECONDARY_MPM
-static const int NUM_PRIMARY_MOST_PROBABLE_MODES = 6;
-static const int NUM_SECONDARY_MOST_PROBABLE_MODES = 16;
+static const int NUM_PRIMARY_MOST_PROBABLE_MODES =                  6;
+static const int NUM_SECONDARY_MOST_PROBABLE_MODES =               16;
 static const int NUM_MOST_PROBABLE_MODES = NUM_PRIMARY_MOST_PROBABLE_MODES + NUM_SECONDARY_MOST_PROBABLE_MODES;
-#if SECONDARY_MPM
 #if JVET_AK0059_MDIP
 static const int NUM_NON_MPM_MODES = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - MDIP_NUM - EXCLUDING_MODE_NUM;
 #else
 static const int NUM_NON_MPM_MODES = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES;
 #endif
-#endif
 #else
-static const int NUM_MOST_PROBABLE_MODES = 6;
+static const int NUM_MOST_PROBABLE_MODES =                          6;
 #endif
 static const int LM_SYMBOL_NUM = (1 + NUM_LMC_MODE);
 
 static const int MAX_NUM_MIP_MODE =                                32; ///< maximum number of MIP pred. modes
 #if JVET_AB0155_SGPM
 #if JVET_AJ0112_REGRESSION_SGPM
-static const int RSGPM_CAND_NUM = 4;
-static const int SGPM_CAND_NUM = 16;
+static const int RSGPM_CAND_NUM =                                   4;
+static const int SGPM_CAND_NUM =                                   16;
 static const int SGPM_NUM = RSGPM_CAND_NUM + SGPM_CAND_NUM;
 #else
-static const int SGPM_NUM = 16;
+static const int SGPM_NUM =                                        16;
 #endif
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE + SGPM_NUM);   ///< maximum number of RD comparison in fast-UDI estimation loop
 #if JVET_AK0222_SGPM_DIMD_LFNST
-static const int SGPM_VIPM_TH = 2;
-static const int MAX_SGPM_VIPM_SIZE = 256;
+static const int SGPM_VIPM_TH =                                     2;
+static const int MAX_SGPM_VIPM_SIZE =                             256;
 #endif
 #else
 

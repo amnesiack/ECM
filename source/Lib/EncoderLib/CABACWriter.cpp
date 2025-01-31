@@ -2305,8 +2305,8 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
           unsigned nonMPMIdx = pu->ipredIdx;
 
 #if JVET_AK0059_MDIP
-          int num_non_mpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-          xWriteTruncBinCode( nonMPMIdx, num_non_mpm);  // Remaining mode is truncated binary coded
+          int numNonMpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+          xWriteTruncBinCode( nonMPMIdx, numNonMpm );  // Remaining mode is truncated binary coded
 #else
           xWriteTruncBinCode( nonMPMIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded
 #endif
@@ -2557,13 +2557,11 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
       {
         m_BinEncoder.encodeBin(0, Ctx::IntraLumaSecondMpmFlag());
                 
-        unsigned non_mpm_idx = pu.ipredIdx;
-
 #if JVET_AK0059_MDIP
-        int num_non_mpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-        xWriteTruncBinCode(non_mpm_idx, num_non_mpm);  // Remaining mode is truncated binary coded  
+        int numNonMpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xWriteTruncBinCode( pu.ipredIdx, numNonMpm );  // Remaining mode is truncated binary coded  
 #else
-        xWriteTruncBinCode(non_mpm_idx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded  
+        xWriteTruncBinCode( pu.ipredIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded  
 #endif
       }
 #else

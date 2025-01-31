@@ -268,7 +268,7 @@ namespace PU
 #endif
   int  getLMSymbolList(const PredictionUnit &pu, int *modeList);
 #if SECONDARY_MPM
-  int getIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t* non_mpm
+  int getIntraMPMs(const PredictionUnit &pu, uint8_t *mpm, uint8_t* nonMpm
 #if JVET_AC0094_REF_SAMPLES_OPT
                  , const bool &isForcedValid
 #endif
@@ -1685,7 +1685,7 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, co
   , const bool& pdpRefAvailable = false
 #endif
 );
-void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
+void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
 #if JVET_AK0061_PDP_MPM
   , const PredictionUnit& pu, const bool& pdpRefAvailable = false
 #elif JVET_AK0059_MDIP

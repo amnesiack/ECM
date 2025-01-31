@@ -1829,7 +1829,7 @@ bool PU::determinePDPTemp(const PredictionUnit& pu)
 #endif
 
 #if SECONDARY_MPM
-int PU::getIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t* non_mpm
+int PU::getIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t* nonMpm
 #if JVET_AC0094_REF_SAMPLES_OPT
                     , const bool& isForcedValid
 #endif
@@ -1921,7 +1921,7 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
     return numCand;
   }
 #endif
-  fillNonMPMList(mpm, non_mpm
+  fillNonMPMList(mpm, nonMpm
 #if JVET_AK0061_PDP_MPM
     , pu, pdpRefAvailable
 #elif JVET_AK0059_MDIP
@@ -2643,7 +2643,7 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
       {
         if( !includedMode[idx] )
         {
-          non_mpm[numNonMPM++] = idx;
+          nonMpm[numNonMPM++] = idx;
         }
       }
 #endif
@@ -36925,7 +36925,7 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
   CHECK(idx != maxCands, "");
 }
 
-void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
+void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
 #if JVET_AK0061_PDP_MPM
   , const PredictionUnit& pu
   , const bool& pdpRefAvailable
@@ -36957,7 +36957,7 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
       includedMode[pu.cu->excludingMode[i]] = true;
     }
   }
-  int num_non_mpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+  const int numNonMpmMdip = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
 #endif
   
   int numNonMPM = 0;
@@ -36968,23 +36968,23 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* non_mpm
     {
       auto pdpMode = getPDPPredMode(width, height, i, includedMode);
 #if JVET_AK0059_MDIP
-      if (!includedMode[pdpMode] && numNonMPM < num_non_mpm)
+      if (!includedMode[pdpMode] && numNonMPM < numNonMpmMdip )
 #else      
       if (!includedMode[pdpMode] && numNonMPM < NUM_NON_MPM_MODES)
 #endif
       {
-        non_mpm[numNonMPM++] = pdpMode;
+        nonMpm[numNonMPM++] = pdpMode;
         includedMode[pdpMode] = true;
       }
     }
 #endif
 #if JVET_AK0059_MDIP
-    if (!includedMode[i] && numNonMPM < num_non_mpm)
+    if (!includedMode[i] && numNonMPM < numNonMpmMdip )
 #else
     if (!includedMode[i] && numNonMPM < NUM_NON_MPM_MODES)
 #endif
     {
-      non_mpm[numNonMPM++] = i;
+      nonMpm[numNonMPM++] = i;
 #if JVET_AK0061_PDP_MPM
       includedMode[i] = true;
 #endif
@@ -37721,9 +37721,8 @@ bool isAllowedMultiple(const SizeType width, const SizeType height)
 #if JVET_AK0059_MDIP
 void buildExcludingMode(CodingUnit& cu, int *histogram, bool *includedMode)
 {
-  int maxCands = EXCLUDING_MODE_NUM;
+  const int maxCands = EXCLUDING_MODE_NUM;
 
-  const int REMOVAL_NUM = 32;
   uint8_t excludingModeCandidates[REMOVAL_NUM] = 
   { 
     3,   65,  5,   63,  7,   61,  9,   59,
