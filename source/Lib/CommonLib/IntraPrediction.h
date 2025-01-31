@@ -333,7 +333,11 @@ public:
 
 #if SECONDARY_MPM
   uint8_t m_intraMPM[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+  uint8_t m_intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - EXCLUDING_MODE_NUM];
+#else
   uint8_t m_intraNonMPM[NUM_NON_MPM_MODES];
+#endif
 #endif
 #if JVET_AK0061_PDP_MPM
   bool m_mpmIncludedPdpMode[NUM_LUMA_MODE] = { false };
