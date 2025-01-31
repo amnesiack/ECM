@@ -411,10 +411,7 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   mdip              = other.mdip;
   mdipMode          = other.mdipMode;
   isModeExcluded    = other.isModeExcluded;
-  for (int i=0; i < EXCLUDING_MODE_NUM; i++)
-  {
-    excludingMode[i] = other.excludingMode[i];
-  }
+  std::memcpy( excludingMode, other.excludingMode, sizeof( excludingMode ) );
 #endif
 #if JVET_W0123_TIMD_FUSION
   timd              = other.timd;

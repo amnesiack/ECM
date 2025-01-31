@@ -2783,8 +2783,8 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       else
       {
 #if JVET_AK0059_MDIP
-        int num_non_mpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-        xReadTruncBinCode( ipredMode, num_non_mpm );
+        const int numNonMpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xReadTruncBinCode( ipredMode, numNonMpm );
 #else
         xReadTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );
 #endif

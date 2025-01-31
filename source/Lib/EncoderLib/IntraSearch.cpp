@@ -16799,22 +16799,22 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
 #else
   const int numMPMs = NUM_MOST_PROBABLE_MODES;
 #endif
-  int pred_idx = numMPMs;
+  int predIdx = numMPMs;
   for (int idx = 0; idx < numMPMs; idx++)
   {
     if (pu.intraDir[0] == m_intraMPM[idx])
     {
-      pred_idx = idx;
+      predIdx = idx;
       break;
     }
   }
 #if SECONDARY_MPM
-  if (pred_idx < NUM_PRIMARY_MOST_PROBABLE_MODES)
+  if ( predIdx < NUM_PRIMARY_MOST_PROBABLE_MODES)
   {
     pu.mpmFlag = true;
     pu.secondMpmFlag = false;
   }
-  else if (pred_idx < numMPMs)
+  else if ( predIdx < numMPMs)
   {
     pu.mpmFlag = false;
     pu.secondMpmFlag = true;
@@ -16824,17 +16824,17 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
     pu.mpmFlag = false;
     pu.secondMpmFlag = false;
 #if JVET_AK0059_MDIP
-    int num_non_mpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-    pred_idx = num_non_mpm;
-    for (int idx = 0; idx < num_non_mpm; idx++)
+    const int numNonMpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+    predIdx = numNonMpm;
+    for (int idx = 0; idx < numNonMpm; idx++)
 #else
-    pred_idx = NUM_NON_MPM_MODES;
+    predIdx = NUM_NON_MPM_MODES;
     for (int idx = 0; idx < NUM_NON_MPM_MODES; idx++)
 #endif  
     {
       if (pu.intraDir[0] == m_intraNonMPM[idx])
       {
-        pred_idx = idx;
+        predIdx = idx;
         break;
       }
     }
@@ -16848,17 +16848,17 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
   else
   {
     std::sort(mpmPred, mpmPred + numMPMs);
-    int pred_idx = pu.intraDir[0];
+    int predIdx = pu.intraDir[0];
     for (int idx = numMPMs - 1; idx >= 0; idx--)
     {
-      if (pred_idx > mpmPred[idx])
+      if ( predIdx > mpmPred[idx])
       {
-        pred_idx--;
+        predIdx--;
       }
     }
     CHECK(pred_idx >= 64, "Incorrect mode");
   }
 #endif
-  pu.ipredIdx = pred_idx;
+  pu.ipredIdx = predIdx;
 }
 
