@@ -40,6 +40,11 @@
 #include "ChromaFormat.h"
 #include "CommonLib/InterpolationFilter.h"
 
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+#include "TMP.h"
+#include "CommonDef.h"
+#endif
+
 #if ENABLE_SPLIT_PARALLELISM
 
 int g_wppThreadId( 0 );
@@ -245,6 +250,9 @@ void Picture::create(
   }
 #if !KEEP_PRED_AND_RESI_SIGNALS
   m_ctuArea = UnitArea( _chromaFormat, Area( Position{ 0, 0 }, Size( _maxCUSize, _maxCUSize ) ) );
+#endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  m_randomAccessPicture = false;
 #endif
   m_hashMap.clearAll();
 }
@@ -1415,6 +1423,28 @@ void Picture::extendPicBorder( const PPS *pps )
     return;
   }
 
+
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+    int picWidth = cs->sps->getMaxPicWidthInLumaSamples();
+    int picHeight = cs->sps->getMaxPicHeightInLumaSamples();
+
+    PelUnitBuf s = M_BUFS(0, PIC_RECONSTRUCTION);
+
+    BoundaryTop topB = 0;
+    BoundaryBottom bottomB = 0;
+    BoundaryLeft leftB = 0;
+    BoundaryRight rightB = 0;
+
+    Area picAreaTopBottom = Area(Position(0, 0), Size(picWidth, picHeight));
+    TemplateMatchingPadding(s, topB, picAreaTopBottom);
+    TemplateMatchingPadding(s, bottomB, picAreaTopBottom);
+
+    Area picAreaLeftRight = Area(Position(0, -TMP_PADSIZE), Size(picWidth, picHeight+2*TMP_PADSIZE));
+    TemplateMatchingPadding(s, leftB, picAreaLeftRight);
+    TemplateMatchingPadding(s, rightB, picAreaLeftRight);
+#endif
+
+
 #if JVET_Z0118_GDR
   int numPt = (cs->isGdrEnabled()) ? PIC_RECONSTRUCTION_1 : PIC_RECONSTRUCTION_0;  
   for (int pt = (int) PIC_RECONSTRUCTION_0; pt <= (int) numPt; pt++)
@@ -1423,18 +1453,34 @@ void Picture::extendPicBorder( const PPS *pps )
     {
       ComponentID compID = ComponentID(comp);
       PelBuf p = M_BUFS(0, (PictureType) pt).get(compID);
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+      int width = p.width + ((2*TMP_PADSIZE) >> getComponentScaleX(compID, cs->area.chromaFormat));
+      int height = p.height + ((2*TMP_PADSIZE) >> getComponentScaleY(compID, cs->area.chromaFormat));
+
+      int tmpOffsetX = TMP_PADSIZE >> getComponentScaleX( compID, cs->area.chromaFormat );
+      int tmpOffsetY = TMP_PADSIZE >> getComponentScaleY( compID, cs->area.chromaFormat );
+
+      Pel *piTxt = p.bufAt(-tmpOffsetX,-tmpOffsetY);
+
+      int xmargin = (margin - TMP_PADSIZE) >> getComponentScaleX( compID, cs->area.chromaFormat );
+      int ymargin = (margin - TMP_PADSIZE) >> getComponentScaleY( compID, cs->area.chromaFormat );
+#else
+      int width = p.width;
+      int height = p.height;
+
       Pel *piTxt = p.bufAt(0, 0);
       int xmargin = margin >> getComponentScaleX(compID, cs->area.chromaFormat);
       int ymargin = margin >> getComponentScaleY(compID, cs->area.chromaFormat);
+#endif
 
       Pel*  pi = piTxt;
       // do left and right margins
-      for (int y = 0; y < p.height; y++)
+      for (int y = 0; y < height; y++)
       {
         for (int x = 0; x < xmargin; x++)
         {
           pi[-xmargin + x] = pi[0];
-          pi[p.width + x] = pi[p.width - 1];
+          pi[width + x] = pi[width - 1];
         }
         pi += p.stride;
       }
@@ -1444,15 +1490,15 @@ void Picture::extendPicBorder( const PPS *pps )
       // pi is now the (-marginX, height-1)
       for (int y = 0; y < ymargin; y++)
       {
-        ::memcpy(pi + (y + 1)*p.stride, pi, sizeof(Pel)*(p.width + (xmargin << 1)));
+        ::memcpy(pi + (y + 1)*p.stride, pi, sizeof(Pel)*(width + (xmargin << 1)));
       }
 
       // pi is still (-marginX, height-1)
-      pi -= ((p.height - 1) * p.stride);
+      pi -= ((height - 1) * p.stride);
       // pi is now (-marginX, 0)
       for (int y = 0; y < ymargin; y++)
       {
-        ::memcpy(pi - (y + 1)*p.stride, pi, sizeof(Pel)*(p.width + (xmargin << 1)));
+        ::memcpy(pi - (y + 1)*p.stride, pi, sizeof(Pel)*(width + (xmargin << 1)));
       }
 
       // reference picture with horizontal wrapped boundary
@@ -1472,18 +1518,31 @@ void Picture::extendPicBorder( const PPS *pps )
   {
     ComponentID compID = ComponentID( comp );
     PelBuf p = M_BUFS( 0, PIC_RECONSTRUCTION ).get( compID );
+
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+    int width = p.width + ((2*TMP_PADSIZE) >> getComponentScaleX(compID, cs->area.chromaFormat));
+    int height = p.height + ((2*TMP_PADSIZE) >> getComponentScaleY(compID, cs->area.chromaFormat));
+
+    Pel *piTxt = p.bufAt(-TMP_PADSIZE,-TMP_PADSIZE);
+    int xmargin = (margin - TMP_PADSIZE) >> getComponentScaleX( compID, cs->area.chromaFormat );
+    int ymargin = (margin - TMP_PADSIZE) >> getComponentScaleY( compID, cs->area.chromaFormat );
+#else
+    int width = p.width;
+    int height = p.height;
+
     Pel *piTxt = p.bufAt(0,0);
     int xmargin = margin >> getComponentScaleX( compID, cs->area.chromaFormat );
     int ymargin = margin >> getComponentScaleY( compID, cs->area.chromaFormat );
+#endif
 
     Pel*  pi = piTxt;
     // do left and right margins
-    for (int y = 0; y < p.height; y++)
+    for (int y = 0; y < height; y++)
     {
       for (int x = 0; x < xmargin; x++)
       {
         pi[-xmargin + x] = pi[0];
-        pi[p.width + x]  = pi[p.width - 1];
+        pi[width + x]  = pi[width - 1];
       }
       pi += p.stride;
     }
@@ -1493,15 +1552,15 @@ void Picture::extendPicBorder( const PPS *pps )
     // pi is now the (-marginX, height-1)
     for (int y = 0; y < ymargin; y++ )
     {
-      ::memcpy( pi + (y+1)*p.stride, pi, sizeof(Pel)*(p.width + (xmargin << 1)));
+      ::memcpy( pi + (y+1)*p.stride, pi, sizeof(Pel)*(width + (xmargin << 1)));
     }
 
     // pi is still (-marginX, height-1)
-    pi -= ((p.height-1) * p.stride);
+    pi -= ((height-1) * p.stride);
     // pi is now (-marginX, 0)
     for (int y = 0; y < ymargin; y++ )
     {
-      ::memcpy( pi - (y+1)*p.stride, pi, sizeof(Pel)*(p.width + (xmargin<<1)) );
+      ::memcpy( pi - (y+1)*p.stride, pi, sizeof(Pel)*(width + (xmargin<<1)) );
     }
 
     // reference picture with horizontal wrapped boundary

@@ -430,6 +430,7 @@
 #define JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION   1 // JVET-AC0185: Enhanced temporal motion information derivation
 #define JVET_AE0091_HIGH_ACCURACY_TEMPLATE_MATCHING       1 // JVET-AE0091: High-Accuracy template matching
 #endif
+#define JVET_AK0085_TM_BOUNDARY_PADDING                   1 // Template Matching-based Reference Picture Padding
 
 // Transform and coefficient coding
 #define TCQ_8STATES                                       1

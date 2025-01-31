@@ -2567,5 +2567,30 @@ static const int ALF_SA_RUNS_COUNT = 100; // how many times the full SA-process 
 static const int ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP = 8; // ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP * parametersNumber is the number of non-improving iterations that has to happen before SA run is stopped
 static const int ALF_SA_CHANGES_PER_ITERATION = 3; // the maximal number of changed parameters in one iteration
 #endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+// define search area
+static const int TMP_MIN_NUM_STEPS = 2; // 0 equals stdpad, minimum size of triangle
+static const int TMP_MAX_NUM_STEPS = 12; // Limit the maximum number of steps executed, maximum size of triangle
+
+static const int TMP_NUM_AVG_CANDS = 4; // Limit the number of averaged candidates
+static const float TMP_ACS_FACTOR = 1.5; // adaptive candidate selection factor (needs to be <= 1)
+
+// template size and target block size definition
+static const int TMP_TEMPLATE_WIDTH = 16;
+static const int TMP_TEMPLATE_HEIGHT = 3;
+static const int TMP_TW_MINUS_TBW_BY_TWO = 2; // defines how much smaller the target block is than the template on each side
+
+static const int TMP_PADSIZE = 16; // padding size for TM padding
+static const int TMP_EARLY_TERMINATION_THRESHOLD = 128; // threshold for early termination
+
+enum BoundaryDirection
+{
+  BD_TOP,
+  BD_RIGHT,
+  BD_BOTTOM,
+  BD_LEFT,
+  NUM_BD_DIRECTIONS
+};
+#endif
 
 #endif // end of #ifndef  __COMMONDEF__

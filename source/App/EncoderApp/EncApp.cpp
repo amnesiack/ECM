@@ -1314,6 +1314,10 @@ void EncApp::xInitLibCfg()
 
   m_cEncLib.setSaoGreedyMergeEnc                                 ( m_saoGreedyMergeEnc);
   m_cEncLib.setIntraSmoothingDisabledFlag                        (!m_enableIntraReferenceSmoothing );
+
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  m_cEncLib.setTMBP                                               ( m_templateMatchingBoundaryPrediction );
+#endif
   m_cEncLib.setDecodedPictureHashSEIType                         ( m_decodedPictureHashSEIType );
 #if JVET_R0294_SUBPIC_HASH
   m_cEncLib.setSubpicDecodedPictureHashType                      ( m_subpicDecodedPictureHashType );
