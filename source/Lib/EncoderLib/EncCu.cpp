@@ -18276,6 +18276,9 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #if JVET_AC0094_REF_SAMPLES_OPT
         , true
 #endif
+#if JVET_AK0061_PDP_MPM
+        , true, true
+#endif
         , m_pcIntraSearch
       );
 
