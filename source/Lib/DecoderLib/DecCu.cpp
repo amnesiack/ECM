@@ -559,8 +559,10 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
             PU::getIntraMPMs(*currCU.firstPU, mpmPred, nonMpmPred
 #if JVET_AC0094_REF_SAMPLES_OPT
               , true
+#if JVET_AK0061_PDP_MPM
               , true
               , true
+#endif
 #endif
 
 
