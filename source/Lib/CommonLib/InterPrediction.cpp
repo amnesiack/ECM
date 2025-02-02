@@ -1,4 +1,4 @@
-/* The copyright in this software is being made available under the BSD
+﻿/* The copyright in this software is being made available under the BSD
  * License, included below. This software may be subject to other third party
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
@@ -11148,8 +11148,6 @@ bool InterPrediction::getGeoBlendIntraCand(const CodingUnit& cu, IntraPrediction
 
   std::vector<int8_t> intraCandList;
   std::vector<int8_t> interCandList;
-  int intraCandNum = 0;
-  int interCandNum = 0;
   bool mpmPredAvail[NUM_LUMA_MODE];
   memset(mpmPredAvail, false, sizeof(bool) * NUM_LUMA_MODE);
 
@@ -11165,7 +11163,6 @@ bool InterPrediction::getGeoBlendIntraCand(const CodingUnit& cu, IntraPrediction
     }
     intraCandList.push_back(intraIdx);
     mpmPredAvail[mpmList[intraIdx]] = true;
-    intraCandNum++;
   }
 
   for (uint8_t mergeCand = 0; mergeCand < maxNumMergeCandidates; mergeCand++)
@@ -11187,7 +11184,6 @@ bool InterPrediction::getGeoBlendIntraCand(const CodingUnit& cu, IntraPrediction
     if (dir >= 0)
     {
       interCandList.push_back(mergeCand);
-      interCandNum++;
     }
   }
 

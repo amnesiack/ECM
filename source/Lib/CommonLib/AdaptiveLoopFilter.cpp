@@ -9374,8 +9374,6 @@ void AdaptiveLoopFilter::copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& s
 {
   const PreCalcValues& pcv = *cs.pcv;
 
-  int ctuIdx = 0;
-
   for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
   {
     for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
@@ -9401,7 +9399,6 @@ void AdaptiveLoopFilter::copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& s
       }
 
     }
-    ctuIdx++;
   }
 }
 void AdaptiveLoopFilter::copyOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst, const Area& blk )

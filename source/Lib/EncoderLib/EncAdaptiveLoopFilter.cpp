@@ -11443,8 +11443,6 @@ bool EncAdaptiveLoopFilter::calcOffsetRefinementOnOff(CodingStructure& cs, PelUn
 
   double dist0 = 0.0, dist1 = 0.0, dist2 = 0.0;
 
-  int ctuIdx = 0;
-
   for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
   {
     for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
@@ -11482,7 +11480,6 @@ bool EncAdaptiveLoopFilter::calcOffsetRefinementOnOff(CodingStructure& cs, PelUn
         src2Ptr += src2Stride;
         orgPtr += orgStride;
       }
-      ctuIdx++;
     }
   }
 
