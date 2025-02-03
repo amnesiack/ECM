@@ -18202,7 +18202,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
 
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  const int idxBufGeoIntra = GEO_NUM_RDO_BUFFER - 1;
+#else
   int idxBufGeoIntra = idxBlendGeoFirst + 1;
+#endif
   GeoBlendInfo geoBlendIntraInfo[GEO_BLEND_MAX_NUM_CANDS];
   int numGeoBlendIntraInfoCand = 0;
   double  bestEstimGeoBlendIntraPredCost = MAX_DOUBLE;
@@ -18320,7 +18324,9 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 
       m_pcInterSearch->getGeoBlendIntraCand(cu, m_pcIntraSearch, mergeCtx[GEO_TM_OFF], -1, geoIntraBIdst, mpmList, mpmNum, geoBlendIntraInfo, &numGeoBlendIntraInfoCand);
 
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
       idxBufGeoIntra = idxBlendGeoFirst + 1;
+#endif
       for (int i = 0; i < numGeoBlendIntraInfoCand; i++)
       {
         GeoBlendInfo& geoBI = geoBlendIntraInfo[i];
@@ -18509,12 +18515,15 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
               const int mergeCand = geoBI.mergeCand[k];
 
               mergeCtx[GEO_TM_OFF].setMergeInfo(pu, mergeCand);
-#if JVET_AK0212_GPM_OBMC_MODIFICATION
-              if ( (isGeoChromaAvail[mergeCand] >= 1) && !useSepObmc )
-#else
               if (isGeoChromaAvail[mergeCand] >= 1)
-#endif
               {
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+                if (useSepObmc)
+                {
+                  isGeoChromaAvail[mergeCand] = 2;
+                  continue;
+                }
+#endif
                 geoTempBuf[mergeCand].Cb().roundToOutputBitdepth(geoBuffer[mergeCand].Cb(), cu.slice->clpRng(COMPONENT_Cb));
                 geoTempBuf[mergeCand].Cr().roundToOutputBitdepth(geoBuffer[mergeCand].Cr(), cu.slice->clpRng(COMPONENT_Cr));
                 isGeoChromaAvail[mergeCand] = 2;
@@ -18588,6 +18597,7 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
         if (useSepObmc)
         {
+          geoBI.isIntra[0] ? mergeCtx[GEO_TM_OFF].setMergeInfo(pu, geoBI.mergeCand[1]) : mergeCtx[GEO_TM_OFF].setMergeInfo(pu, geoBI.mergeCand[0]);
           geoBI.isIntra[0] ? geoBlendOBMCBuffer.copyFrom(geoBuffer[geoBI.mergeCand[1]]) : geoBlendOBMCBuffer.copyFrom(geoBuffer[geoBI.mergeCand[0]]);
           if (pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
           {
