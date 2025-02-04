@@ -112,7 +112,7 @@ void VLCReader::xReadSCode (uint32_t length, int& value)
 #endif
 {
   uint32_t val;
-  assert ( length > 0 && length<=32);
+  CHECK( length <= 0 || length > 32, "Wrong length");
   m_pcBitstream->read (length, val);
   value= length>=32 ? int(val) : ( (-int( val & (uint32_t(1)<<(length-1)))) | int(val) );
 

@@ -10481,7 +10481,7 @@ uint32_t IntraSearch::getEpExGolombNumBins(uint32_t symbol, uint32_t count)
   }
   numBins++;
   numBins += count;
-  assert(numBins <= 32);
+  CHECK( numBins > 32, "");
   return numBins;
 }
 
@@ -10505,11 +10505,15 @@ uint32_t IntraSearch::getTruncBinBits(uint32_t symbol, uint32_t maxSymbol)
     thresh = g_tbMax[maxSymbol];
   }
   uint32_t uiVal = 1 << thresh;
-  assert(uiVal <= maxSymbol);
-  assert((uiVal << 1) > maxSymbol);
-  assert(symbol < maxSymbol);
+
+  CHECK( uiVal > maxSymbol, "");
+  CHECK((uiVal << 1) <= maxSymbol, "");
+  CHECK(symbol >= maxSymbol, "");
+
   uint32_t b = maxSymbol - uiVal;
-  assert(b < uiVal);
+
+  CHECK( b >= uiVal, "");
+
   if (symbol < uiVal - b)
   {
     idxCodeBit = thresh;
@@ -14629,7 +14633,8 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
     double     bestCostJointCbCr = totalCost;
     Distortion bestDistJointCbCr = totalDist;
     uint64_t   bestBitsJointCbCr = totalBits;
-    int        bestJointCbCr = tu.jointCbCr; assert(!bestJointCbCr);
+    int        bestJointCbCr = tu.jointCbCr;
+    CHECK(bestJointCbCr, "");
 
     bool       lastIsBest = false;
     std::vector<int>  jointCbfMasksToTest;

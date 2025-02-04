@@ -475,7 +475,7 @@ int IbcHashMap::calHashBlkMatchPerc(const Area& lumaArea)
   {
     unsigned int hash = it->first;
     int usage = (int)it->second.size();
-    assert(usage == m_hash2Pos[hash].size());
+    CHECK(usage != m_hash2Pos[hash].size(), "");
 
     int insertPos = -1;
     for (insertPos = 0; insertPos < numExcludedHashValue; insertPos++)
@@ -485,7 +485,8 @@ int IbcHashMap::calHashBlkMatchPerc(const Area& lumaArea)
         break;
       }
     }
-    assert(insertPos <= numExcludedHashValue);
+
+    CHECK(insertPos > numExcludedHashValue, "");
 
     if (insertPos < numExcludedHashValue)
     {

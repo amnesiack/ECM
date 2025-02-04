@@ -108,7 +108,7 @@ struct AlfCovariance
     const ptrdiff_t v0 = getOffsetY(i, k);
     const ptrdiff_t v1 = getOffsetY(j, l);
 
-    assert(v1 <= v0);
+    CHECK( v1 > v0, "Wrong v1");
 
     return offsetE + (v0 * (v0 + 1) >> 1) + v1;
   }

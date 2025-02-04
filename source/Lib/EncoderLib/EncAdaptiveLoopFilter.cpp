@@ -2371,8 +2371,9 @@ double EncAdaptiveLoopFilter::deriveCtbAlfEnableFlags( CodingStructure& cs, cons
       if( isLuma( channel ) )
       {
         // Evaluate cost of signaling filter set index for convergence of filters enabled flag / filter derivation
-        assert( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] == NUM_FIXED_FILTER_SETS );
-        assert( cs.slice->getTileGroupNumAps() == 1 );
+        CHECK( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] != NUM_FIXED_FILTER_SETS, "Wrong getAlfCtbFilterIndex");
+        CHECK( cs.slice->getTileGroupNumAps() != 1, "Wrong getTileGroupNumAps");
+
         m_CABACEstimator->codeAlfCtuFilterIndex( cs, ctuIdx, m_alfParamTemp.enabledFlag[COMPONENT_Y] );
       }
       double costOn = distUnfilterCtu + ctuLambda * FRAC_BITS_SCALE * m_CABACEstimator->getEstFracBits();
@@ -2981,7 +2982,9 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
         );
 #endif
       }
-      assert(alfFilterShape.numCoeff == m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff);
+
+      CHECK(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
+
 #if !JVET_X0071_ALF_BAND_CLASSIFIER
       AlfParam bestSliceParam;
       double bestCost = MAX_DOUBLE;
@@ -3065,7 +3068,8 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
         );
 #endif
       }
-      assert(alfFilterShape.numCoeff == m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff);
+
+      CHECK(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
 
       AlfParam bestSliceParam;
       double bestCost = MAX_DOUBLE;
@@ -3171,8 +3175,9 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
     if( isLuma( channel ) )
     {
       // Evaluate cost of signaling filter set index for convergence of filters enabled flag / filter derivation
-      assert( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] == NUM_FIXED_FILTER_SETS );
-      assert( cs.slice->getTileGroupNumAps() == 1 );
+      CHECK( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] != NUM_FIXED_FILTER_SETS, "Wrong getAlfCtbFilterIndex");
+      CHECK( cs.slice->getTileGroupNumAps() != 1, "Wrong getTileGroupNumAps");
+
       m_CABACEstimator->codeAlfCtuFilterIndex( cs, ctuIdx, m_alfParamTemp.enabledFlag[COMPONENT_Y] );
 #if ALF_IMPROVEMENT
       m_CABACEstimator->codeAlfCtuAlternative(cs, ctuIdx, COMPONENT_Y, &m_alfParamTemp, m_alfParamTemp.numAlternativesLuma);

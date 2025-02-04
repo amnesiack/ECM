@@ -1874,11 +1874,12 @@ void CABACWriter::xWriteTruncBinCode(uint32_t symbol, uint32_t maxSymbol)
   }
 
   int val = 1 << thresh;
-  assert(val <= maxSymbol);
-  assert((val << 1) > maxSymbol);
-  assert(symbol < maxSymbol);
+  CHECK( val > maxSymbol, "Value is larger than maxSymbol");
+  CHECK((val << 1) <= maxSymbol, "Wrong value");
+  CHECK(symbol >= maxSymbol, "Symbol is larger than maxSymbol");
   int b = maxSymbol - val;
-  assert(b < val);
+  CHECK(b >= val, "Wrong maxSymbol - val");
+
   if (symbol < val - b)
   {
     m_BinEncoder.encodeBinsEP(symbol, thresh);
@@ -1886,8 +1887,8 @@ void CABACWriter::xWriteTruncBinCode(uint32_t symbol, uint32_t maxSymbol)
   else
   {
     symbol += val - b;
-    assert(symbol < (val << 1));
-    assert((symbol >> 1) >= val - b);
+    CHECK(symbol >= (val << 1), "Wrong symbol");
+    CHECK((symbol >> 1) < val - b, "Wrong symbol");
     m_BinEncoder.encodeBinsEP(symbol, thresh + 1);
   }
 }
@@ -3853,7 +3854,7 @@ void CABACWriter::sbt_mode( const CodingUnit& cu )
   }
   else
   {
-    assert( sbtQuadFlag == 0 );
+    CHECK( sbtQuadFlag, "Wrong sbtQuadFlag");
   }
 
   //bin - dir
@@ -3864,7 +3865,7 @@ void CABACWriter::sbt_mode( const CodingUnit& cu )
   }
   else
   {
-    assert( sbtHorFlag == ( ( sbtQuadFlag && sbtHorQuadAllow ) || ( !sbtQuadFlag && sbtHorHalfAllow ) ) );
+    CHECK( sbtHorFlag != ( ( sbtQuadFlag && sbtHorQuadAllow ) || ( !sbtQuadFlag && sbtHorHalfAllow ) ), "Wrong SBT condition");
   }
 
   //bin - pos
@@ -3971,7 +3972,7 @@ void CABACWriter::cu_palette_info(const CodingUnit& cu, ComponentID compBegin, u
   }
   else
   {
-    assert( !cu.useRotation[compBegin] );
+    CHECK( cu.useRotation[compBegin], "Wrong useRotation");
   }
 
   if (cu.useEscape[compBegin] && cu.cs->pps->getUseDQP() && !cuCtx.isDQPCoded)
@@ -9121,7 +9122,7 @@ void CABACWriter::transform_unit(const TransformUnit& tu, CUCtx& cuCtx, Partitio
     }
     else if (cu.sbtInfo && !chromaCbfs.sigChroma(area.chromaFormat))
     {
-      assert(!tu.noResidual);
+      CHECK(tu.noResidual, "Wrong noResidual");
       CHECK(!TU::getCbfAtDepth(tu, COMPONENT_Y, trDepth), "Luma cbf must be true for inter sbt residual tu");
     }
     else
@@ -9840,7 +9841,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
 #if AHG7_LN_TOOLOFF_CFG
     CHECK( idxLFNST >= ( ( cu.cs->sps->getUseLFNSTExt() || ( cu.cs->sps->getUseNSPT() && CU::isNSPTAllowed( width, height ) ) ) ? 4 : 3 ), "idxLFNST out of range" );
 #else
-    assert(idxLFNST < 4);
+    CHECK(idxLFNST >= 4, "Wrong idxLFNST");
 #endif
 
     m_BinEncoder.encodeBin(idxLFNST > 0, Ctx::InterLFNSTIdx(0));
@@ -9886,7 +9887,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
     {
 #endif
     uint32_t idxLFNST = cu.lfnstIdx;
-    assert(idxLFNST < 4);
+    CHECK( idxLFNST >= 4, "Wrong idxLFNST");
 
     uint32_t firstBit  = idxLFNST & 1;
     uint32_t secondBit = (idxLFNST >> 1) & 1;
@@ -9898,7 +9899,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
     else
     {
       const uint32_t idxLFNST = cu.lfnstIdx;
-      assert( idxLFNST < 3 );
+      CHECK( idxLFNST >= 3, "Wrong idxLFNST" );
       m_BinEncoder.encodeBin( idxLFNST ? 1 : 0, Ctx::VvcLFNSTIdx( cctx ) );
 
       if( idxLFNST )
@@ -9909,7 +9910,7 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
 #endif
 #else
     const uint32_t idxLFNST = cu.lfnstIdx;
-    assert( idxLFNST < 3 );
+    CHECK( idxLFNST >= 3, "Wrong idxLFNST" );
     m_BinEncoder.encodeBin( idxLFNST ? 1 : 0, Ctx::LFNSTIdx( cctx ) );
 
     if( idxLFNST )
@@ -10994,7 +10995,8 @@ void CABACWriter::codeAlfCtuAlternative( CodingStructure& cs, uint32_t ctuRsAddr
       {
         uint8_t* ctbAlfAlternative = cs.slice->getPic()->getAlfCtuAlternativeData(compIdx);
         unsigned numOnes = ctbAlfAlternative[ctuRsAddr];
-        assert(ctbAlfAlternative[ctuRsAddr] < numAltLuma);
+
+        CHECK(ctbAlfAlternative[ctuRsAddr] >= numAltLuma, "Wrong ctbAlfAlternative");
 
         for( int i = 0; i < numOnes; ++i )
         {
@@ -11012,7 +11014,9 @@ void CABACWriter::codeAlfCtuAlternative( CodingStructure& cs, uint32_t ctuRsAddr
   {
 #else
   if( compIdx == COMPONENT_Y )
+  {
     return;
+  }
 #endif
   int apsIdx = alfParam ? 0 : cs.slice->getTileGroupApsIdChroma();
   const AlfParam& alfParamRef = alfParam ? (*alfParam) : cs.slice->getAlfAPSs()[apsIdx]->getAlfAPSParam();
@@ -11026,7 +11030,7 @@ void CABACWriter::codeAlfCtuAlternative( CodingStructure& cs, uint32_t ctuRsAddr
       const int numAlts = alfParamRef.numAlternativesChroma;
       uint8_t* ctbAlfAlternative = cs.slice->getPic()->getAlfCtuAlternativeData( compIdx );
       unsigned numOnes = ctbAlfAlternative[ctuRsAddr];
-      assert( ctbAlfAlternative[ctuRsAddr] < numAlts );
+      CHECK( ctbAlfAlternative[ ctuRsAddr ] >= numAlts, "Wrong ctbAlfAlternative");
 #if ALF_IMPROVEMENT
       for( int i = 0; i < numOnes; ++i )
       {
