@@ -354,9 +354,9 @@ void TrQuant::fwdLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32
   int*          out    = dst;
 #endif  
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
-  assert( index < 4 );
+  CHECK( index >= 4, "Wrong index");
 #else
-  assert( index < 3 );
+  CHECK( index >= 3, "Wrong index" );
 #endif
 
 #if INTRA_TRANS_ENC_OPT
@@ -433,9 +433,9 @@ void TrQuant::invLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32
 #endif  
 
 #if EXTENDED_LFNST || JVET_W0119_LFNST_EXTENSION
-  assert( index < 4 );
+  CHECK( index >= 4, "Wrong index" );
 #else
-  assert( index < 3 );
+  CHECK( index >= 3, "Wrong index" );
 #endif
 #if INTRA_TRANS_ENC_OPT 
   m_invLfnst(src, out, trMat, trSize, zeroOutSize, outputMinimum, outputMaximum);
@@ -1403,7 +1403,8 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
 #endif
     if( sbtIdx == SBT_VER_HALF || sbtIdx == SBT_VER_QUAD )
     {
-      assert( tu.lwidth() <= MTS_INTER_MAX_CU_SIZE );
+      CHECK( tu.lwidth() > MTS_INTER_MAX_CU_SIZE, "Unsupported width");
+
       if( tu.lheight() > MTS_INTER_MAX_CU_SIZE )
       {
         trTypeHor = trTypeVer = DCT2;
@@ -1424,7 +1425,8 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
     }
     else
     {
-      assert( tu.lheight() <= MTS_INTER_MAX_CU_SIZE );
+      CHECK( tu.lheight() > MTS_INTER_MAX_CU_SIZE, "Unsupported height");
+
       if( tu.lwidth() > MTS_INTER_MAX_CU_SIZE )
       {
         trTypeHor = trTypeVer = DCT2;

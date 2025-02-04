@@ -9203,7 +9203,7 @@ void IntraPrediction::xPredTimdIntraPlanar( const CPelBuf &pSrc, Pel* rpDst, int
   }
   else
   {
-    assert(0);
+    CHECK(true, "wrong case");
   }
 }
 
@@ -9257,7 +9257,7 @@ void IntraPrediction::xPredTimdIntraDc( const PredictionUnit &pu, const CPelBuf 
   }
   else
   {
-    assert(0);
+    CHECK( true, "wrong case" );
   }
 }
 
@@ -9477,7 +9477,7 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
     }
     else
     {
-      assert(0);
+      CHECK( true, "wrong case" );
     }
   }
   else
@@ -9647,7 +9647,7 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
       else // if (eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR)
       {
         Pel *pDsty=pDst;
-        assert(eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR);
+        CHECK(eTempType != LEFT_NEIGHBOR && eTempType != ABOVE_NEIGHBOR, "Wrong template type");
         int iRegionWidth, iRegionHeight;
         if((eTempType == LEFT_NEIGHBOR && bIsModeVer)||(eTempType == ABOVE_NEIGHBOR && !bIsModeVer))
         {
@@ -9736,7 +9736,7 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
     }
     else
     {
-      assert(0);
+      CHECK( true, "wrong case" );
     }
   }
 }
@@ -11111,7 +11111,7 @@ void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, in
     }
     else
     {
-      assert(0);
+      CHECK( true, "wrong case" );
     }
 #if JVET_AK0059_MDIP && !JVET_AK0061_PDP_MPM
     }
@@ -13425,7 +13425,7 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
 
       uiCost = tmpCost0 + tmpCost1;
@@ -13962,7 +13962,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
         }
         else
         {
-          assert(0);
+          CHECK( true, "wrong case" );
         }
 
         if(uiCost < uiBestCost)
@@ -14040,7 +14040,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
 
       if( uiCost < uiBestCost )
@@ -14089,7 +14089,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
         }
         else
         {
-          assert(0);
+          CHECK( true, "wrong case" );
         }
 
         if(uiCost < uiBestCost)
@@ -14132,7 +14132,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
         }
         else
         {
-          assert(0);
+          CHECK( true, "wrong case" );
         }
 
         if(uiCost < uiSecondaryCost)
@@ -16710,7 +16710,7 @@ void IntraPrediction::deriveNonCcpChromaModes(const CPelBuf &recoBufY, const CPe
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
     }
     else
@@ -16803,7 +16803,7 @@ void IntraPrediction::deriveNonCcpChromaModes(const CPelBuf &recoBufY, const CPe
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
     }
     else
@@ -19058,8 +19058,10 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
   const int  chromaUnitHeight = iBaseUnitSize >> getComponentScaleY(COMPONENT_Cb, area.chromaFormat);
   const int  topTemplateSampNum = 2 * uiCWidth; // for MDLM, the number of template samples is 2W or 2H.
   const int  leftTemplateSampNum = 2 * uiCHeight;
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length");
+  CHECK(m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
+
   const int  totalAboveUnits = (topTemplateSampNum + (chromaUnitWidth - 1)) / chromaUnitWidth;
   const int  totalLeftUnits = (leftTemplateSampNum + (chromaUnitHeight - 1)) / chromaUnitHeight;
   const int  totalUnits = totalLeftUnits + totalAboveUnits + 1;
@@ -19374,15 +19376,15 @@ void IntraPrediction::xGetLumaRecPixels(const PredictionUnit &pu, CompArea chrom
   const int  leftTemplateSampNum = 2 * uiCHeight;
 #if JVET_AF0073_INTER_CCP_MERGE
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
-  assert((!pu.cu->rootCbf) || (pu.cu->firstTU->interCcpMerge) || (m_topRefLength >= topTemplateSampNum));
-  assert((!pu.cu->rootCbf) || (pu.cu->firstTU->interCcpMerge) || (m_leftRefLength >= leftTemplateSampNum));
+  CHECK( pu.cu->rootCbf && !pu.cu->firstTU->interCcpMerge && m_topRefLength < topTemplateSampNum, "Wrong CcpMerge condition" );
+  CHECK( pu.cu->rootCbf && !pu.cu->firstTU->interCcpMerge && m_leftRefLength < leftTemplateSampNum, "Wrong CcpMerBge condition" );
 #else
-  assert((pu.cu->firstTU->interCcpMerge) || (m_topRefLength >= topTemplateSampNum));
-  assert((pu.cu->firstTU->interCcpMerge) || (m_leftRefLength >= leftTemplateSampNum));
+  CHECK( !pu.cu->firstTU->interCcpMerge && m_topRefLength < topTemplateSampNum, "Wrong CcpMerge condition" );
+  CHECK( !pu.cu->firstTU->interCcpMerge && m_leftRefLength < leftTemplateSampNum, "Wrong CcpMerge condition" );
 #endif
 #else
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length" );
+  CHECK( m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
 #endif
   const int  totalAboveUnits = (topTemplateSampNum + (chromaUnitWidth - 1)) / chromaUnitWidth;
   const int  totalLeftUnits = (leftTemplateSampNum + (chromaUnitHeight - 1)) / chromaUnitHeight;
@@ -19657,8 +19659,10 @@ void IntraPrediction::xGetLMParameters(const PredictionUnit &pu, const Component
   const int leftUnits       = tuHeightInUnits;
   int topTemplateSampNum = 2 * cWidth; // for MDLM, the template sample number is 2W or 2H;
   int leftTemplateSampNum = 2 * cHeight;
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length" );
+  CHECK( m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
+
   int totalAboveUnits = (topTemplateSampNum + (unitWidth - 1)) / unitWidth;
   int totalLeftUnits = (leftTemplateSampNum + (unitHeight - 1)) / unitHeight;
   int totalUnits = totalLeftUnits + totalAboveUnits + 1;
@@ -20342,7 +20346,9 @@ void IntraPrediction::reorderPLT(CodingStructure& cs, Partitioner& partitioner, 
       pltSizetmp++;
     }
   }
-  assert(pltSizetmp == cu.curPLTSize[compBegin]);
+
+  CHECK(pltSizetmp != cu.curPLTSize[compBegin], "Wrong palette size");
+
   for (int curidx = 0; curidx < cu.curPLTSize[compBegin]; curidx++)
   {
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
@@ -20672,8 +20678,10 @@ void IntraPrediction::xGetLMParametersLMS(const PredictionUnit &pu, const Compon
   const int leftUnits = tuHeightInUnits;
   int topTemplateSampNum = 2 * cWidth; // for MDLM, the template sample number is 2W or 2H;
   int leftTemplateSampNum = 2 * cHeight;
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length" );
+  CHECK( m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
+
   int totalAboveUnits = (topTemplateSampNum + (unitWidth - 1)) / unitWidth;
   int totalLeftUnits = (leftTemplateSampNum + (unitHeight - 1)) / unitHeight;
   int totalUnits = totalLeftUnits + totalAboveUnits + 1;

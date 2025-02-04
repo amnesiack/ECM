@@ -1185,7 +1185,7 @@ uint8_t CodingUnit::getSbtTuSplit() const
 #if JVET_AJ0260_SBT_CORNER_MODE
   CHECK( sbtTuSplitType < SBT_VER_HALF_POS0_SPLIT || sbtTuSplitType >= NUM_PART_SPLIT, "Wrong SBT split type" );
 #else
-  assert( sbtTuSplitType <= SBT_HOR_QUAD_POS1_SPLIT && sbtTuSplitType >= SBT_VER_HALF_POS0_SPLIT );
+  CHECK( sbtTuSplitType < SBT_VER_HALF_POS0_SPLIT || sbtTuSplitType > SBT_HOR_QUAD_POS1_SPLIT, "Wrong SBT split type" );
 #endif
   return sbtTuSplitType;
 }

@@ -121,8 +121,9 @@ bool g_HLSTraceEnable = true;
 
 void VLCWriter::xWriteSCode    ( int code, uint32_t length )
 {
-  assert ( length > 0 && length<=32 );
-  assert( length==32 || (code>=-(1<<(length-1)) && code<(1<<(length-1))) );
+  CHECK( length || length > 32, "");
+  CHECK( length != 32 && ( code < -( 1 << ( length - 1 ) ) || code >= ( 1 << ( length - 1 ) ) ), "");
+
   m_pcBitIf->write( length==32 ? uint32_t(code) : ( uint32_t(code)&((1<<length)-1) ), length );
 }
 
@@ -875,7 +876,9 @@ void HLSWriter::codeLmcsAps( APS* pcAPS )
   SliceReshapeInfo param = pcAPS->getReshaperAPSInfo();
   WRITE_UVLC(param.reshaperModelMinBinIdx, "lmcs_min_bin_idx");
   WRITE_UVLC(PIC_CODE_CW_BINS - 1 - param.reshaperModelMaxBinIdx, "lmcs_delta_max_bin_idx");
-  assert(param.maxNbitsNeededDeltaCW > 0);
+
+  CHECK( param.maxNbitsNeededDeltaCW <= 0, "");
+
   WRITE_UVLC(param.maxNbitsNeededDeltaCW - 1, "lmcs_delta_cw_prec_minus1");
 
   for (int i = param.reshaperModelMinBinIdx; i <= param.reshaperModelMaxBinIdx; i++)

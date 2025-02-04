@@ -1127,7 +1127,7 @@ TemplateType CU::deriveTimdRefType( int iCurX, int iCurY, uint32_t uiCurWidth, u
   }
   else
   {
-    assert(0);
+    CHECK( true, "Wrong case" );
   }
   return eTempType;
 }
@@ -33674,10 +33674,10 @@ uint8_t CU::getSbtMode( uint8_t sbtIdx, uint8_t sbtPos )
   case SBT_QUAD:     sbtMode = sbtPos + SBT_Q0;  break;
   case SBT_QUARTER:  sbtMode = sbtPos + SBT_QT0;  break;
 #endif
-  default:           assert( 0 );
+  default:           CHECK( true, "Wrong case" );
   }
 
-  assert( sbtMode < NUMBER_SBT_MODE );
+  CHECK( sbtMode >= NUMBER_SBT_MODE, "Wrong sbtMode");
   return sbtMode;
 }
 
@@ -33711,7 +33711,7 @@ uint8_t CU::getSbtIdxFromSbtMode( uint8_t sbtMode )
 #endif
   else
   {
-    assert( 0 );
+    CHECK( true, "Wrong case");
     return 0;
   }
 }
@@ -33746,7 +33746,7 @@ uint8_t CU::getSbtPosFromSbtMode( uint8_t sbtMode )
 #endif
   else
   {
-    assert( 0 );
+    CHECK( true, "Wrong case" );
     return 0;
   }
 }
@@ -33822,7 +33822,7 @@ void CU::getSBTPosAndSize(const CodingUnit &cu, Position& pos, Size& size, uint8
   case SBT_QT2: pos = Position( 0, 3 * cu.lheight() >> 2 );  size = Size( cu.lwidth() >> 2, cu.lheight() >> 2 );  break;
   case SBT_QT3: pos = Position( 3 * cu.lwidth() >> 2, 3 * cu.lheight() >> 2 );  size = Size( cu.lwidth() >> 2, cu.lheight() >> 2 );  break;
 #endif
-  default:           assert(0);
+  default:           CHECK( true, "Wrong case" );
   }
 }
 #endif

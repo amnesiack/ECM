@@ -1210,20 +1210,18 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     {
 #endif
 #if JVET_AD0188_CCP_MERGE
-    PredictionUnit& pu = *tu.cu->firstPU;
+      PredictionUnit& pu = *tu.cu->firstPU;
 #else
-    const PredictionUnit& pu = *tu.cu->firstPU;
+      const PredictionUnit& pu = *tu.cu->firstPU;
 #endif
-    m_pcIntraPred->xGetLumaRecPixels( pu, area );
-    m_pcIntraPred->predIntraChromaLM( compID, piPred, pu, area, uiChFinalMode );
+      m_pcIntraPred->xGetLumaRecPixels( pu, area );
+      m_pcIntraPred->predIntraChromaLM( compID, piPred, pu, area, uiChFinalMode );
 #if JVET_AK0064_CCP_LFNST_NSPT
-      {
-        CompArea areaCr = pu.Cr();
-        m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
-        PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
-        m_pcIntraPred->xGetLumaRecPixels(pu, areaCr);
-        m_pcIntraPred->predIntraChromaLM(COMPONENT_Cr, predCr, pu, areaCr, uiChFinalMode);
-      }
+      CompArea areaCr = pu.Cr();
+      m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
+      PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+      m_pcIntraPred->xGetLumaRecPixels(pu, areaCr);
+      m_pcIntraPred->predIntraChromaLM(COMPONENT_Cr, predCr, pu, areaCr, uiChFinalMode);
     }
 #endif
   }
@@ -1402,7 +1400,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
         pu.cu->isobmcMC = false;
       }
 #endif
-		  assert(foundCandiNum >= 1);
+      CHECK( foundCandiNum < 1, "Wrong candidate number");
 	  }
 	  else if (PU::isMIP(pu, chType))
 #else

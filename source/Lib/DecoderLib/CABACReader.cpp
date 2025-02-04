@@ -9298,7 +9298,7 @@ void CABACReader::transform_unit(TransformUnit& tu, CUCtx& cuCtx, Partitioner& p
     }
     else if (cu.sbtInfo && !chromaCbfs.sigChroma(area.chromaFormat))
     {
-      assert(!tu.noResidual);
+      CHECK(tu.noResidual, "noResidual should be 0");
       TU::setCbfAtDepth(tu, COMPONENT_Y, trDepth, 1);
     }
     else

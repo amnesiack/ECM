@@ -164,7 +164,7 @@ public:
   }
   void insert(int geoIdx, int partIdx, int mergeIdx, double cost)
   {
-    assert(geoIdx < numGeoTemplatesInitialized);
+    CHECK(geoIdx >= numGeoTemplatesInitialized, "Wrong geoIdx");
     singleDistList[partIdx][geoIdx][mergeIdx] = SingleGeoMergeEntry(mergeIdx, cost);
   }
   int numGeoTemplatesInitialized;

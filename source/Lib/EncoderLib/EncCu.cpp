@@ -22326,7 +22326,8 @@ void EncCu::xCheckRDCostTMMerge2Nx2N(CodingStructure *&tempCS, CodingStructure *
 // ibc merge/skip mode check
 void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &partitioner, const EncTestMode& encTestMode)
 {
-  assert(partitioner.chType != CHANNEL_TYPE_CHROMA); // chroma IBC is derived
+  CHECK(partitioner.chType != CHANNEL_TYPE_LUMA, "chType should be CHANNEL_TYPE_LUMA"); // chroma IBC is derived
+
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   CHECK( !tempCS->sps->getUseIbcMerge(), "IBC merge should not be chekced at encoder with IBC merge disabled" );
 #endif
@@ -27559,7 +27560,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
     }
     else
     {
-      assert( curPuSse != std::numeric_limits<uint64_t>::max() );
+      CHECK( curPuSse == std::numeric_limits<uint64_t>::max(), "curPuSse is equal to max()");
       uint16_t compositeSbtTrs = slsSbt->findBestSbt( cu->cs->area, (uint32_t)( curPuSse >> slShift ) );
       histBestSbt = ( compositeSbtTrs >> 0 ) & 0xff;
       histBestTrs = ( compositeSbtTrs >> 8 ) & 0xff;
@@ -27680,7 +27681,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
       double th = 1.07;
       if( !( prevBestSbt == 0 || m_sbtCostSave[0] == MAX_DOUBLE ) )
       {
-        assert( m_sbtCostSave[1] <= m_sbtCostSave[0] );
+        CHECK( m_sbtCostSave[ 1 ] > m_sbtCostSave[ 0 ], "Wrong cost");
         th *= ( m_sbtCostSave[0] / m_sbtCostSave[1] );
       }
       if( sbtOffCost > bestCost * th )
@@ -27859,7 +27860,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
 #else
             currBestTrs = tempCS->tus[cu->sbtInfo ? cu->getSbtPos() : 0]->mtsIdx[COMPONENT_Y];
 #endif
-            assert(currBestTrs == 0 || currBestTrs == 1);
+            CHECK(currBestTrs && currBestTrs != 1, "Wrong currBestTrs");
             currBestCost = tempCS->cost;
           }
 #if JVET_AI0050_SBT_LFNST
@@ -27946,7 +27947,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
         double th = 1.07;
         if (!(prevBestMts == 0 || m_mtsCostSave == MAX_DOUBLE))
         {
-          assert(m_sbtCostSave[1] <= m_mtsCostSave);
+          CHECK(m_sbtCostSave[1] > m_mtsCostSave, "Wrong SBT cost");
           th *= (m_mtsCostSave / m_sbtCostSave[1]);
         }
         if (mtsOffCost > bestCost * th)
@@ -28068,7 +28069,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
 #endif
         if (!(prevBestLN == 0 || m_LNCostSave == MAX_DOUBLE))
         {
-          assert(m_sbtCostSave[1] <= m_LNCostSave);
+          CHECK(m_sbtCostSave[1] > m_LNCostSave, "Wrong SBT cost");
           th *= (m_LNCostSave / m_sbtCostSave[1]);
         }
         if (LNOffCost > bestCost * th)
