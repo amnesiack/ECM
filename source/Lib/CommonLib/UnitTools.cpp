@@ -35561,7 +35561,14 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
 #endif
   {
 #if JVET_AK0064_CCP_LFNST_NSPT
-    intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+    if (tu.cu->slice->getSPS()->getUseDimd())
+    {
+      intraMode = tu.cu->ccpChromaDimdMode[tu.jointCbCr];
+    }
+    else 
+    {
+      intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
+    }
 #else
     intraMode = PU::getCoLocatedIntraLumaMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ) );
 #endif
