@@ -4385,6 +4385,13 @@ bool EncAppCfg::xCheckParameter()
       m_useSbTmvpTM = false;
     }
 #endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+    if( m_templateMatchingBoundaryPrediction )
+    {
+      msg( WARNING, "TM boundary padding is forcefully disabled since enable flag of TM tools is set off. \n" );
+      m_templateMatchingBoundaryPrediction = false;
+    }
+#endif
   }
 #endif
 #if JVET_AG0276_NLIC
