@@ -15200,6 +15200,13 @@ void IntraPrediction::ibcCiipBlending(Pel *pDst, int strideDst, const Pel *pSrc0
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 bool IntraPrediction::getGradForOBMC(const PredictionUnit pu, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, const bool isAbove, const int blkSize, int* modeBuf)
 {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if ((CU::isIBC(*pu.cu) || PU::isTmp(pu)) && !cu.slice->getSPS()->getUseDimd())
+  {
+    return false;
+  }
+#endif
+
   const int templateSize = 1;
   
   const CodingStructure  &cs = *cu.cs;
