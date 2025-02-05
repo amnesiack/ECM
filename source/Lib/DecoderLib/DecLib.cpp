@@ -773,7 +773,7 @@ Picture* DecLib::xGetNewPicBuffer( const SPS &sps, const PPS &pps, const uint32_
 
   pcPic->setBorderExtension( false );
   #if JVET_AK0085_TM_BOUNDARY_PADDING
-  pcPic->setUseTMBP(false);
+  pcPic->setUseTMBP(true);
 #endif
   pcPic->neededForOutput = false;
   pcPic->reconstructed = false;
@@ -1177,7 +1177,7 @@ void DecLib::finishPicture(int& poc, PicList*& rpcListPic, MsgLevel msgl )
   m_pcPic->cs->destroyTemporaryCsData();
 #if JVET_AA0096_MC_BOUNDARY_PADDING
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-if(m_pcPic->getUseTMBP() && m_pcPic->cs->sps->getTMBP())
+if(!(m_pcPic->getUseTMBP() && m_pcPic->cs->sps->getTMBP()))
 #endif
 {
   m_cFrameMcPadPrediction.init(&m_cRdCost, pcSlice->getSPS()->getChromaFormatIdc(), pcSlice->getSPS()->getMaxCUHeight(),
@@ -3269,16 +3269,16 @@ bool DecLib::xDecodeSlice(InputNALUnit &nalu, int &iSkipFrame, int iPOCLastDispl
 #if JVET_AK0085_TM_BOUNDARY_PADDING
       else
       {
-        if(!m_pcPic->getUseTMBP() && !bLowDelay)
+        if(m_pcPic->getUseTMBP() && !bLowDelay)
         {
-          m_pcPic->setUseTMBP(true);
+          m_pcPic->setUseTMBP(false);
         }
       }
       pcSlice->setCheckLDB(bLowDelayB);
 
-      if(!m_pcPic->getUseTMBP() && !bLowDelayB)
+      if(pcSlice->isInterB() && m_pcPic->getUseTMBP() && !bLowDelayB)
       {
-        m_pcPic->setUseTMBP(true);
+        m_pcPic->setUseTMBP(false);
       }
 #else
       pcSlice->setCheckLDB(bLowDelayB);
