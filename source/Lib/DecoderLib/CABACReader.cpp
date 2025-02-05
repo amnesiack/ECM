@@ -2701,41 +2701,41 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     if( mpmFlag[k] )
     {
       uint32_t ipredIdx = 0;
-      {
-        unsigned ctx = (pu->cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0);
-#if SECONDARY_MPM
-        unsigned ctx2 = (ctx ? (cu.firstPU->multiRefIdx == 0 ? 2 : 1) : 0);
-#endif
-        if( pu->multiRefIdx == 0 )
-        {
-          ipredIdx = m_BinDecoder.decodeBin( Ctx::IntraLumaPlanarFlag( ctx ) );
-        }
-        else
-        {
-          ipredIdx = 1;
-        }
 
-        if( ipredIdx )
-        {
+      unsigned ctx = ( pu->cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0 );
 #if SECONDARY_MPM
-          ipredIdx += m_BinDecoder.decodeBin(Ctx::IntraLumaMPMIdx(0 + ctx2));
-#else
-          ipredIdx += m_BinDecoder.decodeBinEP();
+      unsigned ctx2 = ( ctx ? ( cu.firstPU->multiRefIdx == 0 ? 2 : 1 ) : 0 );
 #endif
-        }
-        if (ipredIdx > 1)
-        {
-          ipredIdx += m_BinDecoder.decodeBinEP();
-        }
-        if (ipredIdx > 2)
-        {
-          ipredIdx += m_BinDecoder.decodeBinEP();
-        }
-        if (ipredIdx > 3)
-        {
-          ipredIdx += m_BinDecoder.decodeBinEP();
-        }
+      if( pu->multiRefIdx == 0 )
+      {
+        ipredIdx = m_BinDecoder.decodeBin( Ctx::IntraLumaPlanarFlag( ctx ) );
       }
+      else
+      {
+        ipredIdx = 1;
+      }
+
+      if( ipredIdx )
+      {
+#if SECONDARY_MPM
+        ipredIdx += m_BinDecoder.decodeBin( Ctx::IntraLumaMPMIdx( 0 + ctx2 ) );
+#else
+        ipredIdx += m_BinDecoder.decodeBinEP();
+#endif
+      }
+      if( ipredIdx > 1 )
+      {
+        ipredIdx += m_BinDecoder.decodeBinEP();
+      }
+      if( ipredIdx > 2 )
+      {
+        ipredIdx += m_BinDecoder.decodeBinEP();
+      }
+      if( ipredIdx > 3 )
+      {
+        ipredIdx += m_BinDecoder.decodeBinEP();
+      }
+
       pu->secondMpmFlag = false;
       pu->ipredIdx = ipredIdx;
     }
