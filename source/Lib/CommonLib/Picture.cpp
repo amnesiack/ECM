@@ -252,7 +252,7 @@ void Picture::create(
   m_ctuArea = UnitArea( _chromaFormat, Area( Position{ 0, 0 }, Size( _maxCUSize, _maxCUSize ) ) );
 #endif
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-  m_randomAccessPicture = false;
+  m_useTMBP = true;
 #endif
   m_hashMap.clearAll();
 }

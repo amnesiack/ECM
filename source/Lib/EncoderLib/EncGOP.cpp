@@ -2696,15 +2696,15 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #if JVET_AK0085_TM_BOUNDARY_PADDING
       else
       {
-        if(!pcPic->getUseTMBP() && !bLowDelay)
+        if(pcPic->getUseTMBP() && !bLowDelay)
         {
-          pcPic->setUseTMBP(true);
+          pcPic->setUseTMBP(false);
         }
       }
       pcSlice->setCheckLDB(bLowDelayB);
-      if(!pcPic->getUseTMBP() && !bLowDelayB)
+      if(pcPic->getUseTMBP() && !bLowDelayB)
       {
-        pcPic->setUseTMBP(true);
+        pcPic->setUseTMBP(false);
       }
 #else
       pcSlice->setCheckLDB(bLowDelayB);
@@ -5083,7 +5083,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
     pcPic->cs->destroyTemporaryCsData();
 #if JVET_AA0096_MC_BOUNDARY_PADDING
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-    if(pcPic->getUseTMBP() && pcPic->cs->sps->getTMBP())
+    if(!(pcPic->getUseTMBP() && pcPic->cs->sps->getTMBP()))
 #endif
     {
       m_pcFrameMcPadPrediction->init(m_pcEncLib->getRdCost(), pcSlice->getSPS()->getChromaFormatIdc(),

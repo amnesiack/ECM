@@ -1353,7 +1353,7 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
 
       pcField->setBorderExtension( false );// where is this normally?
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-      pcField->setUseTMBP(false);
+      pcField->setUseTMBP(true);
 #endif
 
       pcField->topField = isTopField;                  // interlaced requirement
@@ -1507,7 +1507,7 @@ void EncLib::xGetNewPicBuffer ( std::list<PelUnitBuf*>& rcListPicYuvRecOut, Pict
 
   rpcPic->setBorderExtension( false );
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-  rpcPic->setUseTMBP(false);
+  rpcPic->setUseTMBP(true);
 #endif
   rpcPic->reconstructed = false;
   rpcPic->referenced = true;

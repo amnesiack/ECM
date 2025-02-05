@@ -335,8 +335,8 @@ public:
 #endif
 
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-  void setUseTMBP(bool val) { m_randomAccessPicture = val;}
-  bool getUseTMBP() const   { return m_randomAccessPicture;}  
+  void setUseTMBP(bool val) { m_useTMBP = val;}
+  bool getUseTMBP() const   { return m_useTMBP;}  
 #endif
 
   MCTSInfo     mctsInfo;
@@ -347,7 +347,7 @@ private:
   UnitArea m_ctuArea;
 #endif
 #if JVET_AK0085_TM_BOUNDARY_PADDING
-  bool m_randomAccessPicture;
+  bool m_useTMBP;
 #endif
 
 #if ENABLE_SPLIT_PARALLELISM
