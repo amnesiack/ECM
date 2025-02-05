@@ -14510,7 +14510,7 @@ void PU::getInterBMCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx,
     std::vector<Position> posList = { posC0,     posC1}; 
     std::vector<bool> availList   = { isC0Avail, avaC1};             
     
-    collectTMVP(
+    bool found = collectTMVP(
       pu, 
       posList, 
       availList, 
@@ -14534,6 +14534,11 @@ void PU::getInterBMCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx,
       true,    // useNullRefIdx
       true     // checkBiPred
       ); 
+
+    if (found)
+    {
+      return;
+    }
 
 #else
     Mv        cColMv;
