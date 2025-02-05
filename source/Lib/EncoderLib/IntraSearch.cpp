@@ -16846,7 +16846,7 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
 
   }
 #else
-  if (mpm_idx < NUM_MOST_PROBABLE_MODES)
+  if (mpmIdx < NUM_MOST_PROBABLE_MODES)
   {
     pu.mpmFlag = true;
   }
@@ -16861,7 +16861,7 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
         predIdx--;
       }
     }
-    CHECK(pred_idx >= 64, "Incorrect mode");
+    CHECK( predIdx >= 64, "Incorrect mode" );
   }
 #endif
   pu.ipredIdx = predIdx;

@@ -1895,7 +1895,6 @@ void CABACWriter::xWriteTruncBinCode(uint32_t symbol, uint32_t maxSymbol)
 
 void CABACWriter::extend_ref_line(const PredictionUnit& pu)
 {
-
   const CodingUnit& cu = *pu.cu;
   if( !cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma( cu.chType ) || cu.bdpcmMode
 #if ENABLE_DIMD
@@ -2229,104 +2228,100 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
   // mpm_idx / rem_intra_luma_pred_mode
   for( int k = 0; k < numBlocks; k++ )
   {
-    if(pu->mpmFlag)
+    if( pu->mpmFlag )
     {
-      const unsigned mpm_idx = pu->ipredIdx;
-      {
-        unsigned ctx = (pu->cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0);
-#if SECONDARY_MPM
-        unsigned ctx2 = (ctx ? (pu->multiRefIdx == 0 ? 2 : 1) : 0);
-#endif
-        if( pu->multiRefIdx == 0 )
-        {
-          m_BinEncoder.encodeBin( mpm_idx > 0, Ctx::IntraLumaPlanarFlag( ctx ) );
-        }
+      const unsigned mpmIdx = pu->ipredIdx;
 
-        if( mpm_idx )
-        {
+      unsigned ctx = ( pu->cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0 );
 #if SECONDARY_MPM
-          m_BinEncoder.encodeBin(mpm_idx > 1, Ctx::IntraLumaMPMIdx(0 + ctx2));
-#else
-          m_BinEncoder.encodeBinEP( mpm_idx > 1 );
+      unsigned ctx2 = ( ctx ? ( pu->multiRefIdx == 0 ? 2 : 1 ) : 0 );
 #endif
-        }
-        if (mpm_idx > 1)
-        {
-          m_BinEncoder.encodeBinEP(mpm_idx > 2);
-        }
-        if (mpm_idx > 2)
-        {
-          m_BinEncoder.encodeBinEP(mpm_idx > 3);
-        }
-        if (mpm_idx > 3)
-        {
-          m_BinEncoder.encodeBinEP(mpm_idx > 4);
-        }
+      if( pu->multiRefIdx == 0 )
+      {
+        m_BinEncoder.encodeBin( mpmIdx > 0, Ctx::IntraLumaPlanarFlag( ctx ) );
+      }
+
+      if( mpmIdx )
+      {
+#if SECONDARY_MPM
+        m_BinEncoder.encodeBin( mpmIdx > 1, Ctx::IntraLumaMPMIdx( 0 + ctx2 ) );
+#else
+        m_BinEncoder.encodeBinEP( mpmIdx > 1 );
+#endif
+      }
+      if( mpmIdx > 1 )
+      {
+        m_BinEncoder.encodeBinEP( mpmIdx > 2 );
+      }
+      if( mpmIdx > 2 )
+      {
+        m_BinEncoder.encodeBinEP( mpmIdx > 3 );
+      }
+      if( mpmIdx > 3 )
+      {
+        m_BinEncoder.encodeBinEP( mpmIdx > 4 );
       }
     }
     else
     {
-
-      {        
 #if SECONDARY_MPM
-        if( pu->secondMpmFlag)
+      if( pu->secondMpmFlag )
+      {
+        uint8_t secondaryMPMIdx = pu->ipredIdx - NUM_PRIMARY_MOST_PROBABLE_MODES;
+        m_BinEncoder.encodeBin( 1, Ctx::IntraLumaSecondMpmFlag() );
+#if JVET_AD0085_MPM_SORTING
+        if( cu.cs->sps->getUseMpmSorting() )
         {
-          uint8_t secondaryMPMIdx = pu->ipredIdx - NUM_PRIMARY_MOST_PROBABLE_MODES;
-          m_BinEncoder.encodeBin(1, Ctx::IntraLumaSecondMpmFlag());
-#if JVET_AD0085_MPM_SORTING
-          if (cu.cs->sps->getUseMpmSorting())
+          int ctxId = 0;
+          const int maxNumCtxBins = ( NUM_SECONDARY_MOST_PROBABLE_MODES / 4 ) - 1;
+          int prefixIdx = secondaryMPMIdx / 4;
+          for( int val = 0; val < maxNumCtxBins; val++ )
           {
-            int ctxId = 0;
-            const int maxNumCtxBins = (NUM_SECONDARY_MOST_PROBABLE_MODES / 4) - 1;
-            int prefixIdx = secondaryMPMIdx / 4;
-            for (int val = 0; val < maxNumCtxBins; val++)
+            unsigned int bin = ( val == prefixIdx ? 0 : 1 );
+            m_BinEncoder.encodeBin( bin, Ctx::IntraLumaSecondMpmIdx( ctxId++ ) );
+            if( !bin )
             {
-              unsigned int bin = (val == prefixIdx ? 0 : 1);
-              m_BinEncoder.encodeBin(bin, Ctx::IntraLumaSecondMpmIdx(ctxId++));
-              if (!bin)
-              {
-                break;
-              }
+              break;
             }
+          }
 
-            m_BinEncoder.encodeBinsEP(secondaryMPMIdx - prefixIdx * 4, 2);
-          }
-          else
-          {
-#endif
-          m_BinEncoder.encodeBinsEP( secondaryMPMIdx, 4);
-#if JVET_AD0085_MPM_SORTING
-          }
-#endif
+          m_BinEncoder.encodeBinsEP( secondaryMPMIdx - prefixIdx * 4, 2 );
         }
         else
         {
-          m_BinEncoder.encodeBin(0, Ctx::IntraLumaSecondMpmFlag());
-                 
-          unsigned nonMPMIdx = pu->ipredIdx;
-
-#if JVET_AK0059_MDIP
-          int numNonMpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-          xWriteTruncBinCode( nonMPMIdx, numNonMpm );  // Remaining mode is truncated binary coded
-#else
-          xWriteTruncBinCode( nonMPMIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded
 #endif
+          m_BinEncoder.encodeBinsEP( secondaryMPMIdx, 4 );
+#if JVET_AD0085_MPM_SORTING
         }
-#else
-        std::sort(mpmPred, mpmPred + numMPMs);
-
-        for (int idx = numMPMs - 1; idx >= 0; idx--)
-        {
-          if (ipredMode > mpmPred[idx])
-          {
-            ipredMode--;
-          }
-        }
-        CHECK(ipredMode >= 64, "Incorrect mode");
-
-        xWriteTruncBinCode(ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded
 #endif
       }
+      else
+      {
+        m_BinEncoder.encodeBin( 0, Ctx::IntraLumaSecondMpmFlag() );
+
+        unsigned nonMPMIdx = pu->ipredIdx;
+
+#if JVET_AK0059_MDIP
+        int numNonMpm = CU::allowMdip( cu ) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xWriteTruncBinCode( nonMPMIdx, numNonMpm );  // Remaining mode is truncated binary coded
+#else
+        xWriteTruncBinCode( nonMPMIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded
+#endif
+      }
+#else
+      std::sort( mpmPred, mpmPred + numMPMs );
+
+      for( int idx = numMPMs - 1; idx >= 0; idx-- )
+      {
+        if( ipredMode > mpmPred[ idx ] )
+        {
+          ipredMode--;
+        }
+      }
+      CHECK( ipredMode >= 64, "Incorrect mode" );
+
+      xWriteTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded
+#endif
     }
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -2487,34 +2482,35 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
   // mpm_idx / rem_intra_luma_pred_mode
   if (pu.mpmFlag)
   {
-    unsigned mpm_idx = pu.ipredIdx;
+    unsigned mpmIdx = pu.ipredIdx;
+    unsigned ctx = ( pu.cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0 );
+#if SECONDARY_MPM
+    unsigned ctx2 = ( ctx ? ( pu.multiRefIdx == 0 ? 2 : 1 ) : 0 );
+#endif
+    if( pu.multiRefIdx == 0 )
     {
-      unsigned ctx = (pu.cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0);
+      m_BinEncoder.encodeBin( mpmIdx > 0, Ctx::IntraLumaPlanarFlag( ctx ) );
+    }
+
+    if( mpmIdx )
+    {
 #if SECONDARY_MPM
-      unsigned ctx2 = (ctx ? (pu.multiRefIdx == 0 ? 2 : 1) : 0);
-#endif
-      if (pu.multiRefIdx == 0)
-        m_BinEncoder.encodeBin( mpm_idx > 0, Ctx::IntraLumaPlanarFlag(ctx) );
-      if( mpm_idx )
-      {
-#if SECONDARY_MPM
-        m_BinEncoder.encodeBin(mpm_idx > 1, Ctx::IntraLumaMPMIdx(0 + ctx2));
+      m_BinEncoder.encodeBin( mpmIdx > 1, Ctx::IntraLumaMPMIdx( 0 + ctx2 ) );
 #else
-        m_BinEncoder.encodeBinEP( mpm_idx > 1 );
+      m_BinEncoder.encodeBinEP( mpm_idx > 1 );
 #endif
-      }
-      if (mpm_idx > 1)
-      {
-        m_BinEncoder.encodeBinEP(mpm_idx > 2);
-      }
-      if (mpm_idx > 2)
-      {
-        m_BinEncoder.encodeBinEP(mpm_idx > 3);
-      }
-      if (mpm_idx > 3)
-      {
-        m_BinEncoder.encodeBinEP(mpm_idx > 4);
-      }
+    }
+    if( mpmIdx > 1 )
+    {
+      m_BinEncoder.encodeBinEP( mpmIdx > 2 );
+    }
+    if( mpmIdx > 2 )
+    {
+      m_BinEncoder.encodeBinEP( mpmIdx > 3 );
+    }
+    if( mpmIdx > 3 )
+    {
+      m_BinEncoder.encodeBinEP( mpmIdx > 4 );
     }
   }
   else
@@ -2522,55 +2518,53 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
 #if !SECONDARY_MPM
     std::sort( mpmPred, mpmPred + numMPMs );
 #endif
-    { 
 #if SECONDARY_MPM
-      if (pu.secondMpmFlag)
+    if( pu.secondMpmFlag )
+    {
+      unsigned secondMpmIdx = pu.ipredIdx - NUM_PRIMARY_MOST_PROBABLE_MODES;
+      m_BinEncoder.encodeBin( 1, Ctx::IntraLumaSecondMpmFlag() );
+#if JVET_AD0085_MPM_SORTING
+      if( pu.cs->sps->getUseMpmSorting() )
       {
-        unsigned secondMpmIdx = pu.ipredIdx - NUM_PRIMARY_MOST_PROBABLE_MODES;
-        m_BinEncoder.encodeBin(1, Ctx::IntraLumaSecondMpmFlag());
-#if JVET_AD0085_MPM_SORTING
-        if (pu.cs->sps->getUseMpmSorting())
+        int ctxId = 0;
+        const int maxNumCtxBins = ( NUM_SECONDARY_MOST_PROBABLE_MODES / 4 ) - 1;
+        int prefixIdx = secondMpmIdx / 4;
+        for( int val = 0; val < maxNumCtxBins; val++ )
         {
-          int ctxId = 0;
-          const int maxNumCtxBins = (NUM_SECONDARY_MOST_PROBABLE_MODES / 4) - 1;
-          int prefixIdx = secondMpmIdx / 4;
-          for (int val = 0; val < maxNumCtxBins; val++)
+          unsigned int bin = ( val == prefixIdx ? 0 : 1 );
+          m_BinEncoder.encodeBin( bin, Ctx::IntraLumaSecondMpmIdx( ctxId++ ) );
+          if( !bin )
           {
-            unsigned int bin = (val == prefixIdx ? 0 : 1);
-            m_BinEncoder.encodeBin(bin, Ctx::IntraLumaSecondMpmIdx(ctxId++));
-            if (!bin)
-            {
-              break;
-            }
+            break;
           }
+        }
 
-          m_BinEncoder.encodeBinsEP(secondMpmIdx - prefixIdx * 4, 2);
-        }
-        else
-        {
-#endif
-        m_BinEncoder.encodeBinsEP(secondMpmIdx, 4);
-#if JVET_AD0085_MPM_SORTING
-        }
-#endif
+        m_BinEncoder.encodeBinsEP( secondMpmIdx - prefixIdx * 4, 2 );
       }
       else
       {
-        m_BinEncoder.encodeBin(0, Ctx::IntraLumaSecondMpmFlag());
-                
-#if JVET_AK0059_MDIP
-        int numNonMpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-        xWriteTruncBinCode( pu.ipredIdx, numNonMpm );  // Remaining mode is truncated binary coded  
-#else
-        xWriteTruncBinCode( pu.ipredIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded  
 #endif
+        m_BinEncoder.encodeBinsEP( secondMpmIdx, 4 );
+#if JVET_AD0085_MPM_SORTING
       }
-#else
-      unsigned ipredMode = pu.intraDir[0];
-
-      xWriteTruncBinCode(ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);  // Remaining mode is truncated binary coded
 #endif
     }
+    else
+    {
+      m_BinEncoder.encodeBin( 0, Ctx::IntraLumaSecondMpmFlag() );
+
+#if JVET_AK0059_MDIP
+      int numNonMpm = CU::allowMdip( *pu.cu ) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+      xWriteTruncBinCode( pu.ipredIdx, numNonMpm );  // Remaining mode is truncated binary coded  
+#else
+      xWriteTruncBinCode( pu.ipredIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded  
+#endif
+    }
+#else
+    unsigned ipredMode = pu.intraDir[ 0 ];
+
+    xWriteTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded
+#endif
   }
 
 #if JVET_AC0105_DIRECTIONAL_PLANAR

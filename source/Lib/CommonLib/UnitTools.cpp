@@ -1834,8 +1834,8 @@ int PU::getIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t* nonMpm
                     , const bool& isForcedValid
 #endif
 #if JVET_AK0061_PDP_MPM
-  , const bool& enableNonSortPDP
-  , const bool& mpmSort
+                    , const bool& enableNonSortPDP
+                    , const bool& mpmSort
 #endif
 #if JVET_AD0085_MPM_SORTING
                     , IntraPrediction* pIntraPred/* = nullptr*/
@@ -1866,17 +1866,17 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 
 #if JVET_AD0085_MPM_SORTING
 #if JVET_AK0061_PDP_MPM
-    int maxCand = 0;
-    if (pdpRefAvailable)
-    {
-      maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 2 : NUM_MOST_PROBABLE_MODES;
-    }
-    else
-    {
-      maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
-    }
+  int maxCand = 0;
+  if (pdpRefAvailable)
+  {
+    maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 2 : NUM_MOST_PROBABLE_MODES;
+  }
+  else
+  {
+    maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
+  }
 #else
-    int maxCand = pIntraPred ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
+  int maxCand = pIntraPred ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
 #endif
 
 #else
@@ -11011,8 +11011,8 @@ void PU::getInterMergeCandidates( const PredictionUnit &pu, MergeCtx& mrgCtx,
     }
 
 #if JVET_AK0185_TMVP_SELECTION
-      Area     picArea = pu.cs->picture->Y();
-      bool     avaC1 = picArea.contains(posC1);
+      Area picArea = pu.cs->picture->Y();
+      bool avaC1 = picArea.contains(posC1);
 
       std::vector<Position> posList = { posC0,     posC1 };
       std::vector<bool> availList = { isC0Avail, avaC1 };
@@ -14504,8 +14504,8 @@ void PU::getInterBMCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx,
     }
 
 #if JVET_AK0185_TMVP_SELECTION
-    Area     picArea = pu.cs->picture->Y();
-    bool     avaC1 = picArea.contains(posC1);
+    Area picArea = pu.cs->picture->Y();
+    bool avaC1 = picArea.contains(posC1);
      
     std::vector<Position> posList = { posC0,     posC1}; 
     std::vector<bool> availList   = { isC0Avail, avaC1};             
@@ -15142,10 +15142,10 @@ void PU::getTmvpBMCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
     Position posC1;
 
 #if !JVET_AK0185_TMVP_SELECTION
-    int       iRefIdx = 0;
-    bool      bExistMV0, bExistMV1;
-    Mv        cColMv0, cColMv1;
-    int       dir;
+    int  iRefIdx = 0;
+    bool bExistMV0, bExistMV1;
+    Mv   cColMv0, cColMv1;
+    int  dir;
 #endif
 
     int offsetX0 = 0, offsetX1 = 0, offsetX2 = 0, offsetX3 = pu.Y().width >> 1;
@@ -15236,7 +15236,7 @@ void PU::getTmvpBMCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
         }
 
 #if JVET_AK0185_TMVP_SELECTION
-        bool     avaC1 = isC1Avail; 
+        bool avaC1 = isC1Avail; 
         
         std::vector<Position> posList = { posC0,     posC1}; 
         std::vector<bool> availList   = { isC0Avail, avaC1}; 
@@ -15691,14 +15691,14 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
     Position posC1;
 
 #if JVET_AI0183_MVP_EXTENSION
-    int       iRefIdx = slice.getCheckLDC() == true ? 0 : -3;
+    int iRefIdx = slice.getCheckLDC() == true ? 0 : -3;
 #else
-    int       iRefIdx = 0;
+    int iRefIdx = 0;
 #endif
 #if !JVET_AK0185_TMVP_SELECTION
-    bool      bExistMV0, bExistMV1;
-    Mv        cColMv0, cColMv1;
-    int       dir;
+    bool bExistMV0, bExistMV1;
+    Mv cColMv0, cColMv1;
+    int dir;
 #endif
 
     int offsetX0 = 0, offsetX1 = 0, offsetX2 = 0, offsetX3 = pu.Y().width >> 1;
@@ -15797,7 +15797,7 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
         }
 
 #if JVET_AK0185_TMVP_SELECTION
-        bool     avaC1 = isC1Avail; 
+        bool avaC1 = isC1Avail; 
 
         std::vector<Position> posList = { posC0,     posC1}; 
         std::vector<bool> availList   = { isC0Avail, avaC1};                
@@ -16113,7 +16113,7 @@ void PU::getTmvpMergeCand(const PredictionUnit &pu, MergeCtx& mrgCtx)
           }
 
 #if JVET_AK0185_TMVP_SELECTION
-          bool     avaC1 = isC1Avail; 
+          bool avaC1 = isC1Avail; 
 
           std::vector<Position> posList = { posC0,     posC1}; 
           std::vector<bool> availList   = { isC0Avail, avaC1};           
@@ -20766,8 +20766,8 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
             for (int colIdx = 1; colIdx < (pu.cu->slice->isInterB() ? 2 : 1); colIdx++)
             {
 #if JVET_AK0185_TMVP_SELECTION
-              Area     picArea = pu.cs->picture->Y();
-              bool     avaC1 = picArea.contains(posC1);
+              Area picArea = pu.cs->picture->Y();
+              bool avaC1 = picArea.contains(posC1);
              
               std::vector<Position> posList = { posC0,     posC1}; 
               std::vector<bool> availList   = { isC0Avail, avaC1};               
@@ -20831,8 +20831,8 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
         for (int colIdx = 0; colIdx < (pu.cu->slice->isInterB() ? 2 : 1); colIdx++)
         {
 #if JVET_AK0185_TMVP_SELECTION
-          Area     picArea = pu.cs->picture->Y();
-          bool     avaC1 = picArea.contains(posC1);
+          Area picArea = pu.cs->picture->Y();
+          bool avaC1 = picArea.contains(posC1);
  
           std::vector<Position> posList = { posC0,     posC1}; 
           std::vector<bool> availList   = { isC0Avail, avaC1}; 
@@ -20894,8 +20894,8 @@ void PU::fillMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, const in
       for (int colIdx = 0; colIdx < (pu.cu->slice->isInterB() ? 2 : 1); colIdx++)
       {
 #if JVET_AK0185_TMVP_SELECTION
-        Area     picArea = pu.cs->picture->Y();
-        bool     avaC1 = picArea.contains(posC1);
+        Area picArea = pu.cs->picture->Y();
+        bool avaC1 = picArea.contains(posC1);
 
         std::vector<Position> posList = { posC0,     posC1}; 
         std::vector<bool> availList   = { isC0Avail, avaC1}; 
@@ -22994,8 +22994,8 @@ void PU::fillAffineMvpCand(PredictionUnit &pu, const RefPicList &eRefPicList, co
         }
       }
 #if JVET_AK0185_TMVP_SELECTION
-      Area     picArea = pu.cs->picture->Y();
-      bool     avaC1 = picArea.contains(posC1);
+      Area picArea = pu.cs->picture->Y();
+      bool avaC1 = picArea.contains(posC1);
 
       std::vector<Position> posList = { posC0,    posC1}; 
       std::vector<bool> availList   = { bC0Avail, avaC1}; 
@@ -39006,285 +39006,282 @@ bool PU::collectTMVP(
   bool bExistMVL0 = false;
   bool bExistMVL1 = false;
 
-
-  auto insertCandidate = [&](int dir, const Mv& mvL0, const Mv& mvL1, int8_t refIdxL0, int8_t refIdxL1) 
+  auto insertCandidate = [&]( int dir, const Mv& mvL0, const Mv& mvL1, int8_t refIdxL0, int8_t refIdxL1 )
+  {
+    if( cnt >= maxNumMergeCand )
     {
-      if (cnt >= maxNumMergeCand)
+      return false;
+    }
+
+    auto setMrgCtx = []( int dir, int cnt, MergeCtx& mrgCtx )
+    {
+      mrgCtx.interDirNeighbours[ cnt ] = dir;
+      mrgCtx.bcwIdx[ cnt ] = BCW_DEFAULT;
+      mrgCtx.licFlags[ cnt ] = false;
+      mrgCtx.setDefaultLICParamToCtx( cnt );
+      mrgCtx.useAltHpelIf[ cnt ] = false;
+      mrgCtx.addHypNeighbours[ cnt ].clear();
+      mrgCtx.candtype[ cnt ] = 2;
+    };
+
+    mrgCtx.mvFieldNeighbours[ 2 * cnt + 0 ].setMvField( Mv(), NOT_VALID );
+    mrgCtx.mvFieldNeighbours[ 2 * cnt + 1 ].setMvField( Mv(), NOT_VALID );
+
+    setMrgCtx( dir, cnt, mrgCtx );
+
+    if( dir & 1 )
+    {
+      mrgCtx.mvFieldNeighbours[ 2 * cnt + 0 ].setMvField( mvL0, refIdxL0 );
+    }
+    if( dir & 2 )
+    {
+      mrgCtx.mvFieldNeighbours[ 2 * cnt + 1 ].setMvField( mvL1, refIdxL1 );
+    }
+
+    // Check if the merge candidate is valid      
+    if( checkValidMergeMvCand )
+    {
+      int8_t tempRefIdx[ 2 ] = { refIdxL0, refIdxL1 };
+      bool isValidAmMode = checkIsValidMergeMvCand( pu, tempRefIdx );
+      if( !( isValidAmMode && dir != 0 ) )
       {
-        return false;
+        mrgCtx.initMrgCand( cnt );
       }
 
-      auto setMrgCtx = [](int dir, int cnt, MergeCtx &mrgCtx) 
-        {
-        mrgCtx.interDirNeighbours[cnt] = dir;
-        mrgCtx.bcwIdx[cnt] = BCW_DEFAULT;
-        mrgCtx.licFlags[cnt] = false;
-        mrgCtx.setDefaultLICParamToCtx(cnt);
-        mrgCtx.useAltHpelIf[cnt] = false;
-        mrgCtx.addHypNeighbours[cnt].clear();
-        mrgCtx.candtype[cnt] = 2;
-        };
-      
-      mrgCtx.mvFieldNeighbours[2 * cnt + 0].setMvField(Mv(), NOT_VALID);
-      mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(Mv(), NOT_VALID);
+      if( useAmvpMergeMode )
+      {
+        mrgCtx.interDirNeighbours[ cnt ] = amvpMergeCtxMergeDir;
+        mrgCtx.mvFieldNeighbours[ ( cnt << 1 ) + amvpRefList ].setMvField( Mv(), -1 );
+      }
 
-      setMrgCtx(dir, cnt, mrgCtx);
-      
-      if (dir & 1) 
+      if( !mrgCtx.xCheckSimilarMotion( cnt, mvdThreshold ) )
       {
-        mrgCtx.mvFieldNeighbours[2 * cnt + 0].setMvField(mvL0, refIdxL0);
-      }
-      if (dir & 2) 
-      {
-        mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(mvL1, refIdxL1);
-      }
-            
-      // Check if the merge candidate is valid      
-      if (checkValidMergeMvCand) 
-      {
-        int8_t tempRefIdx[2] = { refIdxL0, refIdxL1 };
-        bool isValidAmMode = checkIsValidMergeMvCand(pu, tempRefIdx);
-        if (!(isValidAmMode && dir != 0))
+        if( mrgCandIdx == cnt )
         {
-          mrgCtx.initMrgCand(cnt);          
+          return true;
         }
 
-        if (useAmvpMergeMode)
-        {
-          mrgCtx.interDirNeighbours[cnt] = amvpMergeCtxMergeDir;
-          mrgCtx.mvFieldNeighbours[(cnt << 1) + amvpRefList].setMvField(Mv(), -1);
-        }        
+        cnt++;
+      }
+      else
+      {
+        mrgCtx.initMrgCand( cnt );
+      }
 
-        if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+      return false;
+    }
+
+    // Apply bi-prediction check if enabled
+    if( dir != 0 && checkBiPredFromDifferentDirEqDistPoc )
+    {
+      bool addTMVP = isBiPredFromDifferentDirEqDistPoc( pu, refIdxL0, refIdxL1 );
+      if( addTMVP )
+      {
+        if( !mrgCtx.xCheckSimilarMotion( cnt, mvdThreshold ) )
         {
-          if (mrgCandIdx == cnt)
+          if( cnt == mrgCandIdx )
           {
             return true;
           }
-
           cnt++;
+          mrgCtx.numValidMergeCand = cnt;
         }
         else
         {
-          mrgCtx.initMrgCand(cnt);
-        }      
-
-        return false;
-      }      
-
-      // Apply bi-prediction check if enabled
-      if (dir != 0 && checkBiPredFromDifferentDirEqDistPoc) 
-      {
-        bool addTMVP = isBiPredFromDifferentDirEqDistPoc(pu, refIdxL0, refIdxL1);
-        if (addTMVP)
-        {
-          if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
-          {       
-            if (cnt == mrgCandIdx)
-            {
-              return true;
-            }
-            cnt++;        
-            mrgCtx.numValidMergeCand = cnt;
-          }
-          else
-          {
-            mrgCtx.initMrgCand(cnt);
-          }          
+          mrgCtx.initMrgCand( cnt );
         }
-        else if (*tmpMrgCtxcnt < NUM_MERGE_CANDS)
-        {
-          tmpMrgCtx->interDirNeighbours[*tmpMrgCtxcnt] = dir;
-          tmpMrgCtx->useAltHpelIf[*tmpMrgCtxcnt] = false;
-          tmpMrgCtx->mvFieldNeighbours[*tmpMrgCtxcnt << 1] = mrgCtx.mvFieldNeighbours[cnt << 1];
-          tmpMrgCtx->mvFieldNeighbours[(*tmpMrgCtxcnt << 1) + 1] = mrgCtx.mvFieldNeighbours[(cnt << 1) + 1];
-          tmpMrgCtx->bcwIdx[*tmpMrgCtxcnt] = BCW_DEFAULT;
-          tmpMrgCtx->addHypNeighbours[*tmpMrgCtxcnt].clear();
-
-          if (!tmpMrgCtx->xCheckSimilarMotion(*tmpMrgCtxcnt, mvdThreshold))
-          {
-            (*tmpMrgCtxcnt)++;
-          }
-          else
-          {
-            tmpMrgCtx->initMrgCand(*tmpMrgCtxcnt);
-          }
-
-          tmpMrgCtx->numValidMergeCand = *tmpMrgCtxcnt;
-        }                
-
-        return false;
       }
-      
-      if (dir != 0)
+      else if( *tmpMrgCtxcnt < NUM_MERGE_CANDS )
       {
-        if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+        tmpMrgCtx->interDirNeighbours[ *tmpMrgCtxcnt ] = dir;
+        tmpMrgCtx->useAltHpelIf[ *tmpMrgCtxcnt ] = false;
+        tmpMrgCtx->mvFieldNeighbours[ *tmpMrgCtxcnt << 1 ] = mrgCtx.mvFieldNeighbours[ cnt << 1 ];
+        tmpMrgCtx->mvFieldNeighbours[ ( *tmpMrgCtxcnt << 1 ) + 1 ] = mrgCtx.mvFieldNeighbours[ ( cnt << 1 ) + 1 ];
+        tmpMrgCtx->bcwIdx[ *tmpMrgCtxcnt ] = BCW_DEFAULT;
+        tmpMrgCtx->addHypNeighbours[ *tmpMrgCtxcnt ].clear();
+
+        if( !tmpMrgCtx->xCheckSimilarMotion( *tmpMrgCtxcnt, mvdThreshold ) )
         {
-          if (cnt == mrgCandIdx)
+          ( *tmpMrgCtxcnt )++;
+        }
+        else
+        {
+          tmpMrgCtx->initMrgCand( *tmpMrgCtxcnt );
+        }
+
+        tmpMrgCtx->numValidMergeCand = *tmpMrgCtxcnt;
+      }
+
+      return false;
+    }
+
+    if( dir != 0 )
+    {
+      if( !mrgCtx.xCheckSimilarMotion( cnt, mvdThreshold ) )
+      {
+        if( cnt == mrgCandIdx )
+        {
+          return true;
+        }
+        cnt++;
+        if( cnt == maxNumMergeCand )
+        {
+          return false;
+        }
+      }
+      else
+      {
+        mrgCtx.initMrgCand( cnt );
+      }
+    }
+
+    if( !slice.getCheckLDC() && ( bExistMVL0 ) && ( bExistMVL1 ) )
+    {
+      // Candidate without L1
+      dir = 0;
+
+      dir |= 1;
+      mrgCtx.mvFieldNeighbours[ 2 * cnt ].setMvField( mvL0, refIdxL0 );
+      mrgCtx.mvFieldNeighbours[ 2 * cnt + 1 ].setMvField( Mv(), NOT_VALID );
+      if( dir != 0 )
+      {
+        setMrgCtx( dir, cnt, mrgCtx );
+
+        if( !mrgCtx.xCheckSimilarMotion( cnt, mvdThreshold ) )
+        {
+          if( cnt == mrgCandIdx )
           {
             return true;
           }
           cnt++;
-          if (cnt == maxNumMergeCand)
+          if( cnt == maxNumMergeCand )
           {
             return false;
           }
         }
         else
         {
-          mrgCtx.initMrgCand(cnt);
+          mrgCtx.initMrgCand( cnt );
         }
       }
 
-      if (!slice.getCheckLDC() && (bExistMVL0) && (bExistMVL1) )
+      // Candidate without L0
+      dir = 0;
+      mrgCtx.mvFieldNeighbours[ 2 * cnt ].setMvField( Mv(), NOT_VALID );
+      dir |= 2;
+      mrgCtx.mvFieldNeighbours[ 2 * cnt + 1 ].setMvField( mvL1, refIdxL1 );
+      if( dir != 0 )
       {
-        // Candidate without L1
-        dir = 0;
+        setMrgCtx( dir, cnt, mrgCtx );
 
-        dir |= 1;
-        mrgCtx.mvFieldNeighbours[2 * cnt].setMvField(mvL0, refIdxL0);
-        mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(Mv(), NOT_VALID);
-        if (dir != 0)
+        if( !mrgCtx.xCheckSimilarMotion( cnt, mvdThreshold ) )
         {
-          setMrgCtx(dir, cnt, mrgCtx);
-
-          if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
+          if( cnt == mrgCandIdx )
           {
-            if (cnt == mrgCandIdx)
-            {
-              return true;
-            }
-            cnt++;
-            if (cnt == maxNumMergeCand)
-            {
-              return false;
-            }
+            return true;
           }
-          else
+          cnt++;
+          if( cnt == maxNumMergeCand )
           {
-            mrgCtx.initMrgCand(cnt);
+            return false;
           }
         }
-
-        // Candidate without L0
-        dir = 0;
-        mrgCtx.mvFieldNeighbours[2 * cnt].setMvField(Mv(), NOT_VALID);
-        dir |= 2;
-        mrgCtx.mvFieldNeighbours[2 * cnt + 1].setMvField(mvL1, refIdxL1);
-        if (dir != 0)
+        else
         {
-          setMrgCtx(dir, cnt, mrgCtx);
-
-          if (!mrgCtx.xCheckSimilarMotion(cnt, mvdThreshold))
-          {
-            if (cnt == mrgCandIdx)
-            {
-              return true;
-            }
-            cnt++;
-            if (cnt == maxNumMergeCand)
-            {
-              return false;
-            }
-          }
-          else
-          {
-            mrgCtx.initMrgCand(cnt);
-          }
+          mrgCtx.initMrgCand( cnt );
         }
-      }        
+      }
+    }
 
-      return false;
-    };
-     
-
+    return false;
+  };
   
-    auto refFirst = [&]() -> bool      
+  auto refFirst = [&]() -> bool
+  {
+    // Step 1: Check (L0, posC0)
+    for( int i = 0; i < availList.size(); i++ )
+    {
+      int idx = iRefIdx;
+      if( !bExistMVL0 && availList[ i ] )
       {
-        // Step 1: Check (L0, posC0)
-        for (int i = 0; i < availList.size(); i++)
-        {
-          int idx = iRefIdx;
-          if (!bExistMVL0 && availList[i])
-          {
-            bExistMVL0 = getColocatedMVP(
-              pu, REF_PIC_LIST_0, posList[i], cColMvL0, idx, false,
-              col,
-              useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_0]);
-          }
-        }
+        bExistMVL0 = getColocatedMVP(
+          pu, REF_PIC_LIST_0, posList[ i ], cColMvL0, idx, false,
+          col,
+          useNullRefIdx ? nullptr : &refIdx[ REF_PIC_LIST_0 ] );
+      }
+    }
 
-        // Step 3: Check (L1, posC0)
-        for (int i = 0; i < availList.size(); i++)
-        {
-          int idx = iRefIdx;
-          if (!bExistMVL1 && availList[i] && slice.isInterB())
-          {
-            bExistMVL1 = getColocatedMVP(
-              pu, REF_PIC_LIST_1, posList[i], cColMvL1, idx, false,
-              col,
-              useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_1]);
-          }
-        }
+    // Step 3: Check (L1, posC0)
+    for( int i = 0; i < availList.size(); i++ )
+    {
+      int idx = iRefIdx;
+      if( !bExistMVL1 && availList[ i ] && slice.isInterB() )
+      {
+        bExistMVL1 = getColocatedMVP(
+          pu, REF_PIC_LIST_1, posList[ i ], cColMvL1, idx, false,
+          col,
+          useNullRefIdx ? nullptr : &refIdx[ REF_PIC_LIST_1 ] );
+      }
+    }
 
-        int dir = 0;
-        dir |= (bExistMVL0) ? 1 : 0;
-        dir |= (bExistMVL1) ? 2 : 0;
+    int dir = 0;
+    dir |= ( bExistMVL0 ) ? 1 : 0;
+    dir |= ( bExistMVL1 ) ? 2 : 0;
 
-        if (dir == 0)
-        {
-          return false;
-        }
+    if( dir == 0 )
+    {
+      return false;
+    }
 
-        bool found = insertCandidate(dir, cColMvL0, cColMvL1, refIdx[REF_PIC_LIST_0], refIdx[REF_PIC_LIST_1]);
-        if (found)
-        {
-          return true;
-        }
+    bool found = insertCandidate( dir, cColMvL0, cColMvL1, refIdx[ REF_PIC_LIST_0 ], refIdx[ REF_PIC_LIST_1 ] );
+    if( found )
+    {
+      return true;
+    }
 
-        return false;
-      };
+    return false;
+  };
   
   auto posFirst = [&]() -> bool
+  {
+    for( int i = 0; i < availList.size(); i++ )
     {
-      for (int i = 0; i < availList.size(); i++)
+      if( availList[ i ] )
       {
-        if (availList[i])
-        {
-          int idx = iRefIdx;
-          bExistMVL0 = getColocatedMVP(
-            pu, REF_PIC_LIST_0, posList[i], cColMvL0, idx, false,
-            col,
-            useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_0]);
-        }
-
-        if (availList[i] && slice.isInterB())
-        {
-          int idx = iRefIdx;
-          bExistMVL1 = getColocatedMVP(
-            pu, REF_PIC_LIST_1, posList[i], cColMvL1, idx, false,
-            col,
-            useNullRefIdx ? nullptr : &refIdx[REF_PIC_LIST_1]);
-        }
-
-        int dir = 0;
-        dir |= (bExistMVL0) ? 1 : 0;
-        dir |= (bExistMVL1) ? 2 : 0;
-
-        if (dir == 0)
-        {
-          continue;
-        }
-
-        bool found = insertCandidate(dir, cColMvL0, cColMvL1, refIdx[REF_PIC_LIST_0], refIdx[REF_PIC_LIST_1]);
-        if (found)
-        {
-          return true;
-        }
+        int idx = iRefIdx;
+        bExistMVL0 = getColocatedMVP(
+          pu, REF_PIC_LIST_0, posList[ i ], cColMvL0, idx, false,
+          col,
+          useNullRefIdx ? nullptr : &refIdx[ REF_PIC_LIST_0 ] );
       }
 
-      return false;
-    };
+      if( availList[ i ] && slice.isInterB() )
+      {
+        int idx = iRefIdx;
+        bExistMVL1 = getColocatedMVP(
+          pu, REF_PIC_LIST_1, posList[ i ], cColMvL1, idx, false,
+          col,
+          useNullRefIdx ? nullptr : &refIdx[ REF_PIC_LIST_1 ] );
+      }
+
+      int dir = 0;
+      dir |= ( bExistMVL0 ) ? 1 : 0;
+      dir |= ( bExistMVL1 ) ? 2 : 0;
+
+      if( dir == 0 )
+      {
+        continue;
+      }
+
+      bool found = insertCandidate( dir, cColMvL0, cColMvL1, refIdx[ REF_PIC_LIST_0 ], refIdx[ REF_PIC_LIST_1 ] );
+      if( found )
+      {
+        return true;
+      }
+    }
+
+    return false;
+  };
   
   bool ret = false;
   if (tmvpFlag & COLLECT_REF_FIRST)
