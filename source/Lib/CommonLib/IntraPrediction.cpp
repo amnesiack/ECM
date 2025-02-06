@@ -12216,6 +12216,7 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         {
           int m = MAP131TO67(cuNeighbours[i]->timdModeSecondary);
 #if JVET_AK0056_WEIGHTED_OBIC
+          CHECK(!w[0], "Division by zero!");
           histoLocDep[m][cuNeighbours[i]->timdLocDep[1]] += numSamples * w[1] / w[0];
 #else
           histogram[m] += numSamples;
@@ -12252,6 +12253,7 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         {
           int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][1]);
 #if JVET_AK0056_WEIGHTED_OBIC
+          CHECK(!w[0], "Division by zero!");
           histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][1]] += numSamples * w[1] / w[0];
 #else
           histogram[m] += numSamples;
@@ -12289,6 +12291,7 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         {
           int m = MAP131TO67(cuNeighbours[i]->timdModeSecondarySad);
 #if JVET_AK0056_WEIGHTED_OBIC
+          CHECK(!w[0], "Division by zero!");
           histoLocDep[m][cuNeighbours[i]->timdLocDepSad[1]] += numSamples * w[1] / w[0];
 #else
           histogram[m] += numSamples;
@@ -12328,6 +12331,7 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
 #if JVET_AK0056_WEIGHTED_OBIC
         if (cuNeighbours[i]->dimdRelWeight[1] > 0)
         {
+          CHECK(!w[0], "Division by zero!");
           histoLocDep[0][0] += numSamples * w[1] / w[0];
         }
 #endif
@@ -12339,6 +12343,7 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
             m = cuNeighbours[i]->dimdBlendMode[idx];
             if (m >= 0 && m < NUM_LUMA_MODE && cuNeighbours[i]->dimdRelWeight[idx + 2] > 0)
             {
+              CHECK(!w[0], "Division by zero!");
               histoLocDep[m][cuNeighbours[i]->dimdLocDep[idx+1]] += numSamples * w[idx + 2] / w[0];
 #else
           for (int idx = 0; idx < DIMD_FUSION_NUM - 1; idx++)
@@ -13628,6 +13633,15 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
         iSecondaryMode = getTimdRegularAngleExt(uiWidth, uiHeight, iSecondaryMode);
       }
 #endif
+
+      if (uiSecondaryCost < uiBestCost)
+      {
+        std::swap(cu.timdLocDep[1], cu.timdLocDep[0]);
+        std::swap(uiSecondaryCost, uiBestCost);
+        std::swap(iSecondaryMode, iBestMode);
+        std::swap(bSecondaryModeCheckWA, bBestModeCheckWA);
+      }
+
       // if( uiSecondaryCost < 2 * uiBestCost ), 2 * uiBestCost can overflow uint64_t
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
       if( !( (uiSecondaryCost < uiBestCost || (uiSecondaryCost - uiBestCost < uiBestCost)) ) && (iBestMode > DC_IDX) )
@@ -15045,6 +15059,14 @@ int IntraPrediction::deriveTimdModeSad(const CPelBuf &recoBuf, const CompArea &a
       iSecondaryMode = getTimdRegularAngleExt(uiWidth, uiHeight, iSecondaryMode);
     }
 #endif
+
+    if (uiSecondaryCost < uiBestCost)
+    {
+      std::swap(uiSecondaryCost, uiBestCost);
+      std::swap(iSecondaryMode, iBestMode);
+      std::swap(bSecondaryModeCheckWA, bBestModeCheckWA);
+    }
+
     // if( uiSecondaryCost < 2 * uiBestCost ), 2 * uiBestCost can overflow uint64_t
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
     if( !( (uiSecondaryCost < uiBestCost || (uiSecondaryCost - uiBestCost < uiBestCost)) ) && (iBestMode > DC_IDX) )
