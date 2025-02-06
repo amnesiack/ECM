@@ -1076,12 +1076,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AK0059_MDIP
   bool testMdip = CU::allowMdip(cu) && cu.mdipMode != -1;
   bool mdipSaveFlag = (cu.lfnstIdx == 0 && cu.mtsFlag == 0);
+
   if(cu.lfnstIdx == 0 && cu.mtsFlag == 0)
   {
     memset(m_includeExcludingMode, false, sizeof(m_includeExcludingMode));
+
     for(int i = 0; i < EXCLUDING_MODE_NUM; i++ )
     {
-      m_includeExcludingMode[cu.excludingMode[i]] = true;
+      const auto excludedMode = cu.excludingMode[ i ];
+
+      CHECK( excludedMode < 0 || excludedMode >= NUM_LUMA_MODE, "Wrong excludedMode mode" );
+
+      m_includeExcludingMode[ excludedMode ] = true;
     }
   }
 #endif

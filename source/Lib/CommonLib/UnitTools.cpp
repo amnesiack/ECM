@@ -36528,13 +36528,19 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
 #if JVET_AK0059_MDIP
   if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu))
   {
+    CHECK( pu.cu->mdipMode < 0 || pu.cu->mdipMode >= NUM_LUMA_MODE, "Wrong MDIP mode" );
+
     includedMode[pu.cu->mdipMode] = true;
   }
   if(pu.cu->isModeExcluded)
   {
     for(int i=0; i < EXCLUDING_MODE_NUM; i++)
     {
-      includedMode[pu.cu->excludingMode[i]] = true;
+      const auto excludedMode = pu.cu->excludingMode[ i ];
+
+      CHECK( excludedMode < 0 || excludedMode >= NUM_LUMA_MODE, "Wrong excludedMode mode" );
+
+      includedMode[ excludedMode ] = true;
     }
   }
 #endif
