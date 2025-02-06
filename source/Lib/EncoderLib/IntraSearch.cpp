@@ -1489,7 +1489,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
 #if JVET_AK0059_MDIP
           int mdipNeededMode[NUM_LUMA_MODE] = {0};
-          if (testMdip && !cu.lfnstIdx)
+          if (testMdip)
           {
             mdipNeededMode[cu.mdipMode] = 1;
           }
