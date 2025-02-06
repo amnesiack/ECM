@@ -3864,10 +3864,8 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
       mdipMode = cu.mdipMode;
       mdipDerived = true;
     }
-    for (int i=0; i < EXCLUDING_MODE_NUM; i++)
-    {
-      excludingMode[i] = cu.excludingMode[i];
-    }
+
+    memcpy( excludingMode, cu.excludingMode, sizeof( excludingMode ) );
 #endif
 #if JVET_AK0061_PDP_MPM
     std::memset(m_pcIntraSearch->m_mpmIncludedPdpMode, 0, sizeof(m_pcIntraSearch->m_mpmIncludedPdpMode));
@@ -4231,10 +4229,8 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
           {
             cu.mdipMode = mdipMode;
           }
-          for (int i=0; i < EXCLUDING_MODE_NUM; i++)
-          {
-            cu.excludingMode[i] = excludingMode[i];
-          }
+
+          memcpy( cu.excludingMode, excludingMode, sizeof( cu.excludingMode ) );
 #endif
 #if JVET_W0123_TIMD_FUSION
           cu.timd = false;
