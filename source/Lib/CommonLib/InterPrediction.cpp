@@ -9139,7 +9139,7 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
-  if (!m_dimdForOBMCFilled)
+  if (pu.cs->sps->getUseDimd() == true && !m_dimdForOBMCFilled)
   {
     m_modeGetCheck[0] = pcIntraPred->getGradForOBMC(pu, pu.cu->cs->picture->getRecoBuf(pu.Y()), pu.Y(), *pu.cu, true, pu.cs->pcv->minCUWidth, m_modeBuf[0]);
     m_modeGetCheck[1] = pcIntraPred->getGradForOBMC(pu, pu.cu->cs->picture->getRecoBuf(pu.Y()), pu.Y(), *pu.cu, false, pu.cs->pcv->minCUWidth, m_modeBuf[1]);
