@@ -38,6 +38,9 @@
 #include <array>
 #include <map>
 #include "CommonDef.h"
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+class IntraPrediction;
+#endif
 
 struct CompArea;
 
@@ -72,6 +75,9 @@ public:
     m_aboveLeftAvailableNbLines = WidthHeight(aboveAvailableNbLines, leftAvailableNbLines);
   }
   void predictPnn(PelBuf& pDst, const CPelBuf& srcBuf, const int inputBitDepth, const CompArea& area, bool& isPredictionRun);
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  Pel* getNnIntraPredPtr ();
+#endif
   static WidthHeight getNbLines(const int blockWidth, const int blockHeight);
   static WidthHeight getPnnCtxLength(const int blockWidth, const int blockHeight);
   static bool hasPnnPrediction(const CodingUnit& cu);

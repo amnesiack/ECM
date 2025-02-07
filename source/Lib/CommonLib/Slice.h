@@ -339,6 +339,9 @@ class ConstraintInfo
 #if JVET_AG0058_EIP
   bool              m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool              m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool              m_noObmcConstraintFlag;
 #endif
@@ -660,6 +663,10 @@ public:
 #if JVET_AG0058_EIP
   bool          getNoEipConstraintFlag() const { return m_noEipConstraintFlag; }
   void          setNoEipConstraintFlag(bool bVal) { m_noEipConstraintFlag = bVal; }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool          getNoIntraPredBfConstraintFlag() const { return m_noIntraPredBfConstraintFlag; }
+  void          setNoIntraPredBfConstraintFlag(bool bVal) { m_noIntraPredBfConstraintFlag = bVal; }
 #endif
 #if ENABLE_OBMC
   bool          getNoObmcConstraintFlag() const { return m_noObmcConstraintFlag; }
@@ -1715,6 +1722,10 @@ private:
   int               m_log2MaxTransformSkipBlockSize;
   bool              m_BDPCMEnabledFlag;
   bool              m_JointCbCrEnabledFlag;
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  bool              m_templateMatchingBoundaryPrediction;
+#endif
+
   // Parameter
   BitDepths         m_bitDepths;
   bool              m_entropyCodingSyncEnabledFlag;                    //!< Flag for enabling WPP
@@ -1868,6 +1879,9 @@ private:
 #if JVET_AG0058_EIP
   bool              m_eip;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool              m_intraPredBf;
+#endif
 #if JVET_AD0085_MPM_SORTING
   bool              m_mpmSorting;
 #endif
@@ -1970,6 +1984,10 @@ private:
 #endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   bool              m_fastSubTmvp;
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  bool              m_useTemporalAffineOpt;
+  bool              m_useSyntheticAffine;
 #endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   bool              m_armcRefinedMotion;
@@ -2127,6 +2145,10 @@ public:
   uint16_t                getSubPicId( int i ) const                                                      { return  m_subPicId[i]; }
   void                    setSubPicId(const std::vector<uint16_t> &v)                                     { CHECK(v.size()!=m_numSubPics, "number of vector entries must be equal to numSubPics") ; m_subPicId = v; }
   const std::vector<uint16_t> getSubPicIds() const                                                        { return  m_subPicId; }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  void                    setTMBP( int val)                                                               {m_templateMatchingBoundaryPrediction = val;};
+  bool                    getTMBP() const                                                                 {return m_templateMatchingBoundaryPrediction;};
+#endif
 
   uint32_t                getNumLongTermRefPicSPS() const                                                 { return m_numLongTermRefPicSPS;                                       }
   void                    setNumLongTermRefPicSPS(uint32_t val)                                           { m_numLongTermRefPicSPS = val;                                        }
@@ -2677,6 +2699,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   void      setUseEip          (bool b)                                          { m_eip = b; }
   bool      getUseEip()                                                const     { return m_eip; }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  void      setUseIntraPredBf  (bool b)                                          { m_intraPredBf = b; }
+  bool      getUseIntraPredBf()                                        const     { return m_intraPredBf; }
+#endif
 #if JVET_AD0085_MPM_SORTING
   void      setUseMpmSorting   (bool b)                                          { m_mpmSorting = b; }
   bool      getUseMpmSorting   ()                                      const     { return m_mpmSorting; }
@@ -2801,6 +2827,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION 
   void      setUseFastSubTmvp     ( bool b )                                        { m_fastSubTmvp = b; }
   bool      getUseFastSubTmvp     ()                                      const     { return m_fastSubTmvp; }
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  void      setUseTemporalAffineOpt( bool b )                                       { m_useTemporalAffineOpt = b; }
+  bool      getUseTemporalAffineOpt()                                     const     { return m_useTemporalAffineOpt; }
+  void      setUseSyntheticAffine  ( bool b )                                       { m_useSyntheticAffine = b; }
+  bool      getUseSyntheticAffine  ()                                     const     { return m_useSyntheticAffine; }
 #endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
   void      setUseExtAmvp         ( bool b )                                        { m_useExtAmvp = b; }
@@ -3841,6 +3873,9 @@ private:
 #if JVET_AF0128_LIC_MERGE_TM
   bool                       m_bCheckLDB;
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool                       m_bSepObmc4GPM;
+#endif
 
   bool                       m_biDirPred;
   int                        m_symRefIdx[2];
@@ -4276,6 +4311,9 @@ public:
 #if JVET_AF0128_LIC_MERGE_TM
   bool                        getCheckLDB() const                                    { return m_bCheckLDB;                                           }
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool                        getCheckUseSepOBMC() const                             { return m_bSepObmc4GPM;                                        }
+#endif
   int                         getList1IdxToList0Idx( int list1Idx ) const            { return m_list1IdxToList0Idx[list1Idx];                        }
   void                        setPOC( int i )                                        { m_iPOC              = i;                                      }
   bool                        getPictureHeaderInSliceHeader() const                  { return m_pictureHeaderInSliceHeader;                         }
@@ -4367,6 +4405,9 @@ public:
   void                        setCheckLDC( bool b )                                  { m_bCheckLDC = b;                                              }
 #if JVET_AF0128_LIC_MERGE_TM
   void                        setCheckLDB( bool b )                                  { m_bCheckLDB = b;                                              }
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void                        setCheckUseSepOBMC( bool b )                           { m_bSepObmc4GPM = b;                                           }
 #endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
   void                        setColFromL0Flag2nd(bool colFromL0)                    { m_colFromL0Flag2nd = colFromL0;                               }

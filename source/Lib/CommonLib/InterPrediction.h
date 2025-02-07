@@ -192,6 +192,14 @@ public:
 public:
   AffineAMVPInfo m_affineAmvpInfo[AFFINE_MODEL_NUM][NUM_IMV_MODES][NUM_REF_PIC_LIST_01][MAX_NUM_REF];
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  bool              m_geoOBMC;
+  bool              m_obmcLoadMode;
+  bool              m_nbIsSCC;
+  bool              m_pixelRefine;
+  bool              m_neighbSccChecked;
+  bool              m_intraObmcReload;
+#endif
 #if JVET_AD0140_MVD_PREDICTION
   struct MvdDerivedInfo
   {
@@ -216,8 +224,13 @@ private:
   int               m_licMultApprox[64];
 #endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
   Pel* m_intraOBMCBuf[MAX_NUM_COMPONENT];
+#endif
   Pel* m_beforeOBMCBuf[MAX_NUM_COMPONENT];
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  std::vector<uint8_t> nbEachLength[2];
 #endif
 
 #if JVET_AG0136_INTRA_TMP_LIC
@@ -496,7 +509,18 @@ protected:
   PelStorage           m_tmpObmcBufL0;
   PelStorage           m_tmpObmcBufT0;
   PelStorage           m_tmpSubObmcBuf;
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  PelUnitBuf           m_tmpSubBuf1;
+  PelUnitBuf           m_tmpSubBuf2;
+  PelUnitBuf           m_tmpSubBuf3;
+  PelUnitBuf           m_tmpSubBuf4;
+  PelUnitBuf           m_tmpSubBuf0;
+  PelStorage           m_tmpNbObmcBufA;
+  PelStorage           m_tmpNbObmcBufL;
+  PelStorage           m_tmpNbIntraObmcBufA;
+  PelStorage           m_tmpNbIntraObmcBufL;
+#endif
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
   PelStorage           m_tmpIntraObmcBufL0;
   PelStorage           m_tmpIntraObmcBufT0;
 #endif
@@ -620,10 +644,19 @@ protected:
 #else
   void xSubblockOBMC               (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc, int iDir, bool bSubMotion = false);
 #endif
+
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void xSubBlockMotionCompensation(PredictionUnit& pu, PelUnitBuf& pcYuvPred, bool lumaOnly = false, bool chromaOnly = false, std::vector<Pel>* lmcsLut = nullptr);
+#else
   void xSubBlockMotionCompensation (PredictionUnit &pu, PelUnitBuf &pcYuvPred, bool lumaOnly = false, std::vector<Pel>* lmcsLut = nullptr);
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void xSubBlockMotionCompensation (PredictionUnit& pu, PelUnitBuf& pcYuvPred, bool lumaOnly = false, bool chromaOnly = false);
 #else
   void xSubBlockMotionCompensation (PredictionUnit &pu, PelUnitBuf &pcYuvPred);
+#endif
 #endif
   void xSubblockOBMCBlending       (const ComponentID eComp, PredictionUnit &pu, PelUnitBuf &pcYuvPredDst, PelUnitBuf &pcYuvPredSrc1, PelUnitBuf &pcYuvPredSrc2, PelUnitBuf &pcYuvPredSrc3, PelUnitBuf &pcYuvPredSrc4, bool isAboveAvail = false, bool isLeftAvail = false, bool isBelowAvail = false, bool isRightAvail = false, bool bSubMotion = false);
 #endif
@@ -803,12 +836,24 @@ public:
 #if ENABLE_OBMC
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void    subBlockOBMC        (PredictionUnit &pu, PelUnitBuf *pDst = nullptr, IntraPrediction *pcIntraPred = nullptr, bool lumaOnly = false, bool chromaOnly = false, bool usePreCheck = false, bool saveMode = false);
+#else
   void    subBlockOBMC        (PredictionUnit &pu, PelUnitBuf *pDst = nullptr, IntraPrediction *pcIntraPred = nullptr, bool lumaOnly = false);
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void    subBlockOBMC        (PredictionUnit &pu, PelUnitBuf *pDst = nullptr, IntraPrediction *pcIntraPred = nullptr, bool lumaOnly = false, bool chromaOnly = false, bool usePreCheck = false, bool saveMode = false);
 #else
   void    subBlockOBMC        (PredictionUnit &pu, PelUnitBuf *pDst = nullptr, IntraPrediction *pcIntraPred = nullptr);
 #endif
+#endif
+#else
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void    subBlockOBMC        (PredictionUnit& pu, PelUnitBuf* pDst = nullptr, bool lumaOnly = false, bool chromaOnly = false, bool usePreCheck = false, bool saveMode = false);
 #else
   void    subBlockOBMC        (PredictionUnit  &pu, PelUnitBuf *pDst = nullptr);
+#endif
 #endif
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
   bool    isSCC                   (const PredictionUnit  &pu);
@@ -876,8 +921,10 @@ public:
                               , Mv(&subMvBuf)[MRG_MAX_NUM_CANDS << 1][MAX_NUM_SUBCU_DMVR]
                               , Mv(&subBdofBuf)[MRG_MAX_NUM_CANDS][BDOF_SUBPU_MAX_NUM]
 #endif
-#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA || JVET_AK0212_GPM_OBMC_MODIFICATION
                               , IntraPrediction* pcIntraPred
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
                               , std::vector<Pel>* reshapeLUT
 #endif
     );
@@ -948,6 +995,10 @@ public:
   void    weightedBlendBlk    ( const PredictionUnit& pu, int32_t channel, PelUnitBuf& predDst, PelUnitBuf& predSrc0, PelUnitBuf& predSrc1, WeightBuf& weightBuf, const int log2WeightBase, const bool roundOutputBD);
   void    weightedBlend       ( const PredictionUnit& pu, PelUnitBuf& predDst, PelUnitBuf& predSrc0, PelUnitBuf& predSrc1, const bool chromaOnly, const bool lumaOnly, const bool roundOutputBD = false);
   void    weightedAffineBlk   ( const PredictionUnit& pu, WeightBuf& weightBuf, const int log2WeightBase, AffineBlendingModel& blendModel );
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  void    weightObmcBoundary(Pel* orgDst, Pel* orgSrc, const int strideDst, const int strideSrc, const int width, const int height, const int dir, const ComponentID comp, const int blendMode = -1, const bool subMotion = false);
+  void    weightObmcInnerBoundary(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int dstStride, const int srcStride, const int width, const int height, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail);
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -1820,7 +1871,7 @@ public:
 private:
   bool m_dimdForOBMCFilled;
   int m_modeBuf[2][MAX_CU_SIZE >> MIN_CU_LOG2];
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
   bool m_intraObmcPred;
 #endif
   int m_modeGetCheck[2];
@@ -1828,7 +1879,7 @@ public:
   void setDIMDForOBMC                  (bool b) { m_dimdForOBMCFilled = b; }
   void setModeGetCheck                 (int i, bool b) { m_modeGetCheck[i] = b; }
   void setClearModeBuf                 (int i) { memset(m_modeBuf[i], -1, sizeof(int) * (MAX_CU_SIZE >> MIN_CU_LOG2)); }
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
   void setIntraObmcPred                (bool b) { m_intraObmcPred = b; }
 #endif
 #endif

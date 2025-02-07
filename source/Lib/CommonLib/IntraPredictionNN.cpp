@@ -704,8 +704,16 @@ void IntraPredictionNN::predictPnn(PelBuf& pDst, const CPelBuf& srcBuf, const in
   {
     isPredictionRun = false;
   }
+#if !JVET_AK0118_BF_FOR_INTRA_PRED
   pDst.copyFrom(predictedBuf);
+#endif
 }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+Pel* IntraPredictionNN::getNnIntraPredPtr ()
+{
+  return m_predModel->m_predicted;
+}
+#endif
 
 bool IntraPredictionNN::decideShapeHandledPnn(const uint32_t height, const uint32_t width)
 {

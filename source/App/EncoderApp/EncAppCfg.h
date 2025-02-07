@@ -217,6 +217,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool      m_noObmcConstraintFlag;
 #endif
@@ -539,6 +542,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_eip;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_intraPredBf;
+#endif
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;
 #endif
@@ -822,6 +828,9 @@ protected:
   bool      m_DeblockingFilterMetric;                         ///< blockiness metric in encoder
 #endif
   bool      m_enableIntraReferenceSmoothing;                  ///< flag for enabling(default)/disabling intra reference smoothing/filtering
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  bool      m_templateMatchingBoundaryPrediction;
+#endif
 
   // coding tools (encoder-only parameters)
   bool      m_bUseASR;                                        ///< flag for using adaptive motion search range

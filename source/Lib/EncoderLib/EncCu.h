@@ -164,7 +164,7 @@ public:
   }
   void insert(int geoIdx, int partIdx, int mergeIdx, double cost)
   {
-    assert(geoIdx < numGeoTemplatesInitialized);
+    CHECK(geoIdx >= numGeoTemplatesInitialized, "Wrong geoIdx");
     singleDistList[partIdx][geoIdx][mergeIdx] = SingleGeoMergeEntry(mergeIdx, cost);
   }
   int numGeoTemplatesInitialized;
@@ -338,7 +338,7 @@ private:
 #endif
 #if JVET_AG0135_AFFINE_CIIP
   PelStorage            m_acMergeAffineBuffer[AFFINE_MRG_MAX_NUM_CANDS];
-#endif 
+#endif
   PelStorage            m_acMergeTmpBuffer[MRG_MAX_NUM_CANDS
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS && JVET_AC0112_IBC_LIC
                                            + 1
@@ -385,6 +385,12 @@ private:
 #endif
 #if JVET_AJ0274_REGRESSION_GPM_TM
   PelStorage            m_acGeoBlendTMBuffer[GEO_TM_MAX_NUM_CANDS];
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  PelStorage            m_acRegGpmWeightedBuffer[GEO_MAX_NUM_UNI_CANDS];
+#if JVET_AJ0274_REGRESSION_GPM_TM
+  PelStorage            m_acRegGpmTmWeightedBuffer[GEO_MAX_NUM_UNI_CANDS];
+#endif
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   PelStorage            m_acMergeIntraBuffer[GEO_BLEND_MAX_NUM_INTRA_CANDS];

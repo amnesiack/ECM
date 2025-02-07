@@ -58,7 +58,11 @@ public:
 #endif
 class BilateralFilter
 {
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+public:
+#else
 private:
+#endif
   // 128x128 is the max TU size, 4 is the padding for the considered neighborhood, 16 is the AVX buffer size.
   // (128 + 4 + 16) * (128 + 4) = 19536.
   Pel tempblockSIMD[19536];
@@ -68,8 +72,16 @@ private:
   Pel* tempblockFiltered = (Pel*)tempblockFilteredSIMD;
 
 #if JVET_AJ0237_INTERNAL_12BIT
-  void (*m_bilateralFilterDiamond5x5)(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift);
-  static void blockBilateralFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift);
+  void (*m_bilateralFilterDiamond5x5)(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    , bool isIntraPredBf
+#endif
+    );
+  static void blockBilateralFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    , bool isIntraPredBf
+#endif
+    );
 #else
   void (*m_bilateralFilterDiamond5x5)(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum);
   static void blockBilateralFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum);
@@ -231,6 +243,9 @@ public:
 #if JVET_AJ0237_INTERNAL_12BIT
   void setInternalBitDepth(int bdDepth) { internalBitDepth = bdDepth; }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  int getInternalBitDepth() { return internalBitDepth; }
+#endif
 #if JVET_V0094_BILATERAL_FILTER
   void bilateralFilterRDOdiamond5x5(const ComponentID compID, PelBuf& resiBuf, const CPelBuf& predBuf, PelBuf& recoBuf, int32_t qp, const CPelBuf& recIPredBuf, const ClpRng& clpRng, TransformUnit & currTU, bool useReco, bool doReshape = false, std::vector<Pel>* pLUT = nullptr);
   void bilateralFilterPicRDOperCTU(const ComponentID compID, CodingStructure& cs, PelUnitBuf& src,BIFCabacEst* bifCABACEstimator);
@@ -241,7 +256,11 @@ public:
 #endif
   );
 
-  const char* getFilterLutParameters(int16_t* block, const int stride, const int width, const int height, const PredMode predMode, const int qp, int& bfac);
+  const char* getFilterLutParameters(int16_t* block, const int stride, const int width, const int height, const PredMode predMode, const int qp, int& bfac
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    , int& madValue
+#endif
+    );
   void clipNotBilaterallyFilteredBlocks(const ComponentID compID, const CPelUnitBuf& src, PelUnitBuf& rec, const ClpRng& clpRng, TransformUnit & currTU);
 #endif
 
@@ -257,7 +276,11 @@ public:
 #ifdef TARGET_SIMD_X86
 #if JVET_AJ0237_INTERNAL_12BIT
   template<X86_VEXT vext>
-  static void simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift);
+  static void simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum, int bdShift
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    , bool isIntraPredBf
+#endif
+    );
 #else
   template<X86_VEXT vext>
   static void simdFilterDiamond5x5(uint32_t uiWidth, uint32_t uiHeight, int16_t block[], int16_t blkFilt[], const ClpRng& clpRng, Pel* recPtr, int recStride, int iWidthExtSIMD, int bfac, int bifRoundAdd, int bifRoundShift, bool isRDO, const char* lutRowPtr, bool noClip, int cutBitsNum);

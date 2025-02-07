@@ -3680,6 +3680,12 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
             {
               relatedCU->skipLfnstTest = true;
             }
+#if JVET_AK0217_INTRA_MTSS
+            else if (partitioner.currArea().lwidth() * partitioner.currArea().lheight() >= MIN_MTSS_SIZE && cuECtx.bestLfnstCost[1] > (cuECtx.bestLfnstCost[0] * 1.09))
+            {
+              relatedCU->skipLfnstTest = true;
+            }
+#endif 
             else
             {
               relatedCU->skipLfnstTest = false;

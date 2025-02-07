@@ -449,6 +449,10 @@ void EncApp::xInitLibCfg()
     m_cEncLib.setNoEipConstraintFlag(m_noEipConstraintFlag);
     CHECK(m_noEipConstraintFlag && m_eip, "EIP shall be deactivated when m_noTmrlConstraintFlag is equal to 1");
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    m_cEncLib.setNoIntraPredBfConstraintFlag(m_noIntraPredBfConstraintFlag);
+    CHECK(m_noIntraPredBfConstraintFlag && m_intraPredBf, "Intra Pred Bf shall be deactivated when m_noIntraPredBfConstraintFlag is equal to 1");
+#endif
 #if ENABLE_OBMC
     m_cEncLib.setNoObmcConstraintFlag(m_noObmcConstraintFlag);
     CHECK(m_noObmcConstraintFlag && m_OBMC, "OBMC shall be deactivated when m_noObmcConstraintFlag is equal to 1");
@@ -600,6 +604,9 @@ void EncApp::xInitLibCfg()
 #endif
 #if JVET_AG0058_EIP
     m_cEncLib.setNoEipConstraintFlag(false);
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    m_cEncLib.setNoIntraPredBfConstraintFlag(false);
 #endif
 #if ENABLE_OBMC
     m_cEncLib.setNoObmcConstraintFlag(false);
@@ -976,6 +983,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AG0058_EIP
   m_cEncLib.setUseEip                                            ( m_eip );
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  m_cEncLib.setUseIntraPredBf                                    ( m_intraPredBf );
+#endif
 #if JVET_AD0085_MPM_SORTING
   m_cEncLib.setUseMpmSorting                                     ( m_mpmSorting );
 #endif
@@ -1304,6 +1314,10 @@ void EncApp::xInitLibCfg()
 
   m_cEncLib.setSaoGreedyMergeEnc                                 ( m_saoGreedyMergeEnc);
   m_cEncLib.setIntraSmoothingDisabledFlag                        (!m_enableIntraReferenceSmoothing );
+
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  m_cEncLib.setTMBP                                               ( m_templateMatchingBoundaryPrediction );
+#endif
   m_cEncLib.setDecodedPictureHashSEIType                         ( m_decodedPictureHashSEIType );
 #if JVET_R0294_SUBPIC_HASH
   m_cEncLib.setSubpicDecodedPictureHashType                      ( m_subpicDecodedPictureHashType );

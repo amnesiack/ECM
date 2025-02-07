@@ -1352,6 +1352,9 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
       pcField->reconstructed = false;
 
       pcField->setBorderExtension( false );// where is this normally?
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+      pcField->setUseTMBP(true);
+#endif
 
       pcField->topField = isTopField;                  // interlaced requirement
 
@@ -1503,6 +1506,9 @@ void EncLib::xGetNewPicBuffer ( std::list<PelUnitBuf*>& rcListPicYuvRecOut, Pict
   }
 
   rpcPic->setBorderExtension( false );
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  rpcPic->setUseTMBP(true);
+#endif
   rpcPic->reconstructed = false;
   rpcPic->referenced = true;
   rpcPic->getHashMap()->clearAll();
@@ -1729,6 +1735,9 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
 #if JVET_AG0058_EIP
   cinfo->setNoEipConstraintFlag(m_noEipConstraintFlag);
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  cinfo->setNoIntraPredBfConstraintFlag(m_noIntraPredBfConstraintFlag);
 #endif
 #if ENABLE_OBMC
   cinfo->setNoObmcConstraintFlag(m_noObmcConstraintFlag);
@@ -2094,6 +2103,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AG0058_EIP
   sps.setUseEip             ( m_eip );
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  sps.setUseIntraPredBf     ( m_intraPredBf );
+#endif
 #if JVET_AD0085_MPM_SORTING
   sps.setUseMpmSorting      ( m_mpmSorting );
 #endif
@@ -2136,6 +2148,10 @@ void EncLib::xInitSPS( SPS& sps )
    }
 #endif
   }
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  sps.setUseTemporalAffineOpt  ( m_sourceWidth * m_sourceHeight > 832 * 480 && getBaseQP() > 22 );
+  sps.setUseSyntheticAffine    ( m_sourceWidth * m_sourceHeight < 3840 * 2160 && getBaseQP() > 22 );
 #endif
   sps.setUseGeo                ( m_Geo );
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
@@ -2522,6 +2538,9 @@ void EncLib::xInitSPS( SPS& sps )
       sps.setVirtualBoundariesPosY            ( m_virtualBoundariesPosY[i], i );
     }
   }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  sps.setTMBP(m_templateMatchingBoundaryPrediction);
+#endif
 
   sps.setInterLayerPresentFlag( m_layerId > 0 && m_vps->getMaxLayers() > 1 && !m_vps->getAllIndependentLayersFlag() && !m_vps->getIndependentLayerFlag( m_vps->getGeneralLayerIdx( m_layerId ) ) );
   CHECK( m_vps->getIndependentLayerFlag( m_vps->getGeneralLayerIdx( m_layerId ) ) && sps.getInterLayerPresentFlag(), " When vps_independent_layer_flag[GeneralLayerIdx[nuh_layer_id ]]  is equal to 1, the value of inter_layer_ref_pics_present_flag shall be equal to 0." );

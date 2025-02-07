@@ -200,6 +200,10 @@ IntraPrediction::IntraPrediction()
     m_cflmBuf[i] = nullptr;
   }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  m_pcReshape = nullptr;
+  m_pcBilateralFilter = nullptr;
+#endif
 #if JVET_AH0209_PDP
   for( int i = 0; i < NUM_LUMA_MODE; i++ )
   {
@@ -382,10 +386,18 @@ void IntraPrediction::destroy()
     m_cflmBuf[i] = nullptr;
   }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  m_pcReshape = nullptr;
+  m_pcBilateralFilter = nullptr;
+#endif
 }
 
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepthY, const int nnipMode, Reshape* reshape, BilateralFilter* bilateralFilter )
+#else
 void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepthY, const int nnipMode)
+#endif
 #else
 void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepthY)
 #endif
@@ -726,6 +738,10 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
       m_cflmBuf[i] = new Pel[(2 * MAX_CU_SIZE + CCCM_WINDOW_SIZE) * (2 * MAX_CU_SIZE + CCCM_WINDOW_SIZE)];
     }
   }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  m_pcReshape = reshape;
+  m_pcBilateralFilter = bilateralFilter;
 #endif
 
 #if ENABLE_SIMD_TMP
@@ -1441,7 +1457,11 @@ void IntraPrediction::setReferenceArrayLengths( const CompArea &area )
 #endif
 }
 #if JVET_AH0209_PDP
-void IntraPrediction::predIntraAng(const ComponentID compId, PelBuf &piPred, const PredictionUnit &pu, const bool applyFusion, const bool applyPDPFilter)
+void IntraPrediction::predIntraAng(const ComponentID compId, PelBuf &piPred, const PredictionUnit &pu,
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    const bool forceBfOff,
+#endif
+    const bool applyFusion, const bool applyPDPFilter)
 #elif JVET_AB0157_INTRA_FUSION
 void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, const PredictionUnit &pu, const bool applyFusion)
 #else
@@ -1474,6 +1494,13 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #if JVET_W0123_TIMD_FUSION
   bool bExtIntraDir = pu.cu->timd && isLuma( compId );
 #endif
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  int blkQp = pu.cu->qp;
+  bool applyBf = false;
+  CodingStructure& cs = *pu.cu->cs;
+  const bool intraPredBfEnabled = cs.sps->getUseIntraPredBf();
+  const bool isIntraSlice = cs.slice->isIntra() ? true : false;
 #endif
 
 #if JVET_AG0152_SGPM_ITMP_IBC
@@ -1570,7 +1597,18 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     case(BDPCM_IDX):  xPredIntraBDPCM(srcBuf, piPred, isLuma(compID) ? pu.cu->bdpcmMode : pu.cu->bdpcmModeChroma, clpRng); break;
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
     case(PNN_IDX):
-      xPredIntraPnn(pu.cs->picture->getRecoBuf(pu.cu->block(compID)), piPred, srcBuf, *pu.cu, compID);
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+      if( applyBf )
+      {
+        applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+      }
+#endif
+      xPredIntraPnn(pu.cs->picture->getRecoBuf(pu.cu->block(compID)), piPred, srcBuf, *pu.cu, compID
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      , applyBf
+#endif
+      );
       break;
 #endif
 #if JVET_W0123_TIMD_FUSION
@@ -1604,12 +1642,28 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
         weightMode = 4;
       }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+      applyBf = ( pu.cu->timd || pu.cu->timdSad || pu.cu->obicFlag || pu.cu->dimd || (isLuma(compID) && PU::isSgpm(pu)) || forceBfOff || !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+      if( applyBf )
+      {
+        applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+        int intraMode = bExtIntraDir ? uiDirMode >> 1 : uiDirMode;
+        applyBf &= checkBfModeApplication( intraMode );
+      }
+
+      xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+      pu,
+#endif
+      srcBuf, piPred, channelType, clpRng, bExtIntraDir, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, weightMode); break;
+#else
       xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
         pu,
 #endif
         srcBuf, piPred, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, weightMode);
         break;
+#endif
 #else
     default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -1631,19 +1685,40 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 
 #if JVET_AH0209_PDP
   if( !pdpWasApplied )
+  {
 #endif
 #if JVET_X0148_TIMD_PDPC
 #if CIIP_PDPC
-  if( (m_ipaParam.applyPDPC || pu.ciipPDPC) && (uiDirMode == PLANAR_IDX || uiDirMode == DC_IDX) )
-  {
-    xIntraPredPlanarDcPdpc( srcBuf, piPred.buf, piPred.stride, iWidth, iHeight, pu.ciipPDPC );
-  }
+    if( (m_ipaParam.applyPDPC || pu.ciipPDPC) && (uiDirMode == PLANAR_IDX || uiDirMode == DC_IDX) )
+    {
+      xIntraPredPlanarDcPdpc( srcBuf, piPred.buf, piPred.stride, iWidth, iHeight, pu.ciipPDPC );
+    }
 #else
-  if( m_ipaParam.applyPDPC && (uiDirMode == PLANAR_IDX || uiDirMode == DC_IDX) )
-  {
-    xIntraPredPlanarDcPdpc( srcBuf, piPred.buf, piPred.stride, iWidth, iHeight );
-  }
+    if( m_ipaParam.applyPDPC && (uiDirMode == PLANAR_IDX || uiDirMode == DC_IDX) )
+    {
+      xIntraPredPlanarDcPdpc( srcBuf, piPred.buf, piPred.stride, iWidth, iHeight );
+    }
 #endif
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    if( uiDirMode == PLANAR_IDX || uiDirMode == DC_IDX )
+    {
+      applyBf = ( pu.cu->timd || pu.cu->timdSad || pu.cu->obicFlag || pu.cu->dimd || (isLuma(compID) && PU::isSgpm(pu)) || forceBfOff || !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+      if( applyBf )
+      {
+        applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+      }
+
+      if( applyBf )
+      {
+        int blkWidth = piPred.width;
+        int blkHeight = piPred.height;
+        bilateralFilterPredDiamond5x5Clip(cs, toChannelType(compID), piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+      }
+    }
+#endif
+#if JVET_AH0209_PDP
+  }
 #endif
 #if JVET_AG0152_SGPM_ITMP_IBC
   }
@@ -1738,21 +1813,35 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
             && m_xPredIntraOpt( predAngExtra[i], puTmp, modeIdx, clpRng, m_ref, m_refShort)
             )
         {
+
         }
         else
+        {
 #endif
 #if JVET_W0123_TIMD_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+          applyBf = false;
+          xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+          pu,
+#endif
+          srcBuf, predAngExtra[i], channelType, clpRng, false, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS);
+#else
         xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
           pu,
 #endif
           srcBuf, predAngExtra[i], channelType, clpRng, false, srcBuf2nd, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS);
+#endif
 #else
         xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
           pu,
 #endif
           srcBuf, predAngExtra[i], channelType, clpRng);
+#endif
+#if JVET_AH0209_PDP
+        }
 #endif
       }
     }
@@ -2000,6 +2089,20 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
 #endif
     }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+    if( applyBf )
+    {
+      applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+    }
+
+    if( applyBf )
+    {
+      int blkWidth = piPred.width;
+      int blkHeight = piPred.height;
+      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+    }
+#endif
 #else
     const int log2WeightSum = 6;
     Pel *pelPred = piPred.buf;
@@ -2244,11 +2347,21 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
           case(DC_IDX):     xPredIntraDc(srcBuf, predFusion[i], channelType, false); break;
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+          default:
+            applyBf = false;
+            xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+            pu,
+#endif
+            srcBuf, predFusion[i], channelType, clpRng, false, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS); break;
+#else
           default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
             pu,
 #endif
             srcBuf, predFusion[i], channelType, clpRng, false, srcBuf2nd, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS); break;
+#endif
 #else
           default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -2269,6 +2382,186 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       }
     }
     m_ipaParam.applyPDPC = applyPdpc;
+#if JVET_AK0056_WEIGHTED_OBIC
+    PelBuf predAngNonLocDep = m_tempBuffer[7].getBuf( localUnitArea.Y() );
+    PelBuf predAngVer       = m_tempBuffer[5].getBuf( localUnitArea.Y() );
+    PelBuf predAngHor       = m_tempBuffer[6].getBuf( localUnitArea.Y() );
+
+    Pel* pelVer = predAngVer.buf;
+    int strideVer = predAngVer.stride;
+    Pel* pelHor = predAngHor.buf;
+    int strideHor = predAngHor.stride; 
+    Pel *pelNonLocDep = predAngNonLocDep.buf;
+    int strideNonLocDep = predAngNonLocDep.stride;
+
+    bool useLocDepBlending = false;
+    int weightVer = 0, weightHor = 0, weightNonLocDep = 0;
+
+    for (int i = 0; i < OBIC_FUSION_NUM; i++)
+    {
+      if(i == 0 || blendModes[i-1])
+      {
+        if (pu.cu->obicLocDep[i] == 1)
+        {
+          weightVer += pu.cu->obicFusionWeight[i];
+        }
+        else if (pu.cu->obicLocDep[i] == 2)
+        {
+          weightHor += pu.cu->obicFusionWeight[i];
+        }
+        else
+        {
+          weightNonLocDep += pu.cu->obicFusionWeight[i];
+        }
+      }
+    }
+
+    if(weightHor || weightVer)
+    {
+      useLocDepBlending = true;
+    }
+    
+    if(!useLocDepBlending)
+    {
+      pelNonLocDep = piPred.buf;
+      strideNonLocDep = piPred.stride;
+    }
+#if JVET_W0123_TIMD_FUSION 
+    for (int locDep = 0; locDep < 3; locDep++) 
+    {
+      int totWeight = (locDep == 0 ? weightNonLocDep : (locDep == 1 ? weightVer : weightHor));
+      if (totWeight == 0)
+      {
+        continue;
+      }
+
+      int weights[OBIC_FUSION_NUM] = {0};
+      weights[0] = (pu.cu->obicLocDep[0] == locDep) ? pu.cu->obicFusionWeight[0] : 0;
+      for (int i = 1; i < OBIC_FUSION_NUM ; i++)
+      {
+        weights[i] = (blendModes[i-1] && pu.cu->obicLocDep[i] == locDep) ? pu.cu->obicFusionWeight[i] : 0;
+      }
+     
+      int num2blend = 0;
+      int blendIndexes[OBIC_FUSION_NUM] = {0};
+      for (int i = 0; i < OBIC_FUSION_NUM; i++)
+      {
+        if (weights[i] != 0)
+        {
+          blendIndexes[num2blend] = i;
+          num2blend++;
+        }
+      }
+      
+      if( (num2blend == 1 ) || (num2blend <=3 && (totWeight == (1 << (floorLog2(totWeight))) ) ) )
+      {
+        int index = blendIndexes[0]; 
+        if(locDep == 0)
+        {
+          pelNonLocDep = (index == 0 ? piPred.buf : predFusion[index-1].buf);
+          strideNonLocDep = (index == 0 ? piPred.stride : predFusion[index-1].stride);
+        }
+        else if(locDep == 1)
+        {
+          pelVer = (index == 0 ? piPred.buf : predFusion[index-1].buf);
+          strideVer = (index == 0 ? piPred.stride : predFusion[index-1].stride);
+        }
+        else
+        {
+          pelHor = (index == 0 ? piPred.buf : predFusion[index-1].buf);
+          strideHor = (index == 0 ? piPred.stride : predFusion[index-1].stride);
+        }
+        Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+        int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+
+        int factor = 64 / totWeight;
+        if (num2blend == 2)
+        {
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : predFusion[index1-1].buf);
+          int stride1 = (index1 == 0 ? piPred.stride : predFusion[index1-1].stride);
+
+          int w0 = (weights[index]*factor);
+          int w1 = 64 - w0;
+          m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
+        }
+        else if(num2blend == 3)
+        {
+          int index1 = blendIndexes[1];
+          Pel* p1 = (index1 == 0 ? piPred.buf : predFusion[index1-1].buf);
+          int stride1 = (index1 == 0 ? piPred.stride : predFusion[index1-1].stride);
+
+          int index2 = blendIndexes[2];
+          Pel* p2 = (index2 == 0 ? piPred.buf : predFusion[index2-1].buf);
+          int stride2 = (index2 == 0 ? piPred.stride : predFusion[index2-1].stride);
+
+          int w0 = (weights[index]*factor);
+          int w1 = (weights[index1]*factor);
+          int w2 = 64  - w0 - w1;
+          m_dimdBlending(pCur, strideCur, p1, stride1, p2, stride2, w0, w1, w2, width, height);
+        }
+      }
+      else
+#endif
+      {
+        Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+        int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+        
+        Pel *pelPred = piPred.buf;
+        Pel *pelFusion[OBIC_FUSION_NUM - 1];
+
+        for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+        {
+          pelFusion[i] = predFusion[i].buf;
+        }
+        
+        for( int y = 0; y < height; y++ )
+        {
+          for( int x = 0; x < width; x++ )
+          {
+            int blend = pelPred[x] * weights[0];
+            for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+            {
+              blend += blendModes[i] ? pelFusion[i][x] * weights[i + 1] : 0;
+            }
+            pCur[x] = (Pel)(blend / totWeight);
+          }
+          pCur += strideCur;
+          pelPred += piPred.stride;
+          for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+          {
+            pelFusion[i] += predFusion[i].stride;
+          }
+        }
+      }
+    }
+
+    if(useLocDepBlending)
+    {
+      int mode = ((weightHor > 0 && weightVer > 0) ? 0 : (weightVer > 0 ? 1 : 2));
+      Pel *pelDst = piPred.buf;
+      int strideDst = piPred.stride;
+#if JVET_W0123_TIMD_FUSION && JVET_AG0092_ENHANCED_TIMD_FUSION
+      xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#else
+      xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#endif
+    }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+    if( applyBf )
+    {
+      applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+    }
+
+    if( applyBf )
+    {
+      int blkWidth = piPred.width;
+      int blkHeight = piPred.height;
+      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+    }
+#endif
+#else
     const int log2WeightSum = 6;
     Pel *pelPred = piPred.buf;
     Pel *pelFusion[OBIC_FUSION_NUM - 1];
@@ -2299,7 +2592,9 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
         pelFusion[i] += predFusion[i].stride;
       }
     }
+
     return;
+#endif
   }
 #endif
 #if JVET_W0123_TIMD_FUSION
@@ -2414,11 +2709,21 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
     case(DC_IDX):     xPredIntraDc(srcBuf3rd, predFusion, channelType, false); break;
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    default:
+        applyBf = false;
+        xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+        pu,
+#endif
+        srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, 0); break;
+#else
     default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
       pu,
 #endif
       srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS, 0); break;
+#endif
 #else
     default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -2673,6 +2978,21 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       
       xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep,strideNonLocDep, width, height ,mode, weightVer, weightHor, weightNonLocDep, range);
     }
+
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+    if( applyBf )
+    {
+      applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+    }
+
+    if( applyBf )
+    {
+      int blkWidth = piPred.width;
+      int blkHeight = piPred.height;
+      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+    }
+#endif
 #else
     int  w0 = pu.cu->timdFusionWeight[0], w1 = pu.cu->timdFusionWeight[1]; int w2 = pu.cu->timdFusionWeight[2];
 #if INTRA_TRANS_ENC_OPT
@@ -2796,11 +3116,19 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
     case(DC_IDX):     xPredIntraDc(srcBuf3rd, predFusion, channelType, false); break;
 #if JVET_AB0157_INTRA_FUSION
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    default: xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+    pu,
+#endif
+    srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS, 0); break;
+#else
     default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
       pu,
 #endif
       srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode!=NOT_INTRA_SUBPARTITIONS, 0); break;
+#endif
 #else
     default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -3006,6 +3334,20 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 
       xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep,strideNonLocDep, width, height ,mode, weightVer, weightHor, weightNonLocDep, range);
     }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    applyBf = ( !isIntraSlice || !intraPredBfEnabled ) ? false : true;
+    if( applyBf )
+    {
+      applyBf = checkBfApplication(blkQp, piPred.width, piPred.height);
+    }
+
+    if( applyBf )
+    {
+      int blkWidth = piPred.width;
+      int blkHeight = piPred.height;
+      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+    }
+#endif
 #else
     int  w0 = pu.cu->timdFusionWeightSad[0], w1 = pu.cu->timdFusionWeightSad[1]; int w2 = pu.cu->timdFusionWeightSad[2];
 #if INTRA_TRANS_ENC_OPT
@@ -3102,11 +3444,20 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #if JVET_AB0157_INTRA_FUSION
       default:
         int weightMode = 4;
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+       applyBf = false;
+       xPredIntraAng(
+#if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
+       pu,
+#endif
+       srcBuf2, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, weightMode); break;
+#else
         xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
           pu,
 #endif
           srcBuf2, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, weightMode); break;
+#endif
 #else
       default: xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -3160,6 +3511,14 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     }
 #else
     m_if.m_weightedSgpm(pu, width, height, compID, splitDir, piPred, piPred, predFusion);
+#endif
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    if (isLuma(compID))
+    {
+      int secondDimd = 0;
+      pu.cu->dimdDerivedIntraDir    = deriveIpmForTransform(piPred, *pu.cu, secondDimd);
+      pu.cu->dimdDerivedIntraDir2nd = secondDimd;
+    }
 #endif
   }
 #endif
@@ -4535,7 +4894,11 @@ void IntraPrediction::xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
   const PredictionUnit& pu,
 #endif
-  const CPelBuf &pSrc, PelBuf &pDst, const ChannelType channelType, const ClpRng& clpRng, const bool bExtIntraDir, const CPelBuf &pSrc2nd, bool isISP, int weightMode)
+  const CPelBuf &pSrc, PelBuf &pDst, const ChannelType channelType, const ClpRng& clpRng, const bool bExtIntraDir, const CPelBuf &pSrc2nd,
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool applyBf, CodingStructure& cs, int blkQp, const PredictionUnit& puReco,
+#endif
+  bool isISP, int weightMode)
 #else
 void IntraPrediction::xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -4574,10 +4937,41 @@ void IntraPrediction::xPredIntraAng(
   Pel* refMain;
   Pel* refSide;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool isRefSampleMadSkipBf = false;
+
+  if( multiRefIdx == 0 && !isISP )
+  {
+    const int refSampleStride = pSrc.stride;
+    const Pel* refSamplePrt   = pSrc.buf;
+    int topLengthLog2   = floorLog2( m_topRefLength  + 1 );
+    int leftLengthLog2  = floorLog2( m_leftRefLength + 1 );
+    int topLength  = 1 << topLengthLog2;
+    int leftLength = 1 << leftLengthLog2;
+
+    int topMad  = calcRefSampleTexture(refSamplePrt +               0, refSampleStride, topLength,          1, topLengthLog2  );
+    int leftMad = calcRefSampleTexture(refSamplePrt + refSampleStride, refSampleStride, leftLength,         1, leftLengthLog2 );//Left Still Store by One Line
+
+    int avgMad = ( topMad + leftMad + 1 ) >> 1;
+
+    int refSampleMad = std::min(avgMad >> 4, 15);
+
+    isRefSampleMadSkipBf = refSampleMad > 10 ? true : false;
+  }
+
+  if( isISP || multiRefIdx != 0 || isRefSampleMadSkipBf )
+  {
+    applyBf = false;
+  }
+#endif
 
 #if !INTRA_6TAP
   Pel  refAbove[2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
   Pel  refLeft [2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
+#else
+#if JVET_AK0087_INTRA_8TAP
+  Pel refAbove[(MAX_CU_SIZE << 3) + 7 + 33 * MAX_REF_LINE_IDX];
+  Pel refLeft[(MAX_CU_SIZE << 3) + 7 + 33 * MAX_REF_LINE_IDX];
 #else
   // 2 pixels more for 6 tap filter.
 #if JVET_AC0094_REF_SAMPLES_OPT
@@ -4586,6 +4980,7 @@ void IntraPrediction::xPredIntraAng(
 #else
   Pel  refAbove[2 * MAX_CU_SIZE + 5 + 33 * MAX_REF_LINE_IDX];
   Pel  refLeft[2 * MAX_CU_SIZE + 5 + 33 * MAX_REF_LINE_IDX];
+#endif
 #endif
 #if JVET_AB0157_INTRA_FUSION
   if( !bRefL1Only)
@@ -4599,6 +4994,10 @@ void IntraPrediction::xPredIntraAng(
 
   Pel *refMain2nd = NULL;
   Pel *refSide2nd = NULL;
+#if JVET_AK0087_INTRA_8TAP
+  Pel refAbove2nd[(MAX_CU_SIZE << 3) + 12 + 33 * (MAX_REF_LINE_IDX + 1)];
+  Pel refLeft2nd[(MAX_CU_SIZE << 3) + 12 + 33 * (MAX_REF_LINE_IDX + 1)];
+#else
 #if JVET_AC0094_REF_SAMPLES_OPT
   Pel refAbove2nd[(MAX_CU_SIZE << 3) + 10 + 33 * (MAX_REF_LINE_IDX + 1)];
   Pel refLeft2nd[(MAX_CU_SIZE << 3) + 10 + 33 * (MAX_REF_LINE_IDX + 1)];
@@ -4608,11 +5007,24 @@ void IntraPrediction::xPredIntraAng(
 #endif
 #endif
 #endif
+#endif
 
   // Initialize the Main and Left reference array.
   if (intraPredAngle < 0)
   {
 #if INTRA_6TAP
+#if JVET_AK0087_INTRA_8TAP
+    const Pel *src = pSrc.buf;
+    Pel *dst = refAbove + height + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (width + 3 + multiRefIdx + 1));
+
+    src = pSrc.buf + pSrc.stride;
+    dst = refLeft + width + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (height + 3 + multiRefIdx + 1));
+
+    refMain = bIsModeVer ? refAbove + height + 2 : refLeft + width + 2;
+    refSide = bIsModeVer ? refLeft + width + 2: refAbove + height + 2;
+#else
     // x, y range increase by 1 (right extend)
     const Pel *src = pSrc.buf;
     Pel *dst = refAbove + height + 1;
@@ -4624,6 +5036,7 @@ void IntraPrediction::xPredIntraAng(
 
     refMain = bIsModeVer ? refAbove + height + 1 : refLeft + width + 1;
     refSide = bIsModeVer ? refLeft + width + 1: refAbove + height + 1;
+#endif
 
     // Extend the Main reference to the left.
     int sizeSide = bIsModeVer ? height : width;
@@ -4637,8 +5050,12 @@ void IntraPrediction::xPredIntraAng(
       }
     }
 #endif
+#if JVET_AK0087_INTRA_8TAP
+    for (int k = -(sizeSide + 2); k <= -1; k++)
+#else
     // left extend by 1
     for (int k = -(sizeSide + 1); k <= -1; k++)
+#endif
     {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
       if (m_refSampleForOBMC && !(m_intraOBMCNeighState == INTRA_OBMC_ONLY_LEFT_AVAIL && intraPredAngle == -32))
@@ -4698,6 +5115,36 @@ void IntraPrediction::xPredIntraAng(
   else
   {
 #if INTRA_6TAP
+#if JVET_AK0087_INTRA_8TAP
+    const Pel *src = pSrc.buf;
+    Pel *dst = refAbove + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx + 2));
+
+    src = pSrc.buf + pSrc.stride;
+    dst = refLeft + 2;
+    ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + multiRefIdx + 2));
+
+    refAbove[1] = refAbove[2];
+    refAbove[0] = refAbove[1];
+    refLeft[1] = refLeft[2];
+    refLeft[0] = refLeft[1];
+    refMain = bIsModeVer ? refAbove + 2 : refLeft + 2;
+    refSide = bIsModeVer ? refLeft + 2 : refAbove + 2;
+
+    const int log2Ratio = floorLog2(width) - floorLog2(height);
+    const int s = std::max<int>(0, bIsModeVer ? log2Ratio : -log2Ratio);
+#if JVET_W0123_TIMD_FUSION
+    const int maxIndex  = (multiRefIdx << s) + 6;
+#else
+    const int maxIndex = (multiRefIdx << s) + 2;
+#endif
+    const int refLength = bIsModeVer ? m_topRefLength : m_leftRefLength;
+    const Pel val = refMain[refLength + multiRefIdx];
+    for (int z = 1; z <= (maxIndex+2); z++)
+    {
+      refMain[refLength + multiRefIdx + z] = val;
+    }
+#else
     const Pel *src = pSrc.buf;
     Pel *dst = refAbove + 1;
     ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx + 1));
@@ -4727,6 +5174,7 @@ void IntraPrediction::xPredIntraAng(
     {
       refMain[refLength + multiRefIdx + z] = val;
     }
+#endif
 #else
     for (int x = 0; x <= m_topRefLength + multiRefIdx; x++)
     {
@@ -4767,6 +5215,18 @@ void IntraPrediction::xPredIntraAng(
     // Initialize the Main and Left reference array.
     if (intraPredAngle < 0)
     {
+#if JVET_AK0087_INTRA_8TAP
+      const Pel *src = pSrc2nd.buf;
+      Pel *      dst = refAbove2nd + height + 3;
+      ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + 2 + multiRefIdx2nd));
+
+      src = pSrc2nd.buf + pSrc2nd.stride;
+      dst = refLeft2nd + width + 3;
+      ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + 2 + multiRefIdx2nd));
+
+      refMain2nd = bIsModeVer ? refAbove2nd + height + 3 : refLeft2nd + width + 3;
+      refSide2nd = bIsModeVer ? refLeft2nd + width + 3 : refAbove2nd + height + 3;
+#else
       // x, y range increase by 1 (right extend)
       const Pel *src = pSrc2nd.buf;
       Pel *      dst = refAbove2nd + height + 2;
@@ -4778,12 +5238,17 @@ void IntraPrediction::xPredIntraAng(
 
       refMain2nd = bIsModeVer ? refAbove2nd + height + 2 : refLeft2nd + width + 2;
       refSide2nd = bIsModeVer ? refLeft2nd + width + 2 : refAbove2nd + height + 2;
+#endif
 
       // Extend the Main reference to the left.
       int sizeSide = bIsModeVer ? height : width;
       int sizeSideRange = bIsModeVer ? m_leftRefLength + multiRefIdx2nd : m_topRefLength + multiRefIdx2nd;
+#if JVET_AK0087_INTRA_8TAP
+      for (int k = -(sizeSide + 3); k <= -1; k++)
+#else
       // left extend by 1
       for (int k = -(sizeSide + 2); k <= -1; k++)
+#endif
       {
         int frac32precision = (-k * absInvAngle + 8) >> 4;
         int intpel          = frac32precision >> 5;
@@ -4812,6 +5277,37 @@ void IntraPrediction::xPredIntraAng(
     }
     else
     {
+#if JVET_AK0087_INTRA_8TAP
+      const Pel *src = pSrc2nd.buf;
+      Pel *      dst = refAbove2nd + 2;
+      ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx2nd + 2));
+
+      src = pSrc2nd.buf + pSrc2nd.stride;
+      dst = refLeft2nd + 2;
+      ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + multiRefIdx2nd + 2));
+
+      refAbove2nd[1] = refAbove2nd[2];
+      refAbove2nd[0] = refAbove2nd[1];
+      refLeft2nd[1]  = refLeft2nd[2];
+      refLeft2nd[0]  = refLeft2nd[1];
+      refMain2nd     = bIsModeVer ? refAbove2nd + 2 : refLeft2nd + 2;
+      refSide2nd     = bIsModeVer ? refLeft2nd + 2 : refAbove2nd + 2;
+
+      const int log2Ratio = floorLog2(width) - floorLog2(height);
+      const int s = std::max<int>(0, bIsModeVer ? log2Ratio : -log2Ratio);
+
+#if JVET_W0123_TIMD_FUSION
+      const int maxIndex = (multiRefIdx2nd << s) + 6 + 4;
+#else
+      const int maxIndex = (multiRefIdx2nd << s) + 2;
+#endif
+      const int refLength = bIsModeVer ? m_topRefLength : m_leftRefLength;
+      const Pel val       = refMain2nd[refLength + multiRefIdx2nd];
+      for (int z = 1; z <= (maxIndex + 2); z++)
+      {
+        refMain2nd[refLength + multiRefIdx2nd + z] = val;
+      }
+#else
       const Pel *src = pSrc2nd.buf;
       Pel *      dst = refAbove2nd + 1;
       ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx2nd + 1));
@@ -4842,6 +5338,7 @@ void IntraPrediction::xPredIntraAng(
       {
         refMain2nd[refLength + multiRefIdx2nd + z] = val;
       }
+#endif
     }
 
 
@@ -4915,6 +5412,16 @@ void IntraPrediction::xPredIntraAng(
         {
           const bool useCubicFilter = !m_ipaParam.interpolationFlag;
 
+#if JVET_AK0087_INTRA_8TAP
+          bool use8TapFilter=false;
+          if (useCubicFilter)
+          {
+            const int log2Size = (floorLog2(width) + floorLog2(height)) >> 1;
+            const int diff = std::min( abs( intraPredAngle - (bExtIntraDir ? EXT_HOR_IDX : HOR_IDX) ), abs( intraPredAngle - (bExtIntraDir ? EXT_VER_IDX : VER_IDX) ) );
+            use8TapFilter = (diff > (bExtIntraDir ? log2Size: log2Size/2)) && (log2Size < (bExtIntraDir ? 6 : 4));
+          }
+#endif
+
 #if INTRA_6TAP
           const TFilterCoeff        intraSmoothingFilter[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract << 1)), TFilterCoeff(128 - (deltaFract << 1)), TFilterCoeff(64 + (deltaFract << 1)), TFilterCoeff(deltaFract << 1), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2[6] = { TFilterCoeff(16 - (deltaFract >> 1)), TFilterCoeff(64 - 3*(deltaFract >> 1)), TFilterCoeff(96 - (deltaFract)), TFilterCoeff(64 + (deltaFract)),
@@ -4923,7 +5430,14 @@ void IntraPrediction::xPredIntraAng(
           const TFilterCoeff        intraSmoothingFilterExt[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract)), TFilterCoeff(128 - (deltaFract)), TFilterCoeff(64 + (deltaFract)), TFilterCoeff(deltaFract), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2Ext[6] = { TFilterCoeff(16 - (deltaFract >> 2)), TFilterCoeff(64 - 3*(deltaFract >> 2)), TFilterCoeff(96 - (deltaFract >> 1)), TFilterCoeff(64 + (deltaFract >> 1)),
             TFilterCoeff(16 + 3*(deltaFract >> 2)), TFilterCoeff((deltaFract >> 2)) };
+#if JVET_AK0087_INTRA_8TAP
+          const TFilterCoeff* const f = (useCubicFilter)  ? (use8TapFilter  ? ( bExtIntraDir ? InterpolationFilter::getExtIntra8tapCubicFilter(deltaFract) : InterpolationFilter::getIntra8tapCubicFilter(deltaFract) )
+                                                                            : ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract) : InterpolationFilter::getIntraLumaFilterTable(deltaFract) ) )
+                                                          : (width >= 32 && height >= 32) ? (bExtIntraDir ? intraSmoothingFilter2Ext : intraSmoothingFilter2) 
+                                                                                          : (bExtIntraDir ? intraSmoothingFilterExt  : intraSmoothingFilter);
+#else
           const TFilterCoeff* const f = (useCubicFilter) ? ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract) : InterpolationFilter::getIntraLumaFilterTable(deltaFract)) : (width >=32 && height >=32)? (bExtIntraDir ? intraSmoothingFilter2Ext : intraSmoothingFilter2) : (bExtIntraDir ? intraSmoothingFilterExt : intraSmoothingFilter);
+#endif
 #else
           const TFilterCoeff* const f = (useCubicFilter) ? InterpolationFilter::getIntraLumaFilterTable(deltaFract) : (width >=32 && height >=32)? intraSmoothingFilter2 : intraSmoothingFilter;
 #endif
@@ -4952,9 +5466,60 @@ void IntraPrediction::xPredIntraAng(
           const TFilterCoeff        intraSmoothingFilterExtRL[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract2nd)), TFilterCoeff(128 - (deltaFract2nd)), TFilterCoeff(64 + (deltaFract2nd)), TFilterCoeff(deltaFract2nd), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2ExtRL[6] = { TFilterCoeff(16 - (deltaFract2nd >> 2)), TFilterCoeff(64 - 3*(deltaFract2nd >> 2)), TFilterCoeff(96 - (deltaFract2nd >> 1)), TFilterCoeff(64 + (deltaFract2nd >> 1)),
             TFilterCoeff(16 + 3*(deltaFract2nd >> 2)), TFilterCoeff((deltaFract2nd >> 2)) };
+#if JVET_AK0087_INTRA_8TAP
+          const TFilterCoeff* const fRL = (useCubicFilter)  ? ( use8TapFilter  ? ( bExtIntraDir ? InterpolationFilter::getExtIntra8tapCubicFilter(deltaFract2nd) : InterpolationFilter::getIntra8tapCubicFilter(deltaFract2nd))
+                                                                               : ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract2nd) : InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd)) )
+                                                            : (width >=32 && height >=32) ? (bExtIntraDir ? intraSmoothingFilter2ExtRL : intraSmoothingFilter2RL) 
+                                                                                          : (bExtIntraDir ? intraSmoothingFilterExtRL  : intraSmoothingFilterRL);
+#else
           const TFilterCoeff* const fRL = (useCubicFilter) ? ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract2nd) : InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd)) : (width >=32 && height >=32)? (bExtIntraDir ? intraSmoothingFilter2ExtRL : intraSmoothingFilter2RL) : (bExtIntraDir ? intraSmoothingFilterExtRL : intraSmoothingFilterRL);
+#endif
 #else
           const TFilterCoeff* const fRL = (useCubicFilter) ? InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd) : (width >=32 && height >=32)? intraSmoothingFilter2RL : intraSmoothingFilterRL;
+#endif
+#if JVET_AK0087_INTRA_8TAP
+          if ( use8TapFilter )
+          {
+            const int normNum = 128; 
+            const int bitShift = 8;
+            if (weightMode == 0)
+            {
+              for (int x = 0; x < width; x++)
+              {
+                Pel *q = refMain2nd + deltaInt2nd + x - 2;
+                const int val32 = ( ((int) fRL[0] * q[0] + (int) fRL[1] * q[1] + (int) fRL[2] * q[2] + (int) fRL[3] * q[3] + (int) fRL[4] * q[4] + (int) fRL[5] * q[5] + (int) fRL[6] * q[6] + (int) fRL[7] * q[7]) + normNum) >> bitShift;
+                const Pel val   = (Pel)ClipPel(val32, clpRng);
+                pDsty[x]        = ClipPel(val, clpRng);   // always clip even though not always needed
+              }
+            }
+            else if(weightMode == 4)
+            {
+              for (int x = 0; x < width; x++)
+              {
+                Pel *p = refMain + deltaInt + x - 2;
+                const int val32 = ((int) f[0] * p[0] + (int) f[1] * p[1] + (int) f[2] * p[2] + (int) f[3] * p[3] + (int) f[4] * p[4] + (int) f[5] * p[5]  + (int) f[6] * p[6] + (int) f[7] * p[7] + normNum) >> bitShift;
+                const Pel val   = (Pel)ClipPel(val32, clpRng);
+                pDsty[x]        = ClipPel(val, clpRng);   // always clip even though not always needed
+              }
+            }
+            else
+            {
+              for (int x = 0; x < width; x++)
+              {
+                const int w0 = weightMode;
+                const int w1 = 4 - weightMode;
+                Pel *q     = refMain2nd + deltaInt2nd + x - 2;
+                Pel *p     = refMain + deltaInt + x - 2;
+                const int val32 = (w0*((int) f[0] * p[0] + (int) f[1] * p[1] + (int) f[2] * p[2] + (int) f[3] * p[3] + (int) f[4] * p[4] + (int) f[5] * p[5] + (int) f[6] * p[6] + (int) f[7] * p[7])
+                                 + w1*((int) fRL[0] * q[0] + (int) fRL[1] * q[1] + (int) fRL[2] * q[2] + (int) fRL[3] * q[3] + (int) fRL[4] * q[4] + (int) fRL[5] * q[5] + (int) fRL[6] * q[6] + (int) fRL[7] * q[7])
+                                 + normNum*4 ) >> (bitShift+2);
+                const Pel val   = (Pel)ClipPel(val32, clpRng);
+                pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
+              }
+            }
+          }
+          else //6-tap non-smoothing interpolation filter or smoothing interpolation filters
+          {
 #endif
           if (weightMode == 0)
           {
@@ -4994,6 +5559,9 @@ void IntraPrediction::xPredIntraAng(
               pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
             }
           }
+#if JVET_AK0087_INTRA_8TAP
+          }
+#endif
 #else
           for (int x = 0; x < width; x++)
           {
@@ -5113,6 +5681,14 @@ void IntraPrediction::xPredIntraAng(
       pDstBuf += dstStride;
     }
   }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  if( applyBf )
+  {
+    int blkWidth   = pDst.width;
+    int blkHeight  = pDst.height;
+    bilateralFilterPredDiamond5x5Clip(cs, channelType, pDst, blkWidth, blkHeight, blkQp, clpRng, true, *pu.cu );
+  }
+#endif
 }
 #if JVET_AH0076_OBIC
 void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[OBIC_FUSION_NUM - 1], bool blendModes[OBIC_FUSION_NUM - 1], int planarIdx)
@@ -5125,6 +5701,191 @@ void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit 
   {
     predUsingBv(predFusionBV.buf, predFusionBV.stride, pu.cu->bvDimd, *pu.cu);
   }
+#if JVET_AK0056_WEIGHTED_OBIC
+  Pel *pelFusion[OBIC_FUSION_NUM - 1];
+  int strideFusion[OBIC_FUSION_NUM - 1];
+
+  for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+  {
+    pelFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.buf : predFusion[i].buf;
+    strideFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.stride : predFusion[i].stride;
+  }
+
+  PelBuf predAngNonLocDep = m_tempBuffer[7].getBuf( localUnitArea.Y() );
+  PelBuf predAngVer       = m_tempBuffer[5].getBuf( localUnitArea.Y() );
+  PelBuf predAngHor       = m_tempBuffer[6].getBuf( localUnitArea.Y() );
+
+  Pel* pelVer = predAngVer.buf;
+  int strideVer = predAngVer.stride;
+  Pel* pelHor = predAngHor.buf;
+  int strideHor = predAngHor.stride; 
+  Pel *pelNonLocDep = predAngNonLocDep.buf;
+  int strideNonLocDep = predAngNonLocDep.stride;
+
+  bool useLocDepBlending = false;
+  int weightVer = 0, weightHor = 0, weightNonLocDep = 0;
+
+  for (int i = 0; i < OBIC_FUSION_NUM; i++)
+  {
+    if(i == 0 || blendModes[i-1])
+    {
+      if (pu.cu->obicLocDep[i] == 1)
+      {
+        weightVer += pu.cu->obicFusionWeight[i];
+      }
+      else if (pu.cu->obicLocDep[i] == 2)
+      {
+        weightHor += pu.cu->obicFusionWeight[i];
+      }
+      else
+      {
+        weightNonLocDep += pu.cu->obicFusionWeight[i];
+      }
+    }
+  }
+  
+  if(weightHor || weightVer)
+  {
+    useLocDepBlending = true;
+  }
+    
+  if(!useLocDepBlending)
+  {
+    pelNonLocDep = piPred.buf;
+    strideNonLocDep = piPred.stride;
+  }
+#if JVET_W0123_TIMD_FUSION 
+  for (int locDep = 0; locDep < 3; locDep++) 
+  {
+    for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+    {
+      pelFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.buf : predFusion[i].buf;
+      strideFusion[i] = (i == planarIdx && pu.cu->isBvDimd) ? predFusionBV.stride : predFusion[i].stride;
+    }  
+
+    int totWeight = (locDep == 0 ? weightNonLocDep : (locDep == 1 ? weightVer : weightHor));
+    if (totWeight == 0)
+    {
+      continue;
+    }
+
+    int weights[OBIC_FUSION_NUM] = {0};
+    weights[0] = (pu.cu->obicLocDep[0] == locDep) ? pu.cu->obicFusionWeight[0] : 0;
+    for (int i = 1; i < OBIC_FUSION_NUM ; i++)
+    {
+      weights[i] = (blendModes[i-1] && pu.cu->obicLocDep[i] == locDep) ? pu.cu->obicFusionWeight[i] : 0;
+    }
+   
+    int num2blend = 0;
+    int blendIndexes[OBIC_FUSION_NUM] = {0};
+    for (int i = 0; i < OBIC_FUSION_NUM; i++)
+    {
+      if (weights[i] != 0)
+      {
+        blendIndexes[num2blend] = i;
+        num2blend++;
+      }
+    }
+      
+    if( (num2blend == 1 ) || (num2blend <=3 && (totWeight == (1 << (floorLog2(totWeight))) ) ) )
+    {
+      int index = blendIndexes[0]; 
+      if(locDep == 0)
+      {
+        pelNonLocDep = (index == 0 ? piPred.buf : pelFusion[index-1]);
+        strideNonLocDep = (index == 0 ? piPred.stride : strideFusion[index-1]);
+      }
+      else if(locDep == 1)
+      {
+        pelVer = (index == 0 ? piPred.buf : pelFusion[index-1]);
+        strideVer = (index == 0 ? piPred.stride : strideFusion[index-1]);
+      }
+      else
+      {
+        pelHor = (index == 0 ? piPred.buf : pelFusion[index-1]);
+        strideHor = (index == 0 ? piPred.stride : strideFusion[index-1]);
+      }
+      Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+      int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+
+      int factor = 64 / totWeight;
+      if (num2blend == 2)
+      {
+        int index1 = blendIndexes[1];
+        Pel* p1 = (index1 == 0 ? piPred.buf : pelFusion[index1-1]);
+        int stride1 = (index1 == 0 ? piPred.stride : strideFusion[index1-1]);
+
+        int w0 = (weights[index]*factor);
+        int w1 = 64 - w0;
+        m_timdBlending(pCur, strideCur, p1, stride1, w0, w1,width, height);
+      }
+      else if(num2blend == 3)
+      {
+        int index1 = blendIndexes[1];
+        Pel* p1 = (index1 == 0 ? piPred.buf : pelFusion[index1-1]);
+        int stride1 = (index1 == 0 ? piPred.stride : strideFusion[index1-1]);
+
+        int index2 = blendIndexes[2];
+        Pel* p2 = (index2 == 0 ? piPred.buf : pelFusion[index2-1]);
+        int stride2 = (index2 == 0 ? piPred.stride : strideFusion[index2-1]);
+
+        int w0 = (weights[index]*factor);
+        int w1 = (weights[index1]*factor);
+        int w2 = 64  - w0 - w1;
+        m_dimdBlending(pCur, strideCur, p1, stride1, p2, stride2, w0, w1, w2, width, height);
+      }
+    }
+    else
+#endif
+    {
+      Pel* pCur = (locDep == 0 ? pelNonLocDep : (locDep == 1 ? pelVer : pelHor));
+      int strideCur = (locDep == 0 ? strideNonLocDep : (locDep == 1 ? strideVer : strideHor));
+      Pel *pelPred = piPred.buf;
+        
+      for( int y = 0; y < height; y++ )
+      {
+        for( int x = 0; x < width; x++ )
+        {
+          int blend = pelPred[x] * weights[0];
+          for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+          {
+            blend += blendModes[i] ? pelFusion[i][x] * weights[i + 1] : 0;
+          }
+          pCur[x] = (Pel)(blend / totWeight);
+        }
+        pCur += strideCur;
+        pelPred += piPred.stride;
+        for (int i = 0; i < OBIC_FUSION_NUM - 1; i++)
+        {
+          pelFusion[i] += strideFusion[i];
+        }
+      }
+    }
+  }
+
+  if(useLocDepBlending)
+  {
+    int mode = ((weightHor > 0 && weightVer > 0) ? 0 : (weightVer > 0 ? 1 : 2));
+    Pel *pelDst = piPred.buf;
+    int strideDst = piPred.stride;
+#if JVET_W0123_TIMD_FUSION && JVET_AG0092_ENHANCED_TIMD_FUSION
+    xLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#else
+    xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
+#endif
+  }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  int blkQp = pu.cu->qp;
+  int blkWidth = piPred.width;
+  int blkHeight = piPred.height;
+  CodingStructure &cs = *pu.cu->cs;
+  bool applyBf = checkBfApplication(blkQp, blkWidth, blkHeight);
+  if( applyBf && cs.slice->isIntra() && cs.sps->getUseIntraPredBf() )
+  {
+    bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, cs.slice->clpRng(COMPONENT_Y), true, *pu.cu );
+  }
+#endif
+#else
   const int log2WeightSum = 6;
   Pel *pelPred = piPred.buf;
   Pel *pelFusion[OBIC_FUSION_NUM - 1];
@@ -5164,7 +5925,9 @@ void IntraPrediction::generateObicBlending(PelBuf &piPred, const PredictionUnit 
     }
     pelFusionBv += predFusionBV.stride;
   }
+
   return;
+#endif
 }
 #if JVET_AJ0267_ADAPTIVE_HOG
 void IntraPrediction::generateDimdBlending(PelBuf &piPred, const PredictionUnit &pu, PelBuf predFusion[DIMD_FUSION_NUM - 2], PelBuf &plnBlock)
@@ -5457,6 +6220,17 @@ void IntraPrediction::generateDimdBlending(PelBuf &piPred, const PredictionUnit 
       xDimdLocationdepBlending(pelDst, strideDst, pelVer, strideVer, pelHor, strideHor, pelNonLocDep, strideNonLocDep, width, height,mode, weightVer, weightHor, weightNonLocDep);
 #endif
     }
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    int blkQp = pu.cu->qp;
+    int blkWidth = piPred.width;
+    int blkHeight = piPred.height;
+    CodingStructure &cs = *pu.cu->cs;
+    bool applyBf = checkBfApplication(blkQp, blkWidth, blkHeight);
+    if( applyBf && cs.slice->isIntra() && cs.sps->getUseIntraPredBf() )
+    {
+      bilateralFilterPredDiamond5x5Clip(cs, CHANNEL_TYPE_LUMA, piPred, blkWidth, blkHeight, blkQp, cs.slice->clpRng(COMPONENT_Y), true, *pu.cu );
+    }
+#endif
 #else
     const int log2WeightSum = 6;
     Pel *pelPred = piPred.buf;
@@ -8053,7 +8827,11 @@ void IntraPrediction::xFilterReferenceSamples(const Pel *refBufUnfiltered, Pel *
 }
 
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-void IntraPrediction::xPredIntraPnn(const CPelBuf& recoBuf, PelBuf& pDst, const CPelBuf& srcBuf, CodingUnit& cu, const ComponentID compID)
+void IntraPrediction::xPredIntraPnn(const CPelBuf& recoBuf, PelBuf& pDst, const CPelBuf& srcBuf, CodingUnit& cu, const ComponentID compID
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+ , bool applyBf
+#endif
+  )
 {
   const CompArea& area = cu.block(compID);
   const ChannelType chType = toChannelType(compID);
@@ -8062,6 +8840,22 @@ void IntraPrediction::xPredIntraPnn(const CPelBuf& recoBuf, PelBuf& pDst, const 
   m_intraPredNN.collectContextWidthHeightMasksInPixels(area, recoBuf.buf, recoBuf.stride, sps.getBitDepth(chType), cu, compID);
   bool isPredictionRun = false;
   m_intraPredNN.predictPnn(pDst, srcBuf, sps.getBitDepth(chType), area, isPredictionRun);
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  PelBuf predictedBuf( m_intraPredNN.getNnIntraPredPtr(), pDst.width, pDst.height);
+  if( applyBf && isPredictionRun )
+  {
+    int blkWidth = pDst.width;
+    int blkHeight = pDst.height;
+    int blkQp = cu.qp;
+    CodingStructure &cs = *cu.cs;
+    const ClpRng& clpRng(cs.slice->clpRng(compID));
+
+    bilateralFilterPredDiamond5x5Clip(cs, toChannelType(compID), predictedBuf, blkWidth, blkHeight, blkQp, clpRng, true, cu );
+  }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  pDst.copyFrom(predictedBuf);
+#endif
   if (isPredictionRun)
   {
 #if JVET_AI0050_INTER_MTSS
@@ -8409,7 +9203,7 @@ void IntraPrediction::xPredTimdIntraPlanar( const CPelBuf &pSrc, Pel* rpDst, int
   }
   else
   {
-    assert(0);
+    CHECK(true, "wrong case");
   }
 }
 
@@ -8463,7 +9257,7 @@ void IntraPrediction::xPredTimdIntraDc( const PredictionUnit &pu, const CPelBuf 
   }
   else
   {
-    assert(0);
+    CHECK( true, "wrong case" );
   }
 }
 
@@ -8683,7 +9477,7 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
     }
     else
     {
-      assert(0);
+      CHECK( true, "wrong case" );
     }
   }
   else
@@ -8853,7 +9647,7 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
       else // if (eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR)
       {
         Pel *pDsty=pDst;
-        assert(eTempType == LEFT_NEIGHBOR || eTempType == ABOVE_NEIGHBOR);
+        CHECK(eTempType != LEFT_NEIGHBOR && eTempType != ABOVE_NEIGHBOR, "Wrong template type");
         int iRegionWidth, iRegionHeight;
         if((eTempType == LEFT_NEIGHBOR && bIsModeVer)||(eTempType == ABOVE_NEIGHBOR && !bIsModeVer))
         {
@@ -8942,7 +9736,7 @@ void IntraPrediction::xPredTimdIntraAng( const CPelBuf &pSrc, const ClpRng& clpR
     }
     else
     {
-      assert(0);
+      CHECK( true, "wrong case" );
     }
   }
 }
@@ -9510,6 +10304,9 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
   uint8_t mpmList[numRegularMode];
   if (PU::isRegressionSgpmAllow(pu) && (pu.cs->pcv->isEncoder || PU::isRegressionSgpm(pu)))
   {
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = false;
+#endif
     int numCand = 0;
     mpmList[numCand++] = PLANAR_IDX;
     numCand += getSpatialIpm(pu, mpmList + 1, numRegularMode - 1
@@ -9526,6 +10323,9 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
       , false 
 #endif
     );
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = true;
+#endif
     for (int modeIdx = 0; modeIdx < numRegularMode; modeIdx++)
     {
       ipmNeededforRsgpm[mpmList[modeIdx]] = true;
@@ -10276,6 +11076,14 @@ void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, in
     {
       iMode = MAP67TO131(iMode);
     }
+#if JVET_AK0059_MDIP && !JVET_AK0061_PDP_MPM
+    if(g_intraModeCost[iMode] != MAX_UINT64)
+    {
+      uiCost = g_intraModeCost[iMode];
+    }
+    else
+    {
+#endif
     initPredTimdIntraParams(pu, area, iMode);
     predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
       (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
@@ -10303,8 +11111,11 @@ void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, in
     }
     else
     {
-      assert(0);
+      CHECK( true, "wrong case" );
     }
+#if JVET_AK0059_MDIP && !JVET_AK0061_PDP_MPM
+    }
+#endif
 #if JVET_AK0061_PDP_MPM
     }
 #endif
@@ -10324,6 +11135,156 @@ void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, in
   {
     mpm[i + iStartIdx] = uiModeList[i];
   }
+}
+#endif
+
+#if JVET_AK0059_MDIP
+void IntraPrediction::deriveMdipSorted(const PredictionUnit& pu, int* list, int& sortedSize, int iStartIdx)
+{
+  SizeType uiWidth = pu.lwidth();
+  SizeType uiHeight = pu.lheight();
+  const CompArea area = pu.Y();
+  int channelBitDepth = pu.cu->slice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
+
+  int      iCurX = pu.lx();
+  int      iCurY = pu.ly();
+  int      iRefX = -1, iRefY = -1;
+  uint32_t uiRefWidth = 0, uiRefHeight = 0;
+  int      iTempWidth = 1, iTempHeight = 1;
+
+  TemplateType eTempType = CU::deriveTimdRefType(iCurX, iCurY, uiWidth, uiHeight, iTempWidth, iTempHeight, iRefX,
+    iRefY, uiRefWidth, uiRefHeight);
+
+  uint32_t      uiRealW2   = uiRefWidth + (eTempType == LEFT_NEIGHBOR ? iTempWidth : 0);
+  uint32_t      uiRealH2   = uiRefHeight + (eTempType == ABOVE_NEIGHBOR ? iTempHeight : 0);
+  const UnitArea localUnitArea(pu.chromaFormat, Area(0, 0, uiRealW2, uiRealH2));
+  uint32_t       uiPredStride = m_intraPredBuffer[0].getBuf(localUnitArea.Y()).stride;
+  Pel *piPred = m_intraPredBuffer[0].getBuf(localUnitArea.Y()).buf;
+
+  if (eTempType == NO_NEIGHBOR)
+  {
+    return;
+  }
+
+  const CodingStructure& cs = *pu.cs;
+  m_ipaParam.multiRefIndex = iTempWidth;
+  Pel* piOrg = cs.picture->getRecoBuf(area).buf;
+  int  iOrgStride = cs.picture->getRecoBuf(area).stride;
+  piOrg += (iRefY - iCurY) * iOrgStride + (iRefX - iCurX);
+  DistParam distParamSad[2];   // above, left
+  distParamSad[0].applyWeight = false;
+  distParamSad[0].useMR = false;
+  distParamSad[1].applyWeight = false;
+  distParamSad[1].useMR = false;
+  if (eTempType == LEFT_ABOVE_NEIGHBOR)
+  {
+#if JVET_AJ0096_SATD_REORDER_INTRA
+    m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg + iTempWidth, piPred + iTempWidth, iOrgStride,
+                                    uiPredStride, channelBitDepth, COMPONENT_Y, uiWidth, iTempHeight, 0, 1, true);
+                                    m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg + iTempHeight * iOrgStride,
+                                    piPred + iTempHeight * uiPredStride, iOrgStride, uiPredStride, channelBitDepth,
+                                    COMPONENT_Y, iTempWidth, uiHeight, 0, 1, true);
+#else
+    m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg + iTempWidth, piPred + iTempWidth, iOrgStride,
+                                     uiPredStride, channelBitDepth, COMPONENT_Y, uiWidth, iTempHeight, 0, 1,
+                                     false);   // Use HAD (SATD) cost
+    m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg + iTempHeight * iOrgStride,
+                                     piPred + iTempHeight * uiPredStride, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, iTempWidth, uiHeight, 0, 1, false);   // Use HAD (SATD) cost
+#endif
+  }
+  else if (eTempType == LEFT_NEIGHBOR)
+  {
+#if JVET_AJ0096_SATD_REORDER_INTRA    
+    m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, iTempWidth, uiHeight, 0, 1, true);
+#else
+    m_timdSatdCost->setTimdDistParam(distParamSad[1], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, iTempWidth, uiHeight, 0, 1, false);
+#endif      
+  }
+  else if (eTempType == ABOVE_NEIGHBOR)
+  {
+#if JVET_AJ0096_SATD_REORDER_INTRA    
+    m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, uiWidth, iTempHeight, 0, 1, true);
+#else
+    m_timdSatdCost->setTimdDistParam(distParamSad[0], piOrg, piPred, iOrgStride, uiPredStride, channelBitDepth,
+                                     COMPONENT_Y, uiWidth, iTempHeight, 0, 1, false);
+#endif      
+  }
+  initTimdIntraPatternLuma(*pu.cu, area, eTempType != ABOVE_NEIGHBOR ? iTempWidth : 0,
+    eTempType != LEFT_NEIGHBOR ? iTempHeight : 0, uiRefWidth, uiRefHeight);
+
+  uint32_t uiRealW = uiRefWidth + (eTempType == LEFT_NEIGHBOR ? iTempWidth : 0);
+  uint32_t uiRealH = uiRefHeight + (eTempType == ABOVE_NEIGHBOR ? iTempHeight : 0);
+
+  uint64_t uiBestCost = MAX_UINT64;
+  int      iBestMode = list[0];
+
+  for (int i = iStartIdx; i < sortedSize; i++)
+  {
+    uint64_t uiCost = 0;
+    int      iMode = list[i];
+
+    if (eTempType == LEFT_NEIGHBOR && iMode > 34)
+    {
+      continue;
+    }
+    else if (eTempType == ABOVE_NEIGHBOR && iMode < 34)
+    {
+      continue;
+    }
+
+    if (iMode > DC_IDX)
+    {
+      iMode = MAP67TO131(iMode);
+    }
+    initPredTimdIntraParams(pu, area, iMode);
+    predTimdIntraAng(COMPONENT_Y, pu, iMode, piPred, uiPredStride, uiRealW, uiRealH, eTempType,
+      (eTempType == ABOVE_NEIGHBOR) ? 0 : iTempWidth,
+      (eTempType == LEFT_NEIGHBOR) ? 0 : iTempHeight);
+
+    if (eTempType == LEFT_ABOVE_NEIGHBOR)
+    {
+      uiCost += distParamSad[0].distFunc(distParamSad[0]);
+      uiCost += distParamSad[1].distFunc(distParamSad[1]);
+    }
+    else if (eTempType == LEFT_NEIGHBOR)
+    {
+      uiCost = distParamSad[1].distFunc(distParamSad[1]);
+    }
+    else if (eTempType == ABOVE_NEIGHBOR)
+    {
+      uiCost += distParamSad[0].distFunc(distParamSad[0]);
+    }
+    else
+    {
+      CHECK((eTempType <= NO_NEIGHBOR) || (eTempType >LEFT_ABOVE_NEIGHBOR),"Wrong template type" );
+    }
+
+#if !JVET_AK0061_PDP_MPM
+    g_intraModeCost[iMode] = uiCost;
+#else
+    const bool isEncoder = pu.cu->cs->pcv->isEncoder;
+    if (isEncoder)
+    {
+      g_intraModeCost[iMode] = uiCost;
+    }
+#endif
+
+    if (uiCost < uiBestCost)
+    {
+      iBestMode = list[i];
+      uiBestCost = uiCost;
+      
+      if(uiBestCost == 0)
+      {
+        break;
+      }
+    }
+  }
+  list[0] = iBestMode;
 }
 #endif
 
@@ -10737,6 +11698,12 @@ void IntraPrediction::calcTimdMrgCandCosts(
     {
       cost = g_timdMrgCost[mode];
     }
+#if JVET_AK0059_MDIP
+    else if (isEncoder && g_intraModeCost[mode] != MAX_UINT64)
+    {
+      cost = g_intraModeCost[mode];
+    }
+#endif
     else
     {
       cost = calculateCost(mode);
@@ -10995,9 +11962,18 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
     }
     
     int histogram[NUM_LUMA_MODE];
+#if JVET_AK0056_WEIGHTED_OBIC
+    int histoLocDep[NUM_LUMA_MODE][3];
+#endif
     for (int i = 0; i < NUM_LUMA_MODE; i++)
     {
       histogram[i] = 0;
+#if JVET_AK0056_WEIGHTED_OBIC
+      for(int j=0 ; j<3 ; j++)
+      {
+        histoLocDep[i][j] = 0;
+      }
+#endif
     }
     const int step = 4;
     const int numCUs = NUM_OBIC_CUS;
@@ -11111,7 +12087,44 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
     int numToMix = 0;
     for (int i = 0; i < numCUs; i++)
     {
+#if JVET_AK0056_WEIGHTED_OBIC
+      useNeighbour[i] = (cuNeighbours[i] && (CU::isIntra(*cuNeighbours[i])|| CU::isInter(*cuNeighbours[i])));
+      bool useInter = false;
+      if (cuNeighbours[i] && (CU::isInter(*cuNeighbours[i])))
+      {
+        if (cuNeighbours[i]->geoFlag)
+        {
+          int ipm = g_geoAngle2IntraAng[g_geoParams[cuNeighbours[i]->firstPU->geoSplitDir][0]];
+          if (ipm > PLANAR_IDX && ipm < NUM_LUMA_MODE)
+          {
+            useInter = true;
+          }
+        }
+        else
+        {
+          int step = 4;
+          for (int m = 0; m < cuNeighbours[i]->lwidth(); m += step)
+          {
+            for (int n = 0; n < cuNeighbours[i]->lheight(); n += step)
+            {
+              int ipm = cuNeighbours[i]->firstPU->getIpmInfo(cuNeighbours[i]->Y().offset(m, n));
+              if (ipm > PLANAR_IDX && ipm < NUM_LUMA_MODE)
+              {
+                useInter = true;
+                break;
+              }
+            }
+            if (useInter == true)
+            {
+              break;
+            }
+          }
+        }
+        useNeighbour[i] &= useInter;
+      }
+#else
       useNeighbour[i] = (cuNeighbours[i] && CU::isIntra(*cuNeighbours[i]));
+#endif
       if (useNeighbour[i])
       {
         for (int j = i-1; j >= 0; j--)
@@ -11169,7 +12182,12 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       {
         continue;
       }
+#if JVET_AK0056_WEIGHTED_OBIC
+      const int weight[NUM_OBIC_CUS]={4, 4, 4, 4, 4,   4, 4, 4, 4, 4,  4, 4, 4, 2, 2, 2,2, 2, 2, 2, 2,1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+      const int numSamples = (weight[i]*(cuNeighbours[i]->lumaSize().width * cuNeighbours[i]->lumaSize().height)+2)/4;
+#else
       int numSamples = cuNeighbours[i]->lumaSize().width * cuNeighbours[i]->lumaSize().height;
+#endif
       if (cuNeighbours[i]->timd
 #if JVET_AJ0061_TIMD_MERGE
           && !cuNeighbours[i]->timdMrg
@@ -11180,15 +12198,37 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
           )
       {
         int m = MAP131TO67(cuNeighbours[i]->timdMode);
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[3] = {0};
+        w[0] = cuNeighbours[i]->timdFusionWeight[0];
+        w[1] = (cuNeighbours[i]->timdIsBlended && (cuNeighbours[i]->timdFusionWeight[1] > 0)) ? cuNeighbours[i]->timdFusionWeight[1] : 0;
+        w[2] = (cuNeighbours[i]->timdIsBlended && (cuNeighbours[i]->timdFusionWeight[2] > 0)) ? cuNeighbours[i]->timdFusionWeight[2] : 0;
+        histoLocDep[m][cuNeighbours[i]->timdLocDep[0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+
+#if JVET_AK0056_WEIGHTED_OBIC
+      if (cuNeighbours[i]->timdIsBlended && cuNeighbours[i]->timdFusionWeight[1] > 0 && (cuNeighbours[i]->timdMode != cuNeighbours[i]->timdModeSecondary) )
+#else
         if (cuNeighbours[i]->timdIsBlended && cuNeighbours[i]->timdFusionWeight[1] > 0)
+#endif
         {
           int m = MAP131TO67(cuNeighbours[i]->timdModeSecondary);
+#if JVET_AK0056_WEIGHTED_OBIC
+          CHECK(!w[0], "Division by zero!");
+          histoLocDep[m][cuNeighbours[i]->timdLocDep[1]] += numSamples * w[1] / w[0];
+#else
           histogram[m] += numSamples;
+#endif
           if (cuNeighbours[i]->timdFusionWeight[2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdModeNonAng);
+#if JVET_AK0056_WEIGHTED_OBIC
+            histoLocDep[m][cuNeighbours[i]->timdLocDep[2]] += numSamples * w[2] / w[0];
+#else
             histogram[m] += numSamples;
+#endif
           }
         }
       }
@@ -11196,15 +12236,36 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->timdMrg)
       {
         int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][0]);
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[3] = {0};
+        w[0] = cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][0];
+        w[1] = (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] > 0)) ? cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] : 0;
+        w[2] = (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] > 0)) ? cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] : 0;
+        histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+#if JVET_AK0056_WEIGHTED_OBIC
+        if (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] > 0 && (cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][0] != cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][1]))
+#else
         if (cuNeighbours[i]->timdMrgIsBlended[cuNeighbours[i]->timdMrg - 1] && cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][1] > 0)
+#endif
         {
           int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][1]);
+#if JVET_AK0056_WEIGHTED_OBIC
+          CHECK(!w[0], "Division by zero!");
+          histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][1]] += numSamples * w[1] / w[0];
+#else
           histogram[m] += numSamples;
+#endif
           if (cuNeighbours[i]->timdMrgFusionWeight[cuNeighbours[i]->timdMrg - 1][2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdMrgList[cuNeighbours[i]->timdMrg - 1][2]);
+#if JVET_AK0056_WEIGHTED_OBIC
+            histoLocDep[m][cuNeighbours[i]->timdMrgLocDep[cuNeighbours[i]->timdMrg - 1][2]] += numSamples * w[2] / w[0];
+#else
             histogram[m] += numSamples;
+#endif
           }
         }
       }
@@ -11213,15 +12274,36 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->timdSad)
       {
         int m = MAP131TO67(cuNeighbours[i]->timdModeSad);
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[3] = {0};
+        w[0] = cuNeighbours[i]->timdFusionWeightSad[0];
+        w[1] = (cuNeighbours[i]->timdIsBlendedSad && (cuNeighbours[i]->timdFusionWeightSad[1] > 0)) ? cuNeighbours[i]->timdFusionWeightSad[1] : 0;
+        w[2] = (cuNeighbours[i]->timdIsBlendedSad && (cuNeighbours[i]->timdFusionWeightSad[2] > 0)) ? cuNeighbours[i]->timdFusionWeightSad[2] : 0;
+        histoLocDep[m][cuNeighbours[i]->timdLocDepSad[0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+#if JVET_AK0056_WEIGHTED_OBIC
+        if (cuNeighbours[i]->timdIsBlendedSad && cuNeighbours[i]->timdFusionWeightSad[1] > 0 && (cuNeighbours[i]->timdModeSad != cuNeighbours[i]->timdModeSecondarySad) )
+#else
         if (cuNeighbours[i]->timdIsBlendedSad && cuNeighbours[i]->timdFusionWeightSad[1] > 0)
+#endif
         {
           int m = MAP131TO67(cuNeighbours[i]->timdModeSecondarySad);
+#if JVET_AK0056_WEIGHTED_OBIC
+          CHECK(!w[0], "Division by zero!");
+          histoLocDep[m][cuNeighbours[i]->timdLocDepSad[1]] += numSamples * w[1] / w[0];
+#else
           histogram[m] += numSamples;
+#endif
           if (cuNeighbours[i]->timdFusionWeightSad[2] > 0)
           {
             int m = MAP131TO67(cuNeighbours[i]->timdModeNonAngSad);
+#if JVET_AK0056_WEIGHTED_OBIC
+            histoLocDep[m][cuNeighbours[i]->timdLocDepSad[2]] += numSamples * w[2] / w[0];
+#else
             histogram[m] += numSamples;
+#endif
           }
         }
       }
@@ -11229,18 +12311,48 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->dimd && !cuNeighbours[i]->obicFlag)
       {
         int m = cuNeighbours[i]->dimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        int w[DIMD_FUSION_NUM] = {0};
+        w[0] = cuNeighbours[i]->dimdRelWeight[0];
+        w[1] = (cuNeighbours[i]->dimdRelWeight[1] > 0) ? cuNeighbours[i]->dimdRelWeight[1] : 0;
+        for(int j = 2; j < DIMD_FUSION_NUM ; j++)
+        {
+          w[j] = (cuNeighbours[i]->dimdBlending && (cuNeighbours[i]->dimdRelWeight[j] > 0)) ? cuNeighbours[i]->dimdRelWeight[j] : 0;
+        }
+#endif
         if (m >= 0 && m < NUM_LUMA_MODE)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m][cuNeighbours[i]->dimdLocDep[0]] += numSamples;
+#else
           histogram[m] += numSamples;
+#endif
         }
+#if JVET_AK0056_WEIGHTED_OBIC
+        if (cuNeighbours[i]->dimdRelWeight[1] > 0)
+        {
+          CHECK(!w[0], "Division by zero!");
+          histoLocDep[0][0] += numSamples * w[1] / w[0];
+        }
+#endif
         if (cuNeighbours[i]->dimdBlending)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          for (int idx = 0; idx < DIMD_FUSION_NUM - 2; idx++)
+          {
+            m = cuNeighbours[i]->dimdBlendMode[idx];
+            if (m >= 0 && m < NUM_LUMA_MODE && cuNeighbours[i]->dimdRelWeight[idx + 2] > 0)
+            {
+              CHECK(!w[0], "Division by zero!");
+              histoLocDep[m][cuNeighbours[i]->dimdLocDep[idx+1]] += numSamples * w[idx + 2] / w[0];
+#else
           for (int idx = 0; idx < DIMD_FUSION_NUM - 1; idx++)
           {
             m = cuNeighbours[i]->dimdBlendMode[idx];
             if (m >= 0 && m < NUM_LUMA_MODE && cuNeighbours[i]->dimdRelWeight[idx + 1] > 0)
             {
               histogram[m] += numSamples;
+#endif
             }
           }
         }
@@ -11248,7 +12360,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       else if (cuNeighbours[i]->dimd && cuNeighbours[i]->obicFlag)
       {
         int m = cuNeighbours[i]->obicMode[0];
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][cuNeighbours[i]->obicLocDep[0]] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
         if (cuNeighbours[i]->obicIsBlended)
         {
           for (int idx = 1; idx < OBIC_FUSION_NUM; idx++)
@@ -11256,7 +12372,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
             m = cuNeighbours[i]->obicMode[idx];
             if (m >= 0 && cuNeighbours[i]->obicFusionWeight[idx] > 0)
             {
+#if JVET_AK0056_WEIGHTED_OBIC
+              histoLocDep[m][cuNeighbours[i]->obicLocDep[idx]] += numSamples;
+#else
               histogram[m] += numSamples;
+#endif
             }
           }
         }
@@ -11267,53 +12387,114 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
         int m2 = cuNeighbours[i]->sgpmMode1;
         if (m1 >= 0 && m1 < NUM_LUMA_MODE)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m1][0] += numSamples;
+#else
           histogram[m1] += numSamples;
+#endif
         }
         if (m2 >= 0 && m2 < NUM_LUMA_MODE)
         {
+#if JVET_AK0056_WEIGHTED_OBIC
+          histoLocDep[m2][0] += numSamples;
+#else
           histogram[m2] += numSamples;
+#endif
         }
       }
       else if (cuNeighbours[i]->tmrlFlag)
       {
         int m = MAP131TO67(cuNeighbours[i]->firstPU->intraDir[0]);
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #if JVET_AG0058_EIP
       else if (cuNeighbours[i]->eipFlag && cu.slice->getSliceType() != I_SLICE)
       {
         int m = cuNeighbours[i]->eipModel.eipDimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
       else if (cuNeighbours[i]->tmpFlag && cu.slice->getSliceType() != I_SLICE)
       {
         int m = cuNeighbours[i]->intraTmpDimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
 #if JVET_AB0067_MIP_DIMD_LFNST
       else if (cuNeighbours[i]->mipFlag && cu.slice->getSliceType() != I_SLICE)
       {
         int m = cuNeighbours[i]->mipDimdMode;
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
       else if (cuNeighbours[i]->firstPU->intraDir[0] == PNN_IDX)
       {
         const int m = cuNeighbours[i]->indicesRepresentationPnn[COMPONENT_Y][0];
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
       }
 #endif
       else if (CU::isIntra(*cuNeighbours[i]) && !cuNeighbours[i]->tmpFlag && !cuNeighbours[i]->mipFlag && !cuNeighbours[i]->eipFlag && !CU::isIBC(*cuNeighbours[i]) && !CU::isPLT(*cuNeighbours[i]))
       {
         int m = cuNeighbours[i]->firstPU->intraDir[0];
+#if JVET_AK0056_WEIGHTED_OBIC
+        histoLocDep[m][0] += numSamples;
+#else
         histogram[m] += numSamples;
+#endif
+      }
+#if JVET_AK0056_WEIGHTED_OBIC
+      else if (cuNeighbours[i] && (CU::isInter(*cuNeighbours[i])))
+      {
+        const int step = 4;
+        for (int m = 0; m < cuNeighbours[i]->lwidth(); m += step)
+        {
+          for (int n = 0; n < cuNeighbours[i]->lheight(); n += step)
+          {
+            int ipm = cuNeighbours[i]->firstPU->getIpmInfo(cuNeighbours[i]->Y().offset(m, n));
+            if (cuNeighbours[i]->geoFlag)
+            {
+              ipm = g_geoAngle2IntraAng[g_geoParams[cuNeighbours[i]->firstPU->geoSplitDir][0]];
+            }
+            if (ipm >= DC_IDX && ipm < NUM_LUMA_MODE)
+            {
+              histoLocDep[ipm][0] += (step*step);
+            }
+          }
+        }
+      }
+#endif
+    }
+#if JVET_AK0056_WEIGHTED_OBIC
+    for (int i = 0; i < NUM_LUMA_MODE; i++)
+    {
+      for(int j=0 ; j<3 ; j++)
+      {
+        histogram[i] += histoLocDep[i][j];
       }
     }
-
+#endif
     // Penalize Dimd modes to impose diversity between OBIC and DIMD
     if (cu.dimdMode >= 0 && cu.dimdMode < NUM_LUMA_MODE)
     {
@@ -11414,7 +12595,50 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       count += bestModes[i] >= 0 ? 1 : 0;
     }
 
-
+#if JVET_AK0056_WEIGHTED_OBIC
+//For each selected IPM in the generation of OBIC predictor, associate the dominant LocDep
+  for(int i = 0; i < OBIC_FUSION_NUM; i++)
+  {
+    int secondMode = bestModes[i];
+    int bestLocDep[3];
+    int bestLocDepAmp[3];
+    for(int i = 0; i < 3; i++)
+    {
+      bestLocDep[i] = -1;
+      bestLocDepAmp[i] = 0;
+    }
+    cu.obicLocDep[i] = 0;
+    
+    if (secondMode > DC_IDX)
+    {
+      for(int j=0 ; j<3 ; j++)
+      {
+        if(histoLocDep[secondMode][j] > bestLocDepAmp[0] )
+        {
+          bestLocDepAmp[2] = bestLocDepAmp[1];
+          bestLocDepAmp[1] = bestLocDepAmp[0];
+          bestLocDepAmp[0] = histoLocDep[secondMode][j];
+          bestLocDep[2] = bestLocDep[1];
+          bestLocDep[1] = bestLocDep[0];
+          bestLocDep[0] = j;
+        }
+        else if(histoLocDep[secondMode][j] > bestLocDepAmp[1] )
+        {
+          bestLocDepAmp[2] = bestLocDepAmp[1];
+          bestLocDepAmp[1] = histoLocDep[secondMode][j];
+          bestLocDep[2] = bestLocDep[1];
+          bestLocDep[1] = j;
+        }
+        else if (histoLocDep[secondMode][j] > bestLocDepAmp[2] )
+        {
+          bestLocDepAmp[2] = histoLocDep[secondMode][j];
+          bestLocDep[2] = j;
+        }
+      }
+      cu.obicLocDep[i] = bestLocDep[0];
+    }
+  }
+#endif
     /* -----------------------------------------------------------------
     -------------- Step 6: Compute the fusion weights ------------------
     ---------------- from amplitudes and store in CU -------------------
@@ -11437,6 +12661,9 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       cu.obicMode[1] = PLANAR_IDX;
       cu.obicFusionWeight[0] = sumWeight - planarWeight;
       cu.obicFusionWeight[1] = planarWeight;
+#if JVET_AK0056_WEIGHTED_OBIC
+      cu.obicLocDep[1] = 0;
+#endif
     }
     else
     {
@@ -11465,7 +12692,11 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       int iRatio[OBIC_FUSION_NUM] = { 0 };
       for (int i = 0; i < OBIC_FUSION_NUM; i++)
       {
+#if JVET_AK0056_WEIGHTED_OBIC
+        iRatio[i] = (int)(( ((uint64_t)bestAmps[i] * (uint64_t) v * (uint64_t) sumWeight + (uint64_t)add)) >> (uint64_t)shift);
+#else
         iRatio[i] = (bestAmps[i] * v * sumWeight + add) >> shift;
+#endif
         if (bestAmps[i] == 0)
         {
           iRatio[i] = 0;
@@ -11534,11 +12765,17 @@ void IntraPrediction::deriveTimdMergeModes(const CPelBuf &recoBuf, const CompAre
       {
         cu.obicMode[count - 1] = PLANAR_IDX;
         cu.obicFusionWeight[count - 1] = planarWeight;
+#if JVET_AK0056_WEIGHTED_OBIC
+        cu.obicLocDep[count - 1] = 0;
+#endif
       }
       else
       {
         cu.obicMode[count] = PLANAR_IDX;
         cu.obicFusionWeight[count] = planarWeight;
+#if JVET_AK0056_WEIGHTED_OBIC
+        cu.obicLocDep[count] = 0;
+#endif
       }
       cu.obicIsBlended = true;
     }
@@ -11929,7 +13166,12 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
 #endif
 #if SECONDARY_MPM
     uint8_t mpmList[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+    uint8_t intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+    cu.isModeExcluded = false;
+#else
     uint8_t intraNonMPM[NUM_NON_MPM_MODES];
+#endif
     PU::getIntraMPMs(pu, mpmList, intraNonMPM
 #if JVET_AC0094_REF_SAMPLES_OPT
                      , true
@@ -11938,6 +13180,9 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
       ,false ,false
 #endif
     );
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = true;
+#endif 
 #else
     unsigned mpmList[NUM_MOST_PROBABLE_MODES];
     PU::getIntraMPMs(pu, mpmList);
@@ -12185,7 +13430,7 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
 
       uiCost = tmpCost0 + tmpCost1;
@@ -12388,6 +13633,15 @@ int IntraPrediction::deriveTimdMode(const CPelBuf &recoBuf, const CompArea &area
         iSecondaryMode = getTimdRegularAngleExt(uiWidth, uiHeight, iSecondaryMode);
       }
 #endif
+
+      if (uiSecondaryCost < uiBestCost)
+      {
+        std::swap(cu.timdLocDep[1], cu.timdLocDep[0]);
+        std::swap(uiSecondaryCost, uiBestCost);
+        std::swap(iSecondaryMode, iBestMode);
+        std::swap(bSecondaryModeCheckWA, bBestModeCheckWA);
+      }
+
       // if( uiSecondaryCost < 2 * uiBestCost ), 2 * uiBestCost can overflow uint64_t
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
       if( !( (uiSecondaryCost < uiBestCost || (uiSecondaryCost - uiBestCost < uiBestCost)) ) && (iBestMode > DC_IDX) )
@@ -12722,7 +13976,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
         }
         else
         {
-          assert(0);
+          CHECK( true, "wrong case" );
         }
 
         if(uiCost < uiBestCost)
@@ -12800,7 +14054,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
 
       if( uiCost < uiBestCost )
@@ -12849,7 +14103,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
         }
         else
         {
-          assert(0);
+          CHECK( true, "wrong case" );
         }
 
         if(uiCost < uiBestCost)
@@ -12892,7 +14146,7 @@ int IntraPrediction::deriveTimdMode( const CPelBuf &recoBuf, const CompArea &are
         }
         else
         {
-          assert(0);
+          CHECK( true, "wrong case" );
         }
 
         if(uiCost < uiSecondaryCost)
@@ -13805,6 +15059,14 @@ int IntraPrediction::deriveTimdModeSad(const CPelBuf &recoBuf, const CompArea &a
       iSecondaryMode = getTimdRegularAngleExt(uiWidth, uiHeight, iSecondaryMode);
     }
 #endif
+
+    if (uiSecondaryCost < uiBestCost)
+    {
+      std::swap(uiSecondaryCost, uiBestCost);
+      std::swap(iSecondaryMode, iBestMode);
+      std::swap(bSecondaryModeCheckWA, bBestModeCheckWA);
+    }
+
     // if( uiSecondaryCost < 2 * uiBestCost ), 2 * uiBestCost can overflow uint64_t
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
     if( !( (uiSecondaryCost < uiBestCost || (uiSecondaryCost - uiBestCost < uiBestCost)) ) && (iBestMode > DC_IDX) )
@@ -13960,6 +15222,13 @@ void IntraPrediction::ibcCiipBlending(Pel *pDst, int strideDst, const Pel *pSrc0
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 bool IntraPrediction::getGradForOBMC(const PredictionUnit pu, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, const bool isAbove, const int blkSize, int* modeBuf)
 {
+#if JVET_AK0076_EXTENDED_OBMC_IBC
+  if ((CU::isIBC(*pu.cu) || PU::isTmp(pu)) && !cu.slice->getSPS()->getUseDimd())
+  {
+    return false;
+  }
+#endif
+
   const int templateSize = 1;
   
   const CodingStructure  &cs = *cu.cs;
@@ -14022,7 +15291,11 @@ bool IntraPrediction::getGradForOBMC(const PredictionUnit pu, const CPelBuf &rec
 #endif
 
 #if ENABLE_DIMD
-void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu)
+void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+  , bool useExcludingMode
+#endif
+)
 {
   if( !cu.slice->getSPS()->getUseDimd() )
   {
@@ -14032,7 +15305,11 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
   bool useAdaptive = ((cu.cs->slice->getSliceType() != I_SLICE) || (cu.lwidth() * cu.lheight()) >= 128) ? true : false;
   if (useAdaptive)
   {
+#if JVET_AK0059_MDIP
+    deriveDimdModeAdaptive(recoBuf, area, cu, useExcludingMode);
+#else
     deriveDimdModeAdaptive(recoBuf, area, cu);
+#endif
     return;
   }
 #endif
@@ -14179,6 +15456,13 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
     histogram[i] = histogramTop[i] + histogramLeft[i] + histogramTopLeft[i];
   }
 #endif
+#if JVET_AK0059_MDIP
+  if(useExcludingMode && !CU::allowMdip(cu))
+  {
+    bool includedMode[NUM_LUMA_MODE]{ false };
+    buildExcludingMode(cu, histogram, includedMode);
+  }
+#endif
 
 #if JVET_AB0157_INTRA_FUSION
   int amp[DIMD_FUSION_NUM-1] = { 0 };
@@ -14243,7 +15527,10 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
     }
   }
 #endif
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  cu.candModeListForTransform[0] = mode[0];
+  cu.candModeListForTransform[1] = mode[1];
+#endif
 
   cu.dimdMode = mode[0];
 
@@ -14589,7 +15876,11 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
 }
 
 #if JVET_AJ0267_ADAPTIVE_HOG
-void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu)
+void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+  , bool useExcludingMode
+#endif
+)
 {
   if( !cu.slice->getSPS()->getUseDimd() )
   {
@@ -14758,6 +16049,13 @@ void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompA
   {
     histogram[i] = histogramTop[i] + histogramLeft[i] + histogramTopLeft[i];
   }
+#if JVET_AK0059_MDIP
+  if(useExcludingMode && !CU::allowMdip(cu))
+  {
+    bool includedMode[NUM_LUMA_MODE]{ false };
+    buildExcludingMode(cu, histogram, includedMode);
+  }
+#endif
 
   int amp[DIMD_FUSION_NUM-1] = { 0 };
   int curAmp         = 0;
@@ -14809,7 +16107,10 @@ void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompA
       }
     }
   }
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  cu.candModeListForTransform[0] = mode[0];
+  cu.candModeListForTransform[1] = mode[1];
+#endif
   cu.dimdMode = mode[0];
 
   cu.dimdBlending = true;
@@ -15166,7 +16467,117 @@ void IntraPrediction::deriveDimdChromaMode(const CPelBuf &recoBufY, const CPelBu
 #endif
 }
 #endif
+#if JVET_AK0217_INTRA_MTSS
+void IntraPrediction::deriveDimdModeList(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, static_vector<int, MTSS_LIST_SIZE>& candModeList, static_vector<int, MTSS_LIST_SIZE>& candCostList)
+{
+  if (!cu.slice->getSPS()->getUseDimd())
+  {
+    return;
+  }
 
+  const CodingStructure& cs = *cu.cs;
+  const SPS& sps = *cs.sps;
+  const PreCalcValues& pcv = *cs.pcv;
+  const ChannelType   chType = toChannelType(area.compID);
+
+  const Pel* pReco = recoBuf.buf;
+  const uint32_t uiWidth = area.width;
+  const uint32_t uiHeight = area.height;
+  const int iStride = recoBuf.stride;
+#if JVET_AC0098_LOC_DEP_DIMD
+  const int predSize = uiWidth + 1;
+  const int predHSize = uiHeight + 1;
+#else
+  const int predSize = (uiWidth << 1);
+  const int predHSize = (uiHeight << 1);
+#endif
+
+  const bool noShift = pcv.noChroma2x2 && uiWidth == 4; // don't shift on the lowest level (chroma not-split)
+  const int  unitWidth = pcv.minCUWidth >> (noShift ? 0 : getComponentScaleX(area.compID, sps.getChromaFormatIdc()));
+  const int  unitHeight = pcv.minCUHeight >> (noShift ? 0 : getComponentScaleY(area.compID, sps.getChromaFormatIdc()));
+
+  const int  totalAboveUnits = (predSize + (unitWidth - 1)) / unitWidth;
+  const int  totalLeftUnits = (predHSize + (unitHeight - 1)) / unitHeight;
+  const int  totalUnits = totalAboveUnits + totalLeftUnits + 1; //+1 for top-left
+  const int  numAboveUnits = std::max<int>(uiWidth / unitWidth, 1);
+  const int  numLeftUnits = std::max<int>(uiHeight / unitHeight, 1);
+  const int  numAboveRightUnits = totalAboveUnits - numAboveUnits;
+  const int  numLeftBelowUnits = totalLeftUnits - numLeftUnits;
+
+  CHECK(numAboveUnits <= 0 || numLeftUnits <= 0 || numAboveRightUnits <= 0 || numLeftBelowUnits <= 0, "Size not supported");
+
+  // ----- Step 1: analyze neighborhood -----
+  const Position posLT = area;
+
+  bool  neighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 1];
+  memset(neighborFlags, 0, totalUnits);
+
+  int numIntraAbove = isAboveAvailable(cu, chType, posLT, numAboveUnits, unitWidth, (neighborFlags + totalLeftUnits + 1));
+  int numIntraLeft = isLeftAvailable(cu, chType, posLT, numLeftUnits, unitHeight, (neighborFlags + totalLeftUnits - 1));
+#if JVET_AC0094_REF_SAMPLES_OPT || JVET_AC0098_LOC_DEP_DIMD
+  const int numIntraAboveRight = isAboveRightAvailable(cu, chType, area.topRight(), numAboveRightUnits, unitWidth, neighborFlags + totalLeftUnits + 1 + numAboveUnits);
+  const int numIntraBottomLeft = isBelowLeftAvailable(cu, chType, area.bottomLeft(), numLeftBelowUnits, unitHeight, neighborFlags + totalLeftUnits - 1 - numLeftUnits);
+#endif
+
+  // ----- Step 2: build histogram of gradients -----
+#if JVET_AC0098_LOC_DEP_DIMD
+  int histogramTop[NUM_LUMA_MODE] = { 0 };
+  int histogramLeft[NUM_LUMA_MODE] = { 0 };
+
+  int histogramTopLeft[NUM_LUMA_MODE] = { 0 };
+#endif
+  int histogram[NUM_LUMA_MODE] = { 0 };
+
+  if (numIntraLeft)
+  {
+#if JVET_AC0094_REF_SAMPLES_OPT || JVET_AC0098_LOC_DEP_DIMD
+    const uint32_t uiHeightLeft = (numIntraLeft + numIntraBottomLeft) * unitHeight - 1 - (!numIntraAbove ? 1 : 0);
+#else
+    uint32_t uiHeightLeft = numIntraLeft * unitHeight - 1 - (!numIntraAbove ? 1 : 0);
+#endif
+    const Pel* pRecoLeft = pReco - 2 + iStride * (!numIntraAbove ? 1 : 0);
+#if JVET_AC0098_LOC_DEP_DIMD
+    buildHistogram(pRecoLeft, iStride, uiHeightLeft, 1, histogramLeft, 1, uiWidth, uiHeight);
+#else
+    buildHistogram(pRecoLeft, iStride, uiHeightLeft, 1, histogram, 1, uiWidth, uiHeight);
+#endif
+  }
+
+  if (numIntraAbove)
+  {
+#if JVET_AC0094_REF_SAMPLES_OPT || JVET_AC0098_LOC_DEP_DIMD
+    const uint32_t uiWidthAbove = (numIntraAbove + numIntraAboveRight) * unitWidth - 1 - (!numIntraLeft ? 1 : 0);
+#else
+    uint32_t uiWidthAbove = numIntraAbove * unitWidth - 1 - (!numIntraLeft ? 1 : 0);
+#endif
+    const Pel* pRecoAbove = pReco - iStride * 2 + (!numIntraLeft ? 1 : 0);
+#if JVET_AC0098_LOC_DEP_DIMD
+    buildHistogram(pRecoAbove, iStride, 1, uiWidthAbove, histogramTop, 2, uiWidth, uiHeight);
+#else
+    buildHistogram(pRecoAbove, iStride, 1, uiWidthAbove, histogram, 2, uiWidth, uiHeight);
+#endif
+  }
+
+  if (numIntraLeft && numIntraAbove)
+  {
+    const Pel* pRecoAboveLeft = pReco - 2 - iStride * 2;
+#if JVET_AC0098_LOC_DEP_DIMD
+    buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogramTopLeft, 3, uiWidth, uiHeight);
+    buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogram, 3, uiWidth, uiHeight);
+#endif
+  }
+  candModeList.clear();
+  candCostList.clear();
+#if JVET_AC0098_LOC_DEP_DIMD
+  for (int i = 0; i < NUM_LUMA_MODE; i++)
+  {
+    histogram[i] = histogramTop[i] + histogramLeft[i] + histogramTopLeft[i];
+    updateCandListB2S(i, histogram[i], candModeList, candCostList, MTSS_LIST_SIZE);
+  }
+#endif
+}
+
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
 void IntraPrediction::deriveNonCcpChromaModes(const CPelBuf &recoBufY, const CPelBuf &recoBufCb, const CPelBuf &recoBufCr, const CompArea &areaY, const CompArea &areaCb, const CompArea &areaCr, CodingUnit &cu, PredictionUnit &pu, InterPrediction *pcInterPred)
 {
@@ -15328,7 +16739,7 @@ void IntraPrediction::deriveNonCcpChromaModes(const CPelBuf &recoBufY, const CPe
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
     }
     else
@@ -15421,7 +16832,7 @@ void IntraPrediction::deriveNonCcpChromaModes(const CPelBuf &recoBufY, const CPe
       }
       else
       {
-        assert(0);
+        CHECK( true, "wrong case" );
       }
     }
     else
@@ -15746,7 +17157,11 @@ void IntraPrediction::predCoLuma(const CompArea &area, const CPelBuf &recoBuf, P
       xFilterReferenceSamples(refBufUnfiltered, refBufFiltered, area, *pu.cs->sps, 0);
     }
 #if JVET_AH0209_PDP
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    predIntraAng(COMPONENT_Y, predBuf, pu, true, false, false );
+#else
     predIntraAng( COMPONENT_Y, predBuf, pu, false, false );
+#endif
 #else
     predIntraAng(COMPONENT_Y, predBuf, pu, false);
 #endif
@@ -16071,9 +17486,17 @@ int IntraPrediction::deriveIpmForTransform(CPelBuf predBuf, CodingUnit& cu
   pPred = pPred + iStride + 1;
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP
   const int edgeOperatorSizeIdx = static_cast<int>(enableAlignedDesign ? use2x2EdgeOperator(predBuf) : false);
-  buildHistogram(pPred, iStride, height - 2, width - 2, histogram, 0, width - 2 + edgeOperatorSizeIdx, height - 2 + edgeOperatorSizeIdx, edgeOperatorSizeIdx);
+  buildHistogram(pPred, iStride, height - 2, width - 2, histogram, 0, width - 2 + edgeOperatorSizeIdx, height - 2 + edgeOperatorSizeIdx, edgeOperatorSizeIdx
+#if JVET_AK0217_INTRA_MTSS
+, true
+#endif
+);
 #else 
-  buildHistogram(pPred, iStride, height - 2, width - 2, histogram, 0, width - 2, height - 2);
+  buildHistogram(pPred, iStride, height - 2, width - 2, histogram, 0, width - 2, height - 2
+#if JVET_AK0217_INTRA_MTSS
+    , 0, true
+#endif 
+  );
 #endif 
   int firstAmp = 0, curAmp = 0;
   int firstMode = 0, curMode = 0;
@@ -16330,6 +17753,353 @@ int IntraPrediction::buildHistogram(const Pel *pReco, int iStride, uint32_t uiHe
     }
   }
   return 0;
+}
+#endif
+
+#if JVET_AK0059_MDIP
+void IntraPrediction::deriveMdipMode(const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool useExcludingMode)
+{
+  cu.mdipMode = -1;
+
+  const CodingStructure  &cs = *cu.cs;
+  const SPS             &sps = *cs.sps;
+  const PreCalcValues   &pcv = *cs.pcv;
+  const ChannelType   chType = toChannelType(area.compID);
+
+  const Pel *pReco = recoBuf.buf;
+  const uint32_t uiWidth = area.width;
+  const uint32_t uiHeight = area.height;
+  const int iStride = recoBuf.stride;
+  const int predSize = (uiWidth << 1);
+  const int predHSize = (uiHeight << 1);
+
+  const bool noShift = pcv.noChroma2x2 && uiWidth == 4; // don't shift on the lowest level (chroma not-split)
+  const int  unitWidth = pcv.minCUWidth >> (noShift ? 0 : getComponentScaleX(area.compID, sps.getChromaFormatIdc()));
+  const int  unitHeight = pcv.minCUHeight >> (noShift ? 0 : getComponentScaleY(area.compID, sps.getChromaFormatIdc()));
+
+  const int  totalAboveUnits = (predSize + (unitWidth - 1)) / unitWidth;
+  const int  totalLeftUnits = (predHSize + (unitHeight - 1)) / unitHeight;
+  const int  totalUnits = totalAboveUnits + totalLeftUnits + 1; //+1 for top-left
+  const int  numAboveUnits = std::max<int>(uiWidth / unitWidth, 1);
+  const int  numLeftUnits = std::max<int>(uiHeight / unitHeight, 1);
+  const int  numAboveRightUnits = totalAboveUnits - numAboveUnits;
+  const int  numLeftBelowUnits = totalLeftUnits - numLeftUnits;
+
+  CHECK(numAboveUnits <= 0 || numLeftUnits <= 0 || numAboveRightUnits <= 0 || numLeftBelowUnits <= 0, "Size not supported");
+
+  // ----- Step 1: analyze neighborhood -----
+  const Position posLT = area;
+
+  bool  neighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 1];
+  memset(neighborFlags, 0, totalUnits);
+
+  int numIntraAbove = isAboveAvailable(cu, chType, posLT, numAboveUnits, unitWidth, (neighborFlags + totalLeftUnits + 1));
+  int numIntraLeft = isLeftAvailable(cu, chType, posLT, numLeftUnits, unitHeight, (neighborFlags + totalLeftUnits - 1));
+  int numIntraAboveRight = isAboveRightAvailable(cu, chType, area.topRight(), numAboveRightUnits, unitWidth, neighborFlags + totalLeftUnits + 1 + numAboveUnits);
+  int numIntraBottomLeft = isBelowLeftAvailable(cu, chType, area.bottomLeft(), numLeftBelowUnits, unitHeight, neighborFlags + totalLeftUnits - 1 - numLeftUnits);
+
+  // ----- Step 2: build histogram of gradients -----
+  int histogram[NUM_LUMA_MODE] = { 0 };
+  int histogramTop[NUM_LUMA_MODE] = { 0 };
+  int histogramLeft[NUM_LUMA_MODE] = { 0 };
+  int histogramTopLeft[NUM_LUMA_MODE] = { 0 };
+
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+  const int edgeOperatorSizeIdx = static_cast<int>(use2x2EdgeOperator(area));
+  const int recoLineOffset      = edgeOperatorSizeIdx == 1 ? 0 : 1;
+#endif
+
+  if(uiWidth * uiHeight <= 128)
+  {
+    if (numIntraLeft)
+    {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const uint32_t uiHeightLeft = (numIntraLeft + numIntraBottomLeft) * unitHeight - recoLineOffset - (!numIntraAbove ? 1 : 0);
+#else
+      uint32_t uiHeightLeft = (numIntraLeft + numIntraBottomLeft) * unitHeight - 1 - (!numIntraAbove ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const Pel *pRecoLeft = pReco - 1 - recoLineOffset + iStride * (!numIntraAbove ? 1 : 0);
+#else
+      const Pel *pRecoLeft = pReco - 2 + iStride * (!numIntraAbove ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      buildHistogram(pRecoLeft, iStride, uiHeightLeft, 1, histogramLeft, 1, uiWidth, uiHeight, edgeOperatorSizeIdx);
+#else
+      buildHistogram(pRecoLeft, iStride, uiHeightLeft, 1, histogramLeft, 1, uiWidth, uiHeight);
+#endif
+    }
+    if (numIntraAbove)
+    {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const uint32_t uiWidthAbove = (numIntraAbove + numIntraAboveRight)*unitWidth - recoLineOffset - (!numIntraLeft ? 1 : 0);
+#else
+      uint32_t uiWidthAbove = (numIntraAbove + numIntraAboveRight) * unitWidth - 1 - (!numIntraLeft ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const Pel *pRecoAbove = pReco - iStride * (1 + recoLineOffset) + (!numIntraLeft ? 1 : 0);
+#else
+      const Pel *pRecoAbove = pReco - iStride * 2 + (!numIntraLeft ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      buildHistogram(pRecoAbove, iStride, 1, uiWidthAbove, histogramTop, 2, uiWidth, uiHeight, edgeOperatorSizeIdx);
+#else
+      buildHistogram(pRecoAbove, iStride, 1, uiWidthAbove, histogramTop, 2, uiWidth, uiHeight);
+#endif
+    }
+    if (numIntraLeft && numIntraAbove)
+    {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const Pel* pRecoAboveLeft = pReco - 1 - recoLineOffset - iStride * (1 + recoLineOffset);
+#else    
+      const Pel *pRecoAboveLeft = pReco - 2 - iStride * 2;
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      if (edgeOperatorSizeIdx == 1)
+      {
+        buildHistogram(pRecoAboveLeft, iStride, 1, 1, histogramTopLeft, 0, uiWidth, uiHeight, edgeOperatorSizeIdx);
+      }
+      else
+      {
+        buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogramTopLeft, 3, uiWidth, uiHeight, edgeOperatorSizeIdx);
+      }
+#else
+      buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogramTopLeft, 3, uiWidth, uiHeight);
+#endif
+    }
+  }
+  else
+  {
+    if (numIntraLeft)
+    {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const uint32_t uiHeightLeft = (numIntraLeft + numIntraBottomLeft) * unitHeight - recoLineOffset - (!numIntraAbove ? 1 : 0);
+#else
+      uint32_t uiHeightLeft = (numIntraLeft + numIntraBottomLeft) * unitHeight - 1 - (!numIntraAbove ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const Pel *pRecoLeft = pReco - 2 - recoLineOffset + iStride * (!numIntraAbove ? 1 : 0);
+#else
+      const Pel *pRecoLeft = pReco - 3 + iStride * (!numIntraAbove ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      buildHistogram(pRecoLeft, iStride, uiHeightLeft, 2, histogramLeft, 1, uiWidth, uiHeight, edgeOperatorSizeIdx);
+#else
+      buildHistogram(pRecoLeft, iStride, uiHeightLeft, 2, histogramLeft, 1, uiWidth, uiHeight);
+#endif
+    }
+    if (numIntraAbove)
+    {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const uint32_t uiWidthAbove = (numIntraAbove + numIntraAboveRight)*unitWidth - recoLineOffset - (!numIntraLeft ? 1 : 0);
+#else
+      uint32_t uiWidthAbove = (numIntraAbove + numIntraAboveRight) * unitWidth - 1 - (!numIntraLeft ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const Pel *pRecoAbove = pReco - iStride * (2 + recoLineOffset) + (!numIntraLeft ? 1 : 0);
+#else
+      const Pel *pRecoAbove = pReco - iStride * 3 + (!numIntraLeft ? 1 : 0);
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      buildHistogram(pRecoAbove, iStride, 2, uiWidthAbove, histogramTop, 2, uiWidth, uiHeight, edgeOperatorSizeIdx);
+#else
+      buildHistogram(pRecoAbove, iStride, 2, uiWidthAbove, histogramTop, 2, uiWidth, uiHeight);
+#endif
+    }
+    if (numIntraLeft && numIntraAbove)
+    {
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      const Pel* pRecoAboveLeft = pReco - 2 - recoLineOffset - iStride * (2 + recoLineOffset);
+#else    
+      const Pel *pRecoAboveLeft = pReco - 3 - iStride * 3;
+#endif
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      if (edgeOperatorSizeIdx == 1)
+      {
+        buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogramTopLeft, 0, uiWidth, uiHeight, edgeOperatorSizeIdx);
+      }
+      else
+      {
+        buildHistogram(pRecoAboveLeft, iStride, 3, 3, histogramTopLeft, 3, uiWidth, uiHeight, edgeOperatorSizeIdx);
+      }
+#else
+      buildHistogram(pRecoAboveLeft, iStride, 3, 3, histogramTopLeft, 3, uiWidth, uiHeight);
+#endif
+    }
+  }
+
+  for (int i = 0; i < NUM_LUMA_MODE; i++)
+  {
+    histogram[i] = histogramTop[i] + histogramLeft[i] + histogramTopLeft[i];
+    histogramTop[i] = histogramTop[i] + histogramTopLeft[i];
+    histogramLeft[i] = histogramLeft[i] + histogramTopLeft[i];
+  }
+
+  int curAmp = 0, curMode = 0;
+  bool includedMode[NUM_LUMA_MODE]{ false };
+
+  int mdipAmp[4] = {0};
+  int mdipMode[4] = {0};
+  
+  for (int i = 0; i < NUM_LUMA_MODE; i++)
+  {
+    curAmp = histogram[i];
+    curMode = i;
+    if (curAmp > mdipAmp[0])
+    {
+      mdipAmp[3]     = mdipAmp[2];
+      mdipMode[3]    = mdipMode[2];
+      mdipAmp[2]     = mdipAmp[1];
+      mdipMode[2]    = mdipMode[1];
+      mdipAmp[1]     = mdipAmp[0];
+      mdipMode[1]    = mdipMode[0];
+      mdipAmp[0]     = curAmp;
+      mdipMode[0]    = curMode;
+    }
+    else if (curAmp > mdipAmp[1])
+    {
+      mdipAmp[3]   = mdipAmp[2];
+      mdipMode[3]  = mdipMode[2];
+      mdipAmp[2]   = mdipAmp[1];
+      mdipMode[2]  = mdipMode[1];
+      mdipAmp[1]   = curAmp;
+      mdipMode[1]  = curMode;
+    }
+    else if (curAmp > mdipAmp[2])
+    {  
+      mdipAmp[3]   = mdipAmp[2];
+      mdipMode[3]  = mdipMode[2];
+      mdipAmp[2]   = curAmp;
+      mdipMode[2]  = curMode;
+    }
+    else if (curAmp > mdipAmp[3])
+    {
+      mdipAmp[3]  = curAmp;
+      mdipMode[3] = curMode;
+    }
+  }
+
+  // Left mode
+  int mdipAmpLeft[2] = {0};
+  int mdipModeLeft[2] = {0};
+  for (int i = 0; i < NUM_LUMA_MODE; i++)
+  {
+    curAmp = histogramLeft[i];
+    curMode = i;
+    if (curAmp > mdipAmpLeft[0])
+    {
+      mdipAmpLeft[1]   = mdipAmpLeft[0];
+      mdipModeLeft[1]  = mdipModeLeft[0];
+      mdipAmpLeft[0]   = curAmp;
+      mdipModeLeft[0]  = curMode;
+    }
+    else if (curAmp > mdipAmpLeft[1])
+    {
+      mdipAmpLeft[1]   = curAmp;
+      mdipAmpLeft[1]   = curMode;
+    }
+  }
+
+  // Top mode
+  int mdipAmpTop[2] = {0};
+  int mdipModeTop[2] = {0};
+  for (int i = 0; i < NUM_LUMA_MODE; i++)
+  {
+    curAmp = histogramTop[i];
+    curMode = i;
+    if (curAmp > mdipAmpTop[0])
+    {
+      mdipAmpTop[1]   = mdipAmpTop[0];
+      mdipModeTop[1]  = mdipModeTop[0];
+      mdipAmpTop[0]   = curAmp;
+      mdipModeTop[0]  = curMode;
+    }
+    else if (curAmp > mdipAmpTop[1])
+    {
+      mdipAmpTop[1]   = curAmp;
+      mdipModeTop[1]  = curMode;
+    }
+  }
+
+  int mdiplist[8] {0};
+  int maxCand = 8;
+  int numCand = 0;
+
+  for(int i=0; i < 4; i++)
+  {
+    if(mdipMode[i] != 0 && numCand < maxCand)
+    {
+      mdiplist[numCand] = mdipMode[i];
+      includedMode[mdiplist[numCand++]] = true;
+    }
+  }
+  for(int i=0; i < 2; i++)
+  {
+    if(mdipModeTop[i] != 0 && !includedMode[mdipModeTop[i]] && numCand < maxCand)
+    {
+      mdiplist[numCand] = mdipModeTop[i];
+      includedMode[mdiplist[numCand++]] = true;
+    }
+  }
+  for(int i=0; i < 2; i++)
+  {
+    if(mdipModeLeft[i] != 0 && !includedMode[mdipModeLeft[i]] && numCand < maxCand)
+    {
+      mdiplist[numCand] = mdipModeLeft[i];
+      includedMode[mdiplist[numCand++]] = true;
+    }
+  }
+
+  const int currNumCands = numCand;
+  const int offset = NUM_LUMA_MODE - 6;
+  const int mod = offset + 3;
+  for (int i = 0; i < currNumCands; i++)
+  {
+    if (mdiplist[i] <= DC_IDX)
+    {
+      continue;
+    }
+    for (int deltaAngular = 0; deltaAngular < 2; deltaAngular++)
+    {
+      if (numCand < maxCand)
+      {
+        auto mode = ((mdiplist[i] + offset - deltaAngular) % mod) + 2;
+        if (!includedMode[mode])
+        {
+          includedMode[mode] = true;
+          mdiplist[numCand++] = mode;
+        }
+      }
+
+      if (numCand < maxCand)
+      {
+        auto mode = ((mdiplist[i] - 1 + deltaAngular) % mod) + 2;
+        if (!includedMode[mode])
+        {
+          includedMode[mode] = true;
+          mdiplist[numCand++] = mode;
+        }
+      }
+    }
+  }
+
+  if(numCand == 0)
+  {
+    mdiplist[0] = DC_IDX;
+    includedMode[DC_IDX] = true;
+    numCand++;
+  }
+
+  if(numCand >= 2 && uiWidth * uiHeight <= 256)
+  {
+    deriveMdipSorted(*cu.firstPU, mdiplist, numCand, 0);
+  }
+  cu.mdipMode = mdiplist[0];
+
+  if(useExcludingMode)
+  {
+    buildExcludingMode(cu, histogram, includedMode);
+  }
 }
 #endif
 
@@ -17317,8 +19087,10 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
   const int  chromaUnitHeight = iBaseUnitSize >> getComponentScaleY(COMPONENT_Cb, area.chromaFormat);
   const int  topTemplateSampNum = 2 * uiCWidth; // for MDLM, the number of template samples is 2W or 2H.
   const int  leftTemplateSampNum = 2 * uiCHeight;
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length");
+  CHECK(m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
+
   const int  totalAboveUnits = (topTemplateSampNum + (chromaUnitWidth - 1)) / chromaUnitWidth;
   const int  totalLeftUnits = (leftTemplateSampNum + (chromaUnitHeight - 1)) / chromaUnitHeight;
   const int  totalUnits = totalLeftUnits + totalAboveUnits + 1;
@@ -17633,15 +19405,15 @@ void IntraPrediction::xGetLumaRecPixels(const PredictionUnit &pu, CompArea chrom
   const int  leftTemplateSampNum = 2 * uiCHeight;
 #if JVET_AF0073_INTER_CCP_MERGE
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
-  assert((!pu.cu->rootCbf) || (pu.cu->firstTU->interCcpMerge) || (m_topRefLength >= topTemplateSampNum));
-  assert((!pu.cu->rootCbf) || (pu.cu->firstTU->interCcpMerge) || (m_leftRefLength >= leftTemplateSampNum));
+  CHECK( pu.cu->rootCbf && !pu.cu->firstTU->interCcpMerge && m_topRefLength < topTemplateSampNum, "Wrong CcpMerge condition" );
+  CHECK( pu.cu->rootCbf && !pu.cu->firstTU->interCcpMerge && m_leftRefLength < leftTemplateSampNum, "Wrong CcpMerBge condition" );
 #else
-  assert((pu.cu->firstTU->interCcpMerge) || (m_topRefLength >= topTemplateSampNum));
-  assert((pu.cu->firstTU->interCcpMerge) || (m_leftRefLength >= leftTemplateSampNum));
+  CHECK( !pu.cu->firstTU->interCcpMerge && m_topRefLength < topTemplateSampNum, "Wrong CcpMerge condition" );
+  CHECK( !pu.cu->firstTU->interCcpMerge && m_leftRefLength < leftTemplateSampNum, "Wrong CcpMerge condition" );
 #endif
 #else
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length" );
+  CHECK( m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
 #endif
   const int  totalAboveUnits = (topTemplateSampNum + (chromaUnitWidth - 1)) / chromaUnitWidth;
   const int  totalLeftUnits = (leftTemplateSampNum + (chromaUnitHeight - 1)) / chromaUnitHeight;
@@ -17916,8 +19688,10 @@ void IntraPrediction::xGetLMParameters(const PredictionUnit &pu, const Component
   const int leftUnits       = tuHeightInUnits;
   int topTemplateSampNum = 2 * cWidth; // for MDLM, the template sample number is 2W or 2H;
   int leftTemplateSampNum = 2 * cHeight;
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length" );
+  CHECK( m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
+
   int totalAboveUnits = (topTemplateSampNum + (unitWidth - 1)) / unitWidth;
   int totalLeftUnits = (leftTemplateSampNum + (unitHeight - 1)) / unitHeight;
   int totalUnits = totalLeftUnits + totalAboveUnits + 1;
@@ -18353,7 +20127,14 @@ void IntraPrediction::predIntraMip( const ComponentID compId, PelBuf &piPred, co
 {
   CHECK( piPred.width > MIP_MAX_WIDTH || piPred.height > MIP_MAX_HEIGHT, "Error: block size not supported for MIP" );
   CHECK( piPred.width != (1 << floorLog2(piPred.width)) || piPred.height != (1 << floorLog2(piPred.height)), "Error: expecting blocks of size 2^M x 2^N" );
-
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  CodingStructure &cs = *pu.cu->cs;
+  int blkQp = pu.cu->qp;
+  int blkWidth = piPred.width;
+  int blkHeight = piPred.height;
+  bool applyBf = checkBfApplication(blkQp, blkWidth, blkHeight) ? true : false;
+  applyBf &= cs.sps->getUseIntraPredBf() && cs.slice->isIntra();
+#endif
   // generate mode-specific prediction
   uint32_t modeIdx       = MAX_NUM_MIP_MODE;
   bool     transposeFlag = false;
@@ -18414,7 +20195,7 @@ void IntraPrediction::predIntraMip( const ComponentID compId, PelBuf &piPred, co
   CHECK(modeIdx >= getNumModesMip(piPred), "Error: Wrong MIP mode index");
 
   static_vector<int, MIP_MAX_WIDTH* MIP_MAX_HEIGHT> predMip( piPred.width * piPred.height );
-#if JVET_AB0067_MIP_DIMD_LFNST
+#if JVET_AB0067_MIP_DIMD_LFNST && !JVET_AK0217_INTRA_MTSS
   if (useDimd)
   {
     int sizeId = getMipSizeId(Size(piPred.width, piPred.height));
@@ -18433,15 +20214,15 @@ void IntraPrediction::predIntraMip( const ComponentID compId, PelBuf &piPred, co
       }
       pReducePred += reducedPredTemp.stride;
     }
-#if JVET_AI0050_INTER_MTSS
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS
     int secondDimdIntraDir = 0;
 #endif
     int iMode = deriveIpmForTransform(reducedPredTemp, *pu.cu
-#if JVET_AI0050_INTER_MTSS
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS
       , secondDimdIntraDir
 #endif
     );
-#if JVET_AI0050_INTER_MTSS
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS
     pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
 #endif
     pu.cu->mipDimdMode = iMode;
@@ -18465,6 +20246,29 @@ void IntraPrediction::predIntraMip( const ComponentID compId, PelBuf &piPred, co
 
     pred += piPred.stride;
   }
+#if JVET_AK0217_INTRA_MTSS
+  if (useDimd)
+  {
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS
+    int secondDimdIntraDir = 0;
+#endif
+    int iMode = deriveIpmForTransform(piPred, *pu.cu
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS
+      , secondDimdIntraDir
+#endif
+    );
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS
+    pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
+#endif
+    pu.cu->mipDimdMode = iMode;
+  }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  if( applyBf )
+  {
+    bilateralFilterPredDiamond5x5Clip(cs, toChannelType(compId), piPred, blkWidth, blkHeight, blkQp, cs.slice->clpRng(compId), true, *pu.cu );
+  }
+#endif
 }
 
 void IntraPrediction::reorderPLT(CodingStructure& cs, Partitioner& partitioner, ComponentID compBegin, uint32_t numComp)
@@ -18571,7 +20375,9 @@ void IntraPrediction::reorderPLT(CodingStructure& cs, Partitioner& partitioner, 
       pltSizetmp++;
     }
   }
-  assert(pltSizetmp == cu.curPLTSize[compBegin]);
+
+  CHECK(pltSizetmp != cu.curPLTSize[compBegin], "Wrong palette size");
+
   for (int curidx = 0; curidx < cu.curPLTSize[compBegin]; curidx++)
   {
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
@@ -18901,8 +20707,10 @@ void IntraPrediction::xGetLMParametersLMS(const PredictionUnit &pu, const Compon
   const int leftUnits = tuHeightInUnits;
   int topTemplateSampNum = 2 * cWidth; // for MDLM, the template sample number is 2W or 2H;
   int leftTemplateSampNum = 2 * cHeight;
-  assert(m_topRefLength >= topTemplateSampNum);
-  assert(m_leftRefLength >= leftTemplateSampNum);
+
+  CHECK( m_topRefLength < topTemplateSampNum, "Wrong top template length" );
+  CHECK( m_leftRefLength < leftTemplateSampNum, "Wrong left template length" );
+
   int totalAboveUnits = (topTemplateSampNum + (unitWidth - 1)) / unitWidth;
   int totalLeftUnits = (leftTemplateSampNum + (unitHeight - 1)) / unitHeight;
   int totalUnits = totalLeftUnits + totalAboveUnits + 1;
@@ -31988,6 +33796,9 @@ void IntraPrediction::getTmrlSearchRange(const PredictionUnit& pu, int8_t* tmrlR
   }
 #if JVET_AD0085_TMRL_EXTENSION
   sizeMode = TMRL_MPM_SIZE;
+#if JVET_AK0059_MDIP
+  cu.isModeExcluded = false;
+#endif
   int numCand = getSpatialIpm(pu, tmrlIntraList, sizeMode
 #if JVET_AC0094_REF_SAMPLES_OPT
                             , true
@@ -32003,6 +33814,9 @@ void IntraPrediction::getTmrlSearchRange(const PredictionUnit& pu, int8_t* tmrlR
     , false
 #endif
   );
+#if JVET_AK0059_MDIP
+  cu.isModeExcluded = true;
+#endif
 #else
   // intra mode candidates
   sizeMode = 0;
@@ -32477,6 +34291,9 @@ void IntraPrediction::getChromaTmrlSearchRange(const PredictionUnit& pu, int8_t*
     }
   }
 
+#if JVET_AK0059_MDIP
+  cu.isModeExcluded = false;
+#endif
   fillMPMList(pu, tmrlIntraList, sizeMode, vaildNum, false
 #if JVET_AK0061_PDP_MPM
     ,false
@@ -32484,6 +34301,9 @@ void IntraPrediction::getChromaTmrlSearchRange(const PredictionUnit& pu, int8_t*
 
 
   );
+#if JVET_AK0059_MDIP
+  cu.isModeExcluded = true;
+#endif
 }
 void IntraPrediction::predChromaTmrlIntraAng(PredictionUnit& pu, const ComponentID compID, Pel* pPred, uint32_t uiStride)
 {
@@ -33995,6 +35815,421 @@ void IntraPrediction::reorderEipCands(const PredictionUnit& pu, static_vector<Ei
   {
     candList.push_back(model);
   }
+}
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+bool IntraPrediction::checkBfLmcsApplication ( CodingStructure &cs, Reshape* reshape, ChannelType channelType )
+{
+  bool applyInverseLmcs = false;
+  if( isLuma( channelType ) )
+  {
+    bool spsLmcsEnable = cs.sps->getUseLmcs();
+    bool phLmcsEnable = cs.picHeader->getLmcsEnabledFlag();
+    bool sliceLmcsEnable = reshape->getSliceReshaperInfo().getUseSliceReshaper();
+    bool ctuLmcsEnable = cs.slice->getSliceType() == I_SLICE ? sliceLmcsEnable : reshape->getCTUFlag();
+    applyInverseLmcs = spsLmcsEnable && phLmcsEnable && sliceLmcsEnable && ctuLmcsEnable;
+  }
+  return applyInverseLmcs;
+}
+
+bool IntraPrediction::checkBfApplication( int blkQp, int blkWidth, int blkHeight )
+{
+  bool applyBf = false;
+  bool widthValid = false, heightValid = false;
+  if( blkQp > 17 && blkWidth <= 128 && blkHeight <= 128 )
+  {
+    if( blkWidth == 4 || blkWidth == 8 || blkWidth == 16 || blkWidth == 32 || blkWidth == 64 || blkWidth == 128 )
+    {
+      widthValid = true;
+    }
+    if( blkHeight == 4 || blkHeight == 8 || blkHeight == 16 || blkHeight == 32 || blkHeight == 64 || blkHeight == 128 )
+    {
+      heightValid = true;
+    }
+    applyBf = widthValid && heightValid;
+  }
+
+  if( applyBf )
+  {
+    int totalSample = blkWidth * blkHeight;
+    applyBf &= ( totalSample ) > 16 ? true : false;
+    applyBf &= ( totalSample ) < 1024 ? true : false;
+
+    int widthLog2 = floorLog2(blkWidth);
+    int heightLog2 = floorLog2(blkHeight);
+
+    applyBf &= ( blkWidth > blkHeight ) && ( widthLog2 - heightLog2 > 2 ) ? false : true;
+    applyBf &= ( blkHeight > blkWidth ) && ( heightLog2 - widthLog2 > 2 ) ? false : true;
+  }
+  return applyBf;
+}
+
+bool IntraPrediction::checkBfModeApplication( int modeIdx )
+{
+  bool applyBf = true;
+
+  if( (modeIdx >= 2 && modeIdx <= 3) || ( modeIdx >= 17 && modeIdx <= 19 ) || ( modeIdx >= 33 && modeIdx <= 35 ) || ( modeIdx >= 49 && modeIdx <= 51 ) || ( modeIdx >= 65 && modeIdx <= 66 ) )
+  {
+    applyBf = false;
+  }
+  return  applyBf;
+}
+
+void IntraPrediction::bilateralFilterPredDiamond5x5Clip(CodingStructure& cs, ChannelType channelType, PelBuf& predBuf, int blkWidth, int blkHeight, int blkQp, const ClpRng& clpRng, bool isIntraMode, CodingUnit& currCu )
+{
+
+  if( isChroma( channelType ) || !cs.sps->getUseIntraPredBf() )
+  {
+    return;
+  }
+
+  bool applyBfToPred = getApplyBfToPred(cs, blkWidth, blkHeight, channelType, blkQp, isIntraMode );
+  if( !applyBfToPred )
+  {
+    return;
+  }
+
+  int uiWidth = blkWidth;
+  int uiHeight = blkHeight;
+
+  const int padSize = NUMBER_PADDED_SAMPLES;
+  const int padSizeDou = padSize << 1;
+
+  int uiPredStride = predBuf.stride;
+  Pel *piPred = predBuf.buf;
+
+  const uint32_t uiWidthExt = uiWidth + padSizeDou;
+  const uint32_t uiHeightExt = uiHeight + padSizeDou;
+
+  int iWidthExtSIMD = uiWidthExt | 0x04;
+  if( uiWidth < 8 )
+  {
+    iWidthExtSIMD = 8 + padSizeDou;
+  }
+
+  bool applyLmcs = checkBfLmcsApplication(cs, m_pcReshape, channelType);
+  if( isLuma( channelType ) && applyLmcs )
+  {
+    //Do Inverse Mapping
+    for(int y = 0; y < uiHeight; y++)
+    {
+      Pel* predTmp = piPred + y * uiPredStride;
+      for(int x = 0; x < uiWidth; x++)
+      {
+        Pel curr = predTmp[x];
+        predTmp[x] = m_pcReshape->getInvLUT()[curr];
+      }
+    }
+  }
+
+  //Define Filtering Params
+  int madValue = 0;
+  bool isLowMadValue = true;
+  int lowMadTh = 10;
+  int bfac = 1;
+  const int bifRoundAdd = BIF_ROUND_ADD >> 1;
+  const int bifRoundShift = BIF_ROUND_SHIFT - 1;
+  const int bifQpOffset = 0;
+  const int cutBitsNum = isLuma( channelType ) ? 3 : 2;
+  const char* lutRowPtr = nullptr;
+  if( isLuma( channelType ) )
+  {
+    lutRowPtr = m_pcBilateralFilter->getFilterLutParameters(piPred, uiPredStride, uiWidth, uiHeight, isIntraMode ? MODE_INTRA : MODE_INTER, blkQp + bifQpOffset, bfac, madValue );
+  }
+  else
+  {
+    CHECK( isChroma(channelType), "IntraPredBf Can Not Apply to Chroma");
+  }
+  isLowMadValue = madValue < lowMadTh ? true : false;
+
+  if( !isLowMadValue )
+  {
+    if( isLuma( channelType ) && applyLmcs )
+    {
+      //Do Forward Mapping
+      for(int y = 0; y < uiHeight; y++)
+      {
+        Pel* predTmp = piPred + y * uiPredStride;
+        for(int x = 0; x < uiWidth; x++)
+        {
+          Pel curr = predTmp[x];
+          predTmp[x] = m_pcReshape->getFwdLUT()[curr];
+        }
+      }
+    }
+    //Skip BF for Blocks with High MAD
+    return;
+  }
+
+  //Reuse Loop-Filter Bf Buffer
+  Pel* bfTempBlock = m_pcBilateralFilter->tempblock;
+  Pel* bfTempBlockFiltered = m_pcBilateralFilter->tempblockFiltered;
+
+  //Move block to temporary block
+  for (int y = 0; y < uiHeight; y++)
+  {
+    Pel* predTmp = piPred + y * uiPredStride;
+    Pel* bfTmp   = bfTempBlock + (y + padSize) * iWidthExtSIMD + padSize;
+    memcpy(bfTmp, predTmp, sizeof(Pel) * uiWidth );
+  }
+  //Reset Ptr
+  piPred = predBuf.buf;
+
+  //Perform Mirrored Padding
+  //Left and Right
+  for( int y = 0; y < uiHeight; y++ )
+  {
+    int yPos = y + padSize;
+    bfTempBlock[yPos * iWidthExtSIMD + 0] = bfTempBlock[yPos * iWidthExtSIMD + 3];
+    bfTempBlock[yPos * iWidthExtSIMD + 1] = bfTempBlock[yPos * iWidthExtSIMD + 2];
+    bfTempBlock[yPos * iWidthExtSIMD + uiWidthExt - 1 - 0] = bfTempBlock[yPos * iWidthExtSIMD + uiWidthExt - 1 - 3];
+    bfTempBlock[yPos * iWidthExtSIMD + uiWidthExt - 1 - 1] = bfTempBlock[yPos * iWidthExtSIMD + uiWidthExt - 1 - 2];
+  }
+  //Top and Bottom
+  int64_t copySize = sizeof(Pel) * iWidthExtSIMD;
+  memcpy( bfTempBlock + 0 * iWidthExtSIMD, bfTempBlock + 3 * iWidthExtSIMD, copySize );
+  memcpy( bfTempBlock + 1 * iWidthExtSIMD, bfTempBlock + 2 * iWidthExtSIMD, copySize );
+  memcpy( bfTempBlock + (uiHeightExt - 1 - 0) * iWidthExtSIMD, bfTempBlock + (uiHeightExt - 1 - 3) * iWidthExtSIMD, copySize );
+  memcpy( bfTempBlock + (uiHeightExt - 1 - 1) * iWidthExtSIMD, bfTempBlock + (uiHeightExt - 1 - 2) * iWidthExtSIMD, copySize );
+
+  //Cover Positions that Padded
+  if( isLuma( channelType ) )
+  {
+    const SPS             &sps = *cs.sps;
+    const PreCalcValues   &pcv = *cs.pcv;
+    const CompArea        &area = currCu.blocks[COMPONENT_Y];
+    const ChannelType     chType = toChannelType(area.compID);
+
+    const PelBuf recoBuf        = cs.picture->getRecoBuf(area);
+
+    const int  tuWidth = area.width;
+    const int  tuHeight = area.height;
+    const int  predSize = tuWidth << 0;
+    const int  predHSize = tuHeight << 0;
+
+    const int scaleX = getChannelTypeScaleX( channelType, sps.getChromaFormatIdc() );
+    const int scaleY = getChannelTypeScaleY( channelType, sps.getChromaFormatIdc() );
+
+    const bool noShift = pcv.noChroma2x2 && area.width == 4; // don't shift on the lowest level (chroma not-split)
+    const int  unitWidth  = tuWidth  <= 2 && currCu.ispMode && isLuma( area.compID ) ? tuWidth  : pcv.minCUWidth  >> ( noShift ? 0 : scaleX );
+    const int  unitHeight = tuHeight <= 2 && currCu.ispMode && isLuma( area.compID ) ? tuHeight : pcv.minCUHeight >> ( noShift ? 0 : scaleY );
+
+    const int  totalAboveUnits = ( predSize + ( unitWidth - 1 ) ) / unitWidth;
+    const int  totalLeftUnits = ( predHSize + ( unitHeight - 1 ) ) / unitHeight;
+    const int  totalUnits = totalAboveUnits + totalLeftUnits + 1; //+1 for top-left
+    const int  numAboveUnits = std::max<int>( tuWidth / unitWidth, 1 );
+    const int  numLeftUnits = std::max<int>( tuHeight / unitHeight, 1 );
+//    const int  numAboveRightUnits = totalAboveUnits - numAboveUnits;
+//    const int  numLeftBelowUnits = totalLeftUnits - numLeftUnits;
+
+//    CHECK( numAboveUnits <= 0 || numLeftUnits <= 0 || numAboveRightUnits <= 0 || numLeftBelowUnits <= 0, "Size not supported" );
+
+    CHECK( numAboveUnits <= 0 || numLeftUnits <= 0 , "Size not supported" );
+
+    // ----- Step 1: analyze neighborhood -----
+    const Position posLT = area;
+//    const Position posRT = area.topRight();
+//    const Position posLB = area.bottomLeft();
+
+    bool neighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 1] = { false };
+    int numIntraNeighbor = 0;
+
+    neighborFlags[ totalLeftUnits ] = isAboveLeftAvailable( currCu, chType, posLT );
+    numIntraNeighbor += neighborFlags[ totalLeftUnits ] ? 1 : 0;
+    numIntraNeighbor += isAboveAvailable( currCu, chType, posLT, numAboveUnits, unitWidth, ( neighborFlags + totalLeftUnits + 1 ) );
+//    numIntraNeighbor += isAboveRightAvailable( currCu, chType, posRT, numAboveRightUnits, unitWidth, ( neighborFlags + totalLeftUnits + 1 + numAboveUnits ) );
+    numIntraNeighbor += isLeftAvailable( currCu, chType, posLT, numLeftUnits, unitHeight, ( neighborFlags + totalLeftUnits - 1 ) );
+//    numIntraNeighbor += isBelowLeftAvailable( currCu, chType, posLB, numLeftBelowUnits, unitHeight, ( neighborFlags + totalLeftUnits - 1 - numLeftUnits ) );
+
+    int recoStride = recoBuf.stride;
+    Pel* recoPtr   = recoBuf.buf;
+
+    Pel *bfTmp, *recoTmp;
+
+    if( numIntraNeighbor == 0 )
+    {
+      //None Avai
+      //Do Nothing
+    }
+    else if( numIntraNeighbor == totalUnits )
+    {
+      //Fully Avai
+
+      //Top-Left
+      bfTmp = bfTempBlock + ( 0 ) * iWidthExtSIMD + 0;
+      recoTmp = recoPtr + ( 0 - padSize ) * recoStride - padSize;
+      bfTmp[0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[0] ] : recoTmp[0];
+      bfTmp[1] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[1] ] : recoTmp[1];
+
+      bfTmp[iWidthExtSIMD + 0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[recoStride + 0] ] : recoTmp[recoStride + 0];
+      bfTmp[iWidthExtSIMD + 1] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[recoStride + 1] ] : recoTmp[recoStride + 1];
+      //Left
+      for( int hh = 0; hh < uiHeight; hh++)
+      {
+        bfTmp = bfTempBlock + ( padSize + hh ) * iWidthExtSIMD + 0;
+        recoTmp = recoPtr + ( hh ) * recoStride - padSize;
+        bfTmp[0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[0] ] : recoTmp[0];
+        bfTmp[1] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[1] ] : recoTmp[1];
+      }
+      //Top
+      for(int ww = 0; ww < uiWidth; ww++)
+      {
+        bfTmp = bfTempBlock + ( 0 ) * iWidthExtSIMD + padSize + ww;
+        recoTmp = recoPtr + ( 0 - padSize ) * recoStride - 0 + ww;
+        bfTmp[0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[0] ] : recoTmp[0];
+        bfTmp[iWidthExtSIMD] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[recoStride] ] : recoTmp[recoStride];
+      }
+    }
+    else
+    {
+      //Partialy Avai
+
+      //Top-Left
+      if( neighborFlags[ totalLeftUnits ] )
+      {
+        bfTmp = bfTempBlock + ( 0 ) * iWidthExtSIMD + 0;
+        recoTmp = recoPtr + ( 0 - padSize ) * recoStride - padSize;
+        bfTmp[0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[0] ] : recoTmp[0];
+        bfTmp[1] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[1] ] : recoTmp[1];
+
+        bfTmp[iWidthExtSIMD + 0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[recoStride + 0] ] : recoTmp[recoStride + 0];
+        bfTmp[iWidthExtSIMD + 1] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[recoStride + 1] ] : recoTmp[recoStride + 1];
+      }
+      //Left
+      int unitCheckedLeft = 0;
+      for(int unitIdx = totalLeftUnits - 1; unitIdx > 0; unitIdx-- )
+      {
+        if( neighborFlags[unitIdx] )
+        {
+          for(int hh = 0; hh < unitHeight; hh++)
+          {
+            bfTmp = bfTempBlock + ( padSize + ( unitCheckedLeft ) * unitHeight + hh ) * iWidthExtSIMD + 0;
+            recoTmp = recoPtr + ( ( unitCheckedLeft ) * unitHeight + hh ) * recoStride - padSize;
+            bfTmp[0] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[0] ] : recoTmp[0];
+            bfTmp[1] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[1] ] : recoTmp[1];
+          }
+        }
+        unitCheckedLeft ++;
+      }
+      //Top
+      int unitCheckedTop = 0;
+      for(int unitIdx = totalLeftUnits + 1; unitIdx < totalUnits - 1; unitIdx++)
+      {
+        if( neighborFlags[unitIdx] )
+        {
+          for(int ww = 0; ww < unitWidth; ww++)
+          {
+            bfTmp = bfTempBlock + ( 0 ) * iWidthExtSIMD + padSize + ( unitCheckedTop ) * unitWidth + ww;
+            recoTmp = recoPtr + ( 0 - padSize ) * recoStride + ( unitCheckedTop ) * unitWidth + ww;
+            bfTmp[0            ] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[0         ] ] : recoTmp[0         ];
+            bfTmp[iWidthExtSIMD] = applyLmcs ? m_pcReshape->getInvLUT()[ recoTmp[recoStride] ] : recoTmp[recoStride];
+          }
+        }
+        unitCheckedTop ++;
+      }
+
+    }//Replace Padding
+  }//is Luma
+
+  //Only Perform BF when MAD is Lower than TH
+  if( isLowMadValue )
+  {
+    //Perform BF and Store Offset into Filtered Buff
+
+    //Perform Clip Here
+    bool noClip = false;
+    //Consider Higher Input Bit Depth Here
+    int bitDepthShift = std::max(0, m_pcBilateralFilter->getInternalBitDepth() - 10);
+    bool isRdo = false;
+    bool isIntraPredBf = true;
+
+    m_pcBilateralFilter->m_bilateralFilterDiamond5x5(uiWidth, uiHeight, bfTempBlock, bfTempBlockFiltered, clpRng, piPred, uiPredStride, iWidthExtSIMD, bfac, bifRoundAdd, bifRoundShift, isRdo, lutRowPtr, noClip, cutBitsNum, bitDepthShift, isIntraPredBf );
+
+    //Copy Back to Pred
+    piPred = predBuf.buf;
+    for(int yy = 0; yy < uiHeight; yy++)
+    {
+      Pel* predTmp = piPred + yy * uiPredStride;
+      Pel* bfTmp   = bfTempBlockFiltered + (padSize + yy) * iWidthExtSIMD + padSize;
+      if( !noClip )
+      {
+        memcpy(predTmp, bfTmp, sizeof(Pel) * uiWidth );
+      }
+      else
+      {
+        for(int xx = 0; xx < uiWidth; xx++)
+        {
+          predTmp[xx] = ClipPel(predTmp[xx] + bfTmp[xx], clpRng);
+        }
+      }
+    }
+  }
+
+  if( isLuma( channelType ) && applyLmcs )
+  {
+    //Do Forward Mapping
+    for(int y = 0; y < uiHeight; y++)
+    {
+      Pel* predTmp = piPred + y * uiPredStride;
+      for(int x = 0; x < uiWidth; x++)
+      {
+        Pel curr = predTmp[x];
+        predTmp[x] = m_pcReshape->getFwdLUT()[curr];
+      }
+    }
+  }
+}
+
+int IntraPrediction::calcRefSampleTexture(const int16_t* block, int stride, int width, int height, int whlog2)
+{
+  int average = 0;
+  for (int i = 0; i < height; i++)
+  {
+    for (int j = 0; j < width; j++)
+    {
+      average += block[j];
+    }
+    block += stride;
+  }
+  block -= stride * height;
+  average = (average + (1 << (whlog2 - 1))) >> whlog2;
+  int mad = 0;
+  for (int i = 0; i < height; i++)
+  {
+    for (int j = 0; j < width; j++)
+    {
+      mad += std::abs(block[j] - average);
+    }
+    block += stride;
+  }
+  mad = (mad + (1 << (whlog2 - 1))) >> whlog2;
+
+  return mad;
+}
+
+bool IntraPrediction::getApplyBfToPred( CodingStructure& cs, int blkWidth, int blkHeight, ChannelType channel, int blkQp, bool isIntra )
+{
+  bool applyBfToPred =  blkQp > 17 ? true : false;
+  if (applyBfToPred )
+  {
+    int w = blkWidth, h = blkHeight;
+    char(*factor)[64] = nullptr;
+
+    if (isLuma(channel))
+    {
+      factor = m_pcBilateralFilter->m_tuSizeFactor;
+
+      w = floorLog2(w), h = floorLog2(h);
+      w = std::min(w, 7), h = std::min(h, 7);
+      applyBfToPred = factor[!isIntra][w * 8 + h] != 0 ? true : false;
+    }
+    else
+    {
+      applyBfToPred = false;
+    }
+  }
+
+  return applyBfToPred;
 }
 #endif
 //! \}

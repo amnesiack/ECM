@@ -891,6 +891,114 @@ const TFilterCoeff InterpolationFilter::m_lumaIntraFilterExt[CHROMA_INTERPOLATIO
 #endif
 #endif
 
+#if JVET_AK0087_INTRA_8TAP
+const TFilterCoeff InterpolationFilter::m_lumaIntra8tapNonSmoothingFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][8] = 
+{
+  { 0, 0,    0,  256, 0,    0,  0,    0}, // <- position  0  / 32
+  {-1, 2,   -6,  256, 8,   -3,  1,   -1}, // <- position  1  / 32
+  {-2, 4,   -12, 253, 17,  -7,  4,   -1}, // <- position  2  / 32
+  {-2, 7,   -18, 250, 26,  -10, 5,   -2}, // <- position  3  / 32
+  {-4, 9,   -23, 247, 35,  -13, 7,   -2}, // <- position  4  / 32
+  {-4, 11,  -27, 243, 45,  -17, 8,   -3}, // <- position  5  / 32
+  {-4, 12,  -32, 238, 55,  -20, 10,  -3}, // <- position  6  / 32
+  {-5, 14,  -34, 232, 65,  -23, 11,  -4}, // <- position  7  / 32
+  {-5, 16,  -38, 226, 75,  -26, 12,  -4}, // <- position  8  / 32
+  {-7, 17,  -39, 219, 86,  -29, 14,  -5}, // <- position  9  / 32
+  {-7, 18,  -41, 212, 96,  -32, 15,  -5}, // <- position  10 / 32
+  {-6, 18,  -43, 204, 107, -35, 17,  -6}, // <- position  11 / 32
+  {-6, 19,  -44, 196, 118, -37, 17,  -7}, // <- position  12 / 32
+  {-7, 19,  -44, 187, 128, -39, 18,  -6}, // <- position  13 / 32
+  {-8, 19,  -44, 178, 139, -41, 19,  -6}, // <- position  14 / 32
+  {-7, 19,  -44, 169, 149, -42, 19,  -7}, // <- position  15 / 32
+  {-7, 19,  -43, 159, 159, -43, 19,  -7}, // <- position  16 / 32 - half-pel
+  {-7, 19,  -42, 149, 169, -44, 19,  -7}, // <- position  17 / 32
+  {-6, 19,  -41, 139, 178, -44, 19,  -8}, // <- position  18 / 32
+  {-6, 18,  -39, 128, 187, -44, 19,  -7}, // <- position  19 / 32
+  {-7, 17,  -37, 118, 196, -44, 19,  -6}, // <- position  20 / 32
+  {-6, 17,  -35, 107, 204, -43, 18,  -6}, // <- position  21 / 32
+  {-5, 15,  -32, 96,  212, -41, 18,  -7}, // <- position  22 / 32
+  {-5, 14,  -29, 86,  219, -39, 17,  -7}, // <- position  23 / 32
+  {-4, 12,  -26, 75,  226, -38, 16,  -5}, // <- position  24 / 32
+  {-4, 11,  -23, 65,  232, -34, 14,  -5}, // <- position  25 / 32
+  {-3, 10,  -20, 55,  238, -32, 12,  -4}, // <- position  26 / 32
+  {-3, 8,   -17, 45,  243, -27, 11,  -4}, // <- position  27 / 32
+  {-2, 7,   -13, 35,  247, -23, 9,   -4}, // <- position  28 / 32
+  {-2, 5,   -10, 26,  250, -18, 7,   -2}, // <- position  29 / 32
+  {-1, 4,   -7,  17,  253, -12, 4,   -2}, // <- position  30 / 32
+  {-1, 1,   -3,  8,   256, -6,  2,   -1}, // <- position  31 / 32
+};
+
+#if JVET_W0123_TIMD_FUSION
+const TFilterCoeff InterpolationFilter::m_lumaIntra8tapNonSmoothingFilterExt[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][8] =
+{
+  {0,  0,    0,  256, 0,    0,  0,    0}, // <- position  0  / 64
+  {0,  1,   -3,  256, 4,   -3,  1,    0}, // <- position  1  / 64
+  {-1, 2,   -6,  256, 8,   -3,  1,   -1}, // <- position  2  / 64
+  {-1, 3,   -9,  255, 12,  -5,  2,   -1}, // <- position  3  / 64
+  {-2, 4,   -12, 253, 17,  -7,  4,   -1}, // <- position  4  / 64
+  {-3, 6,   -16, 252, 21,  -8,  5,   -1}, // <- position  5  / 64
+  {-2, 7,   -18, 250, 26,  -10, 5,   -2}, // <- position  6  / 64
+  {-4, 8,   -20, 249, 31,  -12, 6,   -2}, // <- position  7  / 64
+  {-4, 9,   -23, 247, 35,  -13, 7,   -2}, // <- position  8  / 64
+  {-3, 10,  -25, 245, 40,  -15, 8,   -4}, // <- position  9  / 64
+  {-4, 11,  -27, 243, 45,  -17, 8,   -3}, // <- position  10 / 64
+  {-4, 11,  -29, 240, 50,  -18, 9,   -3}, // <- position  11 / 64
+  {-4, 12,  -32, 238, 55,  -20, 10,  -3}, // <- position  12 / 64
+  {-4, 13,  -32, 235, 60,  -22, 10,  -4}, // <- position  13 / 64
+  {-5, 14,  -34, 232, 65,  -23, 11,  -4}, // <- position  14 / 64
+  {-5, 15,  -36, 229, 70,  -25, 12,  -4}, // <- position  15 / 64
+  {-5, 16,  -38, 226, 75,  -26, 12,  -4}, // <- position  16 / 64
+  {-5, 16,  -38, 223, 81,  -29, 14,  -6}, // <- position  17 / 64
+  {-7, 17,  -39, 219, 86,  -29, 14,  -5}, // <- position  18 / 64
+  {-7, 17,  -40, 216, 91,  -31, 15,  -5}, // <- position  19 / 64
+  {-7, 18,  -41, 212, 96,  -32, 15,  -5}, // <- position  20 / 64
+  {-7, 18,  -43, 208, 102, -33, 16,  -5}, // <- position  21 / 64
+  {-6, 18,  -43, 204, 107, -35, 17,  -6}, // <- position  22 / 64
+  {-6, 19,  -43, 200, 112, -36, 17,  -7}, // <- position  23 / 64
+  {-6, 19,  -44, 196, 118, -37, 17,  -7}, // <- position  24 / 64
+  {-6, 19,  -45, 192, 123, -39, 18,  -6}, // <- position  25 / 64
+  {-7, 19,  -44, 187, 128, -39, 18,  -6}, // <- position  26 / 64
+  {-7, 19,  -44, 183, 133, -40, 18,  -6}, // <- position  27 / 64
+  {-8, 19,  -44, 178, 139, -41, 19,  -6}, // <- position  28 / 64
+  {-7, 19,  -44, 174, 144, -42, 19,  -7}, // <- position  29 / 64
+  {-7, 19,  -44, 169, 149, -42, 19,  -7}, // <- position  30 / 64
+  {-7, 19,  -44, 165, 154, -43, 19,  -7}, // <- position  31 / 64
+  {-7, 19,  -43, 159, 159, -43, 19,  -7}, // <- position  32 / 64 - half-pel
+  {-7, 19,  -43, 154, 165, -44, 19,  -7}, // <- position  33 / 64
+  {-7, 19,  -42, 149, 169, -44, 19,  -7}, // <- position  34 / 64
+  {-7, 19,  -42, 144, 174, -44, 19,  -7}, // <- position  35 / 64
+  {-6, 19,  -41, 139, 178, -44, 19,  -8}, // <- position  36 / 64
+  {-6, 18,  -40, 133, 183, -44, 19,  -7}, // <- position  37 / 64
+  {-6, 18,  -39, 128, 187, -44, 19,  -7}, // <- position  38 / 64
+  {-6, 18,  -39, 123, 192, -45, 19,  -6}, // <- position  39 / 64
+  {-7, 17,  -37, 118, 196, -44, 19,  -6}, // <- position  40 / 64
+  {-7, 17,  -36, 112, 200, -43, 19,  -6}, // <- position  41 / 64
+  {-6, 17,  -35, 107, 204, -43, 18,  -6}, // <- position  42 / 64
+  {-5, 16,  -33, 102, 208, -43, 18,  -7}, // <- position  43 / 64
+  {-5, 15,  -32, 96,  212, -41, 18,  -7}, // <- position  44 / 64
+  {-5, 15,  -31, 91,  216, -40, 17,  -7}, // <- position  45 / 64
+  {-5, 14,  -29, 86,  219, -39, 17,  -7}, // <- position  46 / 64
+  {-6, 14,  -29, 81,  223, -38, 16,  -5}, // <- position  47 / 64
+  {-4, 12,  -26, 75,  226, -38, 16,  -5}, // <- position  48 / 64
+  {-4, 12,  -25, 70,  229, -36, 15,  -5}, // <- position  49 / 64
+  {-4, 11,  -23, 65,  232, -34, 14,  -5}, // <- position  50 / 64
+  {-4, 10,  -22, 60,  235, -32, 13,  -4}, // <- position  51 / 64
+  {-3, 10,  -20, 55,  238, -32, 12,  -4}, // <- position  52 / 64
+  {-3, 9,   -18, 50,  240, -29, 11,  -4}, // <- position  53 / 64
+  {-3, 8,   -17, 45,  243, -27, 11,  -4}, // <- position  54 / 64
+  {-4, 8,   -15, 40,  245, -25, 10,  -3}, // <- position  55 / 64
+  {-2, 7,   -13, 35,  247, -23, 9,   -4}, // <- position  56 / 64
+  {-2, 6,   -12, 31,  249, -20, 8,   -4}, // <- position  57 / 64
+  {-2, 5,   -10, 26,  250, -18, 7,   -2}, // <- position  58 / 64
+  {-1, 5,   -8,  21,  252, -16, 6,   -3}, // <- position  59 / 64
+  {-1, 4,   -7,  17,  253, -12, 4,   -2}, // <- position  60 / 64
+  {-1, 2,   -5,  12,  255, -9,  3,   -1}, // <- position  61 / 64
+  {-1, 1,   -3,  8,   256, -6,  2,   -1}, // <- position  62 / 64
+  { 0, 1,   -3,  4,   256, -3,  1,    0}, // <- position  63 / 64
+};
+#endif
+#endif
+
 #if JVET_W0123_TIMD_FUSION
 #if JVET_Z0117_CHROMA_IF
 const TFilterCoeff InterpolationFilter::g_aiExtIntraCubicFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][4] = {
@@ -1543,6 +1651,10 @@ InterpolationFilter::InterpolationFilter()
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   m_weightedGeoTplA = xWeightedGeoTpl<true>;
   m_weightedGeoTplL = xWeightedGeoTpl<false>;
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_weightObmcBoundary      = xWeightObmcBoundary;
+  m_weightObmcInnerBoundary = xWeightObmcInnerBoundary;
 #endif
 }
 
@@ -3151,6 +3263,123 @@ void InterpolationFilter::xWeightAffineBlk( const PredictionUnit& pu, WeightBuf&
   }
 }
 
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterpolationFilter::xWeightObmcBoundary(Pel* orgDst, Pel* orgSrc, const int strideDst, const int strideSrc, const int width, const int height, const int dir, const ComponentID comp, const int blendMode, const bool subMotion)
+{
+  const int weight0[4] = { 26, 28, 30, 31};
+  const int weight1[4] = {  6,  4,  2,  1};
+  const int rowStart = (blendMode == 2 || blendMode == -1) ? 0 : ((blendMode == 4) ? 1 : 2);
+
+    if (dir == 0) //above
+    {
+      if (comp == COMPONENT_Y)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          Pel* pDst = orgDst;
+          Pel* pSrc = orgSrc;
+
+          for (int j = rowStart; j < 4; j++)
+          {
+            pDst[i] = (weight0[j] * pDst[i] + weight1[j] * pSrc[i] + 16) >> 5;
+            pDst += strideDst;
+            pSrc += strideSrc;
+          }
+        }
+      }
+      else
+      {
+        for (int i = 0; i < width; i++)
+        {
+          Pel* pDst = orgDst;
+          Pel* pSrc = orgSrc;
+          pDst[i] = (weight0[rowStart] * pDst[i] + weight1[rowStart] * pSrc[i] + 16) >> 5;
+        }
+      }
+    }
+
+    if (dir == 1) //left
+    {
+      Pel* pDst = orgDst;
+      Pel* pSrc = orgSrc;
+
+      if (comp == COMPONENT_Y)
+      {
+        for (int i = 0; i < height; i++)
+        {
+          for (int j = rowStart; j < 4; j++)
+          {
+            pDst[j - rowStart] = (weight0[j] * pDst[j - rowStart] + weight1[j] * pSrc[j - rowStart] + 16) >> 5;
+          }
+          pDst += strideDst;
+          pSrc += strideSrc;
+        }
+      }
+      else
+      {
+        for (int i = 0; i < height; i++)
+        {
+          pDst[0] = (weight0[rowStart] * pDst[0] + weight1[rowStart] * pSrc[0] + 16) >> 5;
+          pDst += strideDst;
+          pSrc += strideSrc;
+        }
+      }
+    }
+}
+#endif
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+void InterpolationFilter::xWeightObmcInnerBoundary(const ComponentID comp, Pel* pOrgDst, Pel* pOrgSrc1, Pel* pOrgSrc2, Pel* pOrgSrc3, Pel* pOrgSrc4, const int strideDst, const int strideSrc, const int iWidth, const int iHeight, bool isAboveAvail, bool isLeftAvail, bool isBelowAvail, bool isRightAvail)
+{
+  unsigned int shift = 7;
+  unsigned int sumWeight = 1 << shift;
+  unsigned int add = 1 << (shift - 1);
+
+  Pel* pDst = pOrgDst;
+  Pel* pSrc1 = pOrgSrc1;
+  Pel* pSrc2 = pOrgSrc2;
+  Pel* pSrc3 = pOrgSrc3;
+  Pel* pSrc4 = pOrgSrc4;
+
+  if (isLuma(comp))
+  {
+    for (int j = 0; j < iHeight; j++)
+    {
+      for (int i = 0; i < iWidth; i++)
+      {
+        int pos = j * 4 + i;
+
+        unsigned int currentWeight = currWeights[isAboveAvail][isLeftAvail][isBelowAvail][isRightAvail][pos];
+
+        if (currentWeight == sumWeight)
+        {
+          continue;
+        }
+        pDst[i] = (currentWeight * pDst[i] + neigWeights[isAboveAvail ? 1 : 0][pos] * pSrc1[i] + neigWeights[isLeftAvail ? 2 : 0][pos] * pSrc2[i] + neigWeights[isBelowAvail ? 3 : 0][pos] * pSrc3[i] + neigWeights[isRightAvail ? 4 : 0][pos] * pSrc4[i] + add) >> shift;
+      }
+      pDst += strideDst;
+      pSrc1 += strideSrc;
+      pSrc2 += strideSrc;
+      pSrc3 += strideSrc;
+      pSrc4 += strideSrc;
+    }
+  }
+  else
+  {
+    pDst[0] = ((sumWeight - weightsChroma[isAboveAvail ? 1 : 0] - weightsChroma[isLeftAvail  ? 1 : 0]) * pDst[0] + weightsChroma[isAboveAvail ? 1 : 0] * pSrc1[0] + weightsChroma[isLeftAvail  ? 1 : 0] * pSrc2[0] + add) >> shift;
+    pDst[1] = ((sumWeight - weightsChroma[isAboveAvail ? 1 : 0] - weightsChroma[isRightAvail ? 1 : 0]) * pDst[1] + weightsChroma[isAboveAvail ? 1 : 0] * pSrc1[1] + weightsChroma[isRightAvail ? 1 : 0] * pSrc4[1] + add) >> shift;
+
+    pDst += strideDst;
+    pSrc2 += strideSrc;
+    pSrc3 += strideSrc;
+    pSrc4 += strideSrc;
+
+    pDst[0] = ((sumWeight - weightsChroma[isLeftAvail  ? 1 : 0] - weightsChroma[isBelowAvail ? 1 : 0]) * pDst[0] + weightsChroma[isLeftAvail  ? 1 : 0] * pSrc2[0] + weightsChroma[isBelowAvail ? 1 : 0] * pSrc3[0] + add) >> shift;
+    pDst[1] = ((sumWeight - weightsChroma[isBelowAvail ? 1 : 0] - weightsChroma[isRightAvail ? 1 : 0]) * pDst[1] + weightsChroma[isBelowAvail ? 1 : 0] * pSrc3[1] + weightsChroma[isRightAvail ? 1 : 0] * pSrc4[1] + add) >> shift;
+  }
+}
 #endif
 
 /**

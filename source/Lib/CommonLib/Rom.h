@@ -240,6 +240,16 @@ extern TMatrixCoeff g_aiTr256[NUM_TRANS_TYPE][256][256];
 
 extern const uint8_t g_aucIpmToTrSet[16][36];
 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+extern const uint8_t g_aucIpmToTrSetModDimd[3][12][67];
+extern const uint8_t g_aucIpmToTrSetModTimd[3][10][67];
+extern const uint8_t g_aucIpmToTrSetModMip[3][12][67];
+extern const uint8_t g_aucIpmToTrSetModTmp[3][12][67];
+extern const uint8_t g_aucIpmToTrSetModSgpm[3][11][67];
+extern const uint8_t g_aucIpmToTrSetModEip[3][10][67];
+extern const uint8_t g_aucIpmToTrSetModPnn[3][11][67];
+#endif
+
 #if JVET_AJ0257_IMPLICIT_MTS_LUT
 extern const uint8_t g_aucImplicitToTrSet[16][35];
 extern const uint8_t g_aucImplicitTrIdxToTr[36][2];
@@ -586,6 +596,9 @@ extern const EIPInfo  g_mmEipInfoLut[4][4][9];
 #endif
 #if JVET_AG0276_LIC_SLOPE_ADJUST
 extern const int g_licSlopeDeltaSet[LIC_SLOPE_MAX_NUM_DELTA + 1];
+#endif
+#if JVET_AK0059_MDIP
+extern uint64_t g_intraModeCost[EXT_VDIA_IDX + 1];
 #endif
 #if JVET_AJ0061_TIMD_MERGE
 extern uint64_t g_timdMrgCost[EXT_VDIA_IDX + 1];

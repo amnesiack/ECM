@@ -150,11 +150,14 @@ public:
   static const int8_t* getNsptMatrix( const uint32_t mode, const uint32_t width, const uint32_t height, int nsptIdx, int bktIdx );
 #endif
 #endif
-
-  uint32_t getLFNSTIntraMode( int wideAngPredMode );
+  
   bool     getTransposeFlag ( uint32_t intraMode  );
 #if JVET_Y0141_SIGN_PRED_IMPROVE
   int      getLfnstIdx(const TransformUnit &tu, ComponentID compID);
+#endif
+#if JVET_AK0217_INTRA_MTSS
+  void   resetLfnstIntraModeIdx(const int lfnstIdx) { m_lfnstIntraModeIdx[lfnstIdx] = 0; }
+  void   setLfnstIntraModeIdx(const int lfnstIdx, int modeIdx) { m_lfnstIntraModeIdx[lfnstIdx] = modeIdx; }
 #endif
 protected:
 
@@ -201,6 +204,9 @@ public:
 #endif
 
 protected:
+#if JVET_AK0217_INTRA_MTSS
+  bool    secondBucket;
+#endif
   TCoeff   m_tempCoeff[MAX_TB_SIZEY * MAX_TB_SIZEY];
 #if SIGN_PREDICTION
   Pel m_tempSignPredResid[SIGN_PRED_MAX_BS * SIGN_PRED_MAX_BS * 2]{ 0 };
@@ -208,7 +214,9 @@ protected:
   uint8_t  m_signsBuf[SIGN_PRED_FREQ_RANGE*SIGN_PRED_FREQ_RANGE];
 #endif
 #endif
-
+#if JVET_AK0217_INTRA_MTSS
+  int      m_lfnstIntraModeIdx[4];
+#endif
 private:
   DepQuant *m_quant;          //!< Quantizer
 #if JVET_AG0061_INTER_LFNST_NSPT

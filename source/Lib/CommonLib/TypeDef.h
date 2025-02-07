@@ -51,7 +51,6 @@
 #include <cassert>
 #include <cstdint>
 
-
 #define AHG7_LN_TOOLOFF_CFG                               1
 #define FIXFILTER_CFG                                     1
 #define AHG7_MTS_TOOLOFF_CFG                              1
@@ -125,6 +124,7 @@
 #define MMLM                                              1 // Add three MMLM modes
 #define GRAD_PDPC                                         1 // Gradient PDPC extension for angular-intra modes for luma.
 #define INTRA_6TAP                                        1 // 6TapCubic + 6 TapGaussian + left side 4 tap weak filtering for intra.
+#define JVET_AK0087_INTRA_8TAP                            1 // JVET-AK0087: 8-tap non-smoothing filter for angular intra prediction
 #define SECONDARY_MPM                                     1 // Primary MPM and secondary MPM: Add neighbouring modes into MPMs from positions AR, BL, AL, derived modes
 #define ENABLE_DIMD                                       1 // Decoder side intra mode derivation
 #if ENABLE_DIMD
@@ -166,6 +166,7 @@
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
 #define JVET_AH0076_OBIC                                  1 // JVET_AH0076: OBIC
+#define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET_AK0056: Weighted OBIC
 #endif
 
 #endif
@@ -237,6 +238,8 @@
 #define JVET_AK0061_PDP_MPM                               1 // JVET-AK0061: On MPM with matrix-based position dependent intra prediction
 #define JVET_AI0136_ADAPTIVE_DUAL_TREE                    1 // JVET-AI0136: Adaptive dual tree in inter slices
 #define JVET_AJ0057_HL_INTRA_METHOD_CONTROL               1 // JVET-AJ0057: High-level control of intra prediction methods
+#define JVET_AK0118_BF_FOR_INTRA_PRED                     1 // JVET-AK0118: Bilateral Filtering for Intra Prediction
+#define JVET_AK0059_MDIP                                  1 // JVET-AK0059: MDIP and excluding intra modes
 
 //IBC
 #define JVET_Y0058_IBC_LIST_MODIFY                        1 // JVET-Y0058: Modifications of IBC merge/AMVP list construction, ARMC-TM-IBC part is included under JVET_W0090_ARMC_TM
@@ -312,6 +315,7 @@
 #define JVET_AC0335_CONTENT_ADAPTIVE_OBMC_ENABLING        1 // JVET-AC0335: Content adaptive OBMC enabling
 #define JVET_AD0193_ADAPTIVE_OBMC_CONTROL                 1 // JVET-AD0193: Adaptive OBMC control
 #define JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED              1 // JVET-AJ0161: OBMC extension with intra prediction
+#define JVET_AK0212_GPM_OBMC_MODIFICATION                 1 // JVET-AK0212: Apply OBMC for each GPM partition before blending
 #endif
 
 #if JVET_X0049_BDMVR_SW_OPT
@@ -392,6 +396,7 @@
 #define JVET_AJ0158_SUBBLOCK_INTER_EXTENSION              1 // JVET-AJ0158 Sub-block Inter mode improvement
 #define JVET_AJ0126_INTER_AMVP_ENHANCEMENT                1 // JVET-AJ0126: Enhanced inter AMVP (inter TM part is controlled by EnableTMTools)
 #define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
+#define JVET_AK0095_ENHANCED_AFFINE_CANDIDATE             1 // JVET-AK0095: Additional temporal affine candidates and synthetic affine candidates
 #define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185 : TMVP selection for Merge and AMVP
 
 // Inter template matching tools
@@ -425,6 +430,7 @@
 #define JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION   1 // JVET-AC0185: Enhanced temporal motion information derivation
 #define JVET_AE0091_HIGH_ACCURACY_TEMPLATE_MATCHING       1 // JVET-AE0091: High-Accuracy template matching
 #endif
+#define JVET_AK0085_TM_BOUNDARY_PADDING                   1 // Template Matching-based Reference Picture Padding
 
 // Transform and coefficient coding
 #define TCQ_8STATES                                       1
@@ -441,6 +447,7 @@
 #define JVET_AI0096_SIGN_PRED_BIT_DEPTH_FIX               1 // JVET-AI0096: Fix to sign prediction for handling bit depths other than 10
 #endif
 #define JVET_AJ0257_IMPLICIT_MTS_LUT                      1 // JVET-AJ0257: Improved Implicit MTS
+#define JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION            1 // JVET-AK0187: Extended Implicit MTS
 #define JVET_W0103_INTRA_MTS                              1 // JVET-W0103: Extended Intra MTS
 #if JVET_W0103_INTRA_MTS
 #define JVET_Y0142_ADAPT_INTRA_MTS                        1 // JVET-Y0142: Adaptive Intra MTS
@@ -466,6 +473,9 @@
 #define JVET_AI0050_SBT_LFNST                             1 // JVET-AI0050: Enable LFNST/NSPT for SBT coded block
 #define JVET_AJ0260_SBT_CORNER_MODE                       1 // JVET-AJ0260: Corner mode for SBT
 #define JVET_AK0064_CCP_LFNST_NSPT                        1 // JVET-AK0064: LFNST/NSPT set derivation for CCP coded block
+#define JVET_AK0097_LAST_POS_SIGNALING                    1 // JVET-AK0097: Secondary prefix in last XY binarization 
+#define JVET_AK0217_INTRA_MTSS                            1 // JVET-AK0217: Multiple transform set selection for intra LFNST/NSPT with subsampled DIMD 
+#define JVET_AK0222_SGPM_DIMD_LFNST                       1 // JVET-AK0222: Improved LFNST/NSPT kernel set selection for SGPM
 
 // Entropy Coding
 #define EC_HIGH_PRECISION                                 1 // CABAC high precision
@@ -517,6 +527,7 @@
 #define JVET_AK0091_LAPLACIAN_INFO_IN_ALF                 1 // JVET-AK0091: Using Laplacian information in ALF Luma
 #define JVET_AK0065_TALF                                  1 // JVET-AK0065: Temporal ALF
 #define JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT          1 // JVET-AK0121: Boundary-Aware Offset Refinement for Loop-Filters
+#define JVET_AK0123_ALF_COEFF_RESTRICTION                 1 // JVET-AK0123: Restrictions on ALF coefficient values
 
 // SIMD optimizations
 #if IF_12TAP
@@ -831,6 +842,7 @@ typedef std::pair<int, int>  TrCost;
 #define ENABLE_SIMD_OPT_DIST                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for the distortion calculations(SAD,SSE,HADAMARD), no impact on RD performance
 #define ENABLE_SIMD_OPT_AFFINE_ME                       ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for affine ME, no impact on RD performance
 #define ENABLE_SIMD_OPT_ALF                             ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for ALF
+#define ENABLE_SIMD_OPT_ALF_CHOLESKY                    ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD for Cholesky Decomposition in ALF, no impact on RD performance, introduced in JVET-AK0123
 #if ENABLE_SIMD_OPT_BUFFER
 #define ENABLE_SIMD_OPT_BCW                               1                                                 ///< SIMD optimization for Bcw
 #endif

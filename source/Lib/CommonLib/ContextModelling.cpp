@@ -2094,6 +2094,7 @@ void MergeCtx::setGeoMmvdMergeInfo(PredictionUnit& pu, int mergeIdx, int mmvdIdx
 #if JVET_AG0276_NLIC
   pu.cu->altLMFlag = altLMFlag[mergeIdx];
   pu.cu->altLMParaUnit = altLMParaNeighbours[mergeIdx];
+
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
   bool initializeAltLM = !pu.cu->altLMFlag
                       && !pu.cu->geoFlag;
@@ -3192,6 +3193,9 @@ void AltLMAffineMergeCtx::initAltLMAffMergeCtx(int idx)
   bcwIdx[idx] = BCW_DEFAULT;
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
   obmcFlags[idx] = true;
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+  m_isConstructed[idx] = false;
 #endif
 }
 

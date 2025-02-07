@@ -261,6 +261,9 @@ protected:
 #if JVET_AG0058_EIP
   bool      m_noEipConstraintFlag;
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_noIntraPredBfConstraintFlag;
+#endif
 #if ENABLE_OBMC
   bool      m_noObmcConstraintFlag;
 #endif
@@ -370,6 +373,9 @@ protected:
   bool                  m_subPicIdMappingInSpsFlag;
   unsigned              m_subPicIdLen;
   std::vector<uint16_t> m_subPicId;
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  bool                  m_templateMatchingBoundaryPrediction;
+#endif
 #if JVET_Z0118_GDR
   bool      m_gdrEnabled;  
   unsigned  m_gdrPocStart;
@@ -542,6 +548,9 @@ protected:
 #endif
 #if JVET_AG0058_EIP
   bool      m_eip;
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      m_intraPredBf;
 #endif
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;
@@ -1383,6 +1392,10 @@ public:
   bool      getNoEipConstraintFlag() const { return m_noEipConstraintFlag; }
   void      setNoEipConstraintFlag(bool val) { m_noEipConstraintFlag = val; }
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  bool      getNoIntraPredBfConstraintFlag() const { return m_noIntraPredBfConstraintFlag; }
+  void      setNoIntraPredBfConstraintFlag(bool val) { m_noIntraPredBfConstraintFlag = val; }
+#endif
 #if ENABLE_OBMC
   bool      getNoObmcConstraintFlag() const { return m_noObmcConstraintFlag; }
   void      setNoObmcConstraintFlag(bool bVal) { m_noObmcConstraintFlag = bVal; }
@@ -1618,6 +1631,10 @@ public:
   bool      getSubPicIdMappingInSpsFlag                 ()                          { return m_subPicIdMappingInSpsFlag; }
   uint32_t  getSubPicIdLen                              ()                          { return m_subPicIdLen; }
   uint32_t  getSubPicId                                 (int i)                     { return m_subPicId[i]; }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  void      setTMBP( int val)                                                        {m_templateMatchingBoundaryPrediction = val;};
+  bool      getTMBP() const                                                          {return m_templateMatchingBoundaryPrediction;};
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
   void      setIntraLFNSTISlice             ( bool b )       { m_intraLFNSTISlice = b; }
   bool      getIntraLFNSTISlice()                      const { return m_intraLFNSTISlice; }
@@ -1885,6 +1902,10 @@ public:
 #if JVET_AG0058_EIP
   void      setUseEip                    (bool b)         { m_eip = b; }
   bool      getUseEip                    ()         const { return m_eip; }
+#endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  void      setUseIntraPredBf            (bool b)         { m_intraPredBf = b; }
+  bool      getUseIntraPredBf            ()         const { return m_intraPredBf; }
 #endif
 #if JVET_AD0085_MPM_SORTING
   void      setUseMpmSorting             (bool b)         { m_mpmSorting = b; }

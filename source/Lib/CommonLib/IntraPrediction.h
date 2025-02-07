@@ -48,6 +48,10 @@
 #endif
 
 #include "MatrixIntraPrediction.h"
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+#include "CommonLib/BilateralFilter.h"
+#include "CommonLib/Reshape.h"
+#endif
 #if JVET_AB0155_SGPM
 #include "CommonLib/InterpolationFilter.h"
 #endif
@@ -329,7 +333,11 @@ public:
 
 #if SECONDARY_MPM
   uint8_t m_intraMPM[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+  uint8_t m_intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - EXCLUDING_MODE_NUM];
+#else
   uint8_t m_intraNonMPM[NUM_NON_MPM_MODES];
+#endif
 #endif
 #if JVET_AK0061_PDP_MPM
   bool m_mpmIncludedPdpMode[NUM_LUMA_MODE] = { false };
@@ -609,7 +617,11 @@ protected:
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
     const PredictionUnit& pu,
 #endif
-    const CPelBuf &pSrc, PelBuf &pDst, const ChannelType channelType, const ClpRng& clpRng, const bool bExtIntraDir, const CPelBuf &pSrc2nd, bool isISP = true, int weightMode = 4);
+    const CPelBuf &pSrc, PelBuf &pDst, const ChannelType channelType, const ClpRng& clpRng, const bool bExtIntraDir, const CPelBuf &pSrc2nd,
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+    bool applyBf, CodingStructure& cs, int blkQp, const PredictionUnit& puReco,
+#endif
+    bool isISP = true, int weightMode = 4);
 #else
   void xPredIntraAng              (
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -644,7 +656,11 @@ protected:
 #endif
 
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-  void xPredIntraPnn               (const CPelBuf& recoBuf, PelBuf& pDst, const CPelBuf& srcBuf, CodingUnit& cu, const ComponentID compID);
+  void xPredIntraPnn               (const CPelBuf& recoBuf, PelBuf& pDst, const CPelBuf& srcBuf, CodingUnit& cu, const ComponentID compID
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  , bool applyBf
+#endif
+  );
   void xFillReferenceSamples       ( const CPelBuf &recoBuf,      Pel* refBufUnfiltered, const CompArea &area, const CodingUnit &cu, const bool forceDeac0 = false, const bool forceDeac1 = false );
 #else
   void xFillReferenceSamples       ( const CPelBuf &recoBuf,      Pel* refBufUnfiltered, const CompArea &area, const CodingUnit &cu );
@@ -726,7 +742,11 @@ public:
   virtual ~IntraPrediction();
 
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  void init                       (ChromaFormat chromaFormatIDC, const unsigned bitDepthY, const int nnipMode, Reshape* reshape, BilateralFilter* bilateralFilter );
+#else
   void init                       (ChromaFormat chromaFormatIDC, const unsigned bitDepthY, const int nnipMode);
+#endif
   void resetCuData                () { m_intraPredNN.resetCuData(); }
   bool getIsContextCollectionNeeded(const CompArea& area) { return m_intraPredNN.isContextCollectionNeeded(area); }
 #else
@@ -918,10 +938,21 @@ public:
   bool getGradForOBMC                    (const PredictionUnit pu, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, const bool isAbove, const int blkSize, int* modeBuf);
 #endif
 
+#if JVET_AK0059_MDIP
+  void deriveMdipMode                     (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool useExcludingMode = true);
+#endif
 #if ENABLE_DIMD
-  static void deriveDimdMode              (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+  static void deriveDimdMode              (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+    , bool useExcludingMode = false
+#endif
+  );
 #if JVET_AJ0267_ADAPTIVE_HOG
-  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+    , bool useExcludingMode = false
+#endif
+  );
 #endif
 #if JVET_Z0050_DIMD_CHROMA_FUSION && ENABLE_DIMD
   static void deriveDimdChromaMode        (const CPelBuf &recoBufY, const CPelBuf &recoBufCb, const CPelBuf &recoBufCr, const CompArea &areaY, const CompArea &areaCb, const CompArea &areaCr, CodingUnit &cu);
@@ -932,6 +963,9 @@ public:
    void predChromaTM                      (const CompArea &areaCb, const CompArea &areaCr, PredictionUnit &pu, uint8_t predMode, PelBuf predCb, PelBuf predCr, TemplateType eTplType, InterPrediction *pcInterPred);
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+   static void deriveDimdModeList(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, static_vector<int, MTSS_LIST_SIZE>& candModeList, static_vector<int, MTSS_LIST_SIZE>& candCostList);
+#endif 
 #if ENABLE_DIMD && (JVET_AB0067_MIP_DIMD_LFNST || JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST || JVET_AG0058_EIP || JVET_AG0061_INTER_LFNST_NSPT)
   static int deriveIpmForTransform        (CPelBuf predBuf, CodingUnit& cu
 #if JVET_AI0050_INTER_MTSS
@@ -1044,6 +1078,9 @@ public:
 #endif
   );
 #endif
+#if JVET_AK0059_MDIP
+  void deriveMdipSorted           (const PredictionUnit& pu, int* list, int& sortedSize, int iStartIdx);
+#endif
 #if JVET_AK0061_PDP_MPM
   bool determinePDPEnable(const ComponentID compId, const PredictionUnit& pu, const uint32_t  uiDirMode);
   void xFillPDPTempReferenceSamples2(const CPelBuf& recoBuf, const CompArea& area, const CodingUnit& cu);
@@ -1115,6 +1152,17 @@ public:
   }
 #endif
 #endif
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  Reshape*          m_pcReshape;
+  BilateralFilter*  m_pcBilateralFilter;
+
+  bool checkBfLmcsApplication ( CodingStructure &cs, Reshape* reshape, ChannelType channelType );
+  bool checkBfApplication( int blkQp, int blkWidth, int blkHeight );
+  bool checkBfModeApplication( int modeIdx );
+  void bilateralFilterPredDiamond5x5Clip(CodingStructure& cs, ChannelType channelType, PelBuf& predBuf, int blkWidth, int blkHeight, int blkQp, const ClpRng& clpRng, bool isIntraMode, CodingUnit &currCu );
+  int calcRefSampleTexture(const int16_t* block, int stride, int width, int height, int whlog2);
+  bool getApplyBfToPred( CodingStructure& cs, int blkWidth, int blkHeight, ChannelType channel, int blkQp, bool isIntra );
+#endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING && JVET_Y0065_GPM_INTRA
 protected:
   bool    m_abFilledIntraGPMRefTpl[NUM_INTRA_MODE];
@@ -1140,7 +1188,11 @@ public:
 #endif
   // Angular Intra
 #if JVET_AH0209_PDP
-  void predIntraAng               (const ComponentID compId, PelBuf &piPred, const PredictionUnit &pu, const bool applyFusion = true, const bool applyPDPFilter = true);
+  void predIntraAng(const ComponentID compId, PelBuf &piPred, const PredictionUnit &pu,
+#if JVET_AK0118_BF_FOR_INTRA_PRED
+  const bool forceBfOff = false,
+#endif
+  const bool applyFusion = true, const bool applyPDPFilter = true);
 #elif JVET_AB0157_INTRA_FUSION
   void predIntraAng               ( const ComponentID compId, PelBuf &piPred, const PredictionUnit &pu, const bool applyFusion = true);
 #else

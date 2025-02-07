@@ -42,6 +42,9 @@
 #include "CommonLib/BitStream.h"
 #include "CommonLib/Rom.h"
 #include "CommonLib/Slice.h"
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+#include "CommonLib/AdaptiveLoopFilter.h"
+#endif
 #include "CABACWriter.h"
 
 //! \ingroup EncoderLib
@@ -176,6 +179,9 @@ public:
 #if ALF_IMPROVEMENT
   void alfFilter( const AlfParam& alfParam, const bool isChroma, const int altIdx, int order0, int order1 );
   void alfGolombEncode(const int coeff, const int k, const bool signed_coeff = true);
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+  void alfHuffmanEncode(const int coeff, HuffmanForALF& huffman);
+#endif
 #else
   void alfFilter( const AlfParam& alfParam, const bool isChroma, const int altIdx );
 #endif

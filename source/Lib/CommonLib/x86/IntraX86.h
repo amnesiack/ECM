@@ -2837,6 +2837,7 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
   }
   else {
 #endif
+#if JVET_AK0061_PDP_MPM
     const __m128i offset = _mm_set1_epi32(addShift);
 #if JVET_AJ0237_INTERNAL_12BIT
     const __m128i max = _mm_set1_epi32((1 << clpRng.bd) - 1);
@@ -2845,6 +2846,7 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
 #endif
     const __m128i zeros = _mm_setzero_si128();
     __m128i vmat[4], vcoef[4], vsrc;
+#endif
   for (int y = startY; y < height; y+=offsetY, pred += strideOffset)
   {
     for (int x = 0; x < width; x+=4)

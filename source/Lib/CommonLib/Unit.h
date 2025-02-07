@@ -339,6 +339,9 @@ struct CodingUnit : public UnitArea
   bool obicIsBlended;
   int obicMode[OBIC_FUSION_NUM];
   int obicFusionWeight[OBIC_FUSION_NUM];
+#if JVET_AK0056_WEIGHTED_OBIC
+  int obicLocDep[OBIC_FUSION_NUM];
+#endif
 #endif
 #if JVET_AG0146_DIMD_ITMP_IBC
   bool           isBvDimd;
@@ -371,6 +374,13 @@ struct CodingUnit : public UnitArea
   int8_t         dimdRelWeight[3]; // max number of predictions to blend
 #endif
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  static_vector<int, 2> candModeListForTransform;
+#endif
+#if JVET_AK0217_INTRA_MTSS 
+  static_vector<int, MTSS_LIST_SIZE> candModeListForTransformMtss;
+  static_vector<int, MTSS_LIST_SIZE> candCostListForTransformMtss;
+#endif 
 #if JVET_AH0136_CHROMA_REORDERING
   int8_t         dimdBlendModeChroma[DIMD_FUSION_NUM - 1];
   uint8_t        chromaList[7];
@@ -397,6 +407,12 @@ struct CodingUnit : public UnitArea
   int                tmpFracIdx;
 #endif
 #endif
+#endif
+#if JVET_AK0059_MDIP
+  bool           mdip;
+  int            mdipMode;
+  bool           isModeExcluded;
+  int            excludingMode[EXCLUDING_MODE_NUM];
 #endif
 #if JVET_W0123_TIMD_FUSION
   bool           timd;
@@ -600,7 +616,7 @@ struct CodingUnit : public UnitArea
   int64_t cacheId;
   bool    cacheUsed;
 #endif
-  const uint8_t     getSbtIdx() const { assert( ( ( sbtInfo >> 0 ) & 0xf ) < NUMBER_SBT_IDX ); return ( sbtInfo >> 0 ) & 0xf; }
+  const uint8_t     getSbtIdx() const { CHECK( ( ( sbtInfo >> 0 ) & 0xf ) >= NUMBER_SBT_IDX, "Wrong sbtInfo"); return ( sbtInfo >> 0 ) & 0xf; }
   const uint8_t     getSbtPos() const { return ( sbtInfo >> 4 ) & 0x3; }
   void              setSbtIdx( uint8_t idx ) { CHECK( idx >= NUMBER_SBT_IDX, "sbt_idx wrong" ); sbtInfo = ( idx << 0 ) + ( sbtInfo & 0xf0 ); }
   void              setSbtPos( uint8_t pos ) { CHECK( pos >= 4, "sbt_pos wrong" ); sbtInfo = ( pos << 4 ) + ( sbtInfo & 0xcf ); }
@@ -1000,13 +1016,19 @@ struct TransformUnit : public UnitArea
   uint8_t        lfnstIntra [ MAX_NUM_TBLOCKS ];
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+  uint8_t        mdirIdx    [MAX_NUM_TBLOCKS];
+  bool           secondNSPTSet[MAX_NUM_TBLOCKS];
+#endif
   bool           noResidual;
   uint8_t        jointCbCr;
   uint8_t        cbf        [ MAX_NUM_TBLOCKS ];
 #if JVET_AE0102_LFNST_CTX
   int            lastPosition[ MAX_NUM_TBLOCKS ];
 #endif
-
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  std::pair<uint32_t, uint32_t> intraDirStat;
+#endif
 #if JVET_AE0059_INTER_CCCM
   int8_t         interCccm;
 #endif

@@ -1460,7 +1460,7 @@ Partitioning PartitionerImpl::getSbtTuTiling( const UnitArea& cuArea, const Codi
   }
 #endif
 
-  assert( splitType >= SBT_VER_HALF_POS0_SPLIT && splitType <= SBT_HOR_QUAD_POS1_SPLIT );
+  CHECK( splitType < SBT_VER_HALF_POS0_SPLIT || splitType > SBT_HOR_QUAD_POS1_SPLIT, "Wrong SBT split type");
 
   ret.resize( numTiles, cuArea );
   for( int i = 0; i < numTiles; i++ )

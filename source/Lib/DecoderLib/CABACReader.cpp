@@ -2434,6 +2434,9 @@ void CABACReader::extend_ref_line(CodingUnit& cu)
 #if JVET_AB0155_SGPM
     || cu.sgpm
 #endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
+#endif
     )
   {
     cu.firstPU->multiRefIdx = 0;
@@ -2597,6 +2600,9 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     return;
   }
 #endif
+#if JVET_AK0059_MDIP
+  mdip_flag(cu);
+#endif
 #if JVET_AB0155_SGPM
   sgpm_flag(cu);
   if (cu.sgpm)
@@ -2637,6 +2643,12 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 #endif
 #if JVET_W0123_TIMD_FUSION
   if (cu.timd)
+  {
+    return;
+  }
+#endif
+#if JVET_AK0059_MDIP
+  if (cu.mdip)
   {
     return;
   }
@@ -2689,41 +2701,41 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     if( mpmFlag[k] )
     {
       uint32_t ipredIdx = 0;
-      {
-        unsigned ctx = (pu->cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0);
-#if SECONDARY_MPM
-        unsigned ctx2 = (ctx ? (cu.firstPU->multiRefIdx == 0 ? 2 : 1) : 0);
-#endif
-        if( pu->multiRefIdx == 0 )
-        {
-          ipredIdx = m_BinDecoder.decodeBin( Ctx::IntraLumaPlanarFlag( ctx ) );
-        }
-        else
-        {
-          ipredIdx = 1;
-        }
 
-        if( ipredIdx )
-        {
+      unsigned ctx = ( pu->cu->ispMode == NOT_INTRA_SUBPARTITIONS ? 1 : 0 );
 #if SECONDARY_MPM
-          ipredIdx += m_BinDecoder.decodeBin(Ctx::IntraLumaMPMIdx(0 + ctx2));
-#else
-          ipredIdx += m_BinDecoder.decodeBinEP();
+      unsigned ctx2 = ( ctx ? ( cu.firstPU->multiRefIdx == 0 ? 2 : 1 ) : 0 );
 #endif
-        }
-        if (ipredIdx > 1)
-        {
-          ipredIdx += m_BinDecoder.decodeBinEP();
-        }
-        if (ipredIdx > 2)
-        {
-          ipredIdx += m_BinDecoder.decodeBinEP();
-        }
-        if (ipredIdx > 3)
-        {
-          ipredIdx += m_BinDecoder.decodeBinEP();
-        }
+      if( pu->multiRefIdx == 0 )
+      {
+        ipredIdx = m_BinDecoder.decodeBin( Ctx::IntraLumaPlanarFlag( ctx ) );
       }
+      else
+      {
+        ipredIdx = 1;
+      }
+
+      if( ipredIdx )
+      {
+#if SECONDARY_MPM
+        ipredIdx += m_BinDecoder.decodeBin( Ctx::IntraLumaMPMIdx( 0 + ctx2 ) );
+#else
+        ipredIdx += m_BinDecoder.decodeBinEP();
+#endif
+      }
+      if( ipredIdx > 1 )
+      {
+        ipredIdx += m_BinDecoder.decodeBinEP();
+      }
+      if( ipredIdx > 2 )
+      {
+        ipredIdx += m_BinDecoder.decodeBinEP();
+      }
+      if( ipredIdx > 3 )
+      {
+        ipredIdx += m_BinDecoder.decodeBinEP();
+      }
+
       pu->secondMpmFlag = false;
       pu->ipredIdx = ipredIdx;
     }
@@ -2770,7 +2782,12 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       }
       else
       {
+#if JVET_AK0059_MDIP
+        const int numNonMpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xReadTruncBinCode( ipredMode, numNonMpm );
+#else
         xReadTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );
+#endif
         pu->secondMpmFlag = false;
         pu->ipredIdx = ipredMode;
       }
@@ -2947,6 +2964,33 @@ void CABACReader::cu_eip_flag(CodingUnit& cu)
 }
 #endif
 
+#if JVET_AK0059_MDIP
+void CABACReader::mdip_flag(CodingUnit& cu)
+{
+  cu.mdip = false;
+#if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (cu.dimd)
+  {
+    cu.mdip = false;
+    return;
+  }
+#endif
+  if (!cu.Y().valid() || cu.predMode != MODE_INTRA || !isLuma(cu.chType)
+#if JVET_W0123_TIMD_FUSION
+      || cu.timd
+#endif
+   )
+  {
+    cu.mdip = false;
+    return;
+  }
+  if (CU::allowMdip(cu))
+  {
+    cu.mdip = m_BinDecoder.decodeBin( Ctx::MdipFlag() );
+  }
+}
+#endif
+
 #if JVET_W0123_TIMD_FUSION
 void CABACReader::cu_timd_flag( CodingUnit& cu )
 {
@@ -3046,6 +3090,9 @@ void CABACReader::sgpm_flag(CodingUnit &cu)
 #endif
 #if JVET_V0130_INTRA_TMP
     || cu.tmpFlag
+#endif
+#if JVET_AK0059_MDIP
+    || cu.mdip
 #endif
     )
   {
@@ -9251,7 +9298,7 @@ void CABACReader::transform_unit(TransformUnit& tu, CUCtx& cuCtx, Partitioner& p
     }
     else if (cu.sbtInfo && !chromaCbfs.sigChroma(area.chromaFormat))
     {
-      assert(!tu.noResidual);
+      CHECK(tu.noResidual, "noResidual should be 0");
       TU::setCbfAtDepth(tu, COMPONENT_Y, trDepth, 1);
     }
     else
@@ -10003,6 +10050,16 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
       }
     }
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    if (CU::isMdirAllowed(cu) && idxLFNST <= (cu.lwidth() * cu.lheight() < 256 ? MTSS_CAND_NUM[0] : MTSS_CAND_NUM[1]))
+    {
+      int mdirIdx = m_BinDecoder.decodeBin(Ctx::LFNSTIdx(4));
+      for (auto& tmpTu : CU::traverseTUs(cu))
+      {
+        tmpTu.mdirIdx[COMPONENT_Y] = mdirIdx;
+      }
+    }
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   }
 #endif
@@ -10042,23 +10099,125 @@ int CABACReader::last_sig_coeff( CoeffCodingContext& cctx, TransformUnit& tu, Co
   }
   if( PosLastX > 3 )
   {
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool isMaxX=false;
+    bool isMaxXisSignaled=false;
+
+    if ( (cctx.width() >= SECONDARY_PREFIX_START_SIZE) && PosLastX == maxLastPosX )
+    {
+      int ctxId = compID==0 ? g_aucLog2[cctx.width()/SECONDARY_PREFIX_START_SIZE] : (5 + compID - 1);
+      isMaxX = (m_BinDecoder.decodeBin(Ctx::lastXSecondaryPrefix(ctxId)) == 1 ? true : false);
+      isMaxXisSignaled = true;
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() isMaxX=%d\n", isMaxX ? 1 : 0);
+    }
+
+    if( isMaxX )
+    {
+      CHECKD(PosLastX >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      PosLastX = g_uiMinInGroup[PosLastX + 1] - 1;
+    }
+    else
+    {
+#endif
     uint32_t uiTemp  = 0;
     uint32_t uiCount = ( PosLastX - 2 ) >> 1;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool allTo1=true;
+    for ( int i = uiCount - 1; i >= 1; i-- )
+#else
     for ( int i = uiCount - 1; i >= 0; i-- )
+#endif
     {
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( i==(uiCount-1) )
+      {
+        int ctxOf = g_aucLog2[(cctx.width()/ID_SUFFIX_CTX_START_SIZE)];
+        CHECKD(ctxOf<0 || ctxOf>g_aucLog2[128/ID_SUFFIX_CTX_START_SIZE],"Abnormal value of ctxOf");
+        uiTemp += m_BinDecoder.decodeBin( Ctx::lastXSuffix[compID](ctxOf) ) << i;
+      }
+      else
+      {
+        uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() lastXSuffixBin(%d)=%d\n", i, (uiTemp>>i)&1);
+      allTo1 &= ( ( (uiTemp >> i)&1 ) ==1 );
+#else
       uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+#endif
     }
+#if JVET_AK0097_LAST_POS_SIGNALING
+    if( !isMaxXisSignaled || !allTo1 )
+    {
+      uiTemp += m_BinDecoder.decodeBinEP( ) << 0;
+    }
+    DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() uiTempX=%d\n", uiTemp);
+#endif
     PosLastX = g_uiMinInGroup[ PosLastX ] + uiTemp;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    }
+#endif
+
   }
   if( PosLastY > 3 )
   {
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool isMaxY=false;
+    bool isMaxYisSignaled=false;
+
+    if (cctx.height() >= SECONDARY_PREFIX_START_SIZE && PosLastY == maxLastPosY)
+    {
+      int ctxId = compID==0 ? g_aucLog2[cctx.height()/SECONDARY_PREFIX_START_SIZE] : (5 + compID - 1);
+      isMaxY = (m_BinDecoder.decodeBin(Ctx::lastYSecondaryPrefix(ctxId)) == 1 ? true : false);
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() isMaxY=%d\n", isMaxY ? 1 : 0);
+      isMaxYisSignaled=true;
+    }
+
+    if( isMaxY )
+    {
+      CHECK(PosLastY >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      CHECKD(PosLastY >= (LAST_SIGNIFICANT_GROUPS - 1), "Abnormal situation");
+      PosLastY = g_uiMinInGroup[PosLastY + 1] - 1;
+    }
+    else
+    {
+#endif
     uint32_t uiTemp  = 0;
     uint32_t uiCount = ( PosLastY - 2 ) >> 1;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    bool allTo1=true;
+    for ( int i = uiCount - 1; i >= 1; i-- )
+#else
     for ( int i = uiCount - 1; i >= 0; i-- )
+#endif
     {
+#if JVET_AK0097_LAST_POS_SIGNALING
+      if( i==(uiCount-1) )
+      {
+        int ctxOf = g_aucLog2[(cctx.height()/ID_SUFFIX_CTX_START_SIZE)];
+        CHECK(ctxOf<0 || ctxOf>g_aucLog2[128/ID_SUFFIX_CTX_START_SIZE],"Abnormal value of ctxOf");
+        uiTemp += m_BinDecoder.decodeBin( Ctx::lastYSuffix[compID](ctxOf) ) << i;
+      }
+      else
+      {
+        uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() lastYSuffixBin(%d)=%d\n", i, (uiTemp>>i)&1);
+      allTo1 &= ( ( (uiTemp >> i)&1 ) ==1 );
+#else
       uiTemp += m_BinDecoder.decodeBinEP( ) << i;
+#endif
     }
+#if JVET_AK0097_LAST_POS_SIGNALING
+    if ( !isMaxYisSignaled || !allTo1 )
+    {
+      uiTemp += m_BinDecoder.decodeBinEP( ) << 0;
+    }
+    DTRACE(g_trace_ctx, D_SYNTAX, "last_sig_coeff() uiTempY=%d\n", uiTemp);
+#endif
     PosLastY = g_uiMinInGroup[ PosLastY ] + uiTemp;
+#if JVET_AK0097_LAST_POS_SIGNALING
+    }
+#endif
   }
 
   int blkPos;
