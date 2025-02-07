@@ -361,6 +361,10 @@ InterPrediction::InterPrediction()
 #if JVET_AJ0237_INTERNAL_12BIT
   m_dmvrCostLambda = 1;
 #endif
+  for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
+  {
+    m_beforeOBMCBuf[ch] = nullptr;
+  }
 }
 
 InterPrediction::~InterPrediction()
