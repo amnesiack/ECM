@@ -11419,7 +11419,11 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
   bool  bFoundGeoBlendCand;
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   uint8_t mpmList[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+  uint8_t intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+#else
   uint8_t intraNonMPM[NUM_NON_MPM_MODES];
+#endif
   if (cu.firstPU->geoBlendIntraFlag)
   {
 #if ENABLE_DIMD
@@ -11430,6 +11434,9 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
       m_pcIntraPred->deriveDimdMode(cu.cs->picture->getRecoBuf(cu.Y()), cu.Y(), cu);
     }
 #endif
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = false;
+#endif
     int mpmNum = PU::getIntraMPMs(*cu.firstPU, mpmList, intraNonMPM
 #if JVET_AC0094_REF_SAMPLES_OPT
       , true
@@ -11439,6 +11446,9 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
 #endif
       , m_pcIntraPred
     );
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = true;
+#endif    
     mpmNum = std::min(mpmNum, GEO_BLEND_MAX_NUM_INTRA_CANDS);
 
     bFoundGeoBlendCand = getGeoBlendIntraCand(cu, pcIntraPred, geoMrgCtx, mergeIdx, geoBI, mpmList, mpmNum);
