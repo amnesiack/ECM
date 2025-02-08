@@ -2379,7 +2379,7 @@ void EncLib::xInitSPS( SPS& sps )
   }
 #endif
 #if JVET_AK0065_TALF
-  sps.setUseTAlf(true);
+  sps.setUseTAlf(m_alf);
 #endif
 
   if (sps.getVuiParametersPresentFlag())
