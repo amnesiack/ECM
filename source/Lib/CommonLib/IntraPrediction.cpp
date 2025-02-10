@@ -15457,7 +15457,7 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
   }
 #endif
 #if JVET_AK0059_MDIP
-  if(useExcludingMode && !CU::allowMdip(cu))
+  if(useExcludingMode && !CU::allowMdip(cu) && cu.cs->sps->getUseMdip())
   {
     bool includedMode[NUM_LUMA_MODE]{ false };
     buildExcludingMode(cu, histogram, includedMode);
@@ -16050,7 +16050,7 @@ void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompA
     histogram[i] = histogramTop[i] + histogramLeft[i] + histogramTopLeft[i];
   }
 #if JVET_AK0059_MDIP
-  if(useExcludingMode && !CU::allowMdip(cu))
+  if(useExcludingMode && !CU::allowMdip(cu) && cu.cs->sps->getUseMdip())
   {
     bool includedMode[NUM_LUMA_MODE]{ false };
     buildExcludingMode(cu, histogram, includedMode);

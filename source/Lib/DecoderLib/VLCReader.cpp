@@ -2938,6 +2938,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AD0085_MPM_SORTING
   READ_FLAG(uiCode, "sps_mpm_sorting_enabled_flag");                pcSPS->setUseMpmSorting(uiCode != 0);
 #endif
+#if JVET_AK0059_MDIP
+  READ_FLAG(uiCode, "sps_mdip_enabled_flag");                       pcSPS->setUseMdip(uiCode != 0);
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   READ_FLAG(uiCode, "sps_chroma_reordering_enabled_flag");          pcSPS->setUseChromaReordering(uiCode != 0);
 #endif

@@ -1080,14 +1080,17 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   if(cu.lfnstIdx == 0 && cu.mtsFlag == 0)
   {
     memset(m_includeExcludingMode, false, sizeof(m_includeExcludingMode));
-
-    for(int i = 0; i < EXCLUDING_MODE_NUM; i++ )
+    
+    if(cu.cs->sps->getUseMdip())
     {
-      const auto excludedMode = cu.excludingMode[ i ];
+      for(int i = 0; i < EXCLUDING_MODE_NUM; i++ )
+      {
+        const auto excludedMode = cu.excludingMode[ i ];
 
-      CHECK( excludedMode < 0 || excludedMode >= NUM_LUMA_MODE, "Wrong excludedMode mode" );
+        CHECK( excludedMode < 0 || excludedMode >= NUM_LUMA_MODE, "Wrong excludedMode mode" );
 
-      m_includeExcludingMode[ excludedMode ] = true;
+        m_includeExcludingMode[ excludedMode ] = true;
+      }
     }
   }
 #endif
@@ -1641,15 +1644,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               m_bestIntraSADCost = std::min(m_bestIntraSADCost, cost - (double)minSadHad + (double)sadCost);
 #endif
 #if JVET_AK0059_MDIP
-              if(testMdip && pdpMode && uiMode == cu.mdipMode)
+              if(testMdip)
               {
-                m_dSavedSadHadPdp = (double)minSadHad;
-                m_dSavedSadPdp = (double)sadCost;
-              }
-              else if(uiMode == m_intraMPM[0])
-              {
-                m_mpm0SadHad = (double)minSadHad;
-              }
+                if(pdpMode && uiMode == cu.mdipMode)
+                {
+                  m_dSavedSadHadPdp = (double)minSadHad;
+                  m_dSavedSadPdp = (double)sadCost;
+                }
+                else if(uiMode == m_intraMPM[0])
+                {
+                  m_mpm0SadHad = (double)minSadHad;
+                }
+              }              
 #endif
               DTRACE(g_trace_ctx, D_INTRA_COST, "IntraHAD: %u, %llu, %f (%d)\n", minSadHad, fracModeBits, cost, uiMode);
 
@@ -16835,7 +16841,11 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
     pu.mpmFlag = false;
     pu.secondMpmFlag = false;
 #if JVET_AK0059_MDIP
-    const int numNonMpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+    int numNonMpm = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES;
+    if (pu.cs->sps->getUseMdip())
+    {
+      numNonMpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+    }
     predIdx = numNonMpm;
     for (int idx = 0; idx < numNonMpm; idx++)
 #else

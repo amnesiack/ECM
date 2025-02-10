@@ -2109,6 +2109,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AD0085_MPM_SORTING
   sps.setUseMpmSorting      ( m_mpmSorting );
 #endif
+#if JVET_AK0059_MDIP
+  sps.setUseMdip            ( m_mdip );
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   sps.setUseChromaReordering (m_chromaReordering);
 #endif

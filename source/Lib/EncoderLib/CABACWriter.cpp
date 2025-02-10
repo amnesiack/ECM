@@ -2302,8 +2302,15 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
         unsigned nonMPMIdx = pu->ipredIdx;
 
 #if JVET_AK0059_MDIP
-        int numNonMpm = CU::allowMdip( cu ) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-        xWriteTruncBinCode( nonMPMIdx, numNonMpm );  // Remaining mode is truncated binary coded
+        if (cu.cs->sps->getUseMdip())
+        {
+          const int numNonMpm = CU::allowMdip( cu ) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+          xWriteTruncBinCode( nonMPMIdx, numNonMpm );  // Remaining mode is truncated binary coded
+        }
+        else
+        {
+          xWriteTruncBinCode( nonMPMIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded  
+        }
 #else
         xWriteTruncBinCode( nonMPMIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded
 #endif
@@ -2554,8 +2561,15 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
       m_BinEncoder.encodeBin( 0, Ctx::IntraLumaSecondMpmFlag() );
 
 #if JVET_AK0059_MDIP
-      int numNonMpm = CU::allowMdip( *pu.cu ) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-      xWriteTruncBinCode( pu.ipredIdx, numNonMpm );  // Remaining mode is truncated binary coded  
+      if (pu.cs->sps->getUseMdip())
+      {
+        const int numNonMpm = CU::allowMdip( *pu.cu ) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+        xWriteTruncBinCode( pu.ipredIdx, numNonMpm );  // Remaining mode is truncated binary coded  
+      }
+      else
+      {
+        xWriteTruncBinCode( pu.ipredIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded    
+      }
 #else
       xWriteTruncBinCode( pu.ipredIdx, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );  // Remaining mode is truncated binary coded  
 #endif
@@ -2810,6 +2824,10 @@ void CABACWriter::cu_obic_flag(const CodingUnit& cu )
 #if JVET_AK0059_MDIP
 void CABACWriter::mdip_flag(const CodingUnit& cu)
 {
+  if(!cu.cs->sps->getUseMdip())
+  {
+    return;
+  }
 #if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.dimd)
   {
