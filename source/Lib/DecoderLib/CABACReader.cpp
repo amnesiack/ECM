@@ -2783,8 +2783,15 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       else
       {
 #if JVET_AK0059_MDIP
-        const int numNonMpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
-        xReadTruncBinCode( ipredMode, numNonMpm );
+        if (cu.cs->sps->getUseMdip())
+        {
+          const int numNonMpm = CU::allowMdip(cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+          xReadTruncBinCode( ipredMode, numNonMpm );
+        }
+        else
+        {
+          xReadTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );
+        }
 #else
         xReadTruncBinCode( ipredMode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES );
 #endif
@@ -2968,6 +2975,10 @@ void CABACReader::cu_eip_flag(CodingUnit& cu)
 void CABACReader::mdip_flag(CodingUnit& cu)
 {
   cu.mdip = false;
+  if(!cu.cs->sps->getUseMdip())
+  {
+    return;
+  }
 #if ENABLE_DIMD && !JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.dimd)
   {

@@ -35214,7 +35214,7 @@ bool CU::allowTmrl(const CodingUnit& cu)
 bool CU::allowMdip(const CodingUnit& cu)
 {
   bool allowMdip = true;
-  if (!cu.Y().valid() || !isLuma(cu.chType))
+  if (!cu.Y().valid() || !isLuma(cu.chType) || !cu.cs->sps->getUseMdip())
   {
     allowMdip = false;
   }
@@ -36532,7 +36532,7 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
 
     includedMode[pu.cu->mdipMode] = true;
   }
-  if(pu.cu->isModeExcluded)
+  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip())
   {
     for(int i=0; i < EXCLUDING_MODE_NUM; i++)
     {
@@ -36968,14 +36968,19 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
   {
     includedMode[pu.cu->mdipMode] = true;
   }
-  if(pu.cu->isModeExcluded)
+  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip())
   {
     for(int i=0; i<EXCLUDING_MODE_NUM; i++)
     {
       includedMode[pu.cu->excludingMode[i]] = true;
     }
   }
-  const int numNonMpmMdip = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+
+  int numNonMpmMdip = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES; 
+  if(pu.cs->sps->getUseMdip())
+  {
+    numNonMpmMdip = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
+  } 
 #endif
   
   int numNonMPM = 0;
@@ -37009,13 +37014,20 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
     }
   }
 #if JVET_AK0059_MDIP
-  if(CU::allowMdip(*pu.cu))
+  if(pu.cs->sps->getUseMdip())
   {
-    CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - MDIP_NUM - EXCLUDING_MODE_NUM, "");
+    if(CU::allowMdip(*pu.cu))
+    {
+      CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - MDIP_NUM - EXCLUDING_MODE_NUM, "");
+    }
+    else
+    {
+      CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - EXCLUDING_MODE_NUM, "");
+    }
   }
   else
   {
-    CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - EXCLUDING_MODE_NUM, "");  
+    CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES, "");
   }
 #else
   CHECK(numNonMPM != NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES, "");
