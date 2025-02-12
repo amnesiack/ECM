@@ -4871,29 +4871,35 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           if(cu.eipMerge)
           {
             PelBuf eipSaveBuf(m_eipMergePredBuf[modeIdx], pu.Y());
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             cu.eipModel.eipDimdMode = m_eipMergeModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
-#if JVET_AI0050_INTER_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-              , cu.dimdDerivedIntraDir2nd
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode 
 #endif
             );
             CHECK(modeIdx >= NUM_EIP_MERGE_SIGNAL, "modeIdx >= NUM_EIP_MERGE_SIGNAL");
 #if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-            cu.eipModel.eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
-            m_eipMergeModel[ modeIdx ].eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = m_eipMergeModel[ modeIdx ].eipDimdMode2nd = secondMode;
 #endif
           }
           else
           {
             PelBuf eipSaveBuf(m_eipPredBuf[modeIdx], pu.Y());
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             cu.eipModel.eipDimdMode = m_eipModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
-#if JVET_AI0050_INTER_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-              , cu.dimdDerivedIntraDir2nd
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode
 #endif
             );
             CHECK(modeIdx >= NUM_DERIVED_EIP, "modeIdx >= NUM_DERIVED_EIP");
 #if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-            cu.eipModel.eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
-            m_eipModel[ modeIdx ].eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = m_eipModel[ modeIdx ].eipDimdMode2nd = secondMode;
 #endif
           }
         }
@@ -5781,29 +5787,35 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           if(cu.eipMerge)
           {
             PelBuf eipSaveBuf(m_eipMergePredBuf[modeIdx], pu.Y());
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             cu.eipModel.eipDimdMode = m_eipMergeModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
-#if JVET_AI0050_INTER_MTSS
-              , cu.dimdDerivedIntraDir2nd
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode 
 #endif
             );
             CHECK(modeIdx >= NUM_EIP_MERGE_SIGNAL, "modeIdx >= NUM_EIP_MERGE_SIGNAL");
 #if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-            cu.eipModel.eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
-            m_eipMergeModel[ modeIdx ].eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = m_eipMergeModel[ modeIdx ].eipDimdMode2nd = secondMode;
 #endif 
           }
           else
           {
             PelBuf eipSaveBuf(m_eipPredBuf[modeIdx], pu.Y());
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+            int secondMode = 0;
+#endif
             cu.eipModel.eipDimdMode = m_eipModel[modeIdx].eipDimdMode = deriveIpmForTransform(eipSaveBuf, cu
-#if JVET_AI0050_INTER_MTSS
-              , cu.dimdDerivedIntraDir2nd
+#if JVET_AI0050_INTER_MTSS || JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+              , secondMode
 #endif
             );
             CHECK(modeIdx >= NUM_DERIVED_EIP, "modeIdx >= NUM_DERIVED_EIP");
 #if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
-            cu.eipModel.eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
-            m_eipModel[ modeIdx ].eipDimdMode2nd = cu.dimdDerivedIntraDir2nd;
+            cu.dimdDerivedIntraDir2nd = secondMode;
+            cu.eipModel.eipDimdMode2nd = m_eipModel[ modeIdx ].eipDimdMode2nd = secondMode;
 #endif
           }
         }
