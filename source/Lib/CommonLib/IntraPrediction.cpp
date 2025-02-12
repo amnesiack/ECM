@@ -23909,16 +23909,23 @@ void IntraPrediction::xTMPFusionApplyModel(PelBuf &piPred, unsigned int uiBlkWid
                                            , bool bDeriveDimdMode)
 {
 #if JVET_AG0136_INTRA_TMP_LIC
-  const IntraTMPFusionInfo& tmpFusionInfo = (useMR ? m_tmpFusionInfoUseMR : m_tmpFusionInfo)[cu->tmpIdx];
-  const bool bTmpFusion = cu->tmpFusionFlag && tmpFusionInfo.bValid;
-  if (!bTmpFusion || !tmpFusionInfo.bFilter)
-#else
-  bool bTmpFusion = cu->tmpFusionFlag && m_tmpFusionInfo[cu->tmpIdx].bValid;
-  if (!bTmpFusion || !m_tmpFusionInfo[cu->tmpIdx].bFilter)
-#endif
+  if (!cu->tmpFusionFlag)
   {
     return;
   }
+
+  const IntraTMPFusionInfo& tmpFusionInfo = (useMR ? m_tmpFusionInfoUseMR : m_tmpFusionInfo)[cu->tmpIdx];
+  if (!tmpFusionInfo.bValid || !tmpFusionInfo.bFilter)
+  {
+    return;
+  }
+#else
+  bool bTmpFusion = cu->tmpFusionFlag && m_tmpFusionInfo[cu->tmpIdx].bValid;
+  if (!bTmpFusion || !m_tmpFusionInfo[cu->tmpIdx].bFilter)
+  {
+    return;
+  }
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
   const int foundCandiNum = tmpFusionInfo.tmpFusionNumber;
 #else
