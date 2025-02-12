@@ -16563,6 +16563,7 @@ void IntraPrediction::deriveDimdModeList(const CPelBuf& recoBuf, const CompArea&
     const Pel* pRecoAboveLeft = pReco - 2 - iStride * 2;
 #if JVET_AC0098_LOC_DEP_DIMD
     buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogramTopLeft, 3, uiWidth, uiHeight);
+#else
     buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogram, 3, uiWidth, uiHeight);
 #endif
   }
