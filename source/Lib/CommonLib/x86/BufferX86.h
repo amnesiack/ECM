@@ -917,7 +917,11 @@ void calcBIOParameter_SSE(const Pel* srcY0Tmp, const Pel* srcY1Tmp, Pel* gradX0,
 }
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
 template< X86_VEXT vext , int ww>
-void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx, Pel* dI, Pel* gX, Pel* gY)
+void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx, Pel* dI
+#if JVET_AG0067_DMVR_EXTENSIONS
+  , Pel* gX, Pel* gY
+#endif
+)
 {
 #ifdef USE_AVX2
   int a = 1, b = 2, c = 4;
@@ -931,6 +935,7 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
   __m256i sumDIYTmp32 = vzero;
   __m256i sumSignGyGxTmp32 = vzero;
   
+#if JVET_AG0067_DMVR_EXTENSIONS
   __m128i vmask2[4] = {_mm_setr_epi16(a, b, c, b, a, 0, 0, 0), _mm_setr_epi16(0, a, b, c, b, a, 0, 0), _mm_setr_epi16(0, 0, a, b, c, b, a, 0), _mm_setr_epi16(0, 0, 0, a, b, c, b, a)};
   __m128i vzero2 = _mm_setzero_si128();
   __m128i sumX0 = vzero2;
@@ -939,15 +944,17 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
   __m128i sumAbsMean = vzero2;
   __m128i dummy2 = vzero2;
   __m128i fOne[4] = {_mm_setr_epi16(1, 1, 1, 1, 1, 0, 0, 0), _mm_setr_epi16(0, 1, 1, 1, 1, 1, 0, 0), _mm_setr_epi16(0, 0, 1, 1, 1, 1, 1, 0), _mm_setr_epi16(0, 0, 0, 1, 1, 1, 1, 1)};
+
   int mean4[4];
   int absMean4[4];
+  int sX0[4], sX1[4];
+#endif
   
   const int widthG_2 = (widthG << 1);
   const int widthG_3 = widthG_2 + widthG;
   const int widthG_4 = widthG_3 + widthG;
-  
-  int sX0[4] , sX1[4];
-  int regVxVy = 2528; // = ((1 << 11) * 100)/81. 100 is summation of the new weights, 81 was the summation of the old weights
+  const int regVxVy = 2528; // = ((1 << 11) * 100)/81. 100 is summation of the new weights, 81 was the summation of the old weights
+
   if (ww == 4)
   {
     for (int y = 0; y < height; y++)
@@ -1063,6 +1070,7 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       dummy = _mm256_add_epi32 (dummy, _mm256_shuffle_epi32(dummy, 0b10110001));
       sumDIY[sampleIdx + 3] = _mm_cvtsi128_si32(_mm256_extracti128_si256(dummy,1)) + _mm_cvtsi128_si32(_mm256_extracti128_si256(dummy,0));
       
+#if JVET_AG0067_DMVR_EXTENSIONS
       sumX0 = _mm_add_epi16(_mm_loadu_si128((const __m128i*)(gX)), _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(gX+ widthG)), shift1));
       sumX0 = _mm_add_epi16(sumX0, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(gX+ widthG_2)), shift2));
       sumX0 = _mm_add_epi16(sumX0, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(gX+ widthG_3)), shift1));
@@ -1163,6 +1171,7 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       mean4[3] = (absMean4[3] > 2 * abs(mean4[3])) ? 0 :  (mean4[3] + 32) >> 6;
       sumDIX[sampleIdx + 3] -= sX0[3]*mean4[3];
       sumDIY[sampleIdx + 3] -= sX1[3]*mean4[3];
+#endif
       
       sumDIX[sampleIdx]     += (sumDIX[sampleIdx] + 2) >> 2;
       sumDIY[sampleIdx]     += (sumDIY[sampleIdx] + 2) >> 2;
@@ -1187,9 +1196,11 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       dIX += (widthG );
       dIY += (widthG);
       signGyGx += (widthG );
+      dI += (widthG );
+#if JVET_AG0067_DMVR_EXTENSIONS
       gX += (widthG );
       gY += (widthG );
-      dI += (widthG );
+#endif
     }
   }
   else
@@ -1309,6 +1320,7 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
         dummy = _mm256_add_epi32 (dummy, _mm256_shuffle_epi32(dummy, 0b10110001));
         sumDIY[sampleIdx + 3] = _mm_cvtsi128_si32(_mm256_extracti128_si256(dummy,1)) + _mm_cvtsi128_si32(_mm256_extracti128_si256(dummy,0));
         
+#if JVET_AG0067_DMVR_EXTENSIONS
         sumX0 = _mm_add_epi16(_mm_loadu_si128((const __m128i*)(gX)), _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(gX+ widthG)), shift1));
         sumX0 = _mm_add_epi16(sumX0, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(gX+ widthG_2)), shift2));
         sumX0 = _mm_add_epi16(sumX0, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(gX+ widthG_3)), shift1));
@@ -1409,6 +1421,7 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
         mean4[3] = (absMean4[3] > 2 * abs(mean4[3])) ? 0 :  (mean4[3] + 32) >> 6;
         sumDIX[sampleIdx + 3] -= sX0[3]*mean4[3];
         sumDIY[sampleIdx + 3] -= sX1[3]*mean4[3];
+#endif
         
         sumDIX[sampleIdx]     += (sumDIX[sampleIdx] + 2) >> 2;
         sumDIY[sampleIdx]     += (sumDIY[sampleIdx] + 2) >> 2;
@@ -1433,21 +1446,26 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
         dIY += 4;
         signGyGx += 4;
         dI += 4;
+#if JVET_AG0067_DMVR_EXTENSIONS
         gX += 4;
         gY += 4;
+#endif
       }
       absGX += (widthG - width);
       absGY += (widthG - width);
       dIX += (widthG - width);
       dIY += (widthG - width);
       signGyGx += (widthG - width);
+      dI += (widthG - width);
+#if JVET_AG0067_DMVR_EXTENSIONS
       gX += (widthG - width);
       gY += (widthG - width);
-      dI += (widthG - width);
+#endif
     }
   }
   return;
 #endif
+
   for (int y = 0; y < height; y++)
   {
     for (int x = 0; x < width; x++)
@@ -1458,12 +1476,15 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       sumDIX[sampleIdx] = 0;
       sumDIY[sampleIdx] = 0;
       sumSignGyGx[sampleIdx] = 0;
+#if JVET_AG0067_DMVR_EXTENSIONS
       int meanDiff = 0;
       int absmeanDiff = 0;
       int X0 = 0, X1 = 0;
+#endif
       int w = 1, a = 1, b = 2, c = 4, d = 4, e = 8, f = 16;
       int weight[5][5] = {{a, b, c, b, a}, {b, d, e, d, b}, {c, e, f, e, c}, {b, d, e, d, b}, {a, b, c, b, a}};
-      int regVxVy = 2528; // = ((1 << 11) * 100)/81. 100 is summation of the new weights, 81 was the summation of the old weights
+      const int regVxVy = 2528; // = ((1 << 11) * 100)/81. 100 is summation of the new weights, 81 was the summation of the old weights
+
       for (int yy = 0; yy < 5; yy++)
       {
         for (int xx = 0; xx < 5; xx++)
@@ -1473,11 +1494,13 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
           sumAbsGY[sampleIdx] += w * absGY[xx];
           sumDIX[sampleIdx] += w * dIX[xx];
           sumDIY[sampleIdx] += w * dIY[xx];
+          sumSignGyGx[sampleIdx] += w * signGyGx[xx];
+#if JVET_AG0067_DMVR_EXTENSIONS          
           meanDiff    +=  dI[xx];
           absmeanDiff += abs(dI[xx]);
           X0 -= w * gX[xx];
           X1 -= w * gY[xx];
-          sumSignGyGx[sampleIdx] += w * signGyGx[xx];
+#endif
         }
         absGX += widthG;
         absGY += widthG;
@@ -1485,12 +1508,17 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
         dIY += widthG;
         signGyGx += widthG;
         dI += widthG;
+#if JVET_AG0067_DMVR_EXTENSIONS
         gX += widthG;
         gY += widthG;
+#endif
       }
+
+#if JVET_AG0067_DMVR_EXTENSIONS
       meanDiff = (absmeanDiff > 2 * abs(meanDiff))  ? 0 : (meanDiff + 32) >> 6;
       sumDIX[sampleIdx] += X0*meanDiff;
       sumDIY[sampleIdx] += X1*meanDiff;
+#endif
       sumDIX[sampleIdx] += (sumDIX[sampleIdx] + 2) >> 2;
       sumDIY[sampleIdx] += (sumDIY[sampleIdx] + 2) >> 2;
       sumAbsGX[sampleIdx] += regVxVy;
@@ -1501,17 +1529,22 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       dIY += (1 - 5 * widthG);
       signGyGx += (1 - 5 * widthG);
       dI += (1 - 5 * widthG);
+#if JVET_AG0067_DMVR_EXTENSIONS
       gX += (1 - 5 * widthG);
       gY += (1 - 5 * widthG);
+#endif
     }
+
     absGX += (widthG - width);
     absGY += (widthG - width);
     dIX += (widthG - width);
     dIY += (widthG - width);
     signGyGx += (widthG - width);
+    dI += (widthG - width);
+#if JVET_AG0067_DMVR_EXTENSIONS
     gX += (widthG - width);
     gY += (widthG - width);
-    dI += (widthG - width);
+#endif
   }
 }
 #endif
@@ -1520,8 +1553,7 @@ template< X86_VEXT vext >
 void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx)
 {
   __m128i vzero = _mm_setzero_si128();
-  __m128i vmask[4] = {_mm_setr_epi16(1, 2, 3, 2, 1, 0, 0, 0), _mm_setr_epi16(0, 1, 2, 3, 2, 1, 0, 0), _mm_setr_epi16(0, 0, 1, 2, 3, 2, 1, 0), _mm_setr_epi16(0, 0, 0, 1, 2, 3, 2, 1)};
-  
+  __m128i vmask[4] = {_mm_setr_epi16(1, 2, 3, 2, 1, 0, 0, 0), _mm_setr_epi16(0, 1, 2, 3, 2, 1, 0, 0), _mm_setr_epi16(0, 0, 1, 2, 3, 2, 1, 0), _mm_setr_epi16(0, 0, 0, 1, 2, 3, 2, 1)};  
   
   __m128i sumAbsGXTmp16 = vzero;
   __m128i sumDIXTmp16 = vzero;
@@ -1562,15 +1594,12 @@ void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
     sumAbsGYTmp16  = _mm_add_epi16(_mm_loadu_si128((const __m128i*)absGY), _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(absGY + widthG)), 1));
     sumAbsGYTmp16  = _mm_add_epi16(sumAbsGYTmp16, _mm_loadu_si128((const __m128i*)(absGY + widthG_2)));
     sumAbsGYTmp16  = _mm_add_epi16(sumAbsGYTmp16, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(absGY + widthG_2)), 1)); //
-    sumAbsGYTmp16  = _mm_add_epi16(sumAbsGYTmp16, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(absGY + widthG_3)), 1));
-    
-    
+    sumAbsGYTmp16  = _mm_add_epi16(sumAbsGYTmp16, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(absGY + widthG_3)), 1)); 
     
     sumDIYTmp16  = _mm_add_epi16(_mm_loadu_si128((const __m128i*)dIY), _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(dIY + widthG)), 1));
     sumDIYTmp16  = _mm_add_epi16(sumDIYTmp16, _mm_loadu_si128((const __m128i*)(dIY + widthG_2)));
     sumDIYTmp16  = _mm_add_epi16(sumDIYTmp16, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(dIY + widthG_2)), 1)); //
     sumDIYTmp16  = _mm_add_epi16(sumDIYTmp16, _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(dIY + widthG_3)), 1));
-    
     
     sumSignGyGxTmp16  = _mm_add_epi16(_mm_loadu_si128((const __m128i*)signGyGx), _mm_slli_epi16(_mm_loadu_si128((const __m128i*)(signGyGx + widthG)), 1));
     sumSignGyGxTmp16  = _mm_add_epi16(sumSignGyGxTmp16, _mm_loadu_si128((const __m128i*)(signGyGx + widthG_2)));
@@ -1582,6 +1611,7 @@ void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
     __m128i absGYOneRow = vzero;
     __m128i dIYOneRow = vzero;
     __m128i signGyGxOneRow = vzero;
+
     for (int y = 0; y < height; y++)
     {
       sumAbsGXTmp16 = _mm_sub_epi16(sumAbsGXTmp16, absGXOneRow);
@@ -1687,7 +1717,6 @@ void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
       b12 = _mm_unpacklo_epi32(sumDIXTmp32, sumDIYTmp32);
       b3  = _mm_unpackhi_epi32(sumDIXTmp32, sumDIYTmp32);
       
-      
       c1  = _mm_unpackhi_epi64(a12, b12);
       c1 = _mm_add_epi32(c1, _mm_unpacklo_epi64(a3, b3));
       c1 = _mm_add_epi32(c1, _mm_unpackhi_epi64(a3, b3));
@@ -1736,8 +1765,6 @@ void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
       sumSignGyGxTmp32 = _mm_add_epi32(sumSignGyGxTmp32, _mm_shuffle_epi32(sumSignGyGxTmp32, 0xb1));   // 10110001
       *(sumSignGyGx+3) = _mm_cvtsi128_si32(sumSignGyGxTmp32);
       
-      
-      
       // bio parameter increment
       absGX += widthG;
       absGY += widthG;
@@ -1751,6 +1778,7 @@ void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
       sumDIY += width;
       sumSignGyGx += width;
     }
+
     // bio parameter back to first row
     absGX += widthG_N;
     absGY += widthG_N;
@@ -1764,6 +1792,7 @@ void calcBIOParamSum5_SSE(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
     sumDIY += width_N;
     sumSignGyGx += width_N;
   }
+
   sumDIX -= width;
   sumDIY -= width;
 #ifdef USE_AVX2

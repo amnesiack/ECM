@@ -7675,7 +7675,11 @@ void InterPrediction::applyBiOptFlow(const PredictionUnit &pu, const CPelUnitBuf
 #endif
 #if MULTI_PASS_DMVR || SAMPLE_BASED_BDOF
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
-  g_pelBufOP.calcBIOParameterHighPrecision(srcY0, srcY1, gradX0, gradX1, gradY0, gradY1, widthG, heightG, src0Stride, src1Stride, widthG, bitDepth, m_piDotProduct1, m_piDotProduct2, m_piDotProduct3, m_piDotProduct5, m_piDotProduct6, m_dI ,m_Gx, m_Gy);
+  g_pelBufOP.calcBIOParameterHighPrecision(srcY0, srcY1, gradX0, gradX1, gradY0, gradY1, widthG, heightG, src0Stride, src1Stride, widthG, bitDepth, m_piDotProduct1, m_piDotProduct2, m_piDotProduct3, m_piDotProduct5, m_piDotProduct6, m_dI
+#if JVET_AG0067_DMVR_EXTENSIONS
+    , m_Gx, m_Gy
+#endif
+  );
 #else
   g_pelBufOP.calcBIOParameter(srcY0, srcY1, gradX0, gradX1, gradY0, gradY1, widthG, heightG, src0Stride, src1Stride, widthG,
                               bitDepth, m_absGx, m_absGy, m_dIx, m_dIy, m_signGxGy, nullptr);
@@ -7793,11 +7797,19 @@ void InterPrediction::subBlockBiOptFlow(Pel* dstY, const int dstStride, const Pe
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
   if (width == 4)
   {
-    g_pelBufOP.calcBIOParamSum5NOSIM4(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset ,m_Gx + bioParamOffset, m_Gy + bioParamOffset);
+    g_pelBufOP.calcBIOParamSum5NOSIM4(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset
+#if JVET_AG0067_DMVR_EXTENSIONS
+      , m_Gx + bioParamOffset, m_Gy + bioParamOffset
+#endif
+      );
   }
   else
   {
-    g_pelBufOP.calcBIOParamSum5NOSIM8(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset ,m_Gx + bioParamOffset, m_Gy + bioParamOffset);
+    g_pelBufOP.calcBIOParamSum5NOSIM8(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset
+#if JVET_AG0067_DMVR_EXTENSIONS
+      , m_Gx + bioParamOffset, m_Gy + bioParamOffset
+#endif
+    );
   }
   int* sumDIXSample32bit      = m_sumDIXSample32bit;
   int* sumAbsGxSample32bit    = m_sumAbsGxSample32bit;
