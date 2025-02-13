@@ -121,7 +121,7 @@ bool g_HLSTraceEnable = true;
 
 void VLCWriter::xWriteSCode    ( int code, uint32_t length )
 {
-  CHECK( length || length > 32, "");
+  CHECK( length == 0 || length > 32, "");
   CHECK( length != 32 && ( code < -( 1 << ( length - 1 ) ) || code >= ( 1 << ( length - 1 ) ) ), "");
 
   m_pcBitIf->write( length==32 ? uint32_t(code) : ( uint32_t(code)&((1<<length)-1) ), length );
