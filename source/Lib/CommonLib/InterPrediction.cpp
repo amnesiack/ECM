@@ -361,10 +361,15 @@ InterPrediction::InterPrediction()
 #if JVET_AJ0237_INTERNAL_12BIT
   m_dmvrCostLambda = 1;
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
   for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
   {
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_intraOBMCBuf[ch] = nullptr;
+#endif
     m_beforeOBMCBuf[ch] = nullptr;
   }
+#endif
 }
 
 InterPrediction::~InterPrediction()
