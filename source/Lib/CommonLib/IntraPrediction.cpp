@@ -1055,11 +1055,12 @@ bool IntraPrediction::xFillIntraGPMRefTemplateAll(PredictionUnit& pu, TemplateTy
   {
     int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
     int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+    uint8_t* geoIntraMPMList = m_aiGpmIntraMPMLists[splitDirIdx][partIdx];
 #else
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
   {
-#endif
     uint8_t* geoIntraMPMList = m_aiGpmIntraMPMLists[splitDir][partIdx];
+#endif
     if (!readBufferedMPMList)
     {
       PU::getGeoIntraMPMs(pu, geoIntraMPMList, splitDir, g_geoTmShape[partIdx][g_geoParams[splitDir][0]], doInitMPMList, doInitAL, doInitA, doInitL);
