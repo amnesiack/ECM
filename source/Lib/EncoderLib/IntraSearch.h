@@ -691,12 +691,12 @@ private:
   Pel* m_obicPredBuf;
 #endif
 #if JVET_AK0059_MDIP
-  double m_mpm0SadHad;
+  Distortion m_mpm0SadHad;
   Pel* m_mdipPredBuf;
   double m_dSavedSadHadRdCostMdip;
-  double m_dSavedSadHadMdip;
-  double m_dSavedSadHadPdp;
-  double m_dSavedSadPdp;
+  Distortion m_dSavedSadHadMdip;
+  Distortion m_dSavedSadHadPdp;
+  Distortion m_dSavedSadPdp;
   bool m_includeExcludingMode[NUM_LUMA_MODE];
 #endif
   PelStorage      m_tmpStorageLCU;
