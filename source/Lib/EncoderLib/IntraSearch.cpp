@@ -1023,11 +1023,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
     m_dSavedHadTimdSad = MAX_DOUBLE;
 #endif
 #if JVET_AK0059_MDIP
-    m_mpm0SadHad = MAX_DOUBLE;
+    m_mpm0SadHad = MAX_UINT64;
     m_dSavedSadHadRdCostMdip = MAX_DOUBLE;
-    m_dSavedSadHadMdip = MAX_DOUBLE;
-    m_dSavedSadHadPdp = MAX_DOUBLE;
-    m_dSavedSadPdp = MAX_DOUBLE;
+    m_dSavedSadHadMdip = MAX_UINT64;
+    m_dSavedSadHadPdp = MAX_UINT64;
+    m_dSavedSadPdp = MAX_UINT64;
 #endif
   }
 #endif
@@ -1648,12 +1648,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               {
                 if(pdpMode && uiMode == cu.mdipMode)
                 {
-                  m_dSavedSadHadPdp = (double)minSadHad;
-                  m_dSavedSadPdp = (double)sadCost;
+                  m_dSavedSadHadPdp = minSadHad;
+                  m_dSavedSadPdp = sadCost;
                 }
                 else if(uiMode == m_intraMPM[0])
                 {
-                  m_mpm0SadHad = (double)minSadHad;
+                  m_mpm0SadHad = minSadHad;
                 }
               }              
 #endif
@@ -3674,8 +3674,8 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               
               if(isPDPMode)
               {
-                sadCost = (Distortion)m_dSavedSadPdp;
-                minSadHad = (Distortion)m_dSavedSadHadPdp;
+                sadCost = m_dSavedSadPdp;
+                minSadHad = m_dSavedSadHadPdp;
               }
               else
               {
@@ -3707,12 +3707,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               m_bestIntraSADCost = std::min(m_bestIntraSADCost, cost - (double)minSadHad + (double)sadCost);
 #endif
               m_dSavedSadHadRdCostMdip = cost;
-              m_dSavedSadHadMdip = double(minSadHad);
+              m_dSavedSadHadMdip = minSadHad;
               cu.mdip = false;
             }
             updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, MDIP_IDX), m_dSavedSadHadRdCostMdip, uiRdModeList,
               candCostList, numModesForFullRD);
-            updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, MDIP_IDX), m_dSavedSadHadMdip, uiHadModeList, candHadList, numHadCand);
+            updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, MDIP_IDX), double(m_dSavedSadHadMdip), uiHadModeList, candHadList, numHadCand);
           }
 #endif
 #if JVET_AH0076_OBIC && JVET_AJ0249_NEURAL_NETWORK_BASED
