@@ -10662,9 +10662,6 @@ void InterPrediction::deriveGpmSplitMode(PredictionUnit& pu, MergeCtx &geoMrgCtx
   bool refinedSplitMode = !PU::checkRprRefExistingInGpm(pu, geoMrgCtx, pu.geoMergeIdx0, geoMrgCtx, pu.geoMergeIdx1)
                        && xAMLGetCurBlkTemplate(pu, pu.lwidth(), pu.lheight());
 #endif
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-  int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
-#endif
   if (refinedSplitMode)
   {
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -10771,13 +10768,8 @@ void InterPrediction::deriveGpmSplitMode(PredictionUnit& pu, MergeCtx &geoMrgCtx
 #endif
         for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
         {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-          pIntraRefTop [partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx, 0);
-          pIntraRefLeft[partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx, 1);
-#else
           pIntraRefTop [partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, splitDir, realCandIdx, 0);
           pIntraRefLeft[partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, splitDir, realCandIdx, 1);
-#endif
         }
       }
     }

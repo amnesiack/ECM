@@ -8993,11 +8993,7 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
 #endif
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
   {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-    uint8_t intraMode = pcIntraPred->getPrefilledIntraGPMMPMMode(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx);
-#else
     uint8_t intraMode = pcIntraPred->getPrefilledIntraGPMMPMMode(partIdx, splitDir, realCandIdx);
-#endif
     intraModeToSplitDirAll[intraMode].push_back(splitDir);
   }
 
