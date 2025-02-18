@@ -772,6 +772,9 @@ Picture* DecLib::xGetNewPicBuffer( const SPS &sps, const PPS &pps, const uint32_
   }
 
   pcPic->setBorderExtension( false );
+  #if JVET_AK0085_TM_BOUNDARY_PADDING
+  pcPic->setUseTMBP(true);
+#endif
   pcPic->neededForOutput = false;
   pcPic->reconstructed = false;
 
@@ -1173,6 +1176,10 @@ void DecLib::finishPicture(int& poc, PicList*& rpcListPic, MsgLevel msgl )
 #endif
   m_pcPic->cs->destroyTemporaryCsData();
 #if JVET_AA0096_MC_BOUNDARY_PADDING
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+if(!(m_pcPic->getUseTMBP() && m_pcPic->cs->sps->getTMBP()))
+#endif
+{
   m_cFrameMcPadPrediction.init(&m_cRdCost, pcSlice->getSPS()->getChromaFormatIdc(), pcSlice->getSPS()->getMaxCUHeight(),
 #if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
 #if JVET_AJ0237_INTERNAL_12BIT
@@ -1188,6 +1195,13 @@ void DecLib::finishPicture(int& poc, PicList*& rpcListPic, MsgLevel msgl )
 #endif
 #endif
   m_cFrameMcPadPrediction.mcFramePad(m_pcPic, *(m_pcPic->slices[0]));
+}
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+else
+{
+  m_pcPic->extendPicBorder(pcSlice->getPPS());
+}
+#endif
 #endif
 
 #if !JVET_Z0118_GDR
@@ -3252,7 +3266,26 @@ bool DecLib::xDecodeSlice(InputNALUnit &nalu, int &iSkipFrame, int iPOCLastDispl
           bLowDelayB = true;
         }
       }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+      else
+      {
+        if(m_pcPic->getUseTMBP() && !bLowDelay)
+        {
+          m_pcPic->setUseTMBP(false);
+        }
+      }
       pcSlice->setCheckLDB(bLowDelayB);
+
+      if(pcSlice->isInterB() && m_pcPic->getUseTMBP() && !bLowDelayB)
+      {
+        m_pcPic->setUseTMBP(false);
+      }
+#else
+      pcSlice->setCheckLDB(bLowDelayB);
+#endif
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pcSlice->setCheckUseSepOBMC(bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
 #endif
     }
 #if JVET_Y0128_NON_CTC

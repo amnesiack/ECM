@@ -96,6 +96,9 @@ Slice::Slice()
 #if JVET_AF0128_LIC_MERGE_TM
 , m_bCheckLDB                     ( false )
 #endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+, m_bSepObmc4GPM                 ( false )
+#endif
 , m_biDirPred                    ( false )
 , m_iSliceQpDelta                 ( 0 )
 , m_iDepth                        ( 0 )
@@ -247,6 +250,9 @@ void Slice::initSlice()
   m_bCheckLDC = false;
 #if JVET_AF0128_LIC_MERGE_TM
   m_bCheckLDB = false;
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_bSepObmc4GPM = false;
 #endif
 
   m_biDirPred = false;
@@ -2049,6 +2055,9 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
   m_bCheckLDC             = pSrc->m_bCheckLDC;
 #if JVET_AF0128_LIC_MERGE_TM
   m_bCheckLDB             = pSrc->m_bCheckLDB;
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+  m_bSepObmc4GPM          = pSrc->m_bSepObmc4GPM;
 #endif
   m_iSliceQpDelta        = pSrc->m_iSliceQpDelta;
 
@@ -4385,6 +4394,9 @@ SPS::SPS()
 #if JVET_AD0085_MPM_SORTING
 , m_mpmSorting                      ( false )
 #endif
+#if JVET_AK0059_MDIP
+, m_mdip                      ( false )
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
 , m_chromaReordering                ( false )
 #endif
@@ -4433,6 +4445,9 @@ SPS::SPS()
 #endif
 #if JVET_AA0133_INTER_MTS_OPT
 , m_interMTSMaxSize           ( 32 )
+#endif
+#if AHG7_MTS_TOOLOFF_CFG
+, m_intraMTSMaxSize           ( 128 )
 #endif
 #if MULTI_HYP_PRED
 , m_InterMultiHyp(false)

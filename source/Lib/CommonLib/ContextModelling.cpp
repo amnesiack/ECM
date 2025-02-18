@@ -2094,6 +2094,7 @@ void MergeCtx::setGeoMmvdMergeInfo(PredictionUnit& pu, int mergeIdx, int mmvdIdx
 #if JVET_AG0276_NLIC
   pu.cu->altLMFlag = altLMFlag[mergeIdx];
   pu.cu->altLMParaUnit = altLMParaNeighbours[mergeIdx];
+
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
   bool initializeAltLM = !pu.cu->altLMFlag
                       && !pu.cu->geoFlag;

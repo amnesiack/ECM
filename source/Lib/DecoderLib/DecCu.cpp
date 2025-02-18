@@ -165,7 +165,7 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
     {
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
       m_pcInterPred->setDIMDForOBMC(false);
-#if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AK0076_EXTENDED_OBMC_IBC && !JVET_AK0212_GPM_OBMC_MODIFICATION
       m_pcInterPred->setIntraObmcPred(false);
 #endif
       m_pcInterPred->setModeGetCheck(0, false);
@@ -179,6 +179,10 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #endif
 #if JVET_AD0213_LIC_IMP
       m_pcInterPred->resetFillLicTpl();
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      m_pcInterPred->m_neighbSccChecked = false;
+      m_pcInterPred->m_intraObmcReload = false;
 #endif
 
 #if JVET_Z0118_GDR
@@ -444,6 +448,15 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         }
 #endif
 
+#if JVET_AK0059_MDIP
+        else if (currCU.mdip)
+        {
+          PredictionUnit *pu   = currCU.firstPU;
+          const CompArea &area = currCU.Y();
+          m_pcIntraPred->deriveMdipMode(currCU.cs->picture->getRecoBuf(area), area, currCU, false);
+          pu->intraDir[0] = currCU.mdipMode;          
+        }
+#endif
 #if JVET_AB0155_SGPM
         else if (currCU.sgpm)
         {
@@ -508,7 +521,24 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         else if (currCU.firstPU->parseLumaMode)
         {
           const CompArea &area = currCU.Y();
+#if JVET_AK0059_MDIP
+          IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU, true);
+#if !JVET_AK0061_PDP_MPM
+          if(PU::allowMPMSorted(*currCU.firstPU))
+          {
+            for (int i = 0; i <= EXT_VDIA_IDX; i++)
+            {
+              g_intraModeCost[i] = MAX_UINT64;
+            }
+          }
+#endif
+          if(CU::allowMdip(currCU))
+          {
+            m_pcIntraPred->deriveMdipMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          }
+#else
           IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+#endif          
         }
 
         //redo prediction dir derivation
@@ -529,8 +559,10 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
             PU::getIntraMPMs(*currCU.firstPU, mpmPred, nonMpmPred
 #if JVET_AC0094_REF_SAMPLES_OPT
               , true
+#if JVET_AK0061_PDP_MPM
               , true
               , true
+#endif
 #endif
 
 
@@ -669,6 +701,13 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         }
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+        if (currCU.firstTU->mdirIdx[COMPONENT_Y])
+        {
+          const CompArea& area = currCU.Y();
+          IntraPrediction::deriveDimdModeList(currCU.cs->picture->getRecoBuf(area), area, currCU, currCU.candModeListForTransformMtss, currCU.candCostListForTransformMtss);
+        }
+#endif 
         xReconIntraQT( currCU );
 #if JVET_AF0079_STORING_INTRATMP
         if (currCU.tmpFlag)
@@ -1171,20 +1210,18 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     {
 #endif
 #if JVET_AD0188_CCP_MERGE
-    PredictionUnit& pu = *tu.cu->firstPU;
+      PredictionUnit& pu = *tu.cu->firstPU;
 #else
-    const PredictionUnit& pu = *tu.cu->firstPU;
+      const PredictionUnit& pu = *tu.cu->firstPU;
 #endif
-    m_pcIntraPred->xGetLumaRecPixels( pu, area );
-    m_pcIntraPred->predIntraChromaLM( compID, piPred, pu, area, uiChFinalMode );
+      m_pcIntraPred->xGetLumaRecPixels( pu, area );
+      m_pcIntraPred->predIntraChromaLM( compID, piPred, pu, area, uiChFinalMode );
 #if JVET_AK0064_CCP_LFNST_NSPT
-      {
-        CompArea areaCr = pu.Cr();
-        m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
-        PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
-        m_pcIntraPred->xGetLumaRecPixels(pu, areaCr);
-        m_pcIntraPred->predIntraChromaLM(COMPONENT_Cr, predCr, pu, areaCr, uiChFinalMode);
-      }
+      CompArea areaCr = pu.Cr();
+      m_pcIntraPred->initIntraPatternChType(*tu.cu, areaCr);
+      PelBuf predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+      m_pcIntraPred->xGetLumaRecPixels(pu, areaCr);
+      m_pcIntraPred->predIntraChromaLM(COMPONENT_Cr, predCr, pu, areaCr, uiChFinalMode);
     }
 #endif
   }
@@ -1363,7 +1400,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
         pu.cu->isobmcMC = false;
       }
 #endif
-		  assert(foundCandiNum >= 1);
+      CHECK( foundCandiNum < 1, "Wrong candidate number");
 	  }
 	  else if (PU::isMIP(pu, chType))
 #else
@@ -1416,6 +1453,9 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AI0050_INTER_MTSS
         pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
 #endif
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        pu.cu->eipModel.eipDimdMode2nd = secondDimdIntraDir;
+#endif
       }
     }
 #endif
@@ -1463,11 +1503,18 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AI0050_INTER_MTSS
         int secondDimdIntraDir = 0;
 #endif
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        int firstDimdIntraDir =
+#endif
         m_pcIntraPred->IntraPrediction::deriveIpmForTransform(piPred, *pu.cu
 #if JVET_AI0050_INTER_MTSS
           , secondDimdIntraDir
 #endif
         );
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+        pu.cu->dimdDerivedIntraDir    = firstDimdIntraDir;
+        pu.cu->dimdDerivedIntraDir2nd = secondDimdIntraDir;
+#endif
       }
 #endif
     }
@@ -1580,7 +1627,17 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
   PelBuf piResi = cs.getResiBuf( area );
 
   const QpParam cQP( tu, compID );
-
+#if JVET_AK0217_INTRA_MTSS || JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  if (chType == CHANNEL_TYPE_LUMA && !tu.cu->ispMode && !tu.cu->lfnstIdx && !tu.mtsIdx[0] && tu.cs->sps->getUseImplicitMTS())
+  {
+#if JVET_AK0217_INTRA_MTSS
+    bool secondBucket = false;
+    tu.intraDirStat = PU::getFinalIntraModeForTransform(secondBucket, tu, COMPONENT_Y);
+#else
+    tu.intraDirStat = PU::getFinalIntraModeForTransform(tu, COMPONENT_Y);
+#endif
+  }
+#endif
 #if SIGN_PREDICTION
   bool bJccrWithCr = tu.jointCbCr && !(tu.jointCbCr >> 1);
   bool bIsJccr     = tu.jointCbCr && isChroma(compID);
@@ -2129,8 +2186,10 @@ void DecCu::xReconInter(CodingUnit &cu)
       , m_mvBufBDMVR
       , m_mvBufBDOF4GPM
   #endif
-#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA || JVET_AK0212_GPM_OBMC_MODIFICATION
       , m_pcIntraPred
+#endif
+#if JVET_AK0101_REGRESSION_GPM_INTRA
       , (cu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag()) ? &m_pcReshape->getFwdLUT() : nullptr
 #endif
     );
@@ -2588,6 +2647,9 @@ void DecCu::xReconInter(CodingUnit &cu)
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
     && (!cu.firstPU->geoBlendIntraFlag)
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+    && (!(cu.geoFlag && cu.slice->getCheckUseSepOBMC()))
 #endif
     )
 #else
@@ -3984,6 +4046,7 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
                           affineMergeCtx.mvFieldNeighbours[(affineMergeCtx.numValidMergeCand << 1) + 1][mvNum].setMvField(affineTmpMergeCtx.mvFieldNeighbours[(preDefinedPairs[i][1] << 1) + 1][mvNum].mv,
                             affineTmpMergeCtx.mvFieldNeighbours[(preDefinedPairs[i][1] << 1) + 1][mvNum].refIdx);
                         }
+                        affineMergeCtx.mergeType[affineMergeCtx.numValidMergeCand] = MRG_TYPE_DEFAULT_N;
                         affineMergeCtx.interDirNeighbours[affineMergeCtx.numValidMergeCand] = 3;
                         CHECK(((affineTmpMergeCtx.interDirNeighbours[preDefinedPairs[i][0]] & 1) + (affineTmpMergeCtx.interDirNeighbours[preDefinedPairs[i][1]] & 2)) != 3, "Wrong interDir");
                         affineMergeCtx.affineType[affineMergeCtx.numValidMergeCand] = (affineTmpMergeCtx.affineType[preDefinedPairs[i][0]] == AFFINEMODEL_4PARAM && affineTmpMergeCtx.affineType[preDefinedPairs[i][1]] == AFFINEMODEL_4PARAM) ?

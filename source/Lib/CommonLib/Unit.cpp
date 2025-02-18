@@ -299,6 +299,13 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = other.plIdx;
 #endif
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION 
+  candModeListForTransform = other.candModeListForTransform;
+#endif 
+#if JVET_AK0217_INTRA_MTSS 
+  candModeListForTransformMtss = other.candModeListForTransformMtss;
+  candCostListForTransformMtss = other.candCostListForTransformMtss;
+#endif 
 #if ENABLE_DIMD
 #if JVET_AH0076_OBIC
   obicFlag = other.obicFlag;
@@ -399,6 +406,12 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   tmpFracIdx    = other.tmpFracIdx;
 #endif
 #endif
+#endif
+#if JVET_AK0059_MDIP
+  mdip              = other.mdip;
+  mdipMode          = other.mdipMode;
+  isModeExcluded    = other.isModeExcluded;
+  std::memcpy( excludingMode, other.excludingMode, sizeof( excludingMode ) );
 #endif
 #if JVET_W0123_TIMD_FUSION
   timd              = other.timd;
@@ -648,6 +661,11 @@ void CodingUnit::initData()
 #endif
 #endif
   lfnstIdx          = 0;
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+  candModeListForTransform.resize(2);
+  candModeListForTransform[0] = 0;
+  candModeListForTransform[1] = 0;
+#endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   for (auto it{indicesRepresentationPnn.begin()}; it != indicesRepresentationPnn.end(); it++)
   {
@@ -759,6 +777,15 @@ void CodingUnit::initData()
   tmpLicFlag   = false;
 #endif
 #endif
+#endif
+#if JVET_AK0059_MDIP
+  mdip              = false;
+  mdipMode          = -1;
+  isModeExcluded    = true;
+  for (int i=0; i < EXCLUDING_MODE_NUM; i++)
+  {
+    excludingMode[i] = -1;
+  }
 #endif
 #if JVET_W0123_TIMD_FUSION
   timd                     = false;
@@ -1158,7 +1185,7 @@ uint8_t CodingUnit::getSbtTuSplit() const
 #if JVET_AJ0260_SBT_CORNER_MODE
   CHECK( sbtTuSplitType < SBT_VER_HALF_POS0_SPLIT || sbtTuSplitType >= NUM_PART_SPLIT, "Wrong SBT split type" );
 #else
-  assert( sbtTuSplitType <= SBT_HOR_QUAD_POS1_SPLIT && sbtTuSplitType >= SBT_VER_HALF_POS0_SPLIT );
+  CHECK( sbtTuSplitType < SBT_VER_HALF_POS0_SPLIT || sbtTuSplitType > SBT_HOR_QUAD_POS1_SPLIT, "Wrong SBT split type" );
 #endif
   return sbtTuSplitType;
 }
@@ -2253,7 +2280,15 @@ void TransformUnit::initData()
     lfnstIntra[i]    = 0;
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    mdirIdx[i] = 0;
+    secondNSPTSet[i] = false;
+#endif 
   }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    intraDirStat.first = 0;
+    intraDirStat.second = 0;
+#endif
   depth              = 0;
   noResidual         = false;
   jointCbCr          = 0;
@@ -2352,7 +2387,15 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
     lfnstIntra[i]    = other.lfnstIntra[i];
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+    mdirIdx[i] = other.mdirIdx[i];
+    secondNSPTSet[i] = other.secondNSPTSet[i];
+#endif
   }
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    intraDirStat.first = other.intraDirStat.first;
+    intraDirStat.second = other.intraDirStat.second;
+#endif
   depth              = other.depth;
   noResidual         = other.noResidual;
   jointCbCr          = other.jointCbCr;
@@ -2401,6 +2444,14 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
 #if JVET_AI0050_INTER_MTSS
   lfnstIntra[i]    = other.lfnstIntra[i];
 #endif
+#endif
+#if JVET_AK0217_INTRA_MTSS
+  mdirIdx[i] = other.mdirIdx[i];
+  secondNSPTSet[i] = other.secondNSPTSet[i];
+#endif 
+#if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
+    intraDirStat.first = other.intraDirStat.first;
+    intraDirStat.second = other.intraDirStat.second;
 #endif
   noResidual       = other.noResidual;
   jointCbCr        = isChroma( i ) ? other.jointCbCr : jointCbCr;

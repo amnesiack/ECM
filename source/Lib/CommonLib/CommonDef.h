@@ -174,6 +174,11 @@ static const int32_t BIF_ROUND_ADD =         32;
 static const int32_t BIF_ROUND_SHIFT =        6;
 #endif
 
+#if JVET_AK0097_LAST_POS_SIGNALING 
+static const uint32_t SECONDARY_PREFIX_START_SIZE = 8;
+static const uint32_t ID_SUFFIX_CTX_START_SIZE = 16;
+#endif
+
 // ====================================================================================================================
 // Common constants
 // ====================================================================================================================
@@ -679,6 +684,12 @@ static const int DIMD_FUSION_NUM =                                  6;
 #endif
 #endif
 
+#if JVET_AK0059_MDIP
+static const int MDIP_NUM =                                         1;
+static const int EXCLUDING_MODE_NUM =                               20;
+static const int REMOVAL_NUM =                                      32;
+#endif
+
 #if JVET_Y0116_EXTENDED_MRL_LIST
 static const int MAX_REF_LINE_IDX =                                 13; //highest refLine offset in the list
 static const int MRL_NUM_REF_LINES =                                6; //number of candidates in the array
@@ -772,6 +783,9 @@ static const int TIMD_IDX =                                       199; ///< inde
 static const int TIMDSAD_IDX =                                    241; ///< index for intra TIMD SAD mode
 static const int TIMD_NUM_MODES_SORTED = 						               15;
 static const int TIMDDIFF_MAX_TEMP_SIZE =                           8;
+#endif
+#if JVET_AK0059_MDIP
+static const int MDIP_IDX =                                       300; ///< index for MDIP mode
 #endif
 static const int DIMD_MAX_TEMP_SIZE =                               4;
 static const int EXT_HOR_IDX =                                     34;
@@ -882,20 +896,20 @@ static const int DM_CHROMA_IDX =                       NUM_INTRA_MODE; ///< chro
 #endif
 
 #if JVET_Z0131_IBC_BVD_BINARIZATION
-static const int BVD_CODING_GOLOMB_ORDER = 1; 
-static const int NUM_HOR_BVD_CTX         = 5;
-static const int NUM_VER_BVD_CTX         = 5;
-static const int HOR_BVD_CTX_OFFSET      = 0;
+static const int BVD_CODING_GOLOMB_ORDER =  1; 
+static const int NUM_HOR_BVD_CTX         =  5;
+static const int NUM_VER_BVD_CTX         =  5;
+static const int HOR_BVD_CTX_OFFSET      =  0;
 static const int BVD_IBC_MAX_PREFIX      = 16;
-static const int VER_BVD_CTX_OFFSET      = 6;
+static const int VER_BVD_CTX_OFFSET      =  6;
 #endif
 
 #if JVET_AD0140_MVD_PREDICTION
-static const int MVD_CODING_GOLOMB_ORDER = 1;
+static const int MVD_CODING_GOLOMB_ORDER =  1;
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-static const int PNN_IDX = 220;
-static const int NUM_INDICES_REP = 2;
+static const int PNN_IDX =                220;
+static const int NUM_INDICES_REP =          2;
 #endif
 
 #if JVET_W0119_LFNST_EXTENSION
@@ -911,46 +925,52 @@ static const uint32_t  L8H_ZO            = 32;
 #endif
 
 #if JVET_Y0142_ADAPT_INTRA_MTS
-static const uint32_t  MTS_TH_COEFF[2] =                                { 6, 32};
-static const uint32_t  MTS_NCANDS[3] =                                  { 1, 4, 6};
-static const uint32_t  NUM_TRAFO_MODES_MTS =                            8;
+static const uint32_t  MTS_TH_COEFF[2] =                     { 6, 32};
+static const uint32_t  MTS_NCANDS[3] =                     { 1, 4, 6};
+static const uint32_t  NUM_TRAFO_MODES_MTS =                        8;
 #else
-static const uint32_t  NUM_TRAFO_MODES_MTS =                            6; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  NUM_TRAFO_MODES_MTS =                        6; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #endif
 #if TU_256
-static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                         256; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
-static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         256; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                    256; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTER_MAX_CU_SIZE =                    256; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #else
-static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                         32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
-static const uint32_t  MTS_INTER_MAX_CU_SIZE =                         32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTRA_MAX_CU_SIZE =                     32; ///< Max Intra CU size applying EMT, supported values: 8, 16, 32, 64, 128
+static const uint32_t  MTS_INTER_MAX_CU_SIZE =                     32; ///< Max Inter CU size applying EMT, supported values: 8, 16, 32, 64, 128
 #endif
 #if JVET_AK0061_PDP_MPM
-static const int MPM_SORT_TEMPLATE_SIZE =                             1;
-static const int NUM_PDP_MODES =                                      6;
+static const int MPM_SORT_TEMPLATE_SIZE =                           1;
+static const int NUM_PDP_MODES =                                    6;
 #endif
 
 #if SECONDARY_MPM
-static const int NUM_PRIMARY_MOST_PROBABLE_MODES = 6;
-static const int NUM_SECONDARY_MOST_PROBABLE_MODES = 16;
+static const int NUM_PRIMARY_MOST_PROBABLE_MODES =                  6;
+static const int NUM_SECONDARY_MOST_PROBABLE_MODES =               16;
 static const int NUM_MOST_PROBABLE_MODES = NUM_PRIMARY_MOST_PROBABLE_MODES + NUM_SECONDARY_MOST_PROBABLE_MODES;
-#if SECONDARY_MPM
+#if JVET_AK0059_MDIP
+static const int NUM_NON_MPM_MODES = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - MDIP_NUM - EXCLUDING_MODE_NUM;
+#else
 static const int NUM_NON_MPM_MODES = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES;
 #endif
 #else
-static const int NUM_MOST_PROBABLE_MODES = 6;
+static const int NUM_MOST_PROBABLE_MODES =                          6;
 #endif
 static const int LM_SYMBOL_NUM = (1 + NUM_LMC_MODE);
 
 static const int MAX_NUM_MIP_MODE =                                32; ///< maximum number of MIP pred. modes
 #if JVET_AB0155_SGPM
 #if JVET_AJ0112_REGRESSION_SGPM
-static const int RSGPM_CAND_NUM = 4;
-static const int SGPM_CAND_NUM = 16;
+static const int RSGPM_CAND_NUM =                                   4;
+static const int SGPM_CAND_NUM =                                   16;
 static const int SGPM_NUM = RSGPM_CAND_NUM + SGPM_CAND_NUM;
 #else
-static const int SGPM_NUM = 16;
+static const int SGPM_NUM =                                        16;
 #endif
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE + SGPM_NUM);   ///< maximum number of RD comparison in fast-UDI estimation loop
+#if JVET_AK0222_SGPM_DIMD_LFNST
+static const int SGPM_VIPM_TH =                                     2;
+static const int MAX_SGPM_VIPM_SIZE =                             256;
+#endif
 #else
 
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE); ///< maximum number of RD comparison in fast-UDI estimation loop
@@ -969,6 +989,13 @@ static const int LFNST_LAST_SIG_CHROMA_INTER =                      0;
 static const int NUM_LFNST_NUM_PER_SET =                            4;
 #else
 static const int NUM_LFNST_NUM_PER_SET =                            3;
+#endif
+
+#if JVET_AK0217_INTRA_MTSS
+static const int MIN_MTSS_SIZE          =                         128;
+static const int MIN_SGPM_MTSS_SIZE     =                         256;
+static const int MTSS_LIST_SIZE         =                           3;
+static const int MTSS_CAND_NUM[2]       =                    { 1, 3 };
 #endif
 
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
@@ -1755,6 +1782,52 @@ static const int GPM_BLENDING_SIZE_THRESHOLD = 32;
 #endif
 #if ENABLE_OBMC
 static const unsigned int defaultWeight[2][4] = { {27, 16, 6, 0}, {27, 0, 0, 0} };
+
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+static const int16_t currWeights[2][2][2][2][16] =
+{
+  {
+    {
+      { { 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, },
+        { 128, 122, 112, 101, 128, 122, 112, 101, 128, 122, 112, 101, 128, 122, 112, 101, }, },
+      { { 128, 128, 128, 128, 122, 122, 122, 122, 112, 112, 112, 112, 101, 101, 101, 101, },
+        { 128, 122, 112, 101, 122, 116, 106,  95, 112, 106,  96,  85, 101,  95,  85,  74, }, },
+    },
+    {
+      { { 101, 112, 122, 128, 101, 112, 122, 128, 101, 112, 122, 128, 101, 112, 122, 128, },
+        { 101, 106, 106, 101, 101, 106, 106, 101, 101, 106, 106, 101, 101, 106, 106, 101, }, },
+      { { 101, 112, 122, 128, 95, 106, 116, 122, 85,  96, 106, 112, 74,  85,  95, 101, },
+        { 101, 106, 106, 101, 95, 100, 100,  95, 85,  90,  90,  85, 74,  79,  79,  74, }, },
+    },
+  },
+  {
+    {
+      { { 101, 101, 101, 101, 112, 112, 112, 112, 122, 122, 122, 122, 128, 128, 128, 128, },
+        { 101,  95,  85,  74, 112, 106,  96,  85, 122, 116, 106,  95, 128, 122, 112, 101, }, },
+      { { 101, 101, 101, 101, 106, 106, 106, 106, 106, 106, 106, 106, 101, 101, 101, 101, },
+        { 101,  95,  85,  74, 106, 100,  90,  79, 106, 100,  90,  79, 101,  95,  85,  74, }, },
+    },
+    {
+      { { 74,  85,  95, 101, 85,  96, 106, 112, 95, 106, 116, 122, 101, 112, 122, 128, },
+        { 74,  79,  79,  74, 85,  90,  90,  85, 95, 100, 100,  95, 101, 106, 106, 101, }, },
+      { { 74,  85,  95, 101, 79,  90, 100, 106, 79,  90, 100, 106, 74,  85,  95, 101, },
+        { 74,  79,  79,  74, 79,  84,  84,  79, 79,  84,  84,  79, 74,  79,  79,  74, }, },
+    },
+  },
+};
+
+static const int16_t neigWeights[5][16] =
+{
+  {  0,   0,   0,   0,  0,   0,   0,   0,   0,   0,   0,   0,  0,   0,   0,   0, }, // unavailable
+  { 27,  27,  27,  27, 16,  16,  16,  16,   6,   6,   6,   6,  0,   0,   0,   0, }, // above
+  { 27,  16,   6,   0, 27,  16,   6,   0,  27,  16,   6,   0, 27,  16,   6,   0, }, // left
+  {  0,   0,   0,   0,  6,   6,   6,   6,  16,  16,  16,  16, 27,  27,  27,  27, }, // below
+  {  0,   6,  16,  27,  0,   6,  16,  27,   0,   6,  16,  27,  0,   6,  16,  27, }, // right
+};
+
+static const int16_t weightsChroma[2] = { 0 , 27 };
+#endif
+
 #endif
 
 #if JVET_X0141_CIIP_TIMD_TM
@@ -2493,6 +2566,31 @@ static const int ALF_SA_SOLUTION_POOL_SIZE_MAX = 8;
 static const int ALF_SA_RUNS_COUNT = 100; // how many times the full SA-process (from a start point until it converges) is tried
 static const int ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP = 8; // ALF_SA_NON_IMPROVES_PER_PARAMETER_TO_STOP * parametersNumber is the number of non-improving iterations that has to happen before SA run is stopped
 static const int ALF_SA_CHANGES_PER_ITERATION = 3; // the maximal number of changed parameters in one iteration
+#endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+// define search area
+static const int TMP_MIN_NUM_STEPS = 2; // 0 equals stdpad, minimum size of triangle
+static const int TMP_MAX_NUM_STEPS = 12; // Limit the maximum number of steps executed, maximum size of triangle
+
+static const int TMP_NUM_AVG_CANDS = 4; // Limit the number of averaged candidates
+static const float TMP_ACS_FACTOR = 1.5; // adaptive candidate selection factor (needs to be <= 1)
+
+// template size and target block size definition
+static const int TMP_TEMPLATE_WIDTH = 16;
+static const int TMP_TEMPLATE_HEIGHT = 3;
+static const int TMP_TW_MINUS_TBW_BY_TWO = 2; // defines how much smaller the target block is than the template on each side
+
+static const int TMP_PADSIZE = 16; // padding size for TM padding
+static const int TMP_EARLY_TERMINATION_THRESHOLD = 128; // threshold for early termination
+
+enum BoundaryDirection
+{
+  BD_TOP,
+  BD_RIGHT,
+  BD_BOTTOM,
+  BD_LEFT,
+  NUM_BD_DIRECTIONS
+};
 #endif
 
 #endif // end of #ifndef  __COMMONDEF__

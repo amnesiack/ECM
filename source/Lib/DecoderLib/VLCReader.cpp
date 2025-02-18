@@ -112,7 +112,7 @@ void VLCReader::xReadSCode (uint32_t length, int& value)
 #endif
 {
   uint32_t val;
-  assert ( length > 0 && length<=32);
+  CHECK( length <= 0 || length > 32, "Wrong length");
   m_pcBitstream->read (length, val);
   value= length>=32 ? int(val) : ( (-int( val & (uint32_t(1)<<(length-1)))) | int(val) );
 
@@ -2154,7 +2154,7 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     READ_FLAG(uiCode, "sps_explicit_mts_inter_enabled_flag");               pcSPS->setUseInterMTS(uiCode != 0);
 #if AHG7_MTS_TOOLOFF_CFG
     READ_FLAG(uiCode, "sps_explicit_mts_extension_enabled_flag");               pcSPS->setUseMTSExt(uiCode != 0);
-    if (pcSPS->getUseIntraMTS())
+    if (pcSPS->getUseIntraMTS() || pcSPS->getUseImplicitMTS())
     {
       READ_CODE(2, uiCode, "intraMTSMaxSizeMinus5");
       pcSPS->setIntraMTSMaxSize(1 << (uiCode + 5));
@@ -2313,6 +2313,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     pcSPS->setLog2SignPredArea(uiCode + 2);
   }
 #endif
+#endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  READ_FLAG( uiCode,    "sps_tmbp_enabled_flag" );                               pcSPS->setTMBP                    ( uiCode != 0 );
 #endif
 
 #if JVET_S0074_SPS_REORDER
@@ -2794,18 +2797,21 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #endif
 
 #if JVET_AG0164_AFFINE_GPM
-      if (pcSPS->getUseAffine() && pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
+      if (pcSPS->getUseAffine())
       {
-        READ_UVLC(uiCode, "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
-        pcSPS->setMaxNumGpmAffCand((uint32_t)(pcSPS->getMaxNumAffineMergeCand() - uiCode));
-      }
+        if (pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
+        {
+          READ_UVLC(uiCode, "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
+          pcSPS->setMaxNumGpmAffCand((uint32_t)(pcSPS->getMaxNumAffineMergeCand() - uiCode));
+        }
 #if JVET_AJ0274_GPM_AFFINE_TM
-      if (pcSPS->getMaxNumGpmAffCand() > 0)
-      {
-        READ_UVLC(uiCode, "max_num_gpm_aff_tm_cand");
-        pcSPS->setMaxNumGpmAffTmCand((uint32_t)uiCode);
-      }
+        if (pcSPS->getMaxNumGpmAffCand() > 0)
+        {
+          READ_UVLC(uiCode, "max_num_gpm_aff_tm_cand");
+          pcSPS->setMaxNumGpmAffTmCand((uint32_t)uiCode);
+        }
 #endif
+      }
 #endif
 
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -2934,6 +2940,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #endif
 #if JVET_AD0085_MPM_SORTING
   READ_FLAG(uiCode, "sps_mpm_sorting_enabled_flag");                pcSPS->setUseMpmSorting(uiCode != 0);
+#endif
+#if JVET_AK0059_MDIP
+  READ_FLAG(uiCode, "sps_mdip_enabled_flag");                       pcSPS->setUseMdip(uiCode != 0);
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   READ_FLAG(uiCode, "sps_chroma_reordering_enabled_flag");          pcSPS->setUseChromaReordering(uiCode != 0);

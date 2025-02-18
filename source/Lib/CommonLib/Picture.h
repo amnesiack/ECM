@@ -334,12 +334,20 @@ public:
   void         copyCleanCurPicture();
 #endif
 
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  void setUseTMBP(bool val) { m_useTMBP = val;}
+  bool getUseTMBP() const   { return m_useTMBP;}  
+#endif
+
   MCTSInfo     mctsInfo;
   std::vector<AQpLayer*> aqlayer;
 
 #if !KEEP_PRED_AND_RESI_SIGNALS
 private:
   UnitArea m_ctuArea;
+#endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  bool m_useTMBP;
 #endif
 
 #if ENABLE_SPLIT_PARALLELISM

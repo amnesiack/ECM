@@ -9311,6 +9311,7 @@ void AdaptiveLoopFilter::calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf
   }
 
   const int offsetThValue = ( 1 << cs.sps->getBitDepth(CHANNEL_TYPE_LUMA) ) - 1;
+  int bdScale = std::max(0, cs.sps->getBitDepth(CHANNEL_TYPE_LUMA) - 10);
 
   int refineIdx0BoundThA = stageIdx ? 1 : 1;
   int refineIdx0BoundThB = stageIdx ? 3 : 3;
@@ -9326,7 +9327,7 @@ void AdaptiveLoopFilter::calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf
 
       int absDiff = abs( diff );
       //Need Consider in SIMD
-      int absDiffForLog2 = Clip3<int>(+0, +offsetThValue, absDiff);
+      int absDiffForLog2 = Clip3<int>(+0, +offsetThValue, absDiff) >> bdScale;
 
       int sign = diff < 0 ? +1 : -1; //inverse adjustment here
 
@@ -9360,7 +9361,7 @@ void AdaptiveLoopFilter::calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf
         }
       }
 
-      dstPtr[x] = src1Ptr[x] + refine;
+      dstPtr[x] = src1Ptr[x] + ( refine << bdScale );
     }
     src0Ptr += src0Stride;
     src1Ptr += src1Stride;
@@ -9373,8 +9374,6 @@ void AdaptiveLoopFilter::calcOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf
 void AdaptiveLoopFilter::copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst )
 {
   const PreCalcValues& pcv = *cs.pcv;
-
-  int ctuIdx = 0;
 
   for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
   {
@@ -9401,7 +9400,6 @@ void AdaptiveLoopFilter::copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& s
       }
 
     }
-    ctuIdx++;
   }
 }
 void AdaptiveLoopFilter::copyOffsetRefinementBlk(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst, const Area& blk )

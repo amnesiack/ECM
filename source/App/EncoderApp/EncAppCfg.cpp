@@ -1148,7 +1148,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("MTSInterMaxCand",                                 m_MTSInterMaxCand,                                    4, "Number of additional candidates to test in encoder search for MTS in inter slices\n")
   ("MTSImplicit",                                     m_MTSImplicit,                                        0, "Enable implicit MTS (when explicit MTS is off)\n")
   ( "SBT",                                            m_SBT,                                            false, "Enable Sub-Block Transform for inter blocks\n" )
+#if JVET_AJ0260_SBT_CORNER_MODE
+  ( "SBTFast64WidthTh",                               m_SBTFast64WidthTh,                                   0, "Picture width threshold for testing size-64 SBT in RDO (now for HD and above sequences)\n")
+#else
   ( "SBTFast64WidthTh",                               m_SBTFast64WidthTh,                                1920, "Picture width threshold for testing size-64 SBT in RDO (now for HD and above sequences)\n")
+#endif
   ( "ISP",                                            m_ISP,                                            false, "Enable Intra Sub-Partitions\n" )
   ("SMVD",                                            m_SMVD,                                           false, "Enable Symmetric MVD\n")
   ("CompositeLTReference",                            m_compositeRefEnabled,                            false, "Enable Composite Long Term Reference Frame")
@@ -1196,6 +1200,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #if JVET_AD0085_MPM_SORTING
   ( "MPMSorting",                                     m_mpmSorting,                                      true,  "Enable template-based intra MPM list construction\n" )
+#endif
+#if JVET_AK0059_MDIP
+  ( "MDIP",                                           m_mdip,                                            true,  "Enable MDIP and excluding intra modes\n" )
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   ("ChromaReordering",                                m_chromaReordering,                                true, "Enable template-based intra chroma list reordering\n")
@@ -1635,6 +1642,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("Log2ParallelMergeLevel",                          m_log2ParallelMergeLevel,                            2u, "Parallel merge estimation region")
   ("WaveFrontSynchro",                                m_entropyCodingSyncEnabledFlag,                   false, "0: entropy coding sync disabled; 1 entropy coding sync enabled")
   ("EntryPointsPresent",                              m_entryPointPresentFlag,                           true, "0: entry points is not present; 1 entry points may be present in slice header")
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  ("TMBP",                                            m_templateMatchingBoundaryPrediction,              true, "Enables Template Matching-based Reference Picture Boundary Padding")
+#endif
   ("ScalingList",                                     m_useScalingListId,                    SCALING_LIST_OFF, "0/off: no scaling list, 1/default: default scaling lists, 2/file: scaling lists specified in ScalingListFile")
   ("ScalingListFile",                                 m_scalingListFileName,                       string(""), "Scaling list file name. Use an empty string to produce help.")
   ("DisableScalingMatrixForLFNST",                    m_disableScalingMatrixForLfnstBlks,                true, "Disable scaling matrices, when enabled, for LFNST-coded blocks")
@@ -4215,6 +4225,13 @@ bool EncAppCfg::xCheckParameter()
       m_mpmSorting = false;
     }
 #endif
+#if JVET_AK0059_MDIP
+    if(m_mdip)
+    {
+      msg(WARNING, "MDIP is forcefully disabled since the enable flag of non-inter-TM tools is set off. \n");
+      m_mdip = false;
+    }
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
     if (m_chromaReordering)
     {
@@ -4376,6 +4393,13 @@ bool EncAppCfg::xCheckParameter()
     {
       msg(WARNING, "Subblock TM is forcefully disabled since enable flag of TM tools is set off. \n");
       m_useSbTmvpTM = false;
+    }
+#endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+    if( m_templateMatchingBoundaryPrediction )
+    {
+      msg( WARNING, "TM boundary padding is forcefully disabled since enable flag of TM tools is set off. \n" );
+      m_templateMatchingBoundaryPrediction = false;
     }
 #endif
   }
@@ -5979,6 +6003,9 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AD0085_MPM_SORTING && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg(VERBOSE, "MPMSorting:%d ", m_mpmSorting);
 #endif
+#if JVET_AK0059_MDIP && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
+  msg(VERBOSE, "MDIP:%d ", m_mdip);
+#endif
 #if JVET_AH0136_CHROMA_REORDERING && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg(VERBOSE, "ChromaReordering:%d ", m_chromaReordering);
 #endif
@@ -6037,6 +6064,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AD0085_MPM_SORTING
   msg(VERBOSE, "MPMsorting:%d ", m_mpmSorting);
+#endif
+#if JVET_AK0059_MDIP
+  msg(VERBOSE, "MDIP:%d ", m_mdip);
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   msg(VERBOSE, "ChromaReordering:%d ", m_chromaReordering);

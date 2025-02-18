@@ -4069,7 +4069,7 @@ bool InterSearch::predIBCSearch(CodingUnit& cu, Partitioner& partitioner, const 
 
     if( pu.cu->imv == 2 )
     {
-      assert( ( cMv.getHor() % 16 == 0 ) && ( cMv.getVer() % 16 == 0 ) );
+      CHECK( ( cMv.getHor() % 16 ) || ( cMv.getVer() % 16 ), "Wrong MV");
     }
 
 #if !JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -8993,11 +8993,7 @@ void InterSearch::xCollectIntraGeoPartCost(PredictionUnit &pu, IntraPrediction* 
 #endif
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
   {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-    uint8_t intraMode = pcIntraPred->getPrefilledIntraGPMMPMMode(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx);
-#else
     uint8_t intraMode = pcIntraPred->getPrefilledIntraGPMMPMMode(partIdx, splitDir, realCandIdx);
-#endif
     intraModeToSplitDirAll[intraMode].push_back(splitDir);
   }
 
@@ -12985,7 +12981,9 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     int offsetResiPart = 0;
     int offsetNoResiPart = numPartX / 2;
     distResiPart = distNoResiPart = 0;
-    assert( numPartX >= 2 );
+
+    CHECK( numPartX < 2, "numPartX should be 2 or more" );
+
     for( int j = 0; j < numPartY; j++ )
     {
       for( int i = 0; i < numPartX / 2; i++ )
@@ -13002,7 +13000,9 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
   {
     int offsetResiPart = 0;
     int offsetNoResiPart = numPartY / 2;
-    assert( numPartY >= 2 );
+
+    CHECK( numPartY < 2, "numPartY should be 2 or more" );
+    
     distResiPart = distNoResiPart = 0;
     for( int j = 0; j < numPartY / 2; j++ )
     {
@@ -13018,7 +13018,8 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
 
   if( CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) )
   {
-    assert( numPartX == 4 );
+    CHECK( numPartX != 4, "numPartX should be 4");
+
     m_estMinDistSbt[SBT_VER_Q0] = m_estMinDistSbt[SBT_VER_Q1] = 0;
     for( int j = 0; j < numPartY; j++ )
     {
@@ -13031,7 +13032,8 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
 
   if( CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed ) )
   {
-    assert( numPartY == 4 );
+    CHECK( numPartY != 4, "numPartY should be 4" );
+
     m_estMinDistSbt[SBT_HOR_Q0] = m_estMinDistSbt[SBT_HOR_Q1] = 0;
     for( int i = 0; i < numPartX; i++ )
     {
@@ -16590,8 +16592,9 @@ void InterSearch::symmvdCheckBestMvp(
 
 uint64_t InterSearch::xCalcPuMeBits(PredictionUnit& pu)
 {
-  assert(pu.mergeFlag);
-  assert(!CU::isIBC(*pu.cu));
+  CHECK(!pu.mergeFlag, "");
+  CHECK(CU::isIBC(*pu.cu), "");
+
   m_CABACEstimator->resetBits();
   m_CABACEstimator->merge_flag(pu);
   if (pu.mergeFlag)
@@ -17031,8 +17034,9 @@ void InterSearch::checkEncLicOn(CodingUnit& cu, MergeCtx& mergeCtx)
 
 uint64_t InterSearch::xCalcExpPuBits(PredictionUnit& pu)
 {
-  assert(!pu.mergeFlag);
-  assert(!CU::isIBC(*pu.cu));
+  CHECK(pu.mergeFlag, "");
+  CHECK(CU::isIBC(*pu.cu), "");
+
   m_CABACEstimator->resetBits();
 
 #if JVET_X0083_BM_AMVP_MERGE_MODE

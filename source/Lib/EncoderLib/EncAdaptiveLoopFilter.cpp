@@ -2354,6 +2354,7 @@ double EncAdaptiveLoopFilter::deriveCtbAlfEnableFlags( CodingStructure& cs, cons
   {
     for( int compID = compIDFirst; compID <= compIDLast; compID++ )
     {
+      int bestBeforeAltIdx = m_ctuEnableFlag[compID][ctuIdx] ? m_ctuAlternative[compID][ctuIdx] : -1;
 #if ENABLE_QPA
       const double ctuLambda = chromaWeight > 0.0 ? (isLuma (channel) ? cs.picture->m_uEnerHpCtu[ctuIdx] : cs.picture->m_uEnerHpCtu[ctuIdx] / chromaWeight) : m_lambda[compID];
 #else
@@ -2371,15 +2372,15 @@ double EncAdaptiveLoopFilter::deriveCtbAlfEnableFlags( CodingStructure& cs, cons
       if( isLuma( channel ) )
       {
         // Evaluate cost of signaling filter set index for convergence of filters enabled flag / filter derivation
-        assert( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] == NUM_FIXED_FILTER_SETS );
-        assert( cs.slice->getTileGroupNumAps() == 1 );
+        CHECK( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] != NUM_FIXED_FILTER_SETS, "Wrong getAlfCtbFilterIndex");
+        CHECK( cs.slice->getTileGroupNumAps() != 1, "Wrong getTileGroupNumAps");
+
         m_CABACEstimator->codeAlfCtuFilterIndex( cs, ctuIdx, m_alfParamTemp.enabledFlag[COMPONENT_Y] );
       }
       double costOn = distUnfilterCtu + ctuLambda * FRAC_BITS_SCALE * m_CABACEstimator->getEstFracBits();
 
       ctxTempBest = AlfCtx( m_CABACEstimator->getCtx() );
 
-      int bestBeforeAltIdx = m_ctuEnableFlag[compID][ctuIdx] ? m_ctuAlternative[compID][ctuIdx] : -1;
       if( isLuma( channel ) )
       {
 #if ALF_IMPROVEMENT
@@ -2981,7 +2982,9 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
         );
 #endif
       }
-      assert(alfFilterShape.numCoeff == m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff);
+
+      CHECK(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
+
 #if !JVET_X0071_ALF_BAND_CLASSIFIER
       AlfParam bestSliceParam;
       double bestCost = MAX_DOUBLE;
@@ -3065,7 +3068,8 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
         );
 #endif
       }
-      assert(alfFilterShape.numCoeff == m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff);
+
+      CHECK(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
 
       AlfParam bestSliceParam;
       double bestCost = MAX_DOUBLE;
@@ -3171,8 +3175,9 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
     if( isLuma( channel ) )
     {
       // Evaluate cost of signaling filter set index for convergence of filters enabled flag / filter derivation
-      assert( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] == NUM_FIXED_FILTER_SETS );
-      assert( cs.slice->getTileGroupNumAps() == 1 );
+      CHECK( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] != NUM_FIXED_FILTER_SETS, "Wrong getAlfCtbFilterIndex");
+      CHECK( cs.slice->getTileGroupNumAps() != 1, "Wrong getTileGroupNumAps");
+
       m_CABACEstimator->codeAlfCtuFilterIndex( cs, ctuIdx, m_alfParamTemp.enabledFlag[COMPONENT_Y] );
 #if ALF_IMPROVEMENT
       m_CABACEstimator->codeAlfCtuAlternative(cs, ctuIdx, COMPONENT_Y, &m_alfParamTemp, m_alfParamTemp.numAlternativesLuma);
@@ -3428,6 +3433,7 @@ double EncAdaptiveLoopFilter::mergeFiltersAndCost( AlfParam& alfParam, AlfFilter
   numFilters = maxNumFilters;
   while (numFilters >= 1)
   {
+    alfParam.numLumaFilters[altIdx] = numFilters;
 #if ALF_PRECISION_VARIETY
 #if JVET_X0071_ALF_BAND_CLASSIFIER
     dist = deriveFilterCoeffs(covFrame, covMerged, clipMerged, alfShape, m_filterIndices[numFilters - 1], numFilters, errorForce0CoeffTab, alfParam, m_alfParamTemp.nonLinearFlag[CHANNEL_TYPE_LUMA][altIdx], classifierIdx, numFilters == maxNumFilters ? true : false, mergedPair, mergedCoeff, mergedScaleIdx, mergedErr, tryImproveScale);
@@ -11443,8 +11449,6 @@ bool EncAdaptiveLoopFilter::calcOffsetRefinementOnOff(CodingStructure& cs, PelUn
 
   double dist0 = 0.0, dist1 = 0.0, dist2 = 0.0;
 
-  int ctuIdx = 0;
-
   for (int yPos = 0; yPos < pcv.lumaHeight; yPos += pcv.maxCUHeight)
   {
     for (int xPos = 0; xPos < pcv.lumaWidth; xPos += pcv.maxCUWidth)
@@ -11482,7 +11486,6 @@ bool EncAdaptiveLoopFilter::calcOffsetRefinementOnOff(CodingStructure& cs, PelUn
         src2Ptr += src2Stride;
         orgPtr += orgStride;
       }
-      ctuIdx++;
     }
   }
 

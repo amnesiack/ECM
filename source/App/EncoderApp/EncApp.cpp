@@ -989,6 +989,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AD0085_MPM_SORTING
   m_cEncLib.setUseMpmSorting                                     ( m_mpmSorting );
 #endif
+#if JVET_AK0059_MDIP
+  m_cEncLib.setUseMdip                                           ( m_mdip ); 
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   m_cEncLib.setUseChromaReordering                               (m_chromaReordering);
 #endif
@@ -1314,6 +1317,10 @@ void EncApp::xInitLibCfg()
 
   m_cEncLib.setSaoGreedyMergeEnc                                 ( m_saoGreedyMergeEnc);
   m_cEncLib.setIntraSmoothingDisabledFlag                        (!m_enableIntraReferenceSmoothing );
+
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  m_cEncLib.setTMBP                                               ( m_templateMatchingBoundaryPrediction );
+#endif
   m_cEncLib.setDecodedPictureHashSEIType                         ( m_decodedPictureHashSEIType );
 #if JVET_R0294_SUBPIC_HASH
   m_cEncLib.setSubpicDecodedPictureHashType                      ( m_subpicDecodedPictureHashType );

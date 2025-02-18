@@ -121,8 +121,9 @@ bool g_HLSTraceEnable = true;
 
 void VLCWriter::xWriteSCode    ( int code, uint32_t length )
 {
-  assert ( length > 0 && length<=32 );
-  assert( length==32 || (code>=-(1<<(length-1)) && code<(1<<(length-1))) );
+  CHECK( length == 0 || length > 32, "");
+  CHECK( length != 32 && ( code < -( 1 << ( length - 1 ) ) || code >= ( 1 << ( length - 1 ) ) ), "");
+
   m_pcBitIf->write( length==32 ? uint32_t(code) : ( uint32_t(code)&((1<<length)-1) ), length );
 }
 
@@ -875,7 +876,9 @@ void HLSWriter::codeLmcsAps( APS* pcAPS )
   SliceReshapeInfo param = pcAPS->getReshaperAPSInfo();
   WRITE_UVLC(param.reshaperModelMinBinIdx, "lmcs_min_bin_idx");
   WRITE_UVLC(PIC_CODE_CW_BINS - 1 - param.reshaperModelMaxBinIdx, "lmcs_delta_max_bin_idx");
-  assert(param.maxNbitsNeededDeltaCW > 0);
+
+  CHECK( param.maxNbitsNeededDeltaCW <= 0, "");
+
   WRITE_UVLC(param.maxNbitsNeededDeltaCW - 1, "lmcs_delta_cw_prec_minus1");
 
   for (int i = param.reshaperModelMinBinIdx; i <= param.reshaperModelMaxBinIdx; i++)
@@ -1324,7 +1327,7 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     WRITE_FLAG(pcSPS->getUseInterMTS() ? 1 : 0, "sps_explicit_mts_inter_enabled_flag");
 #if AHG7_MTS_TOOLOFF_CFG
     WRITE_FLAG(pcSPS->getUseMTSExt() ? 1 : 0, "sps_explicit_mts_extension_enabled_flag");
-    if (pcSPS->getUseIntraMTS())
+    if (pcSPS->getUseIntraMTS() || pcSPS->getUseImplicitMTS())
     {
       uint32_t intraMTSMaxCU = pcSPS->getIntraMTSMaxSize();
       CHECK((intraMTSMaxCU != 32 && intraMTSMaxCU != 64 && intraMTSMaxCU != 128 && intraMTSMaxCU != 256), "intraMTSMaxSize != 32 or 64 or 128 or 256");
@@ -1441,6 +1444,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     WRITE_CODE(pcSPS->getLog2SignPredArea() - 2,2, "log2_sign_pred_area_minus2");
   }
 #endif
+#endif
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  WRITE_FLAG( pcSPS->getTMBP() ? 1: 0,                                                          "sps_tmbp_enabled_flag" );
 #endif
 
 #if JVET_S0074_SPS_REORDER
@@ -1801,16 +1807,19 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
       }
 #endif
 #if JVET_AG0164_AFFINE_GPM
-      if (pcSPS->getUseAffine() && pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
+      if (pcSPS->getUseAffine())
       {
-        WRITE_UVLC(pcSPS->getMaxNumAffineMergeCand() - pcSPS->getMaxNumGpmAffCand(), "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
-      }
+        if (pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
+        {
+          WRITE_UVLC(pcSPS->getMaxNumAffineMergeCand() - pcSPS->getMaxNumGpmAffCand(), "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
+        }
 #if JVET_AJ0274_GPM_AFFINE_TM
-      if (pcSPS->getMaxNumGpmAffCand() > 0)
-      {
-        WRITE_UVLC(pcSPS->getMaxNumGpmAffTmCand(), "max_num_gpm_aff_tm_cand");
-      }
+        if (pcSPS->getMaxNumGpmAffCand() > 0)
+        {
+          WRITE_UVLC(pcSPS->getMaxNumGpmAffTmCand(), "max_num_gpm_aff_tm_cand");
+        }
 #endif
+      }
 #endif
 
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -1920,6 +1929,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #endif
 #if JVET_AD0085_MPM_SORTING
   WRITE_FLAG(pcSPS->getUseMpmSorting() ? 1 : 0, "sps_mpm_sorting_enabled_flag");
+#endif
+#if JVET_AK0059_MDIP
+  WRITE_FLAG(pcSPS->getUseMdip() ? 1 : 0, "sps_mdip_enabled_flag");
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   WRITE_FLAG(pcSPS->getUseChromaReordering() ? 1 : 0, "sps_chroma_reordering_enabled_flag");

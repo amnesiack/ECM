@@ -333,7 +333,11 @@ public:
 
 #if SECONDARY_MPM
   uint8_t m_intraMPM[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+  uint8_t m_intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+#else
   uint8_t m_intraNonMPM[NUM_NON_MPM_MODES];
+#endif
 #endif
 #if JVET_AK0061_PDP_MPM
   bool m_mpmIncludedPdpMode[NUM_LUMA_MODE] = { false };
@@ -934,10 +938,21 @@ public:
   bool getGradForOBMC                    (const PredictionUnit pu, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, const bool isAbove, const int blkSize, int* modeBuf);
 #endif
 
+#if JVET_AK0059_MDIP
+  void deriveMdipMode                     (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool useExcludingMode = true);
+#endif
 #if ENABLE_DIMD
-  static void deriveDimdMode              (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+  static void deriveDimdMode              (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+    , bool useExcludingMode = false
+#endif
+  );
 #if JVET_AJ0267_ADAPTIVE_HOG
-  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
+  static void deriveDimdModeAdaptive      (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu
+#if JVET_AK0059_MDIP
+    , bool useExcludingMode = false
+#endif
+  );
 #endif
 #if JVET_Z0050_DIMD_CHROMA_FUSION && ENABLE_DIMD
   static void deriveDimdChromaMode        (const CPelBuf &recoBufY, const CPelBuf &recoBufCb, const CPelBuf &recoBufCr, const CompArea &areaY, const CompArea &areaCb, const CompArea &areaCr, CodingUnit &cu);
@@ -948,6 +963,9 @@ public:
    void predChromaTM                      (const CompArea &areaCb, const CompArea &areaCr, PredictionUnit &pu, uint8_t predMode, PelBuf predCb, PelBuf predCr, TemplateType eTplType, InterPrediction *pcInterPred);
 #endif
 #endif
+#if JVET_AK0217_INTRA_MTSS
+   static void deriveDimdModeList(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, static_vector<int, MTSS_LIST_SIZE>& candModeList, static_vector<int, MTSS_LIST_SIZE>& candCostList);
+#endif 
 #if ENABLE_DIMD && (JVET_AB0067_MIP_DIMD_LFNST || JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST || JVET_AG0058_EIP || JVET_AG0061_INTER_LFNST_NSPT)
   static int deriveIpmForTransform        (CPelBuf predBuf, CodingUnit& cu
 #if JVET_AI0050_INTER_MTSS
@@ -1060,6 +1078,9 @@ public:
 #endif
   );
 #endif
+#if JVET_AK0059_MDIP
+  void deriveMdipSorted           (const PredictionUnit& pu, int* list, int& sortedSize, int iStartIdx);
+#endif
 #if JVET_AK0061_PDP_MPM
   bool determinePDPEnable(const ComponentID compId, const PredictionUnit& pu, const uint32_t  uiDirMode);
   void xFillPDPTempReferenceSamples2(const CPelBuf& recoBuf, const CompArea& area, const CodingUnit& cu);
@@ -1145,11 +1166,7 @@ public:
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING && JVET_Y0065_GPM_INTRA
 protected:
   bool    m_abFilledIntraGPMRefTpl[NUM_INTRA_MODE];
-  #if JVET_AJ0107_GPM_SHAPE_ADAPT
-  uint8_t m_aiGpmIntraMPMLists[GEO_TOTAL_NUM_PARTITION_MODE][2][GEO_MAX_NUM_INTRA_CANDS];   //[][0][]: part0, [][1][]: part1
-#else
   uint8_t m_aiGpmIntraMPMLists[GEO_NUM_PARTITION_MODE][2][GEO_MAX_NUM_INTRA_CANDS];   //[][0][]: part0, [][1][]: part1
-#endif
   Pel     m_acYuvRefGPMIntraTemplate[NUM_INTRA_MODE][2][GEO_MAX_CU_SIZE * GEO_MODE_SEL_TM_SIZE];   //[][0][]: top, [][1][]: left
 
   template <uint8_t partIdx>

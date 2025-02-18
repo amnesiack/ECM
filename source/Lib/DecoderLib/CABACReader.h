@@ -171,6 +171,9 @@ public:
 #if JVET_AH0076_OBIC
   void        cu_obic_flag              ( CodingUnit&                   cu );
 #endif
+#if JVET_AK0059_MDIP
+  void        mdip_flag                 ( CodingUnit&                   cu );
+#endif
   void        cu_residual               ( CodingUnit&                   cu,     Partitioner&    pm,       CUCtx& cuCtx );
   void        rqt_root_cbf              ( CodingUnit&                   cu );
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0

@@ -2134,18 +2134,6 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
   }
 #endif
-#if JVET_AJ0260_SBT_CORNER_MODE
-  if( m_pcCuEncoder->getEncCfg()->getUseSBT() )
-  {
-    if( cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE ) // ensure sequential and parallel simulation generate same output
-    {
-      hashBlkHitPerc = hashBlkHitPerc == -1 ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc( cs.area.Y() ) : hashBlkHitPerc;
-      bool isSCC = hashBlkHitPerc >= 20;
-      m_pcCuEncoder->getEncCfg()->setSBTFast64WidthTh( isSCC ? 1920 : 0 );
-    }
-  }
-#endif
-
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
   if (m_pcCuEncoder->getEncCfg()->getIntraToolControlMode() == 0)
   {

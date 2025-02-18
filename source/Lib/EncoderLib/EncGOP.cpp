@@ -2693,7 +2693,25 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           bLowDelayB = true;
         }
       }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+      else
+      {
+        if(pcPic->getUseTMBP() && !bLowDelay)
+        {
+          pcPic->setUseTMBP(false);
+        }
+      }
       pcSlice->setCheckLDB(bLowDelayB);
+      if(pcPic->getUseTMBP() && !bLowDelayB)
+      {
+        pcPic->setUseTMBP(false);
+      }
+#else
+      pcSlice->setCheckLDB(bLowDelayB);
+#endif
+#if JVET_AK0212_GPM_OBMC_MODIFICATION
+      pcSlice->setCheckUseSepOBMC(bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
+#endif
 #endif
     }
     else
@@ -5064,7 +5082,11 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #endif
     pcPic->cs->destroyTemporaryCsData();
 #if JVET_AA0096_MC_BOUNDARY_PADDING
-    m_pcFrameMcPadPrediction->init(m_pcEncLib->getRdCost(), pcSlice->getSPS()->getChromaFormatIdc(),
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+    if(!(pcPic->getUseTMBP() && pcPic->cs->sps->getTMBP()))
+#endif
+    {
+      m_pcFrameMcPadPrediction->init(m_pcEncLib->getRdCost(), pcSlice->getSPS()->getChromaFormatIdc(),
 #if JVET_AJ0172_IBC_ITMP_ALIGN_REF_AREA
 #if JVET_AJ0237_INTERNAL_12BIT
                                    pcSlice->getSPS()->getMaxCUHeight(), NULL, pcPic->getPicWidthInLumaSamples(),pcPic->getPicHeightInLumaSamples(), pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
@@ -5078,8 +5100,15 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
                                    pcSlice->getSPS()->getMaxCUHeight(), NULL, pcPic->getPicWidthInLumaSamples());
 #endif
 #endif
-    m_pcFrameMcPadPrediction->mcFramePad(pcPic, *(pcPic->slices[0]));
-    m_pcFrameMcPadPrediction->destroy();
+        m_pcFrameMcPadPrediction->mcFramePad(pcPic, *(pcPic->slices[0]));
+        m_pcFrameMcPadPrediction->destroy();
+    }
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+    else
+    {
+      pcPic->extendPicBorder(pcSlice->getPPS());
+    }
+#endif
 #endif
   } // iGOPid-loop
 

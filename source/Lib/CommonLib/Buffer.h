@@ -110,8 +110,16 @@ struct PelBufferOps
   void(*calAbsSum)          (const Pel* diff, int stride, int width, int height, int* absDiff);
   void(*calcBIOParamSum5)   (Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx);
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
-  void(*calcBIOParamSum5NOSIM4)   (int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx ,Pel* dI, Pel* gX, Pel* gY);
-  void(*calcBIOParamSum5NOSIM8)   (int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx, Pel* dI, Pel* gX, Pel* gY);
+  void(*calcBIOParamSum5NOSIM4)   (int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx ,Pel* dI
+#if JVET_AG0067_DMVR_EXTENSIONS
+    , Pel* gX, Pel* gY
+#endif
+    );
+  void(*calcBIOParamSum5NOSIM8)   (int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx, Pel* dI
+#if JVET_AG0067_DMVR_EXTENSIONS
+    , Pel* gX, Pel* gY
+#endif
+    );
 #endif
   void(*calcBIOParamSum4)   (Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signGyGx, int width, int height, const int widthG, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx);
 #if JVET_Z0136_OOB

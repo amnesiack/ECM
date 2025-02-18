@@ -548,6 +548,9 @@ protected:
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;
 #endif
+#if JVET_AK0059_MDIP
+  bool      m_mdip;
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   bool      m_chromaReordering;
 #endif
@@ -828,6 +831,9 @@ protected:
   bool      m_DeblockingFilterMetric;                         ///< blockiness metric in encoder
 #endif
   bool      m_enableIntraReferenceSmoothing;                  ///< flag for enabling(default)/disabling intra reference smoothing/filtering
+#if JVET_AK0085_TM_BOUNDARY_PADDING
+  bool      m_templateMatchingBoundaryPrediction;
+#endif
 
   // coding tools (encoder-only parameters)
   bool      m_bUseASR;                                        ///< flag for using adaptive motion search range
