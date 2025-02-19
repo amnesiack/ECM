@@ -35878,7 +35878,7 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
   else
   {
     bool allowNSPT = CU::isNSPTAllowed(tu, compID, area.width, area.height, CU::isIntra(*(tu.cu)));
-    int intraMode2, modeDiff = 0; 
+    int intraMode2 = intraMode1, modeDiff = 0;
 
     int testMode = -1;
     bool validMode = false;
@@ -36005,8 +36005,10 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
       }
     }
 
-    if (validMode == false)
+    if( tu.cu->slice->getSPS()->getUseDimd() && !validMode )
     {
+      CHECK( !tu.cu->candModeListForTransformMtss.size(), "Candidate list is empty" );
+
       testMode = tu.cu->candModeListForTransformMtss[0];
       intraMode2 = (int)testMode;
 
