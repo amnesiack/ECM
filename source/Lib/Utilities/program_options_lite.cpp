@@ -332,7 +332,7 @@ namespace df
 #endif
       if (!found)
       {
-        error_reporter.error(where())
+        error_reporter.warn(where())
           << "Unknown option `" << name << "' (value:`" << value << "')\n";
         return false;
       }
