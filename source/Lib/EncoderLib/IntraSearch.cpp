@@ -1080,8 +1080,8 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   if(cu.lfnstIdx == 0 && cu.mtsFlag == 0)
   {
     memset(m_includeExcludingMode, false, sizeof(m_includeExcludingMode));
-    
-    if(cu.cs->sps->getUseMdip())
+
+    if(cu.cs->sps->getUseMdip() && (cu.cs->sps->getUseDimd() || (!cu.cs->sps->getUseDimd() && CU::allowMdip(cu))))
     {
       for(int i = 0; i < EXCLUDING_MODE_NUM; i++ )
       {
@@ -16854,7 +16854,7 @@ void IntraSearch::setLumaIntraPredIdx(PredictionUnit& pu)
     pu.secondMpmFlag = false;
 #if JVET_AK0059_MDIP
     int numNonMpm = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES;
-    if (pu.cs->sps->getUseMdip())
+    if (pu.cs->sps->getUseMdip() && (pu.cs->sps->getUseDimd() || (!pu.cs->sps->getUseDimd() && CU::allowMdip(*pu.cu))))
     {
       numNonMpm = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
     }
