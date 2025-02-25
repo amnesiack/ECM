@@ -2710,7 +2710,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       pcSlice->setCheckLDB(bLowDelayB);
 #endif
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
-      pcSlice->setCheckUseSepOBMC(bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
+      pcSlice->setCheckUseSepOBMC(!pcSlice->isInterB() || bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
 #endif
 #endif
     }
