@@ -7175,7 +7175,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
 #if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
       bool isConstrutedUsed = tplAvail && pu.cs->sps->getUseSyntheticAffine() && (pu.cu->slice->getTLayer() < 5) && !pu.cu->slice->getCheckLDB();
-      if (hasOppositelicAff && pu.cs->sps->getUseAffMergeOppositeLic() && isConstrutedUsed)
+      if (hasOppositelicAff && pu.cs->sps->getUseAffMergeOppositeLic() && isConstrutedUsed && sps.getUseAML()
+#if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
+        && sps.getTMToolsEnableFlag()
+#endif       
+        )
       {
         AffineMergeCtx affineSynOppositeLic;
         for (int i = 0; i < AFFINE_MRG_MAX_NUM_CANDS_ALL; i++)
