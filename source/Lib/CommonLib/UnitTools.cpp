@@ -36019,7 +36019,7 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
 
     if (allowNSPT && modeDiff <= 2)
     {
-      secondBucket = true; 
+      secondBucket = true;
     }
     if (secondBucket)
     {
