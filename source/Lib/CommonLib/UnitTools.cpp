@@ -35880,7 +35880,7 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
     bool allowNSPT = CU::isNSPTAllowed(tu, compID, area.width, area.height, CU::isIntra(*(tu.cu)));
     int intraMode2 = intraMode1, modeDiff = 0;
 
-    int testMode = -1;
+    int testMode = 0;
     bool validMode = false;
 
     bool transposeFlag = PU::getTransposeFlag(intraMode);
