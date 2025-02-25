@@ -3796,7 +3796,6 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     cu.areAboveRightUnavail = areAboveRightUnavail;
     cu.areBelowLeftUnavail = areBelowLeftUnavail;
 #endif
-
     if (cu.slice->getSPS()->getUseDimd())
     {
       const CompArea &area = cu.Y();

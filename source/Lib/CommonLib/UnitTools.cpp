@@ -36019,7 +36019,7 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
 
     if (allowNSPT && modeDiff <= 2)
     {
-      secondBucket = true;
+      secondBucket = true; 
     }
     if (secondBucket)
     {
@@ -36027,6 +36027,7 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
     }
     else
     {
+      CHECK( testMode < 0, "testMode is invalid" );
       return std::make_pair(testMode, 0);
     }
   }
@@ -36534,7 +36535,7 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
 
     includedMode[pu.cu->mdipMode] = true;
   }
-  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip())
+  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip() && (pu.cs->sps->getUseDimd() || (!pu.cs->sps->getUseDimd() && CU::allowMdip(*pu.cu))))
   {
     for(int i=0; i < EXCLUDING_MODE_NUM; i++)
     {
@@ -36815,7 +36816,7 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
   {
     includedMode[pu.cu->mdipMode] = true;
   }
-  if(pu.cu->isModeExcluded)
+  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip() && (pu.cs->sps->getUseDimd() || (!pu.cs->sps->getUseDimd() && CU::allowMdip(*pu.cu))))
   {
     for(int i=0; i<EXCLUDING_MODE_NUM; i++)
     {
@@ -36970,7 +36971,7 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
   {
     includedMode[pu.cu->mdipMode] = true;
   }
-  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip())
+  if(pu.cu->isModeExcluded && pu.cs->sps->getUseMdip() && (pu.cs->sps->getUseDimd() || (!pu.cs->sps->getUseDimd() && CU::allowMdip(*pu.cu))))
   {
     for(int i=0; i<EXCLUDING_MODE_NUM; i++)
     {
@@ -36979,7 +36980,7 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
   }
 
   int numNonMpmMdip = NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES; 
-  if(pu.cs->sps->getUseMdip())
+  if(pu.cs->sps->getUseMdip() && (pu.cs->sps->getUseDimd() || (!pu.cs->sps->getUseDimd() && CU::allowMdip(*pu.cu))))
   {
     numNonMpmMdip = CU::allowMdip(*pu.cu) ? NUM_NON_MPM_MODES : NUM_NON_MPM_MODES + MDIP_NUM;
   } 
@@ -37016,7 +37017,7 @@ void fillNonMPMList(uint8_t* mpm, uint8_t* nonMpm
     }
   }
 #if JVET_AK0059_MDIP
-  if(pu.cs->sps->getUseMdip())
+  if(pu.cs->sps->getUseMdip() && (pu.cs->sps->getUseDimd() || (!pu.cs->sps->getUseDimd() && CU::allowMdip(*pu.cu))))
   {
     if(CU::allowMdip(*pu.cu))
     {
