@@ -121,7 +121,7 @@ bool g_HLSTraceEnable = true;
 
 void VLCWriter::xWriteSCode    ( int code, uint32_t length )
 {
-  CHECK( length || length > 32, "");
+  CHECK( length == 0 || length > 32, "");
   CHECK( length != 32 && ( code < -( 1 << ( length - 1 ) ) || code >= ( 1 << ( length - 1 ) ) ), "");
 
   m_pcBitIf->write( length==32 ? uint32_t(code) : ( uint32_t(code)&((1<<length)-1) ), length );
@@ -1807,16 +1807,19 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
       }
 #endif
 #if JVET_AG0164_AFFINE_GPM
-      if (pcSPS->getUseAffine() && pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
+      if (pcSPS->getUseAffine())
       {
-        WRITE_UVLC(pcSPS->getMaxNumAffineMergeCand() - pcSPS->getMaxNumGpmAffCand(), "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
-      }
+        if (pcSPS->getMaxNumGeoCand() != 0 && pcSPS->getMaxNumAffineMergeCand() >= 3)
+        {
+          WRITE_UVLC(pcSPS->getMaxNumAffineMergeCand() - pcSPS->getMaxNumGpmAffCand(), "max_num_aff_merge_cand_minus_max_num_gpm_aff_cand");
+        }
 #if JVET_AJ0274_GPM_AFFINE_TM
-      if (pcSPS->getMaxNumGpmAffCand() > 0)
-      {
-        WRITE_UVLC(pcSPS->getMaxNumGpmAffTmCand(), "max_num_gpm_aff_tm_cand");
-      }
+        if (pcSPS->getMaxNumGpmAffCand() > 0)
+        {
+          WRITE_UVLC(pcSPS->getMaxNumGpmAffTmCand(), "max_num_gpm_aff_tm_cand");
+        }
 #endif
+      }
 #endif
 
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -1926,6 +1929,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #endif
 #if JVET_AD0085_MPM_SORTING
   WRITE_FLAG(pcSPS->getUseMpmSorting() ? 1 : 0, "sps_mpm_sorting_enabled_flag");
+#endif
+#if JVET_AK0059_MDIP
+  WRITE_FLAG(pcSPS->getUseMdip() ? 1 : 0, "sps_mdip_enabled_flag");
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   WRITE_FLAG(pcSPS->getUseChromaReordering() ? 1 : 0, "sps_chroma_reordering_enabled_flag");

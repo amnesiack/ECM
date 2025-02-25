@@ -1201,6 +1201,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AD0085_MPM_SORTING
   ( "MPMSorting",                                     m_mpmSorting,                                      true,  "Enable template-based intra MPM list construction\n" )
 #endif
+#if JVET_AK0059_MDIP
+  ( "MDIP",                                           m_mdip,                                            true,  "Enable MDIP and excluding intra modes\n" )
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   ("ChromaReordering",                                m_chromaReordering,                                true, "Enable template-based intra chroma list reordering\n")
 #endif
@@ -4222,6 +4225,13 @@ bool EncAppCfg::xCheckParameter()
       m_mpmSorting = false;
     }
 #endif
+#if JVET_AK0059_MDIP
+    if(m_mdip)
+    {
+      msg(WARNING, "MDIP is forcefully disabled since the enable flag of non-inter-TM tools is set off. \n");
+      m_mdip = false;
+    }
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
     if (m_chromaReordering)
     {
@@ -5993,6 +6003,9 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AD0085_MPM_SORTING && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg(VERBOSE, "MPMSorting:%d ", m_mpmSorting);
 #endif
+#if JVET_AK0059_MDIP && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
+  msg(VERBOSE, "MDIP:%d ", m_mdip);
+#endif
 #if JVET_AH0136_CHROMA_REORDERING && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg(VERBOSE, "ChromaReordering:%d ", m_chromaReordering);
 #endif
@@ -6051,6 +6064,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AD0085_MPM_SORTING
   msg(VERBOSE, "MPMsorting:%d ", m_mpmSorting);
+#endif
+#if JVET_AK0059_MDIP
+  msg(VERBOSE, "MDIP:%d ", m_mdip);
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   msg(VERBOSE, "ChromaReordering:%d ", m_chromaReordering);

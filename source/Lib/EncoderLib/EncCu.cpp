@@ -3855,7 +3855,7 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     for (int i = 0; i <= EXT_VDIA_IDX; i++)
     {
       g_intraModeCost[i] = MAX_UINT64;
-    }   
+    }
     if (CU::allowMdip(cu))
     { 
       cu.firstPU = &pu;
@@ -18212,7 +18212,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
   memset(isGeoBlendIntraChromaAvail, false, sizeof(bool)* GEO_BLEND_MAX_NUM_INTRA_CANDS);
 
   uint8_t mpmList[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+  uint8_t intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+#else
   uint8_t intraNonMPM[NUM_NON_MPM_MODES];
+#endif
   bool mpmPredAvail[NUM_LUMA_MODE];
   memset(mpmPredAvail, false, sizeof(bool)* NUM_LUMA_MODE);
 #if JVET_AK0101_REGRESSION_GPM_INTRA
@@ -18272,6 +18276,9 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
       cu.dimdMode = dimdMode;
       cu.dimdBlendMode[0] = dimdBlendMode[0];
+#if JVET_AK0059_MDIP
+      cu.isModeExcluded = false;
+#endif
       int mpmNum = PU::getIntraMPMs(pu, mpmList, intraNonMPM
 #if JVET_AC0094_REF_SAMPLES_OPT
         , true
@@ -18281,7 +18288,9 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
         , m_pcIntraSearch
       );
-
+#if JVET_AK0059_MDIP
+      cu.isModeExcluded = true;
+#endif
       mpmNum = std::min(mpmNum, GEO_BLEND_MAX_NUM_INTRA_CANDS);
       for (int intraIdx = 0; intraIdx < mpmNum; intraIdx++)
       {
@@ -28297,7 +28306,11 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
       if (cu.slice->getSPS()->getUseDimd())
       {
         const CompArea &area = cu.Y();
+#if JVET_AK0059_MDIP
+        IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu, true);
+#else
         IntraPrediction::deriveDimdMode(bestCS->picture->getRecoBuf(area), area, cu);
+#endif
 #if JVET_AK0217_INTRA_MTSS
         if (cu.firstTU->mdirIdx[COMPONENT_Y])
         {
@@ -28350,6 +28363,15 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
         pu->multiRefIdx = m_pcIntraSearch->m_tmrlList[cu.tmrlListIdx].multiRefIdx;
         pu->intraDir[0] = m_pcIntraSearch->m_tmrlList[cu.tmrlListIdx].intraDir;
       }
+#if JVET_AK0059_MDIP
+      if(CU::allowMdip(cu) && cu.mdip)
+      {
+        const CompArea &area = cu.Y();
+        PredictionUnit* pu = cu.firstPU;
+        m_pcIntraSearch->deriveMdipMode(bestCS->picture->getRecoBuf(area), area, cu);
+        pu->intraDir[0] = cu.mdipMode;
+      }
+#endif
 #if JVET_AK0061_PDP_MPM
       if (cu.plIdx) 
       {
@@ -28357,9 +28379,15 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
       }
       else
 #endif
-
 #if SECONDARY_MPM
       {
+#if JVET_AK0059_MDIP
+      if(CU::allowMdip(cu))
+      {
+        const CompArea &area = cu.Y();
+        m_pcIntraSearch->deriveMdipMode(bestCS->picture->getRecoBuf(area), area, cu);
+      }
+#endif
 #if JVET_AD0085_MPM_SORTING
       PredictionUnit *pu = cu.firstPU;
       if (PU::allowMPMSorted(*pu))

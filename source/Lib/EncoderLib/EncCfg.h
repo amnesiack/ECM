@@ -555,6 +555,9 @@ protected:
 #if JVET_AD0085_MPM_SORTING
   bool      m_mpmSorting;
 #endif
+#if JVET_AK0059_MDIP
+  bool      m_mdip;
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   bool      m_chromaReordering;
 #endif
@@ -1910,6 +1913,10 @@ public:
 #if JVET_AD0085_MPM_SORTING
   void      setUseMpmSorting             (bool b)         { m_mpmSorting = b; }
   bool      getUseMpmSorting             () const         { return m_mpmSorting; }
+#endif
+#if JVET_AK0059_MDIP
+  void      setUseMdip                   (bool b)         { m_mdip = b; }
+  bool      getUseMdip                   () const         { return m_mdip; }
 #endif
 #if JVET_AH0136_CHROMA_REORDERING
   void      setUseChromaReordering       (bool b)         { m_chromaReordering = b; }

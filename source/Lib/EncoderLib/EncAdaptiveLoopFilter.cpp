@@ -2354,6 +2354,7 @@ double EncAdaptiveLoopFilter::deriveCtbAlfEnableFlags( CodingStructure& cs, cons
   {
     for( int compID = compIDFirst; compID <= compIDLast; compID++ )
     {
+      int bestBeforeAltIdx = m_ctuEnableFlag[compID][ctuIdx] ? m_ctuAlternative[compID][ctuIdx] : -1;
 #if ENABLE_QPA
       const double ctuLambda = chromaWeight > 0.0 ? (isLuma (channel) ? cs.picture->m_uEnerHpCtu[ctuIdx] : cs.picture->m_uEnerHpCtu[ctuIdx] / chromaWeight) : m_lambda[compID];
 #else
@@ -2380,7 +2381,6 @@ double EncAdaptiveLoopFilter::deriveCtbAlfEnableFlags( CodingStructure& cs, cons
 
       ctxTempBest = AlfCtx( m_CABACEstimator->getCtx() );
 
-      int bestBeforeAltIdx = m_ctuEnableFlag[compID][ctuIdx] ? m_ctuAlternative[compID][ctuIdx] : -1;
       if( isLuma( channel ) )
       {
 #if ALF_IMPROVEMENT
@@ -3433,6 +3433,7 @@ double EncAdaptiveLoopFilter::mergeFiltersAndCost( AlfParam& alfParam, AlfFilter
   numFilters = maxNumFilters;
   while (numFilters >= 1)
   {
+    alfParam.numLumaFilters[altIdx] = numFilters;
 #if ALF_PRECISION_VARIETY
 #if JVET_X0071_ALF_BAND_CLASSIFIER
     dist = deriveFilterCoeffs(covFrame, covMerged, clipMerged, alfShape, m_filterIndices[numFilters - 1], numFilters, errorForce0CoeffTab, alfParam, m_alfParamTemp.nonLinearFlag[CHANNEL_TYPE_LUMA][altIdx], classifierIdx, numFilters == maxNumFilters ? true : false, mergedPair, mergedCoeff, mergedScaleIdx, mergedErr, tryImproveScale);

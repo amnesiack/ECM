@@ -4046,6 +4046,7 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
                           affineMergeCtx.mvFieldNeighbours[(affineMergeCtx.numValidMergeCand << 1) + 1][mvNum].setMvField(affineTmpMergeCtx.mvFieldNeighbours[(preDefinedPairs[i][1] << 1) + 1][mvNum].mv,
                             affineTmpMergeCtx.mvFieldNeighbours[(preDefinedPairs[i][1] << 1) + 1][mvNum].refIdx);
                         }
+                        affineMergeCtx.mergeType[affineMergeCtx.numValidMergeCand] = MRG_TYPE_DEFAULT_N;
                         affineMergeCtx.interDirNeighbours[affineMergeCtx.numValidMergeCand] = 3;
                         CHECK(((affineTmpMergeCtx.interDirNeighbours[preDefinedPairs[i][0]] & 1) + (affineTmpMergeCtx.interDirNeighbours[preDefinedPairs[i][1]] & 2)) != 3, "Wrong interDir");
                         affineMergeCtx.affineType[affineMergeCtx.numValidMergeCand] = (affineTmpMergeCtx.affineType[preDefinedPairs[i][0]] == AFFINEMODEL_4PARAM && affineTmpMergeCtx.affineType[preDefinedPairs[i][1]] == AFFINEMODEL_4PARAM) ?

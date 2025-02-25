@@ -334,7 +334,7 @@ public:
 #if SECONDARY_MPM
   uint8_t m_intraMPM[NUM_MOST_PROBABLE_MODES];
 #if JVET_AK0059_MDIP
-  uint8_t m_intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES - EXCLUDING_MODE_NUM];
+  uint8_t m_intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
 #else
   uint8_t m_intraNonMPM[NUM_NON_MPM_MODES];
 #endif
@@ -1166,11 +1166,7 @@ public:
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING && JVET_Y0065_GPM_INTRA
 protected:
   bool    m_abFilledIntraGPMRefTpl[NUM_INTRA_MODE];
-  #if JVET_AJ0107_GPM_SHAPE_ADAPT
-  uint8_t m_aiGpmIntraMPMLists[GEO_TOTAL_NUM_PARTITION_MODE][2][GEO_MAX_NUM_INTRA_CANDS];   //[][0][]: part0, [][1][]: part1
-#else
   uint8_t m_aiGpmIntraMPMLists[GEO_NUM_PARTITION_MODE][2][GEO_MAX_NUM_INTRA_CANDS];   //[][0][]: part0, [][1][]: part1
-#endif
   Pel     m_acYuvRefGPMIntraTemplate[NUM_INTRA_MODE][2][GEO_MAX_CU_SIZE * GEO_MODE_SEL_TM_SIZE];   //[][0][]: top, [][1][]: left
 
   template <uint8_t partIdx>

@@ -4394,6 +4394,9 @@ SPS::SPS()
 #if JVET_AD0085_MPM_SORTING
 , m_mpmSorting                      ( false )
 #endif
+#if JVET_AK0059_MDIP
+, m_mdip                      ( false )
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
 , m_chromaReordering                ( false )
 #endif

@@ -1055,11 +1055,12 @@ bool IntraPrediction::xFillIntraGPMRefTemplateAll(PredictionUnit& pu, TemplateTy
   {
     int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
     int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+    uint8_t* geoIntraMPMList = m_aiGpmIntraMPMLists[splitDirIdx][partIdx];
 #else
   for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
   {
-#endif
     uint8_t* geoIntraMPMList = m_aiGpmIntraMPMLists[splitDir][partIdx];
+#endif
     if (!readBufferedMPMList)
     {
       PU::getGeoIntraMPMs(pu, geoIntraMPMList, splitDir, g_geoTmShape[partIdx][g_geoParams[splitDir][0]], doInitMPMList, doInitAL, doInitA, doInitL);
@@ -15457,7 +15458,7 @@ void IntraPrediction::deriveDimdMode(const CPelBuf &recoBuf, const CompArea &are
   }
 #endif
 #if JVET_AK0059_MDIP
-  if(useExcludingMode && !CU::allowMdip(cu))
+  if(useExcludingMode && !CU::allowMdip(cu) && cu.cs->sps->getUseMdip())
   {
     bool includedMode[NUM_LUMA_MODE]{ false };
     buildExcludingMode(cu, histogram, includedMode);
@@ -16050,7 +16051,7 @@ void IntraPrediction::deriveDimdModeAdaptive(const CPelBuf &recoBuf, const CompA
     histogram[i] = histogramTop[i] + histogramLeft[i] + histogramTopLeft[i];
   }
 #if JVET_AK0059_MDIP
-  if(useExcludingMode && !CU::allowMdip(cu))
+  if(useExcludingMode && !CU::allowMdip(cu) && cu.cs->sps->getUseMdip())
   {
     bool includedMode[NUM_LUMA_MODE]{ false };
     buildExcludingMode(cu, histogram, includedMode);
@@ -16563,6 +16564,7 @@ void IntraPrediction::deriveDimdModeList(const CPelBuf& recoBuf, const CompArea&
     const Pel* pRecoAboveLeft = pReco - 2 - iStride * 2;
 #if JVET_AC0098_LOC_DEP_DIMD
     buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogramTopLeft, 3, uiWidth, uiHeight);
+#else
     buildHistogram(pRecoAboveLeft, iStride, 2, 2, histogram, 3, uiWidth, uiHeight);
 #endif
   }
@@ -23908,16 +23910,23 @@ void IntraPrediction::xTMPFusionApplyModel(PelBuf &piPred, unsigned int uiBlkWid
                                            , bool bDeriveDimdMode)
 {
 #if JVET_AG0136_INTRA_TMP_LIC
-  const IntraTMPFusionInfo& tmpFusionInfo = (useMR ? m_tmpFusionInfoUseMR : m_tmpFusionInfo)[cu->tmpIdx];
-  const bool bTmpFusion = cu->tmpFusionFlag && tmpFusionInfo.bValid;
-  if (!bTmpFusion || !tmpFusionInfo.bFilter)
-#else
-  bool bTmpFusion = cu->tmpFusionFlag && m_tmpFusionInfo[cu->tmpIdx].bValid;
-  if (!bTmpFusion || !m_tmpFusionInfo[cu->tmpIdx].bFilter)
-#endif
+  if (!cu->tmpFusionFlag)
   {
     return;
   }
+
+  const IntraTMPFusionInfo& tmpFusionInfo = (useMR ? m_tmpFusionInfoUseMR : m_tmpFusionInfo)[cu->tmpIdx];
+  if (!tmpFusionInfo.bValid || !tmpFusionInfo.bFilter)
+  {
+    return;
+  }
+#else
+  bool bTmpFusion = cu->tmpFusionFlag && m_tmpFusionInfo[cu->tmpIdx].bValid;
+  if (!bTmpFusion || !m_tmpFusionInfo[cu->tmpIdx].bFilter)
+  {
+    return;
+  }
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
   const int foundCandiNum = tmpFusionInfo.tmpFusionNumber;
 #else

@@ -989,6 +989,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AD0085_MPM_SORTING
   m_cEncLib.setUseMpmSorting                                     ( m_mpmSorting );
 #endif
+#if JVET_AK0059_MDIP
+  m_cEncLib.setUseMdip                                           ( m_mdip ); 
+#endif
 #if JVET_AH0136_CHROMA_REORDERING
   m_cEncLib.setUseChromaReordering                               (m_chromaReordering);
 #endif

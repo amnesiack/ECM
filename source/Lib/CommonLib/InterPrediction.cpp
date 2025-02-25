@@ -361,6 +361,15 @@ InterPrediction::InterPrediction()
 #if JVET_AJ0237_INTERNAL_12BIT
   m_dmvrCostLambda = 1;
 #endif
+#if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
+  for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
+  {
+#if !JVET_AK0212_GPM_OBMC_MODIFICATION
+    m_intraOBMCBuf[ch] = nullptr;
+#endif
+    m_beforeOBMCBuf[ch] = nullptr;
+  }
+#endif
 }
 
 InterPrediction::~InterPrediction()
@@ -7671,7 +7680,11 @@ void InterPrediction::applyBiOptFlow(const PredictionUnit &pu, const CPelUnitBuf
 #endif
 #if MULTI_PASS_DMVR || SAMPLE_BASED_BDOF
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
-  g_pelBufOP.calcBIOParameterHighPrecision(srcY0, srcY1, gradX0, gradX1, gradY0, gradY1, widthG, heightG, src0Stride, src1Stride, widthG, bitDepth, m_piDotProduct1, m_piDotProduct2, m_piDotProduct3, m_piDotProduct5, m_piDotProduct6, m_dI ,m_Gx, m_Gy);
+  g_pelBufOP.calcBIOParameterHighPrecision(srcY0, srcY1, gradX0, gradX1, gradY0, gradY1, widthG, heightG, src0Stride, src1Stride, widthG, bitDepth, m_piDotProduct1, m_piDotProduct2, m_piDotProduct3, m_piDotProduct5, m_piDotProduct6, m_dI
+#if JVET_AG0067_DMVR_EXTENSIONS
+    , m_Gx, m_Gy
+#endif
+  );
 #else
   g_pelBufOP.calcBIOParameter(srcY0, srcY1, gradX0, gradX1, gradY0, gradY1, widthG, heightG, src0Stride, src1Stride, widthG,
                               bitDepth, m_absGx, m_absGy, m_dIx, m_dIy, m_signGxGy, nullptr);
@@ -7789,11 +7802,19 @@ void InterPrediction::subBlockBiOptFlow(Pel* dstY, const int dstStride, const Pe
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
   if (width == 4)
   {
-    g_pelBufOP.calcBIOParamSum5NOSIM4(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset ,m_Gx + bioParamOffset, m_Gy + bioParamOffset);
+    g_pelBufOP.calcBIOParamSum5NOSIM4(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset
+#if JVET_AG0067_DMVR_EXTENSIONS
+      , m_Gx + bioParamOffset, m_Gy + bioParamOffset
+#endif
+      );
   }
   else
   {
-    g_pelBufOP.calcBIOParamSum5NOSIM8(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset ,m_Gx + bioParamOffset, m_Gy + bioParamOffset);
+    g_pelBufOP.calcBIOParamSum5NOSIM8(m_piDotProduct1 + bioParamOffset, m_piDotProduct5 + bioParamOffset, m_piDotProduct3 + bioParamOffset, m_piDotProduct6 + bioParamOffset, m_piDotProduct2 + bioParamOffset, bioParamStride, width, height, m_sumAbsGxSample32bit, m_sumAbsGySample32bit, m_sumDIXSample32bit, m_sumDIYSample32bit, m_sumSignGyGxSample32bit, m_dI + bioParamOffset
+#if JVET_AG0067_DMVR_EXTENSIONS
+      , m_Gx + bioParamOffset, m_Gy + bioParamOffset
+#endif
+    );
   }
   int* sumDIXSample32bit      = m_sumDIXSample32bit;
   int* sumAbsGxSample32bit    = m_sumAbsGxSample32bit;
@@ -9139,7 +9160,7 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
-  if (!m_dimdForOBMCFilled)
+  if (pu.cs->sps->getUseDimd() == true && !m_dimdForOBMCFilled)
   {
     m_modeGetCheck[0] = pcIntraPred->getGradForOBMC(pu, pu.cu->cs->picture->getRecoBuf(pu.Y()), pu.Y(), *pu.cu, true, pu.cs->pcv->minCUWidth, m_modeBuf[0]);
     m_modeGetCheck[1] = pcIntraPred->getGradForOBMC(pu, pu.cu->cs->picture->getRecoBuf(pu.Y()), pu.Y(), *pu.cu, false, pu.cs->pcv->minCUWidth, m_modeBuf[1]);
@@ -10641,9 +10662,6 @@ void InterPrediction::deriveGpmSplitMode(PredictionUnit& pu, MergeCtx &geoMrgCtx
   bool refinedSplitMode = !PU::checkRprRefExistingInGpm(pu, geoMrgCtx, pu.geoMergeIdx0, geoMrgCtx, pu.geoMergeIdx1)
                        && xAMLGetCurBlkTemplate(pu, pu.lwidth(), pu.lheight());
 #endif
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-  int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
-#endif
   if (refinedSplitMode)
   {
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -10750,13 +10768,8 @@ void InterPrediction::deriveGpmSplitMode(PredictionUnit& pu, MergeCtx &geoMrgCtx
 #endif
         for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; ++splitDir)
         {
-#if JVET_AJ0107_GPM_SHAPE_ADAPT
-          pIntraRefTop [partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx, 0);
-          pIntraRefLeft[partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, g_gpmSplitDir[whIdx][splitDir], realCandIdx, 1);
-#else
           pIntraRefTop [partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, splitDir, realCandIdx, 0);
           pIntraRefLeft[partIdx][splitDir] = pcIntraPred->getPrefilledIntraGPMRefTemplate(partIdx, splitDir, realCandIdx, 1);
-#endif
         }
       }
     }
@@ -11419,7 +11432,11 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
   bool  bFoundGeoBlendCand;
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   uint8_t mpmList[NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+  uint8_t intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+#else
   uint8_t intraNonMPM[NUM_NON_MPM_MODES];
+#endif
   if (cu.firstPU->geoBlendIntraFlag)
   {
 #if ENABLE_DIMD
@@ -11430,6 +11447,9 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
       m_pcIntraPred->deriveDimdMode(cu.cs->picture->getRecoBuf(cu.Y()), cu.Y(), cu);
     }
 #endif
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = false;
+#endif
     int mpmNum = PU::getIntraMPMs(*cu.firstPU, mpmList, intraNonMPM
 #if JVET_AC0094_REF_SAMPLES_OPT
       , true
@@ -11439,6 +11459,9 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
 #endif
       , m_pcIntraPred
     );
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = true;
+#endif    
     mpmNum = std::min(mpmNum, GEO_BLEND_MAX_NUM_INTRA_CANDS);
 
     bFoundGeoBlendCand = getGeoBlendIntraCand(cu, pcIntraPred, geoMrgCtx, mergeIdx, geoBI, mpmList, mpmNum);

@@ -374,9 +374,10 @@ void calcBIOParameterCoreHighPrecision(const Pel* srcY0Tmp, const Pel* srcY1Tmp,
   gX  += bioParamOffset;
   gY  += bioParamOffset;
 #endif
-  int shift4 = 4;
+  const int shift4 = 4;
   dI += bioParamOffset;
   int32_t  temp=0, tempGX=0, tempGY=0;
+
   for (int y = 0; y < height; y++)
   {
     for (int x = 0; x < width; x++)
@@ -396,6 +397,7 @@ void calcBIOParameterCoreHighPrecision(const Pel* srcY0Tmp, const Pel* srcY1Tmp,
 #endif
       
     }
+
     srcY0Tmp += src0Stride;
     srcY1Tmp += src1Stride;
     gradX0 += widthG;
@@ -467,6 +469,7 @@ void calcBIOParamSum4CoreHighPrecision(int32_t* s1, int32_t* s2, int32_t* s3, in
       *sumS6 -= w * gY[x]*meanDiff;
 #endif
     }
+
     s1 += widthG;
     s2 += widthG;
     s3 += widthG;
@@ -493,8 +496,9 @@ void calcBIOParameterCore(const Pel* srcY0Tmp, const Pel* srcY1Tmp, Pel* gradX0,
   absGX  += bioParamOffset;  absGY  += bioParamOffset;
   dIX    += bioParamOffset;  dIY    += bioParamOffset;
   signGyGx += bioParamOffset;
-  int shift4 = 4;
-  int shift5 = 1;
+  const int shift4 = 4;
+  const int shift5 = 1;
+
   if (dI)
   {
     dI += bioParamOffset;
@@ -542,6 +546,7 @@ void calcBIOParameterCore(const Pel* srcY0Tmp, const Pel* srcY1Tmp, Pel* gradX0,
       dIY[x] = (tmpGY < 0 ? -tmpDI : (tmpGY == 0 ? 0 : tmpDI));
       signGyGx[x] = (tmpGY < 0 ? -tmpGX : (tmpGY == 0 ? 0 : tmpGX));
     }
+
     srcY0Tmp += src0Stride;
     srcY1Tmp += src1Stride;
     gradX0 += widthG;
@@ -588,12 +593,14 @@ void calcBIOParamSum5Core(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
           sumSignGyGx[sampleIdx] += signGyGx[xx];
 #endif
         }
+
         absGX += widthG;
         absGY += widthG;
         dIX += widthG;
         dIY += widthG;
         signGyGx += widthG;
       }
+
       sumDIX[sampleIdx] <<= 2;
       sumDIY[sampleIdx] <<= 2;
 #if JVET_AE0091_ITERATIVE_BDOF
@@ -607,6 +614,7 @@ void calcBIOParamSum5Core(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
       dIY += (1 - 5 * widthG);
       signGyGx += (1 - 5 * widthG);
     }
+
     absGX += (widthG - width);
     absGY += (widthG - width);
     dIX += (widthG - width);
@@ -616,7 +624,11 @@ void calcBIOParamSum5Core(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
 }
 
 #if JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE
-void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx ,Pel* dI, Pel* gX, Pel* gY)
+void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx ,Pel* dI
+#if JVET_AG0067_DMVR_EXTENSIONS
+  , Pel* gX, Pel* gY
+#endif
+)
 {
   for (int y = 0; y < height; y++)
   {
@@ -628,12 +640,15 @@ void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int
       sumDIX[sampleIdx] = 0;
       sumDIY[sampleIdx] = 0;
       sumSignGyGx[sampleIdx] = 0;
+#if JVET_AG0067_DMVR_EXTENSIONS      
       int meanDiff = 0;
       int absmeanDiff = 0;
       int sX0 = 0, sX1 = 0;
+#endif
       int w = 1, a = 1, b = 2, c = 4, d = 4, e = 8, f = 16;
       int weight[5][5] = {{a, b, c, b, a}, {b, d, e, d, b}, {c, e, f, e, c}, {b, d, e, d, b}, {a, b, c, b, a}};
-      int regVxVy = 2528; // = ((1 << 11) * 100)/81. 100 is summation of the new weights, 81 was the summation of the old weights
+      const int regVxVy = 2528; // = ((1 << 11) * 100)/81. 100 is summation of the new weights, 81 was the summation of the old weights
+
       for (int yy = 0; yy < 5; yy++)
       {
         for (int xx = 0; xx < 5; xx++)
@@ -643,11 +658,13 @@ void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int
           sumAbsGY[sampleIdx] += w * absGY[xx];
           sumDIX[sampleIdx] += w * dIX[xx];
           sumDIY[sampleIdx] += w * dIY[xx];
+          sumSignGyGx[sampleIdx] += w * signGyGx[xx];
+#if JVET_AG0067_DMVR_EXTENSIONS          
           meanDiff    +=  dI[xx];
           absmeanDiff += abs(dI[xx]);
           sX0 -= w * gX[xx];
           sX1 -= w * gY[xx];
-          sumSignGyGx[sampleIdx] += w * signGyGx[xx];
+#endif
         }
         absGX += widthG;
         absGY += widthG;
@@ -655,12 +672,17 @@ void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int
         dIY += widthG;
         signGyGx += widthG;
         dI += widthG;
+#if JVET_AG0067_DMVR_EXTENSIONS
         gX += widthG;
         gY += widthG;
+#endif
       }
+
+#if JVET_AG0067_DMVR_EXTENSIONS
       meanDiff = (absmeanDiff > 2 * abs(meanDiff))  ? 0 : (meanDiff + 32) >> 6;
       sumDIX[sampleIdx] += sX0*meanDiff;
       sumDIY[sampleIdx] += sX1*meanDiff;
+#endif
       sumDIX[sampleIdx] += (sumDIX[sampleIdx] + 2) >> 2;
       sumDIY[sampleIdx] += (sumDIY[sampleIdx] + 2) >> 2;
       sumAbsGX[sampleIdx] += regVxVy;
@@ -671,17 +693,21 @@ void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int
       dIY += (1 - 5 * widthG);
       signGyGx += (1 - 5 * widthG);
       dI += (1 - 5 * widthG);
+#if JVET_AG0067_DMVR_EXTENSIONS
       gX += (1 - 5 * widthG);
       gY += (1 - 5 * widthG);
+#endif
     }
     absGX += (widthG - width);
     absGY += (widthG - width);
     dIX += (widthG - width);
     dIY += (widthG - width);
     signGyGx += (widthG - width);
+    dI += (widthG - width);
+#if JVET_AG0067_DMVR_EXTENSIONS
     gX += (widthG - width);
     gY += (widthG - width);
-    dI += (widthG - width);
+#endif
   }
 }
 #endif
@@ -697,6 +723,7 @@ void calcBIOParamSum4Core(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
       *sumDIY += dIY[x];
       *sumSignGyGx += signGyGx[x];
     }
+
     absGX += widthG;
     absGY += widthG;
     dIX += widthG;
@@ -759,6 +786,7 @@ void addBIOAvgNCore(const Pel* src0, int src0Stride, const Pel* src1, int src1St
           dst[x] = ClipPel(rightShift((src0[x] + src1[x] + b + offset), shift), clpRng);
         }
       }
+
       pMcMask0 += mcStride;
       pMcMask1 += mcStride;
       tmpx += width;
@@ -794,6 +822,7 @@ void addBIOAvgNCore(const Pel* src0, int src0Stride, const Pel* src1, int src1St
 #endif
 #endif
       }
+
       tmpx += width;
       tmpy += width;
       dst += dstStride;
@@ -817,6 +846,7 @@ void addBIOAvgNCore(const Pel* src0, int src0Stride, const Pel* src1, int src1St
       dst[x] = ClipPel((int16_t)rightShift((src0[x] + src1[x] + b + offset), shift), clpRng);
 #endif
     }
+
     tmpx += width;    tmpy += width;
     dst += dstStride;       src0 += src0Stride;     src1 += src1Stride;
     gradX0 += gradStride; gradX1 += gradStride; gradY0 += gradStride; gradY1 += gradStride;
@@ -828,12 +858,14 @@ void addBIOAvgNCore(const Pel* src0, int src0Stride, const Pel* src1, int src1St
 void calAbsSumCore(const Pel* diff, int stride, int width, int height, int* absSum)
 {
   *absSum = 0;
+
   for (int y = 0; y < height; y++)
   {
     for (int x = 0; x < width; x++)
     {
       *absSum += ::abs(diff[x]);
     }
+
     diff += stride;
   }
 }
@@ -845,7 +877,7 @@ void gradFilterCore(Pel* pSrc, int srcStride, int width, int height, int gradStr
   Pel* srcTmp = pSrc + srcStride + 1;
   Pel* gradXTmp = gradX + gradStride + 1;
   Pel* gradYTmp = gradY + gradStride + 1;
-  int  shift1 = 6;
+  const int  shift1 = 6;
 
 #if MULTI_PASS_DMVR || SAMPLE_BASED_BDOF
   for (int y = 0; y < (height - 2); y++)
@@ -860,6 +892,7 @@ void gradFilterCore(Pel* pSrc, int srcStride, int width, int height, int gradStr
       gradYTmp[x] = ( srcTmp[x + srcStride] >> shift1 ) - ( srcTmp[x - srcStride] >> shift1 );
       gradXTmp[x] = ( srcTmp[x + 1] >> shift1 ) - ( srcTmp[x - 1] >> shift1 );
     }
+
     gradXTmp += gradStride;
     gradYTmp += gradStride;
     srcTmp += srcStride;
@@ -893,8 +926,8 @@ void gradFilterCore(Pel* pSrc, int srcStride, int width, int height, int gradStr
 
 void calcBIOSumsCore(const Pel* srcY0Tmp, const Pel* srcY1Tmp, Pel* gradX0, Pel* gradX1, Pel* gradY0, Pel* gradY1, int xu, int yu, const int src0Stride, const int src1Stride, const int widthG, const int bitDepth, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx)
 {
-  int shift4 = 4;
-  int shift5 = 1;
+  const int shift4 = 4;
+  const int shift5 = 1;
 
   for (int y = 0; y < 6; y++)
   {
@@ -910,6 +943,7 @@ void calcBIOSumsCore(const Pel* srcY0Tmp, const Pel* srcY1Tmp, Pel* gradX0, Pel*
       *sumSignGyGx += (tmpGY < 0 ? -tmpGX : (tmpGY == 0 ? 0 : tmpGX));
 
     }
+
     srcY1Tmp += src1Stride;
     srcY0Tmp += src0Stride;
     gradX0 += widthG;
@@ -945,6 +979,7 @@ void calcBlkGradientCore(int sx, int sy, int     *arraysGx2, int     *arraysGxGy
       sGxdI += GxdI[x];
       sGydI += GydI[x];
     }
+
     Gx2 += width;
     Gy2 += width;
     GxGy += width;
