@@ -3285,7 +3285,7 @@ bool DecLib::xDecodeSlice(InputNALUnit &nalu, int &iSkipFrame, int iPOCLastDispl
 #endif
 #endif
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
-      pcSlice->setCheckUseSepOBMC(bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
+      pcSlice->setCheckUseSepOBMC(!pcSlice->isInterB() || bLowDelayB || !pcSlice->getSPS()->getUseOBMC() ? false : true);
 #endif
     }
 #if JVET_Y0128_NON_CTC
