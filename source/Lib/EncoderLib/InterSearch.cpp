@@ -4069,7 +4069,7 @@ bool InterSearch::predIBCSearch(CodingUnit& cu, Partitioner& partitioner, const 
 
     if( pu.cu->imv == 2 )
     {
-      CHECK( ( cMv.getHor() % 16 ) || ( cMv.getVer() % 16 ), "Wrong MV");
+      CHECKD( ( cMv.getHor() % 16 ) || ( cMv.getVer() % 16 ), "Wrong MV");
     }
 
 #if !JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -12982,7 +12982,7 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     int offsetNoResiPart = numPartX / 2;
     distResiPart = distNoResiPart = 0;
 
-    CHECK( numPartX < 2, "numPartX should be 2 or more" );
+    CHECKD( numPartX < 2, "numPartX should be 2 or more" );
 
     for( int j = 0; j < numPartY; j++ )
     {
@@ -13001,7 +13001,7 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
     int offsetResiPart = 0;
     int offsetNoResiPart = numPartY / 2;
 
-    CHECK( numPartY < 2, "numPartY should be 2 or more" );
+    CHECKD( numPartY < 2, "numPartY should be 2 or more" );
     
     distResiPart = distNoResiPart = 0;
     for( int j = 0; j < numPartY / 2; j++ )
@@ -13018,7 +13018,7 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
 
   if( CU::targetSbtAllowed( SBT_VER_QUAD, sbtAllowed ) )
   {
-    CHECK( numPartX != 4, "numPartX should be 4");
+    CHECKD( numPartX != 4, "numPartX should be 4");
 
     m_estMinDistSbt[SBT_VER_Q0] = m_estMinDistSbt[SBT_VER_Q1] = 0;
     for( int j = 0; j < numPartY; j++ )
@@ -13032,7 +13032,7 @@ void InterSearch::calcMinDistSbt( CodingStructure &cs, const CodingUnit& cu, con
 
   if( CU::targetSbtAllowed( SBT_HOR_QUAD, sbtAllowed ) )
   {
-    CHECK( numPartY != 4, "numPartY should be 4" );
+    CHECKD( numPartY != 4, "numPartY should be 4" );
 
     m_estMinDistSbt[SBT_HOR_Q0] = m_estMinDistSbt[SBT_HOR_Q1] = 0;
     for( int i = 0; i < numPartX; i++ )
@@ -16592,8 +16592,8 @@ void InterSearch::symmvdCheckBestMvp(
 
 uint64_t InterSearch::xCalcPuMeBits(PredictionUnit& pu)
 {
-  CHECK(!pu.mergeFlag, "");
-  CHECK(CU::isIBC(*pu.cu), "");
+  CHECKD(!pu.mergeFlag, "");
+  CHECKD(CU::isIBC(*pu.cu), "");
 
   m_CABACEstimator->resetBits();
   m_CABACEstimator->merge_flag(pu);
@@ -17034,8 +17034,8 @@ void InterSearch::checkEncLicOn(CodingUnit& cu, MergeCtx& mergeCtx)
 
 uint64_t InterSearch::xCalcExpPuBits(PredictionUnit& pu)
 {
-  CHECK(pu.mergeFlag, "");
-  CHECK(CU::isIBC(*pu.cu), "");
+  CHECKD(pu.mergeFlag, "");
+  CHECKD(CU::isIBC(*pu.cu), "");
 
   m_CABACEstimator->resetBits();
 
