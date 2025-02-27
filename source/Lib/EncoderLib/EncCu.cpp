@@ -27569,7 +27569,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
     }
     else
     {
-      CHECK( curPuSse == std::numeric_limits<uint64_t>::max(), "curPuSse is equal to max()");
+      CHECKD( curPuSse == std::numeric_limits<uint64_t>::max(), "curPuSse is equal to max()");
       uint16_t compositeSbtTrs = slsSbt->findBestSbt( cu->cs->area, (uint32_t)( curPuSse >> slShift ) );
       histBestSbt = ( compositeSbtTrs >> 0 ) & 0xff;
       histBestTrs = ( compositeSbtTrs >> 8 ) & 0xff;
@@ -27690,7 +27690,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
       double th = 1.07;
       if( !( prevBestSbt == 0 || m_sbtCostSave[0] == MAX_DOUBLE ) )
       {
-        CHECK( m_sbtCostSave[ 1 ] > m_sbtCostSave[ 0 ], "Wrong cost");
+        CHECKD( m_sbtCostSave[ 1 ] > m_sbtCostSave[ 0 ], "Wrong cost");
         th *= ( m_sbtCostSave[0] / m_sbtCostSave[1] );
       }
       if( sbtOffCost > bestCost * th )
@@ -27869,7 +27869,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
 #else
             currBestTrs = tempCS->tus[cu->sbtInfo ? cu->getSbtPos() : 0]->mtsIdx[COMPONENT_Y];
 #endif
-            CHECK(currBestTrs && currBestTrs != 1, "Wrong currBestTrs");
+            CHECKD(currBestTrs && currBestTrs != 1, "Wrong currBestTrs");
             currBestCost = tempCS->cost;
           }
 #if JVET_AI0050_SBT_LFNST
@@ -27956,7 +27956,7 @@ void EncCu::xEncodeInterResidual(   CodingStructure *&tempCS
         double th = 1.07;
         if (!(prevBestMts == 0 || m_mtsCostSave == MAX_DOUBLE))
         {
-          CHECK(m_sbtCostSave[1] > m_mtsCostSave, "Wrong SBT cost");
+          CHECKD(m_sbtCostSave[1] > m_mtsCostSave, "Wrong SBT cost");
           th *= (m_mtsCostSave / m_sbtCostSave[1]);
         }
         if (mtsOffCost > bestCost * th)
