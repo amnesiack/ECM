@@ -1130,7 +1130,7 @@ bool Quant::xNeedRDOQ(TransformUnit &tu, const ComponentID &compID, const CCoeff
 
   const int iQBits = QUANT_SHIFT + cQP.per(useTransformSkip) + iTransformShift;
 
-  CHECK(iQBits < 0, "iQBits < 0");
+  CHECKD(iQBits < 0, "iQBits < 0");
 
   // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
 

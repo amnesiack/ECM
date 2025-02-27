@@ -616,10 +616,10 @@ struct CodingUnit : public UnitArea
   int64_t cacheId;
   bool    cacheUsed;
 #endif
-  const uint8_t     getSbtIdx() const { CHECK( ( ( sbtInfo >> 0 ) & 0xf ) >= NUMBER_SBT_IDX, "Wrong sbtInfo"); return ( sbtInfo >> 0 ) & 0xf; }
+  const uint8_t     getSbtIdx() const { CHECKD( ( ( sbtInfo >> 0 ) & 0xf ) >= NUMBER_SBT_IDX, "Wrong sbtInfo"); return ( sbtInfo >> 0 ) & 0xf; }
   const uint8_t     getSbtPos() const { return ( sbtInfo >> 4 ) & 0x3; }
-  void              setSbtIdx( uint8_t idx ) { CHECK( idx >= NUMBER_SBT_IDX, "sbt_idx wrong" ); sbtInfo = ( idx << 0 ) + ( sbtInfo & 0xf0 ); }
-  void              setSbtPos( uint8_t pos ) { CHECK( pos >= 4, "sbt_pos wrong" ); sbtInfo = ( pos << 4 ) + ( sbtInfo & 0xcf ); }
+  void              setSbtIdx( uint8_t idx ) { CHECKD( idx >= NUMBER_SBT_IDX, "sbt_idx wrong" ); sbtInfo = ( idx << 0 ) + ( sbtInfo & 0xf0 ); }
+  void              setSbtPos( uint8_t pos ) { CHECKD( pos >= 4, "sbt_pos wrong" ); sbtInfo = ( pos << 4 ) + ( sbtInfo & 0xcf ); }
   uint8_t           getSbtTuSplit() const;
   const uint8_t     checkAllowedSbt() const;
 #if !CCLM_LATENCY_RESTRICTION_RMV

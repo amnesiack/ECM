@@ -2372,8 +2372,8 @@ double EncAdaptiveLoopFilter::deriveCtbAlfEnableFlags( CodingStructure& cs, cons
       if( isLuma( channel ) )
       {
         // Evaluate cost of signaling filter set index for convergence of filters enabled flag / filter derivation
-        CHECK( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] != NUM_FIXED_FILTER_SETS, "Wrong getAlfCtbFilterIndex");
-        CHECK( cs.slice->getTileGroupNumAps() != 1, "Wrong getTileGroupNumAps");
+        CHECKD( cs.slice->getPic()->getAlfCtbFilterIndex()[ctuIdx] != NUM_FIXED_FILTER_SETS, "Wrong getAlfCtbFilterIndex");
+        CHECKD( cs.slice->getTileGroupNumAps() != 1, "Wrong getTileGroupNumAps");
 
         m_CABACEstimator->codeAlfCtuFilterIndex( cs, ctuIdx, m_alfParamTemp.enabledFlag[COMPONENT_Y] );
       }
@@ -2983,7 +2983,7 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
 #endif
       }
 
-      CHECK(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
+      CHECKD(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
 
 #if !JVET_X0071_ALF_BAND_CLASSIFIER
       AlfParam bestSliceParam;
@@ -3051,7 +3051,7 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
   else
   {
     //distortion
-    CHECK( m_alfParamTemp.numAlternativesChroma < 1, "Wrong number of m_alfParamTemp.numAlternativesChroma" );
+    CHECKD( m_alfParamTemp.numAlternativesChroma < 1, "Wrong number of m_alfParamTemp.numAlternativesChroma" );
 
     for( int altIdx = 0; altIdx < m_alfParamTemp.numAlternativesChroma; ++altIdx )
     {
@@ -3069,7 +3069,7 @@ double EncAdaptiveLoopFilter::getFilterCoeffAndCost( CodingStructure& cs, double
 #endif
       }
 
-      CHECK(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
+      CHECKD(alfFilterShape.numCoeff != m_alfCovarianceFrame[channel][iShapeIdx][0].numCoeff, "Wrong numCoeff");
 
       AlfParam bestSliceParam;
       double bestCost = MAX_DOUBLE;
