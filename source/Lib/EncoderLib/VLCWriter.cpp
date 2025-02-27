@@ -138,10 +138,6 @@ void VLCWriter::xWriteUvlc     ( uint32_t uiCode )
   uint32_t uiLength = 1;
   uint32_t uiTemp = ++uiCode;
 
-  if(!uiTemp)
-  {
-    std::cout << "integer overflow: uiCode=" << uiCode << std::endl;
-  }
   CHECK( !uiTemp, "Integer overflow" );
 
   while( 1 != uiTemp )
