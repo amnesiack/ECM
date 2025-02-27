@@ -1874,11 +1874,11 @@ void CABACWriter::xWriteTruncBinCode(uint32_t symbol, uint32_t maxSymbol)
   }
 
   int val = 1 << thresh;
-  CHECK( val > maxSymbol, "Value is larger than maxSymbol");
-  CHECK((val << 1) <= maxSymbol, "Wrong value");
-  CHECK(symbol >= maxSymbol, "Symbol is larger than maxSymbol");
+  CHECKD( val > maxSymbol, "Value is larger than maxSymbol");
+  CHECKD((val << 1) <= maxSymbol, "Wrong value");
+  CHECKD(symbol >= maxSymbol, "Symbol is larger than maxSymbol");
   int b = maxSymbol - val;
-  CHECK(b >= val, "Wrong maxSymbol - val");
+  CHECKD(b >= val, "Wrong maxSymbol - val");
 
   if (symbol < val - b)
   {
@@ -1887,8 +1887,8 @@ void CABACWriter::xWriteTruncBinCode(uint32_t symbol, uint32_t maxSymbol)
   else
   {
     symbol += val - b;
-    CHECK(symbol >= (val << 1), "Wrong symbol");
-    CHECK((symbol >> 1) < val - b, "Wrong symbol");
+    CHECKD(symbol >= (val << 1), "Wrong symbol");
+    CHECKD((symbol >> 1) < val - b, "Wrong symbol");
     m_BinEncoder.encodeBinsEP(symbol, thresh + 1);
   }
 }
@@ -11008,7 +11008,7 @@ void CABACWriter::codeAlfCtuAlternative( CodingStructure& cs, uint32_t ctuRsAddr
         uint8_t* ctbAlfAlternative = cs.slice->getPic()->getAlfCtuAlternativeData(compIdx);
         unsigned numOnes = ctbAlfAlternative[ctuRsAddr];
 
-        CHECK(ctbAlfAlternative[ctuRsAddr] >= numAltLuma, "Wrong ctbAlfAlternative");
+        CHECKD(ctbAlfAlternative[ctuRsAddr] >= numAltLuma, "Wrong ctbAlfAlternative");
 
         for( int i = 0; i < numOnes; ++i )
         {
@@ -11042,7 +11042,7 @@ void CABACWriter::codeAlfCtuAlternative( CodingStructure& cs, uint32_t ctuRsAddr
       const int numAlts = alfParamRef.numAlternativesChroma;
       uint8_t* ctbAlfAlternative = cs.slice->getPic()->getAlfCtuAlternativeData( compIdx );
       unsigned numOnes = ctbAlfAlternative[ctuRsAddr];
-      CHECK( ctbAlfAlternative[ ctuRsAddr ] >= numAlts, "Wrong ctbAlfAlternative");
+      CHECKD( ctbAlfAlternative[ ctuRsAddr ] >= numAlts, "Wrong ctbAlfAlternative");
 #if ALF_IMPROVEMENT
       for( int i = 0; i < numOnes; ++i )
       {

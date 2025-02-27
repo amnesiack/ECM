@@ -121,8 +121,8 @@ bool g_HLSTraceEnable = true;
 
 void VLCWriter::xWriteSCode    ( int code, uint32_t length )
 {
-  CHECK( length == 0 || length > 32, "");
-  CHECK( length != 32 && ( code < -( 1 << ( length - 1 ) ) || code >= ( 1 << ( length - 1 ) ) ), "");
+  CHECKD( length == 0 || length > 32, "");
+  CHECKD( length != 32 && ( code < -( 1 << ( length - 1 ) ) || code >= ( 1 << ( length - 1 ) ) ), "");
 
   m_pcBitIf->write( length==32 ? uint32_t(code) : ( uint32_t(code)&((1<<length)-1) ), length );
 }
@@ -138,7 +138,6 @@ void VLCWriter::xWriteUvlc     ( uint32_t uiCode )
   uint32_t uiLength = 1;
   uint32_t uiTemp = ++uiCode;
 
-  if(!uiTemp){std::cout << "integer overflow: uiCode=" << uiCode << std::endl;}
   CHECK( !uiTemp, "Integer overflow" );
 
   while( 1 != uiTemp )
@@ -877,7 +876,7 @@ void HLSWriter::codeLmcsAps( APS* pcAPS )
   WRITE_UVLC(param.reshaperModelMinBinIdx, "lmcs_min_bin_idx");
   WRITE_UVLC(PIC_CODE_CW_BINS - 1 - param.reshaperModelMaxBinIdx, "lmcs_delta_max_bin_idx");
 
-  CHECK( param.maxNbitsNeededDeltaCW <= 0, "");
+  CHECKD( param.maxNbitsNeededDeltaCW <= 0, "");
 
   WRITE_UVLC(param.maxNbitsNeededDeltaCW - 1, "lmcs_delta_cw_prec_minus1");
 
