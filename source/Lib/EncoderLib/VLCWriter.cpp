@@ -1515,6 +1515,10 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 
   WRITE_FLAG( pcSPS->getWrapAroundEnabledFlag() ? 1 : 0,                              "sps_ref_wraparound_enabled_flag" );
 
+#if JVET_AL0160_SBSMVP
+  WRITE_FLAG( pcSPS->getSpatialMVPEnabledFlag()  ? 1 : 0,                          "sps_spatial_mvp_enabled_flag" );
+#endif
+
   WRITE_FLAG( pcSPS->getSPSTemporalMVPEnabledFlag()  ? 1 : 0,                        "sps_temporal_mvp_enabled_flag" );
 
   if ( pcSPS->getSPSTemporalMVPEnabledFlag() )

@@ -3254,7 +3254,16 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
           mrgCtx.subPuMvpMiBuf = MotionBuf(m_subPuMiBuf, bufSize);
 #endif
         }
-
+#if JVET_AL0160_SBSMVP
+        if(pu.cs->sps->getSpatialMVPEnabledFlag())
+        {
+          Size bufSize = g_miScaling.scale(pu.lumaSize());
+          for (int i = 0; i < NUM_SUB_SMVP; i++)
+          {
+            mrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+          }
+        }
+#endif
         int   fPosBaseIdx = 
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
                             !pu.cs->sps->getUseTMMMVD() ? 
@@ -3652,6 +3661,17 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
 #endif
             affineMergeCtx.mrgCtx = &mrgCtx;
           }
+#if JVET_AL0160_SBSMVP
+          if(pu.cs->sps->getSpatialMVPEnabledFlag())
+          {
+            Size bufSize = g_miScaling.scale(pu.lumaSize());
+            for (int i = 0; i < NUM_SUB_SMVP; i++)
+            {
+              mrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+            }
+            affineMergeCtx.mrgCtx = &mrgCtx;
+          }
+#endif
 #if AFFINE_MMVD
 #if JVET_W0090_ARMC_TM
           int affMrgIdx = pu.cs->sps->getUseAML() && (((pu.mergeIdx / ADAPTIVE_AFFINE_SUB_GROUP_SIZE + 1)*ADAPTIVE_AFFINE_SUB_GROUP_SIZE < pu.cs->sps->getMaxNumAffineMergeCand()) || (pu.mergeIdx / ADAPTIVE_AFFINE_SUB_GROUP_SIZE) == 0) ? pu.mergeIdx / ADAPTIVE_AFFINE_SUB_GROUP_SIZE * ADAPTIVE_AFFINE_SUB_GROUP_SIZE + ADAPTIVE_AFFINE_SUB_GROUP_SIZE - 1 : pu.mergeIdx;

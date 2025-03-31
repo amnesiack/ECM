@@ -4678,7 +4678,7 @@ void CABACWriter::smvd_mode( const PredictionUnit& pu )
   {
     return;
   }
-  
+
   m_BinEncoder.encodeBin( pu.cu->smvdMode ? 1 : 0, Ctx::SmvdFlag() );
   
   DTRACE( g_trace_ctx, D_SYNTAX, "symmvd_flag() symmvd=%d pos=(%d,%d) size=%dx%d\n", pu.cu->smvdMode ? 1 : 0, pu.lumaPos().x, pu.lumaPos().y, pu.lumaSize().width, pu.lumaSize().height );
@@ -5684,6 +5684,7 @@ void CABACWriter::merge_data(const PredictionUnit& pu)
     pu.cu->affine = true;
   }
 #endif
+
 #if CIIP_RM_BLOCK_SIZE_CONSTRAINTS
 #if CTU_256
   const int maxSize = std::min<int>( MAX_TB_SIZEY, MAX_INTRA_SIZE );

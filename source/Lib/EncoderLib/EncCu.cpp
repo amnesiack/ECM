@@ -5523,6 +5523,43 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
   }
 #endif
 
+#if JVET_AL0160_SBSMVP
+  if(sps.getSpatialMVPEnabledFlag())
+  {
+    Size bufSize = g_miScaling.scale(tempCS->area.lumaSize());
+
+    for (int i = 0; i < NUM_SUB_SMVP; i++)
+    {
+      mergeCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#if JVET_AG0276_NLIC || JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+      mergeOrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#endif
+      mrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+      mergeCtxOppositeLic.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#endif
+    }
+
+    affineMergeCtx.mrgCtx = &mrgCtx;
+#if TM_MRG
+    for (int i = 0; i < NUM_SUB_SMVP; i++)
+    {
+      tmMrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#if JVET_AG0276_LIC_FLAG_SIGNALING
+      tmMrgCtxOppositeLic.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#endif
+#if JVET_X0141_CIIP_TIMD_TM
+      ciipTmMrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#endif
+#if JVET_AB0079_TM_BCW_MRG
+      mrgCtxCiip.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+#endif
+    }
+#endif
+  }
+#endif
+
+
 #if MULTI_PASS_DMVR
   bool applyBDMVR[MRG_MAX_NUM_CANDS] = { false };
 #if JVET_AG0276_LIC_FLAG_SIGNALING
@@ -8598,7 +8635,6 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
     }
   }
-
   const UnitArea localUnitArea(tempCS->area.chromaFormat, Area(0, 0, tempCS->area.Y().width, tempCS->area.Y().height));
   for (unsigned i = 0; i < MMVD_MRG_MAX_RD_BUF_NUM; i++)
   {
@@ -10925,6 +10961,27 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
     mergeCtx.subPuMvpMiBuf = MotionBuf(m_subPuMiBuf, bufSize);
 #endif
   }
+
+#if JVET_AL0160_SBSMVP
+  if(sps.getSpatialMVPEnabledFlag())
+  {
+    Size bufSize = g_miScaling.scale(tempCS->area.lumaSize());
+
+    for (int i = 0; i < GEO_NUM_TM_MV_CAND; i++)
+    {
+      for (int j = 0; j < NUM_SUB_SMVP; j++)
+      {
+        mergeCtx[i].subSpatialPuMvpMiBuf[j] = MotionBuf(m_subSpatialPuMiBuf[j], bufSize);
+#if TM_MRG
+        if (i == 0)
+        {
+          geoBlendTmCtx.subSpatialPuMvpMiBuf[j] = MotionBuf(m_subSpatialPuMiBuf[j], bufSize);
+        }
+#endif
+      }
+    }
+  }
+#endif
 
 #if JVET_AE0046_BI_GPM
   std::array<bool, GEO_MAX_NUM_UNI_CANDS> refinePossible;
@@ -22409,7 +22466,17 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
     mergeCtx.subPuMvpMiBuf = MotionBuf(m_subPuMiBuf, bufSize);
 #endif
   }
+#if JVET_AL0160_SBSMVP
+  if(sps.getSpatialMVPEnabledFlag())
+  {
+    Size bufSize = g_miScaling.scale(tempCS->area.lumaSize());
 
+    for (int i = 0; i < NUM_SUB_SMVP; i++)
+    {
+      mergeCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+    }
+  }
+#endif
   {
     // first get merge candidates
     CodingUnit cu(tempCS->area);
@@ -28839,6 +28906,16 @@ void EncCu::xCheckRDCostInterMultiHyp2Nx2N(CodingStructure *&tempCS, CodingStruc
     mrgCtx.subPuMvpMiBuf = MotionBuf(m_subPuMiBuf, bufSize);
 #endif
   }
+#if JVET_AL0160_SBSMVP
+  if(sps.getSpatialMVPEnabledFlag())
+  {
+    Size bufSize = g_miScaling.scale(tempCS->area.lumaSize());
+    for (int i = 0; i < NUM_SUB_SMVP; i++)
+    {
+      mrgCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+    }
+  }
+#endif
 
   // Hadamard-based pre-search
   {

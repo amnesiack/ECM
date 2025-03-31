@@ -629,6 +629,7 @@ namespace PU
     , const MvpDir &eDir
 #endif
   );
+
   void getRMVFAffineGuideCand(const PredictionUnit &pu, const PredictionUnit &abovePU, AffineMergeCtx &affMrgCtx, std::vector<RMVFInfo> mvp[NUM_REF_PIC_LIST_01][MAX_NUM_REF], int mrgCandIdx = -1
 #if JVET_AG0276_NLIC
     , AltLMAffineMergeCtx* altAffineMergeCtx = NULL
@@ -787,6 +788,17 @@ namespace PU
   void getNonAdjCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &affMrgCtx, const int mrgCandIdx = -1, bool isInitialized = false);
   int  getNonAdjAffParaDivFun(int num1, int num2);
 #endif
+
+#if JVET_AL0160_SBSMVP
+  int  getNeiAffNum(const PredictionUnit& pu);
+  bool isInsertSubSmvp(const PredictionUnit& pu, AffineMergeCtx &affMrg, int affThres = 1);
+  bool isSubMvAvail(const PredictionUnit& pu, Position neiPos, int sbSmvpType, MotionInfo& subMvInfo, MotionInfo& fistSubMvInfo, bool& allTheSame, bool isFirstSubMv = false);
+  bool deriveOneSubMv(const PredictionUnit& pu, Position neiPos, int sbSmvpType, MotionInfo& subMvInfo);
+  bool checkSimilarMotion(const MotionInfo& mvInfoA, const MotionInfo& mvInfoB, uint32_t mvdSimilarityThresh = 2);
+  bool getOneSbSmvpCand(const PredictionUnit& pu, MergeCtx& mrgCtx, int sbSmvpType);
+  void setMotion2Buf(const PredictionUnit& pu, MergeCtx& mrgCtx, MotionInfo mi, MotionBuf &mb, int bufX, int bufY, int bufW, int bufH);
+#endif
+
   void getAffineMergeCand( const PredictionUnit &pu, AffineMergeCtx& affMrgCtx, 
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION   
     MergeCtx mrgCtx[2],

@@ -863,7 +863,12 @@ public:
 #else
   MotionBuf     subPuMvpMiBuf;
 #endif
+#if JVET_AL0160_SBSMVP
+  MotionBuf     subSpatialPuMvpMiBuf[NUM_SUB_SMVP];
+#else
   MotionBuf     subPuMvpExtMiBuf;
+#endif
+
   MvField mmvdBaseMv[MMVD_BASE_MV_NUM][2];
 #if JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
   void setMmvdMergeCandiInfo(PredictionUnit& pu, int candIdx, int candIdxMaped = -1);

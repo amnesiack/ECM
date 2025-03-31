@@ -1718,6 +1718,9 @@ private:
 
   // Tool list
 
+#if JVET_AL0160_SBSMVP
+  bool              m_spatialMVPEnabledFlag;
+#endif
   bool              m_transformSkipEnabledFlag;
   int               m_log2MaxTransformSkipBlockSize;
   bool              m_BDPCMEnabledFlag;
@@ -2269,6 +2272,10 @@ public:
   void                    setLongTermRefsPresent(bool b)                                                  { m_bLongTermRefsPresent=b;                                            }
   bool                    getSPSTemporalMVPEnabledFlag() const                                            { return m_SPSTemporalMVPEnabledFlag;                                  }
   void                    setSPSTemporalMVPEnabledFlag(bool b)                                            { m_SPSTemporalMVPEnabledFlag=b;                                       }
+#if JVET_AL0160_SBSMVP
+  bool                    getSpatialMVPEnabledFlag() const                                            { return m_spatialMVPEnabledFlag;                                  }
+  void                    setSpatialMVPEnabledFlag(bool b)                                            { m_spatialMVPEnabledFlag=b;                                       }
+#endif
   void                    setLog2MaxTbSize( uint32_t u )                                                  { m_log2MaxTbSize = u;                                                 }
   uint32_t                getLog2MaxTbSize() const                                                        { return  m_log2MaxTbSize;                                             }
   uint32_t                getMaxTbSize() const                                                            { return  1 << m_log2MaxTbSize;                                        }
