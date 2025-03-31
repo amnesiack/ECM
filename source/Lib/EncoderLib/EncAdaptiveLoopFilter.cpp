@@ -1698,10 +1698,18 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
   }
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+#if ALF_SAO_TRUE_ORG
+  PelUnitBuf orgYuv = cs.slice->getLfCccmEnabledFlag() ? *m_newOrgBuf : cs.getTrueOrgBuf();
+#else
+  PelUnitBuf orgYuv = cs.slice->getLfCccmEnabledFlag() ? *m_newOrgBuf : cs.getOrgBuf();
+#endif
+#else
 #if ALF_SAO_TRUE_ORG
   PelUnitBuf orgYuv = cs.getTrueOrgBuf();
 #else
   PelUnitBuf orgYuv = cs.getOrgBuf();
+#endif
 #endif
 #if JVET_AE0139_ALF_IMPROVED_FIXFILTER
   memset( m_ctuPadFlag, 0, sizeof( uint8_t ) * m_numCTUsInPic );
@@ -9222,18 +9230,26 @@ void EncAdaptiveLoopFilter::alfCorrection( CodingStructure& cs, const PelUnitBuf
 #endif
 
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
-void EncAdaptiveLoopFilter::alfCorrectionChroma( CodingStructure& cs, PelUnitBuf& tmpYuv_recSAO )
+void EncAdaptiveLoopFilter::alfCorrectionChroma( CodingStructure& cs, PelUnitBuf& tmpYuvRecSAO )
 {
   if ( !cs.sps->getAlfScaleMode() )
   {
     return;
   }
-  PelUnitBuf recYuv_tmp = cs.getRecoBuf();
+  PelUnitBuf recYuvTmp = cs.getRecoBuf();
 
+#if JVET_AL0153_ALF_CCCM
 #if ALF_SAO_TRUE_ORG
-  PelUnitBuf orgYuv_tmp = cs.getTrueOrgBuf();
+  PelUnitBuf orgYuvTmp = cs.slice->getLfCccmEnabledFlag() ? *m_newOrgBuf : cs.getTrueOrgBuf();
 #else
-  PelUnitBuf orgYuv_tmp = cs.getOrgBuf();
+  PelUnitBuf orgYuvTmp = cs.slice->getLfCccmEnabledFlag() ? *m_newOrgBuf : cs.getOrgBuf();
+#endif
+#else
+#if ALF_SAO_TRUE_ORG
+  PelUnitBuf orgYuvTmp = cs.getTrueOrgBuf();
+#else
+  PelUnitBuf orgYuvTmp = cs.getOrgBuf();
+#endif
 #endif
 
   int ccAlfUsedFlag[3] = { false, false, false };
@@ -9269,9 +9285,9 @@ void EncAdaptiveLoopFilter::alfCorrectionChroma( CodingStructure& cs, PelUnitBuf
     if ( alfUsedFlag[comp] )
     {
       ComponentID compID  = ComponentID(comp);
-      PelBuf& saoPelBuf   = tmpYuv_recSAO.get(compID);
-      PelBuf& recPelBuf   = recYuv_tmp.get(compID);
-      PelBuf& orgPelBuf   = orgYuv_tmp.get(compID);
+      PelBuf& saoPelBuf   = tmpYuvRecSAO.get(compID);
+      PelBuf& recPelBuf   = recYuvTmp.get(compID);
+      PelBuf& orgPelBuf   = orgYuvTmp.get(compID);
 
       const ClpRng& clpRng = m_clpRngs.comp[comp];
 
@@ -9360,7 +9376,7 @@ void EncAdaptiveLoopFilter::alfCorrectionChroma( CodingStructure& cs, PelUnitBuf
 
   if ( sBest[0] > 0 || sBest[1] > 0 )
   {
-    alfAddCorrectChroma( cs, tmpYuv_recSAO );
+    alfAddCorrectChroma( cs, tmpYuvRecSAO );
   }
 
 }

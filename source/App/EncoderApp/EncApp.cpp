@@ -1547,6 +1547,9 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setForceSingleSplitThread                            ( m_forceSplitSequential );
 #endif
   m_cEncLib.setUseALF                                            ( m_alf );
+#if JVET_AL0153_ALF_CCCM
+  m_cEncLib.setUseLfCccm                                         ( m_lfCccm );
+#endif
 #if FIXFILTER_CFG
   m_cEncLib.setUseAlfFixedFilter                                 ( m_alfFixedFilter );
 #endif

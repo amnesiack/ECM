@@ -2229,6 +2229,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_W0066_CCSAO
   READ_FLAG( uiCode, "sps_ccsao_enabled_flag" );                    pcSPS->setCCSAOEnabledFlag ( uiCode ? true : false );
 #endif
+#if JVET_AL0153_ALF_CCCM
+  READ_FLAG( uiCode, "sps_lfcccm_enabled_flag");                    pcSPS->setLfCccmEnabledFlag( uiCode ? true : false );
+#endif
   READ_FLAG( uiCode, "sps_alf_enabled_flag" );                      pcSPS->setALFEnabledFlag ( uiCode ? true : false );
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   if( pcSPS->getALFEnabledFlag() )
@@ -5172,6 +5175,13 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
   if (pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_GDR)
   {
     READ_FLAG(uiCode, "no_output_of_prior_pics_flag");   pcSlice->setNoOutputOfPriorPicsFlag(uiCode != 0);
+  }
+#endif
+#if JVET_AL0153_ALF_CCCM
+  if(sps->getLfCccmEnabledFlag() && !pcSlice->isIntra())
+  {
+    READ_FLAG(uiCode, "slice_lfcccm_enabled_flag");
+    pcSlice->setLfCccmEnabledFlag(uiCode);
   }
 #endif
   // inherit values from picture header

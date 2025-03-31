@@ -218,13 +218,20 @@ struct CccmModel
 #endif
   }
   
-  Pel nonlinear(const Pel val) { return (val * val + midVal) >> bd; }
-  Pel bias     ()              { return midVal; }
+  Pel nonlinear(const Pel val) const { return (val * val + midVal) >> bd; }
+  Pel bias     ()              const { return midVal; }
 #if JVET_AE0059_INTER_CCCM
   void setBd(const int bitdepth)
   {
     bd = bitdepth;
     midVal = (1 << (bitdepth - 1));
+  }
+#endif
+#if JVET_AL0153_ALF_CCCM
+  CccmModel() {}
+  bool valid()
+  {
+    return std::none_of(params.begin(),params.end(),[](TCccmCoeff x) {return abs(x) > (4 << CCCM_DECIM_BITS);});
   }
 #endif
 };
@@ -241,6 +248,13 @@ struct CccmCovariance
     , const bool interCccmMode = false
 #endif
   );
+#if JVET_AL0153_ALF_CCCM
+  void solve3( TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCb[CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCr[CCCM_NUM_PARAMS_MAX], const int sampleNum, const int chromaOffsetCb, const int chromaOffsetCr, CccmModel& modelCb, CccmModel& modelCr
+#if JVET_AE0059_INTER_CCCM
+    , const bool interCccmMode
+#endif
+  );
+#endif
 #else
   void solve1                      ( const Pel A[CCCM_NUM_PARAMS_MAX][CCCM_REF_SAMPLES_MAX], const Pel* C, const int sampleNum, CccmModel& model );
   void solve2                      ( const Pel A[CCCM_NUM_PARAMS_MAX][CCCM_REF_SAMPLES_MAX], const Pel* Cb, const Pel* Cr, const int sampleNum, CccmModel& modelCb, CccmModel& modelCr
@@ -258,12 +272,17 @@ struct CccmCovariance
   void solveEip                    ( const TCccmCoeff* A, const TCccmCoeff* Y, const int sampleNum, CccmModel& model );
 #endif
 #endif
+#if !JVET_AL0153_ALF_CCCM
 private:
+#endif
   TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS_MAX];
   TCccmCoeff ATCb[CCCM_NUM_PARAMS_MAX];
   TCccmCoeff ATCr[CCCM_NUM_PARAMS_MAX];
   TCccmCoeff C[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS_MAX + 2];
 
+#if JVET_AL0153_ALF_CCCM
+private:
+#endif
 #if JVET_AC0053_GAUSSIAN_SOLVER
 #if JVET_AJ0237_INTERNAL_12BIT
   void gaussBacksubstitution       ( TCccmCoeff* x, int numEq, int col, int round, int bits);

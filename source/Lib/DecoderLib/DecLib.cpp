@@ -936,6 +936,23 @@ void DecLib::executeLoopFilters()
   m_cSAO.jointClipSaoBifCcSao( cs );
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+  PelStorage cccmCorrection;
+  m_cLoopFilterCccm.lfCccmSetFrameLevelInheritedParameters(cs);
+  if(cs.slice->getLfCccmEnabledFlag())
+  {
+    m_cLoopFilterCccm.lfCccmInitIntraPred(&m_cIntraPred);
+    cccmCorrection.create(CHROMA_ONLY_420, Area(0, 0, cs.picture->lwidth(), cs.picture->lheight()));
+    cccmCorrection.copyFrom(cs.getRecoBuf(),false,true);
+    m_cLoopFilterCccm.lfCccmCreatePelStorage(cs);
+    for(int ctuRsAddr = 0; ctuRsAddr < cs.picture->m_ctuNums; ctuRsAddr++)
+    {
+      m_cLoopFilterCccm.lfCccmCtuProcess(cs, cs.getRecoBuf(), ctuRsAddr, cccmCorrection.Cb(), cccmCorrection.Cr());
+    }
+    cccmCorrection.getBuf(COMPONENT_Cb).subtract( cs.getRecoBuf(COMPONENT_Cb) );
+    cccmCorrection.getBuf(COMPONENT_Cr).subtract( cs.getRecoBuf(COMPONENT_Cr) );
+  }
+#endif
   if( cs.sps->getALFEnabledFlag() )
   {
     m_cALF.getCcAlfFilterParam() = cs.slice->m_ccAlfFilterParam;
@@ -945,6 +962,13 @@ void DecLib::executeLoopFilters()
     m_cALF.ALFProcess(cs);
   }
 
+#if JVET_AL0153_ALF_CCCM
+  if(cs.slice->getLfCccmEnabledFlag())
+  {
+    cs.getRecoBuf(COMPONENT_Cb).reconstruct(cs.getRecoBuf(COMPONENT_Cb), cccmCorrection.getBuf(COMPONENT_Cb), cs.slice->clpRng(COMPONENT_Cb));
+    cs.getRecoBuf(COMPONENT_Cr).reconstruct(cs.getRecoBuf(COMPONENT_Cr), cccmCorrection.getBuf(COMPONENT_Cr), cs.slice->clpRng(COMPONENT_Cr));
+  }
+#endif
 #if JVET_AK0065_TALF
   if( cs.sps->getUseTAlf())
   {

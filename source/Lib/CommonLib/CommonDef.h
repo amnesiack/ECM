@@ -2599,5 +2599,13 @@ enum BoundaryDirection
   NUM_BD_DIRECTIONS
 };
 #endif
+#if JVET_AL0153_ALF_CCCM
+struct lfCccmCand
+{
+  int8_t windowSize;
+  int8_t modelType;
+};
+static constexpr int lfCccmMaxNumCands = 2;
+#endif
 
 #endif // end of #ifndef  __COMMONDEF__

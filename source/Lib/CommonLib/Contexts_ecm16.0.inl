@@ -7106,6 +7106,31 @@ const CtxSet ContextSetCfg::GeoBlendIntraFlag = ContextSetCfg::addCtxSet
   { DWO, },
 });
 #endif
+#if JVET_AL0153_ALF_CCCM
+const CtxSet ContextSetCfg::LfCccmFlag = ContextSetCfg::addCtxSet
+({
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU },
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU },
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU },
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO },
+  });
+#endif
 // CONTEXTS WSA STOP
 #endif
 // 1630 replaced

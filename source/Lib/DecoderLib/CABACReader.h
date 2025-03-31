@@ -288,6 +288,9 @@ public:
 #endif
 
 
+#if JVET_AL0153_ALF_CCCM
+  void        lfCccm                  ( CodingStructure& cs, const uint32_t ctuRsAddr );
+#endif
   // transform tree (clause 7.3.8.8)
   void        transform_tree(CodingStructure&              cs, Partitioner&    pm, CUCtx& cuCtx, const PartSplit ispType = TU_NO_ISP, const int subTuIdx = -1
 #if JVET_AE0102_LFNST_CTX  

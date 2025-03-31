@@ -74,6 +74,9 @@
 #include <chrono>
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+#include "EncLoopFilterCccm.h"
+#endif
 //! \ingroup EncoderLib
 //! \{
 
@@ -164,6 +167,9 @@ private:
   EncAdaptiveLoopFilter*    m_pcALF;
   EncReshape*               m_pcReshaper;
   RateCtrl*                 m_pcRateCtrl;
+#if JVET_AL0153_ALF_CCCM
+  EncLoopFilterCccm*        m_pcLoopFilterCccm;
+#endif
   // indicate sequence first
   bool                    m_bSeqFirst;
   bool                    m_audIrapOrGdrAuFlag;

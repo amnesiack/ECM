@@ -308,6 +308,9 @@ void Slice::initSlice()
   m_separateTreeEnabled           = false;
   exitIntraRegionTesting();
 #endif
+#if JVET_AL0153_ALF_CCCM
+  setLfCccmEnabledFlag(false);
+#endif
 }
 
 #if JVET_Y0128_NON_CTC
@@ -6373,5 +6376,92 @@ void Slice::setUseLICOnPicLevel( bool fastMode )
       m_UseLIC = sadHist > sadThreshold;
     }
   }
+}
+#endif
+#if JVET_AL0153_ALF_CCCM
+void Slice::lfCccmClearControlInformation(const int ctuRsAddr)
+{
+  if(ctuRsAddr>-1)
+  {
+    m_lfCccmEnabled.at(ctuRsAddr) = 0;
+    m_lfCccmWindowSizeIndex.at(ctuRsAddr) = 0;
+    m_lfCccmModelType.at(ctuRsAddr)  = 0;
+    m_lfCccmCTUMerge.at(ctuRsAddr)  = 0;
+    return;
+  }
+  m_lfCccmEnabled.resize(getPic()->m_ctuNums,0);
+  m_lfCccmWindowSizeIndex.resize(getPic()->m_ctuNums,0);
+  m_lfCccmModelType.resize(getPic()->m_ctuNums,0);
+  m_lfCccmCTUMerge.resize(getPic()->m_ctuNums,0);
+  m_lfCccmFrameLevelInherit = 0;
+}
+const Picture* Slice::lfCccmGetReferencePicture() const
+{
+  int bestDist = MAX_INT;
+  const Picture *refPic = nullptr;
+  const int curPoc = getPOC();
+
+  auto getLfCccmRefPic = [&](const RefPicList refPicList)
+  {
+    for (int refIdxInList = 0; refIdxInList < getNumRefIdx(refPicList); refIdxInList++)
+    {
+      const int refPoc = getRefPOC(refPicList, refIdxInList);
+      const Picture* refPicTemp = getRefPic(refPicList, refIdxInList);
+      const int cDist = abs(refPoc-curPoc);
+      if( refPicTemp && refPicTemp->cs->slice && cDist < bestDist && refPicTemp->cs->slice->getLfCccmEnabledFlag() )
+      {
+        bestDist = cDist;
+        refPic = refPicTemp;
+        return;
+      }
+    }
+  };
+
+  getLfCccmRefPic(REF_PIC_LIST_0);
+  getLfCccmRefPic(REF_PIC_LIST_1);
+
+  return refPic;
+}
+lfCccmCand Slice::lfCccmGetCandidate(const int ctuRsAddr) const
+{
+  lfCccmCand tmpCand;
+  tmpCand.windowSize = m_lfCccmWindowSizeIndex.at(ctuRsAddr);
+  tmpCand.modelType = m_lfCccmModelType.at(ctuRsAddr);
+  return tmpCand;
+}
+std::vector<lfCccmCand> Slice::lfCccmGetMergeCandidates(const int ctuRsAddr) const
+{
+  std::vector<lfCccmCand> candidates;
+
+  const int ctuX = ctuRsAddr % m_pcPic->cs->pcv->widthInCtus;
+  const int ctuY = ctuRsAddr / m_pcPic->cs->pcv->widthInCtus;
+
+  if(ctuX && m_lfCccmEnabled.at(ctuRsAddr-1))
+  {
+    candidates.push_back(lfCccmGetCandidate(ctuRsAddr-1));
+  }
+
+  if(ctuY && m_lfCccmEnabled.at(ctuRsAddr-getPic()->cs->pcv->widthInCtus))
+  {
+    candidates.push_back(lfCccmGetCandidate(ctuRsAddr-getPic()->cs->pcv->widthInCtus));
+  }
+
+  if(candidates.size() > lfCccmMaxNumCands)
+  {
+    return std::vector<lfCccmCand>(candidates.begin(),candidates.begin() + lfCccmMaxNumCands);
+  }
+
+  return candidates;
+}
+void Slice::lfCccmMerge(const int ctuRsAddr)
+{
+  const std::vector<lfCccmCand> candidates = lfCccmGetMergeCandidates(ctuRsAddr);
+  CHECK(candidates.size() == 0,"error empty candidates")
+  CHECK(candidates.size() > lfCccmMaxNumCands,"too many candidates")
+  const int8_t candIdx = !!(m_lfCccmCTUMerge.at(ctuRsAddr) & 2);
+  const lfCccmCand curCand = candidates.at(candIdx);
+  m_lfCccmEnabled.at(ctuRsAddr) = 1;
+  m_lfCccmWindowSizeIndex.at(ctuRsAddr) = curCand.windowSize;
+  m_lfCccmModelType.at(ctuRsAddr) = curCand.modelType;
 }
 #endif

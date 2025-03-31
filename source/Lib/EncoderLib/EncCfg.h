@@ -1111,6 +1111,9 @@ protected:
 #endif
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
+#if JVET_AL0153_ALF_CCCM
+  bool        m_lfCccm;
+#endif
 #if FIXFILTER_CFG
   bool        m_alfFixedFilter;                               
 #endif
@@ -3004,7 +3007,11 @@ public:
 #endif
   void         setUseALF( bool b ) { m_alf = b; }
   bool         getUseALF()                                      const { return m_alf; }
-#if FIXFILTER_CFG  
+#if JVET_AL0153_ALF_CCCM
+  void         setUseLfCccm( bool b )                                 { m_lfCccm = b; }
+  bool         getUseLfCccm()                                   const { return m_lfCccm; }
+#endif
+#if FIXFILTER_CFG
   void         setUseAlfFixedFilter( bool b )                         { m_alfFixedFilter = b; }
   bool         getUseAlfFixedFilter()                           const { return m_alfFixedFilter; }
 #endif

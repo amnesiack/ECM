@@ -152,6 +152,9 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
     cs.picture->resizeAlfCtuAlternative( cs.pcv->sizeInCtus );
   }
 
+#if JVET_AL0153_ALF_CCCM
+  slice->lfCccmClearControlInformation();
+#endif
   const unsigned numSubstreams = slice->getNumberOfSubstreamSizes() + 1;
 
   // init each couple {EntropyDecoder, Substream}
@@ -579,6 +582,9 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
     Position pos( ctuXPosInCtus*maxCUSize, ctuYPosInCtus*maxCUSize) ;
     UnitArea ctuArea(cs.area.chromaFormat, Area( pos.x, pos.y, maxCUSize, maxCUSize ) );
     const SubPic &curSubPic = slice->getPPS()->getSubPicFromPos(pos);
+#if JVET_AL0153_ALF_CCCM
+    slice->lfCccmClearControlInformation(ctuRsAddr);
+#endif
     // padding/restore at slice level
     if (slice->getPPS()->getNumSubPics()>=2 && curSubPic.getTreatedAsPicFlag() && ctuIdx==0)
     {

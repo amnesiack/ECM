@@ -990,6 +990,9 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
 
   }
 #endif
+#if JVET_AL0153_ALF_CCCM
+  rpcSlice->lfCccmClearControlInformation();
+#endif
 }
 
 double EncSlice::initializeLambda(const Slice* slice, const int GOPid, const int refQP, const double dQP)
@@ -2416,7 +2419,11 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
     pCABACWriter->resetBits();
-    pCABACWriter->coding_tree_unit( cs, ctuArea, prevQP, ctuRsAddr, true, true );
+    pCABACWriter->coding_tree_unit( cs, ctuArea, prevQP, ctuRsAddr, true, true
+#if JVET_AL0153_ALF_CCCM
+                                   , true
+#endif
+                                   );
     const int numberOfWrittenBits = int( pCABACWriter->getEstFracBits() >> SCALE_BITS );
 
 #if JVET_AG0117_CABAC_SPATIAL_TUNING

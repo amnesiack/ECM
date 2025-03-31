@@ -58,6 +58,9 @@
 #include "BilateralFilter.h"
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+#include "CommonLib/LoopFilterCccm.h"
+#endif
 class InputNALUnit;
 
 //! \ingroup DecoderLib
@@ -125,6 +128,9 @@ private:
   AdaptiveLoopFilter      m_cALF;
   Reshape                 m_cReshaper;                        ///< reshaper class
   HRD                     m_HRD;
+#if JVET_AL0153_ALF_CCCM
+  LoopFilterCccm          m_cLoopFilterCccm;
+#endif
 #if JVET_AA0096_MC_BOUNDARY_PADDING
   InterPrediction         m_cFrameMcPadPrediction;
 #endif

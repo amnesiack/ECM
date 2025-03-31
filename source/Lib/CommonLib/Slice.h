@@ -1807,6 +1807,9 @@ private:
   bool              m_inloopOffsetRefineFlag;
   bool              m_inloopOffsetRefineFunc;
 #endif
+#if JVET_AL0153_ALF_CCCM
+  bool              m_lfCccmEnabledFlag;
+#endif
   bool              m_wrapAroundEnabledFlag;
   unsigned          m_IBCFlag;
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -2306,6 +2309,10 @@ public:
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool                    getNnipMode() const { return m_nnipMode; }
   void                    setNnipMode(const bool nnipMode) { m_nnipMode = nnipMode; }
+#endif
+#if JVET_AL0153_ALF_CCCM
+  bool                    getLfCccmEnabledFlag() const                                                    { return m_lfCccmEnabledFlag; }
+  void                    setLfCccmEnabledFlag( bool b )                                                  { m_lfCccmEnabledFlag = b; }
 #endif
   bool                    getALFEnabledFlag() const                                                       { return m_alfEnabledFlag; }
   void                    setALFEnabledFlag( bool b )                                                     { m_alfEnabledFlag = b; }
@@ -4720,6 +4727,22 @@ public:
   bool                        getIntraRegionNoSplitTest()                       const { return m_intraRegionNoSplitTest;  }
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+public:
+  bool                    m_lfCccmEnabledFlag;
+  bool                    getLfCccmEnabledFlag() const                                                    { return m_lfCccmEnabledFlag; }
+  void                    setLfCccmEnabledFlag( bool b )                                                  { m_lfCccmEnabledFlag = b; }
+  std::vector<int8_t>     m_lfCccmEnabled;
+  std::vector<int8_t>     m_lfCccmWindowSizeIndex;
+  std::vector<int8_t>     m_lfCccmModelType;
+  std::vector<int8_t>     m_lfCccmCTUMerge;
+  int8_t                  m_lfCccmFrameLevelInherit;
+  void                    lfCccmClearControlInformation(const int ctuRsAddr = -1);
+  void                    lfCccmMerge(const int ctuRsAddr);
+  const Picture*          lfCccmGetReferencePicture() const;
+  lfCccmCand              lfCccmGetCandidate(const int ctuRsAddr) const;
+  std::vector<lfCccmCand> lfCccmGetMergeCandidates(const int ctuRsAddr) const;
+#endif
 protected:
   Picture*              xGetRefPic( PicList& rcListPic, int poc, const int layerId );
   Picture*              xGetLongTermRefPic( PicList& rcListPic, int poc, bool pocHasMsb, const int layerId );
