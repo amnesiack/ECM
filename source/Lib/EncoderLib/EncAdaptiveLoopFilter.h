@@ -645,6 +645,9 @@ private:
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
     , PelUnitBuf& recYuvSAO
 #endif
+#if JVET_AL0135_CCALF_CROSS_CHROMA_INPUT
+    , PelUnitBuf& recBeforeDbf
+#endif
   );
 #else
   void   getBlkStatsCcAlf(AlfCovariance &alfCovariance, const AlfFilterShape &shape, const PelUnitBuf &orgYuv, const PelUnitBuf &recYuv, const UnitArea &areaDst, const UnitArea &area, const ComponentID compID, const int yPos
@@ -659,6 +662,9 @@ private:
   void   calcCovarianceCcAlf( Pel ELocal[MAX_NUM_CC_ALF_CHROMA_COEFF][1], const Pel* rec, const int stride, const AlfFilterShape& shape, Pel* resiPtr, int resiStride  
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
     , Pel* recSAO, int saoStride
+#endif
+#if JVET_AL0135_CCALF_CROSS_CHROMA_INPUT
+   , Pel* crossChromaPtr, const int crossChromaStride
 #endif
   );
 #else

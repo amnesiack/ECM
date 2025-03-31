@@ -568,9 +568,16 @@ static const int       MAX_ALF_PADDING_SIZE           =             4;
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
 static const     int CCALF_SAO_TAPS_NUM               =             4;
 #endif
+#if JVET_AL0135_CCALF_CROSS_CHROMA_INPUT
+static const int NUM_CC_ALF_CROSS_CHROMA_TAP          =             2;
+#endif
 #if JVET_AF0197_LUMA_RESIDUAL_TAP_IN_CCALF
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
+#if JVET_AL0135_CCALF_CROSS_CHROMA_INPUT
+static constexpr int MAX_NUM_CC_ALF_CHROMA_COEFF      =             23 + 5 + CCALF_SAO_TAPS_NUM + NUM_CC_ALF_CROSS_CHROMA_TAP;
+#else
 static constexpr int MAX_NUM_CC_ALF_CHROMA_COEFF      =             23 + 5 + CCALF_SAO_TAPS_NUM;
+#endif
 #else
 static constexpr int MAX_NUM_CC_ALF_CHROMA_COEFF      =             23 + 5;
 #endif

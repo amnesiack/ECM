@@ -346,6 +346,9 @@ public:
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
     , const CPelUnitBuf& recSAOSrc
 #endif
+#if JVET_AL0135_CCALF_CROSS_CHROMA_INPUT
+    , const CPelUnitBuf& recBeforeDbf
+#endif
   );
 #else
   static void filterBlkCcAlf(const PelBuf& dstBuf, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blkSrc, const ComponentID compId, const int16_t* filterCoeff, const ClpRngs& clpRngs, CodingStructure& cs, const CPelUnitBuf& resiSrc, const Pel clippingValues[4] 
@@ -447,6 +450,9 @@ public:
   void(*m_filterCcAlf)(const PelBuf &dstBuf, const CPelUnitBuf &recSrc, const Area &blkDst, const Area &blkSrc, const ComponentID compId, const int16_t *filterCoeff, const ClpRngs &clpRngs, CodingStructure &cs, const CPelUnitBuf &resiSrc, const Pel clippingValues[4], const int coeffPrec 
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
     , const CPelUnitBuf& recSrcSAO
+#endif
+#if JVET_AL0135_CCALF_CROSS_CHROMA_INPUT
+    , const CPelUnitBuf& recBeforeDbf
 #endif
     );
 #else
