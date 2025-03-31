@@ -529,6 +529,7 @@
 #define JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT          1 // JVET-AK0121: Boundary-Aware Offset Refinement for Loop-Filters
 #define JVET_AK0123_ALF_COEFF_RESTRICTION                 1 // JVET-AK0123: Restrictions on ALF coefficient values
 #define JVET_AL0135_CCALF_CROSS_CHROMA_INPUT              1 // JVET-AL0135: Cros-Chroma Input for CC-ALF
+#define JVET_AL0153_ALF_CCCM                              1 // JVET-AL0153: ALF-CCCM
 
 // SIMD optimizations
 #if IF_12TAP

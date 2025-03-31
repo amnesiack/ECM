@@ -3008,13 +3008,13 @@ void  AdaptiveLoopFilter::alfAddCorrect( AlfClassifier** classifier, const PelUn
 
 }
 
-void  AdaptiveLoopFilter::alfAddCorrectChroma( CodingStructure& cs, PelUnitBuf& tmpYuv_recSAO )
+void  AdaptiveLoopFilter::alfAddCorrectChroma( CodingStructure& cs, PelUnitBuf& tmpYuvRecSAO )
 {
   int sBest[2];
   sBest[0] = cs.slice->getAlfScaleChroma(COMPONENT_Cb);
   sBest[1] = cs.slice->getAlfScaleChroma(COMPONENT_Cr);
 
-  PelUnitBuf recYuv_tmp = cs.getRecoBuf();
+  PelUnitBuf recYuvTmp = cs.getRecoBuf();
 
   const PreCalcValues& pcv = *cs.pcv;
 
@@ -3047,8 +3047,8 @@ void  AdaptiveLoopFilter::alfAddCorrectChroma( CodingStructure& cs, PelUnitBuf& 
       continue;
     }
     ComponentID compID  = ComponentID(comp);
-    PelBuf& saoPelBuf   = tmpYuv_recSAO.get(compID);
-    PelBuf& recPelBuf   = recYuv_tmp.get(compID); 
+    PelBuf& saoPelBuf   = tmpYuvRecSAO.get(compID);
+    PelBuf& recPelBuf   = recYuvTmp.get(compID); 
 
     const ClpRng& clpRng = m_clpRngs.comp[comp];
 

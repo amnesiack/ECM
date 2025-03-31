@@ -62,6 +62,9 @@
 #include "EncAdaptiveLoopFilter.h"
 #include "RateCtrl.h"
 
+#if JVET_AL0153_ALF_CCCM
+#include "EncLoopFilterCccm.h"
+#endif
 class EncLibCommon;
 
 //! \ingroup EncoderLib
@@ -106,6 +109,9 @@ private:
   EncSampleAdaptiveOffset   m_cEncSAO;                            ///< sample adaptive offset class
   EncAdaptiveLoopFilter     m_cEncALF;
   HLSWriter                 m_HLSWriter;                          ///< CAVLC encoder
+#if JVET_AL0153_ALF_CCCM
+  EncLoopFilterCccm         m_cEncLoopFilterCccm;
+#endif
 #if ENABLE_SPLIT_PARALLELISM
   CABACEncoder             *m_CABACEncoder;
 #else
@@ -237,6 +243,9 @@ public:
   EncGOP*                 getGOPEncoder         ()              { return  &m_cGOPEncoder;          }
   EncSlice*               getSliceEncoder       ()              { return  &m_cSliceEncoder;        }
   EncHRD*                 getHRD                ()              { return  &m_encHRD;               }
+#if JVET_AL0153_ALF_CCCM
+  EncLoopFilterCccm*      getLoopFilterCccmEncoder ()           { return &m_cEncLoopFilterCccm;    }
+#endif
 #if ENABLE_SPLIT_PARALLELISM
   EncCu*                  getCuEncoder          ( int jId = 0 ) { return  &m_cCuEncoder[jId];      }
 #else

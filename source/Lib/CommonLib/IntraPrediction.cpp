@@ -32338,6 +32338,122 @@ void CccmCovariance::solve2( const Pel A[CCCM_NUM_PARAMS_MAX][CCCM_REF_SAMPLES_M
 #endif
 #endif
 }
+#if JVET_AL0153_ALF_CCCM
+#if JVET_AB0174_CCCM_DIV_FREE
+void CccmCovariance::solve3( TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCb[CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCr[CCCM_NUM_PARAMS_MAX], const int sampleNum, const int chromaOffsetCb, const int chromaOffsetCr, CccmModel& modelCb, CccmModel& modelCr
+#if JVET_AE0059_INTER_CCCM
+    , const bool interCccmMode
+#endif
+)
+#else
+void CccmCovariance::solve3( TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCb[CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCr[CCCM_NUM_PARAMS_MAX], const int sampleNum, CccmModel& modelCb, CccmModel& modelCr
+#if JVET_AE0059_INTER_CCCM
+    , const bool interCccmMode
+#endif
+)
+#endif
+{
+
+  const int numParams = modelCb.getNumParams();
+
+  CHECK( modelCr.getNumParams() != numParams, "Chroma number of parameters don't match" );
+  CHECK( CCCM_REF_SAMPLES_MAX < sampleNum, "Insufficient buffer size" );
+  CHECK( CCCM_NUM_PARAMS_MAX < numParams, "Insufficient buffer size" );
+
+#if JVET_AB0174_CCCM_DIV_FREE
+  // Remove chromaOffset from stats to update cross-correlation
+  for( int coli = 0; coli < numParams; coli++ )
+  {
+    ATCb[coli] = ATCb[coli] - ((ATA[coli][numParams - 1] * chromaOffsetCb) >> (modelCb.bd - 1));
+    ATCr[coli] = ATCr[coli] - ((ATA[coli][numParams - 1] * chromaOffsetCr) >> (modelCr.bd - 1));
+  }
+#endif
+
+  // Scale the matrix and vector to selected dynamic range
+  CHECK( modelCb.bd != modelCr.bd, "Bitdepth of Cb and Cr is different" );
+#if JVET_AE0059_INTER_CCCM
+#if JVET_AJ0237_INTERNAL_12BIT
+  int matrixShift = ((modelCb.bd > 10) ? CCCM_MATRIX_BITS_HBD : (interCccmMode ? 28 : CCCM_MATRIX_BITS)) - 2 * modelCb.bd - ceilLog2(sampleNum);
+#else
+  int matrixShift = (interCccmMode ? 28 : CCCM_MATRIX_BITS) - 2 * modelCb.bd - ceilLog2( sampleNum );
+#endif
+#else
+  int matrixShift = CCCM_MATRIX_BITS - 2 * modelCb.bd - ceilLog2( sampleNum );
+#endif
+
+  if( matrixShift > 0 )
+  {
+    for( int coli0 = 0; coli0 < numParams; coli0++ )
+    {
+      for( int coli1 = coli0; coli1 < numParams; coli1++ )
+      {
+        ATA[coli0][coli1] <<= matrixShift;
+      }
+    }
+
+    for( int coli = 0; coli < numParams; coli++ )
+    {
+      ATCb[coli] <<= matrixShift;
+    }
+
+    for( int coli = 0; coli < numParams; coli++ )
+    {
+      ATCr[coli] <<= matrixShift;
+    }
+  }
+  else if( matrixShift < 0 )
+  {
+    matrixShift = -matrixShift;
+
+    for( int coli0 = 0; coli0 < numParams; coli0++ )
+    {
+      for( int coli1 = coli0; coli1 < numParams; coli1++ )
+      {
+        ATA[coli0][coli1] >>= matrixShift;
+      }
+    }
+
+    for( int coli = 0; coli < numParams; coli++ )
+    {
+      ATCb[coli] >>= matrixShift;
+    }
+
+    for( int coli = 0; coli < numParams; coli++ )
+    {
+      ATCr[coli] >>= matrixShift;
+    }
+  }
+
+#if JVET_AC0053_GAUSSIAN_SOLVER
+  // Solve the filter coefficients
+  gaussElimination(ATA, ATCb, modelCb.params.data(), ATCr, modelCr.params.data(), numParams, 2, modelCb.bd
+#if JVET_AE0059_INTER_CCCM
+    , interCccmMode
+#endif
+  );
+#else
+  // Solve the filter coefficients using LDL decomposition
+  TE U;       // Upper triangular L' of ATA's LDL decomposition
+  Ty diag;    // Diagonal of D
+
+  bool decompOk = ldlDecompose( ATA, U, diag, M );
+
+  ldlSolve( U, diag, ATCb, modelCb.params, M, decompOk );
+  ldlSolve( U, diag, ATCr, modelCr.params, M, decompOk );
+#endif
+
+#if JVET_AB0174_CCCM_DIV_FREE
+  // Add the chroma offset to bias term (after shifting up by CCCM_DECIM_BITS and down by cccmModelCb.bd - 1)
+#if JVET_AJ0237_INTERNAL_12BIT
+  modelCb.params[numParams - 1] += chromaOffsetCb << (modelCb.decimBits - (modelCb.bd - 1));
+  modelCr.params[numParams - 1] += chromaOffsetCr << (modelCr.decimBits - (modelCr.bd - 1));
+#else
+  modelCb.params[numParams - 1] += chromaOffsetCb << (CCCM_DECIM_BITS - (modelCb.bd - 1));
+  modelCr.params[numParams - 1] += chromaOffsetCr << (CCCM_DECIM_BITS - (modelCr.bd - 1));
+#endif
+#endif
+}
+#endif
 #endif
 
 #if JVET_AB0092_GLM_WITH_LUMA

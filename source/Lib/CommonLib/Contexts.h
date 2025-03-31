@@ -845,6 +845,9 @@ public:
 #if JVET_AK0065_TALF
   static const CtxSet   TAlfFilterControlFlag;
 #endif
+#if JVET_AL0153_ALF_CCCM
+  static const CtxSet   LfCccmFlag;
+#endif
   static const unsigned NumberOfContexts;
 
   // combined sets for less complex copying

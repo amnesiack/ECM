@@ -1116,6 +1116,9 @@ protected:
   bool        m_forceDecodeBitstream1;
 
   bool        m_alf;                                          ///< Adaptive Loop Filter
+#if JVET_AL0153_ALF_CCCM
+  bool        m_lfCccm;
+#endif
 #if FIXFILTER_CFG
   bool        m_alfFixedFilter;
 #endif

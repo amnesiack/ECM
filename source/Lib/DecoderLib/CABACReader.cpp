@@ -238,6 +238,9 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
     }
   }
 #endif
+#if JVET_AL0153_ALF_CCCM
+  lfCccm(cs, ctuRsAddr);
+#endif
   if (cs.sps->getALFEnabledFlag() && (cs.slice->getTileGroupAlfEnabledFlag(COMPONENT_Y)))
   {
     const PreCalcValues& pcv = *cs.pcv;
@@ -11365,6 +11368,54 @@ void CABACReader::interCcpMerge(TransformUnit& tu)
     tu.interCcpMerge = m_BinDecoder.decodeBin(Ctx::InterCcpMergeFlag(0));
 #endif
     DTRACE(g_trace_ctx, D_SYNTAX, "inter_ccp_merge() pos=(%d,%d) inter_ccp_merge_flag=%d\n", tu.blocks[tu.chType].x, tu.blocks[tu.chType].y, tu.interCcpMerge);
+  }
+}
+#endif
+#if JVET_AL0153_ALF_CCCM
+void CABACReader::lfCccm(CodingStructure& cs, const uint32_t ctuRsAddr)
+{
+  if(!cs.sps->getLfCccmEnabledFlag())
+  {
+    return;
+  }
+  if(!cs.slice->getLfCccmEnabledFlag())
+  {
+    return;
+  }
+  if(ctuRsAddr==0 && !cs.slice->isIntra() && cs.slice->lfCccmGetReferencePicture())
+  {
+    cs.slice->m_lfCccmFrameLevelInherit = m_BinDecoder.decodeBin(Ctx::LfCccmFlag(1));
+  }
+  if(cs.slice->m_lfCccmFrameLevelInherit)
+  {
+    return;
+  }
+  cs.slice->m_lfCccmEnabled.at(ctuRsAddr) = m_BinDecoder.decodeBin(Ctx::LfCccmFlag(0));
+  if (cs.slice->m_lfCccmEnabled.at(ctuRsAddr))
+  {
+    const int nCand = (int)cs.slice->lfCccmGetMergeCandidates(ctuRsAddr).size();
+    if(nCand)
+    {
+      cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr)= m_BinDecoder.decodeBin(Ctx::LfCccmFlag(2));
+      if(cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) && nCand>1)
+      {
+        cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) += 2*m_BinDecoder.decodeBin(Ctx::LfCccmFlag(3));
+      }
+      if(cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr))
+      {
+        cs.slice->lfCccmMerge(ctuRsAddr);
+        return;
+      }
+    }
+    cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) = 0;
+
+    cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr) += m_BinDecoder.decodeBin(Ctx::LfCccmFlag(4));
+    cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr) += 2*m_BinDecoder.decodeBin(Ctx::LfCccmFlag(5));
+    cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr) += 4*m_BinDecoder.decodeBin(Ctx::LfCccmFlag(6));
+
+    cs.slice->m_lfCccmModelType.at(ctuRsAddr) = m_BinDecoder.decodeBin(Ctx::LfCccmFlag(7));
+    cs.slice->m_lfCccmModelType.at(ctuRsAddr) += 2*m_BinDecoder.decodeBin(Ctx::LfCccmFlag(8));
+    cs.slice->m_lfCccmModelType.at(ctuRsAddr) += 4*m_BinDecoder.decodeBin(Ctx::LfCccmFlag(9));
   }
 }
 #endif

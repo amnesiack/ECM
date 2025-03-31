@@ -222,6 +222,9 @@ void EncGOP::init ( EncLib* pcEncLib )
   m_pcSAO                = pcEncLib->getSAO();
   m_pcALF                = pcEncLib->getALF();
   m_pcRateCtrl           = pcEncLib->getRateCtrl();
+#if JVET_AL0153_ALF_CCCM
+  m_pcLoopFilterCccm     = pcEncLib->getLoopFilterCccmEncoder();
+#endif
 #if JVET_AA0096_MC_BOUNDARY_PADDING
   m_pcFrameMcPadPrediction = pcEncLib->getFrameMcPadPredSearch();
 #endif
@@ -4093,6 +4096,29 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       }
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+      PelStorage cccmCorrection, newOrgBuf;
+      if(pcSlice->getSPS()->getLfCccmEnabledFlag() && !pcSlice->isIntra())
+      {
+        cccmCorrection.create(cs.pcv->chrFormat, Area(0,0, cs.pcv->lumaWidth, cs.pcv->lumaHeight));
+        cccmCorrection.copyFrom(cs.getRecoBuf());
+        m_pcLoopFilterCccm->lfCccmInitIntraPred(m_pcEncLib->getIntraSearch());
+        m_pcLoopFilterCccm->lfCccmRDO(cs, cs.getRecoBuf(), cccmCorrection, m_pcEncLib->getCtxCache(), m_pcEncLib->getCABACEncoder(), pcSlice);
+        if(pcSlice->getLfCccmEnabledFlag())
+        {
+          newOrgBuf.create(cs.pcv->chrFormat, Area(0,0, cs.pcv->lumaWidth, cs.pcv->lumaHeight));
+#if ALF_SAO_TRUE_ORG
+          newOrgBuf.copyFrom(cs.getTrueOrgBuf());
+#else
+          newOrgBuf.copyFrom(cs.getOrgBuf());
+#endif
+          cccmCorrection.getBuf(COMPONENT_Cb).subtract(cs.getRecoBuf(COMPONENT_Cb));
+          cccmCorrection.getBuf(COMPONENT_Cr).subtract(cs.getRecoBuf(COMPONENT_Cr));
+          newOrgBuf.getBuf(COMPONENT_Cb).subtract(cccmCorrection.getBuf(COMPONENT_Cb));
+          newOrgBuf.getBuf(COMPONENT_Cr).subtract(cccmCorrection.getBuf(COMPONENT_Cr));
+        }
+      }
+#endif
       if( pcSlice->getSPS()->getALFEnabledFlag() )
       {
         // create ALF encoder data based on the picture size
@@ -4105,6 +4131,12 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 
         m_pcALF->initCABACEstimator(m_pcEncLib->getCABACEncoder(), m_pcEncLib->getCtxCache(), pcSlice, m_pcEncLib->getApsMap());
 
+#if JVET_AL0153_ALF_CCCM
+        if(pcSlice->getLfCccmEnabledFlag())
+        {
+          m_pcALF->setNewOrgBuf(&newOrgBuf);
+        }
+#endif
         m_pcALF->ALFProcess(cs, pcSlice->getLambdas()
 #if ENABLE_QPA
           , (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && pcSlice->getPPS()->getUseDQP() ? m_pcEncLib->getRdCost(PARL_PARAM0(0))->getChromaWeight() : 0.0)
@@ -4209,6 +4241,13 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         }
         m_pcALF->destroy(true);
       }
+#if JVET_AL0153_ALF_CCCM
+      if(pcSlice->getLfCccmEnabledFlag())
+      {
+        cs.getRecoBuf(COMPONENT_Cb).reconstruct(cs.getRecoBuf(COMPONENT_Cb), cccmCorrection.getBuf(COMPONENT_Cb), cs.slice->clpRng(COMPONENT_Cb));
+        cs.getRecoBuf(COMPONENT_Cr).reconstruct(cs.getRecoBuf(COMPONENT_Cr), cccmCorrection.getBuf(COMPONENT_Cr), cs.slice->clpRng(COMPONENT_Cr));
+      }
+#endif
       DTRACE_UPDATE( g_trace_ctx, ( std::make_pair( "final", 1 ) ) );
       if (m_pcCfg->getUseCompositeRef() && getPrepareLTRef())
       {

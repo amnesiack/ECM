@@ -1934,6 +1934,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("DebugCTU",                                        m_debugCTU,                                  -1, "If DebugBitstream is present, load frames up to this POC from this bitstream. Starting with DebugPOC-frame at CTUline containin debug CTU.")
   ("EnsureWppBitEqual",                               m_ensureWppBitEqual,                      false, "Ensure the results are equal to results with WPP-style parallelism, even if WPP is off")
   ( "ALF",                                             m_alf,                                    true, "Adaptive Loop Filter\n" )
+#if JVET_AL0153_ALF_CCCM
+  ( "ALFCCCM",                                         m_lfCccm,                                  true, "ALF-CCCM\n")
+#endif
 #if FIXFILTER_CFG
   ( "AlfFixedFilter",                                  m_alfFixedFilter,                             true, "Fixed Filters for Adaptive Loop Filter\n" )
 #endif
@@ -5702,6 +5705,9 @@ void EncAppCfg::xPrintParameter()
   msg( VERBOSE, "ALF:%d ", m_alf ? 1 : 0 );
   msg( VERBOSE, "CCALF:%d ", m_ccalf ? 1 : 0 );
 
+#if JVET_AL0153_ALF_CCCM
+  msg( VERBOSE, "ALFCCCM:%d ", m_lfCccm ? 1 : 0 );
+#endif
   msg( VERBOSE, "WPP:%d ", (int)m_useWeightedPred);
   msg( VERBOSE, "WPB:%d ", (int)m_useWeightedBiPred);
   msg( VERBOSE, "PME:%d ", m_log2ParallelMergeLevel);

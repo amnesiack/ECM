@@ -1391,6 +1391,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_W0066_CCSAO
   WRITE_FLAG( pcSPS->getCCSAOEnabledFlag(),                                          "sps_ccsao_enabled_flag" );
 #endif
+#if JVET_AL0153_ALF_CCCM
+  WRITE_FLAG( pcSPS->getLfCccmEnabledFlag(),                                         "sps_lfcccm_enabled_flag" );
+#endif
   WRITE_FLAG( pcSPS->getALFEnabledFlag(),                                            "sps_alf_enabled_flag" );
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   if( pcSPS->getALFEnabledFlag() )
@@ -3300,6 +3303,12 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
     CHECK(pcSlice->getSliceType() == I_SLICE, "when ph_intra_slice_allowed_flag = 0, no I_Slice is allowed");
   }
 
+#if JVET_AL0153_ALF_CCCM
+  if(pcSlice->getSPS()->getLfCccmEnabledFlag() && !pcSlice->isIntra())
+  {
+    WRITE_FLAG(pcSlice->getLfCccmEnabledFlag(), "slice_lfcccm_enabled_flag");
+  }
+#endif
   if (pcSlice->getSPS()->getALFEnabledFlag() && !pcSlice->getPPS()->getAlfInfoInPhFlag())
   {
     const int alfEnabled = pcSlice->getTileGroupAlfEnabledFlag(COMPONENT_Y);

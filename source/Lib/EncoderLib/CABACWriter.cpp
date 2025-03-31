@@ -266,7 +266,11 @@ void CABACWriter::bif( const ComponentID compID, const Slice& slice, const BifPa
 //    bool  coding_tree_unit( cs, area, qp, ctuRsAddr, skipSao, skipAlf )
 //================================================================================
 
-void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, int (&qps)[2], unsigned ctuRsAddr, bool skipSao /* = false */, bool skipAlf /* = false */ )
+void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, int (&qps)[2], unsigned ctuRsAddr, bool skipSao /* = false */, bool skipAlf /* = false */
+#if JVET_AL0153_ALF_CCCM
+    , bool skipLfCccm
+#endif
+)
 {
   DTRACE(g_trace_ctx, D_SYNTAX, "coding_tree_unit() pos=(%d,%d)\n", area.lx(), area.ly());
   CUCtx cuCtx( qps[CH_L] );
@@ -305,6 +309,12 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   }
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+  if(!skipLfCccm)
+  {
+    lfCccm(cs, ctuRsAddr);
+  }
+#endif
   if (!skipAlf)
   {
     for (int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
@@ -11489,6 +11499,52 @@ void CABACWriter::codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStruct
     {
       unary_max_eqprob(curControl.filterIdx, filterCount - 1);
     }
+  }
+}
+#endif
+#if JVET_AL0153_ALF_CCCM
+void CABACWriter::lfCccm(const CodingStructure& cs, const uint32_t ctuRsAddr)
+{
+  if(!cs.sps->getLfCccmEnabledFlag())
+  {
+    return;
+  }
+  if(!cs.slice->getLfCccmEnabledFlag())
+  {
+    return;
+  }
+  if(ctuRsAddr==0 && !cs.slice->isIntra() && cs.slice->lfCccmGetReferencePicture())
+  {
+    m_BinEncoder.encodeBin(cs.slice->m_lfCccmFrameLevelInherit ? 1 : 0, Ctx::LfCccmFlag(1));
+  }
+  if(cs.slice->m_lfCccmFrameLevelInherit)
+  {
+    return;
+  }
+  m_BinEncoder.encodeBin(cs.slice->m_lfCccmEnabled.at(ctuRsAddr) ? 1 : 0, Ctx::LfCccmFlag(0));
+  if (cs.slice->m_lfCccmEnabled.at(ctuRsAddr))
+  {
+    const int nCand = (int)cs.slice->lfCccmGetMergeCandidates(ctuRsAddr).size();
+    if(nCand)
+    {
+      m_BinEncoder.encodeBin(cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) ? 1 : 0, Ctx::LfCccmFlag(2));
+      if(cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) && nCand>1)
+      {
+        m_BinEncoder.encodeBin(cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) == 3 ? 1 : 0, Ctx::LfCccmFlag(3));
+      }
+      if(cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr))
+      {
+        return;
+      }
+    }
+
+    m_BinEncoder.encodeBin( cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr) & 1, Ctx::LfCccmFlag(4) );
+    m_BinEncoder.encodeBin( (cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr)>>1) & 1, Ctx::LfCccmFlag(5) );
+    m_BinEncoder.encodeBin( (cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr)>>2) & 1, Ctx::LfCccmFlag(6) );
+
+    m_BinEncoder.encodeBin( cs.slice->m_lfCccmModelType.at(ctuRsAddr) & 1, Ctx::LfCccmFlag(7) );
+    m_BinEncoder.encodeBin( (cs.slice->m_lfCccmModelType.at(ctuRsAddr)>>1) & 1, Ctx::LfCccmFlag(8) );
+    m_BinEncoder.encodeBin( (cs.slice->m_lfCccmModelType.at(ctuRsAddr)>>2) & 1, Ctx::LfCccmFlag(9) );
   }
 }
 #endif

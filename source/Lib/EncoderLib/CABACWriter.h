@@ -96,7 +96,11 @@ public:
   void        end_of_slice              ();
 
   // coding tree unit (clause 7.3.8.2)
-  void        coding_tree_unit          (       CodingStructure&        cs,       const UnitArea&   area,       int (&qps)[2],  unsigned ctuRsAddr,  bool skipSao = false, bool skipAlf = false );
+  void        coding_tree_unit          (       CodingStructure&        cs,       const UnitArea&   area,       int (&qps)[2],  unsigned ctuRsAddr,  bool skipSao = false, bool skipAlf = false
+#if JVET_AL0153_ALF_CCCM
+    , bool skipLfCccm = false
+#endif
+  );
 
   // sao (clause 7.3.8.3)
   void        sao                       ( const Slice&                  slice,    unsigned          ctuRsAddr );
@@ -351,6 +355,9 @@ public:
   void        glmIdc                    ( const PredictionUnit&         pu );
 #endif
 
+#if JVET_AL0153_ALF_CCCM
+  void        lfCccm( const CodingStructure& cs, const uint32_t ctuRsAddr );
+#endif
   // transform tree (clause 7.3.8.8)
   void        transform_tree(const CodingStructure&        cs, Partitioner&      pm, CUCtx& cuCtx, const PartSplit ispType = TU_NO_ISP, const int subTuIdx = -1
 #if JVET_AE0102_LFNST_CTX

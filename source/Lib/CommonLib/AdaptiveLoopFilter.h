@@ -579,7 +579,7 @@ public:
   );
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   void    alfAddCorrect( AlfClassifier** classifier, const PelUnitBuf& recDst, const CPelUnitBuf& recSrc, const Area& blkDst, const Area& blk, const ComponentID compId, char coeffBits, int* idxCorr );
-  void    alfAddCorrectChroma( CodingStructure& cs, PelUnitBuf& tmpYuv_recSAO );
+  void    alfAddCorrectChroma( CodingStructure& cs, PelUnitBuf& tmpYuvRecSAO );
   void    setAlfScaleMode( const int mode );
   int     getScaleCorrInt   ( const int s );
   double  getScaleCorrDouble( const int s );

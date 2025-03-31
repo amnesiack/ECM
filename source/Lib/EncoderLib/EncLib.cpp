@@ -2349,6 +2349,9 @@ void EncLib::xInitSPS( SPS& sps )
   {
     sps.setScalingMatrixDesignatedColourSpaceFlag( true );
   }
+#if JVET_AL0153_ALF_CCCM
+  sps.setLfCccmEnabledFlag( m_lfCccm );
+#endif
   sps.setALFEnabledFlag( m_alf );
   sps.setCCALFEnabledFlag( m_ccalf );
   sps.setFieldSeqFlag(false);
