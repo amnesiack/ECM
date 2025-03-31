@@ -962,6 +962,11 @@ public:
 #if JVET_AI0183_MVP_EXTENSION
   MotionInfo      m_subPuMiBuf[SUB_BUFFER_SIZE][(MAX_CU_SIZE * MAX_CU_SIZE) >> (MIN_CU_LOG2 << 1)];
 #endif
+
+#if JVET_AL0160_SBSMVP
+  MotionInfo      m_subSpatialPuMiBuf[NUM_SUB_SMVP][(MAX_CU_SIZE * MAX_CU_SIZE) >> (MIN_CU_LOG2 << 1)];
+#endif
+
   InterSearch();
   virtual ~InterSearch();
 

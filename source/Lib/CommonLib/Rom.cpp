@@ -6866,4 +6866,5 @@ static constexpr std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX
 }
 const std::array<std::array<PosType, TIMD_MERGE_MAX_NONADJACENT>, MAX_CU_DEPTH - MIN_CU_LOG2 + 1> g_timdMergeOffsetYTable = timdMergeOffsetYTable();
 #endif
+
 //! \}

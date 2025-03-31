@@ -6087,7 +6087,17 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
       mergeCtx.subPuMvpMiBuf = MotionBuf(m_subPuMiBuf, bufSize);
 #endif
     }
+#if JVET_AL0160_SBSMVP
+    if(cu.cs->sps->getSpatialMVPEnabledFlag())
+    {
+      Size bufSize = g_miScaling.scale(pu.lumaSize());
 
+      for (int i = 0; i < NUM_SUB_SMVP; i++)
+      {
+        mergeCtx.subSpatialPuMvpMiBuf[i] = MotionBuf(m_subSpatialPuMiBuf[i], bufSize);
+      }
+    }
+#endif
     Distortion   uiHevcCost = std::numeric_limits<Distortion>::max();
     Distortion   uiAffineCost = std::numeric_limits<Distortion>::max();
     Distortion   uiCost[2] = { std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max() };

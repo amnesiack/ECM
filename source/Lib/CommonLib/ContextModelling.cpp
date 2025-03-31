@@ -1255,8 +1255,13 @@ bool AffineMergeCtx::xCheckSimilarSbTMVP(PredictionUnit pu, int mergeCandIndex, 
         if (similarCheck)
         {
 #if JVET_AI0183_MVP_EXTENSION
+#if JVET_AL0160_SBSMVP
+          MotionInfo* mi0 = colIdx[ui] >= 0 ? mrgCtx->subPuMvpMiBuf[colIdx[ui]].buf: mrgCtx->subSpatialPuMvpMiBuf[-1 - colIdx[ui]].buf;
+          MotionInfo* mi1 = colIdx[mergeCandIndex] >= 0 ? mrgCtx->subPuMvpMiBuf[colIdx[mergeCandIndex]].buf: mrgCtx->subSpatialPuMvpMiBuf[-1 - colIdx[mergeCandIndex]].buf;
+#else
           MotionInfo* mi0 = mrgCtx->subPuMvpMiBuf[colIdx[ui]].buf;
           MotionInfo* mi1 = mrgCtx->subPuMvpMiBuf[colIdx[mergeCandIndex]].buf;
+#endif
           for (int h = 0; h < puSize.height && similarCheck; h += puHeight)
           {
             for (int w = 0; w < puSize.width && similarCheck; w += puWidth)
@@ -1382,6 +1387,25 @@ bool AffineMergeCtx::xCheckSimilarSbTMVP(PredictionUnit pu, int mergeCandIndex, 
   {
     for (uint32_t ui = 0; ui < mergeCandIndex; ui++)
     {
+#if JVET_AL0160_SBSMVP
+      if (colIdx[mergeCandIndex] < 0)
+      {
+        if (colIdx[mergeCandIndex] == (-1 - SUB_SMVP_TYPE_TR))
+        {
+          if (colIdx[ui] >= (-1 - SUB_SMVP_TYPE_TL))
+          {
+            continue;
+          }
+        }
+        else
+        {
+          if (colIdx[ui] < 0)
+          {
+            continue;
+          }
+        }
+      }
+#endif
       if (interDirNeighbours[ui] == interDirNeighbours[mergeCandIndex])
       {
         bool similarCheck = false;
@@ -1414,8 +1438,13 @@ bool AffineMergeCtx::xCheckSimilarSbTMVP(PredictionUnit pu, int mergeCandIndex, 
         if (similarCheck)
         {
 #if JVET_AI0183_MVP_EXTENSION
+#if JVET_AL0160_SBSMVP
+          MotionInfo* mi0 = colIdx[ui] >= 0 ? mrgCtx->subPuMvpMiBuf[colIdx[ui]].buf : mrgCtx->subSpatialPuMvpMiBuf[-1 - colIdx[ui]].buf;
+          MotionInfo* mi1 = colIdx[mergeCandIndex] >= 0 ? mrgCtx->subPuMvpMiBuf[colIdx[mergeCandIndex]].buf : mrgCtx->subSpatialPuMvpMiBuf[-1 - colIdx[mergeCandIndex]].buf;
+#else
           MotionInfo* mi0 = mrgCtx->subPuMvpMiBuf[colIdx[ui]].buf;
           MotionInfo* mi1 = mrgCtx->subPuMvpMiBuf[colIdx[mergeCandIndex]].buf;
+#endif
           for (int h = 0; h < puSize.height && similarCheck; h += puHeight)
           {
             for (int w = 0; w < puSize.width && similarCheck; w += puWidth)

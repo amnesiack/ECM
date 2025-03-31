@@ -4293,6 +4293,9 @@ SPS::SPS()
 , m_allRplEntriesHasSameSignFlag ( true )
 , m_bLongTermRefsPresent      (false)
 // Tool list
+#if JVET_AL0160_SBSMVP
+, m_spatialMVPEnabledFlag  (false)
+#endif
 , m_transformSkipEnabledFlag  (false)
 , m_log2MaxTransformSkipBlockSize (2)
 , m_BDPCMEnabledFlag          (false)

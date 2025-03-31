@@ -2289,7 +2289,9 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setBDPCMEnabledFlag(m_useBDPCM);
 
   sps.setSPSTemporalMVPEnabledFlag((getTMVPModeId() == 2 || getTMVPModeId() == 1));
-
+#if JVET_AL0160_SBSMVP
+  sps.setSpatialMVPEnabledFlag( m_sourceHeight < 2160 );
+#endif
   sps.setLog2MaxTbSize   ( m_log2MaxTbSize );
 
   for (uint32_t channelType = 0; channelType < MAX_NUM_CHANNEL_TYPE; channelType++)

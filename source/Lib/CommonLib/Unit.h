@@ -714,7 +714,11 @@ struct IntraPredictionData
 struct InterPredictionData
 {
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
+#if JVET_AL0160_SBSMVP
+  int8_t      colIdx;
+#else
   uint8_t     colIdx;
+#endif
 #endif
   bool      mergeFlag;
   bool      regularMergeFlag;

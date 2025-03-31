@@ -51,6 +51,7 @@
 #include <cassert>
 #include <cstdint>
 
+
 #define AHG7_LN_TOOLOFF_CFG                               1
 #define FIXFILTER_CFG                                     1
 #define AHG7_MTS_TOOLOFF_CFG                              1
@@ -398,6 +399,7 @@
 #define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
 #define JVET_AK0095_ENHANCED_AFFINE_CANDIDATE             1 // JVET-AK0095: Additional temporal affine candidates and synthetic affine candidates
 #define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185 : TMVP selection for Merge and AMVP
+#define JVET_AL0160_SBSMVP                                1 // JVET-AL0160: subblock based spatial motion vector prediction
 
 // Inter template matching tools
 #define JVET_AJ0096_SATD_REORDER_INTER                    1 // JVET-AJ0096: SATD-based reordering for inter coding

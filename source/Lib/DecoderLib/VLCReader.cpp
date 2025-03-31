@@ -2417,6 +2417,10 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     }
   }
 
+#if JVET_AL0160_SBSMVP
+  READ_FLAG( uiCode, "sps_spatial_mvp_enabled_flag" );                   pcSPS->setSpatialMVPEnabledFlag(uiCode);
+#endif
+
   READ_FLAG( uiCode, "sps_temporal_mvp_enabled_flag" );                  pcSPS->setSPSTemporalMVPEnabledFlag(uiCode);
 
   if ( pcSPS->getSPSTemporalMVPEnabledFlag() )
