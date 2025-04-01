@@ -1524,6 +1524,10 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
           bool bSatdChecked[NUM_INTRA_MODE];
           memset(bSatdChecked, 0, sizeof(bSatdChecked));
+#if JVET_AL0114_ODD_MODE
+          static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> firstRoundModeList;
+          static_vector<double, FAST_UDI_MAX_RDMODE_NUM>   firstRoundCostList;
+#endif
           if (!LFNSTLoadFlag)
           {
             for (int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++)
@@ -1532,7 +1536,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               Distortion minSadHad = 0;
 
               // Skip checking extended Angular modes in the first round of SATD
+#if JVET_AL0114_ODD_MODE
+              if (uiMode > DC_IDX && (!(uiMode & 1)))
+#else
               if (uiMode > DC_IDX && (uiMode & 1))
+#endif
               {
                 continue;
               }
@@ -1552,6 +1560,41 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               bool sgpmSaveCondition = testSgpm && SGPMSaveFlag && sgpmNeededMode[uiMode];
               bool dimdSaveCondition = (obicSaveFlag || dimdSaveFlag) && dimdNeededMode[uiMode];
               bool isContinue = !pdpCondition && !sgpmSaveCondition && !dimdSaveCondition;
+#if JVET_AL0114_ODD_MODE
+              if(isContinue && ((testMdip && mdipNeededMode[uiMode]) || m_includeExcludingMode[uiMode]))
+              {
+                pu.intraDir[0] = modeIdx;
+                initPredIntraParams(pu, pu.Y(), sps);
+                predIntraAng(COMPONENT_Y, piPred, pu, true, false);
+
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+                Distortion sadCost = distParamSad.distFunc(distParamSad);
+                minSadHad += std::min(sadCost * 2, distParamHad.distFunc(distParamHad));
+#else
+                minSadHad += std::min(distParamSad.distFunc(distParamSad) * 2, distParamHad.distFunc(distParamHad));
+#endif
+                uint64_t fracModeBits = MAX_UINT64;
+
+                for(int neighborMode = modeIdx - 1; neighborMode <= modeIdx + 1; neighborMode += 2)
+                {
+                  if(neighborMode <= DC_IDX || neighborMode >= NUM_LUMA_MODE || (testMdip && mdipNeededMode[neighborMode]))
+                  {
+                    continue;
+                  }
+                  CHECK(m_includeExcludingMode[neighborMode], "");
+
+                  loadStartStates();
+                  uint64_t neighborModeBits = xFracModeBitsIntra(pu, neighborMode, CHANNEL_TYPE_LUMA);
+                  fracModeBits = std::min(fracModeBits, neighborModeBits);
+                }
+
+                if(fracModeBits != MAX_UINT64)
+                {
+                  double cost = (double) minSadHad + (double) fracModeBits * sqrtLambdaForFirstPass;
+                  updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiMode), cost, firstRoundModeList, firstRoundCostList, numModesForFullRD);
+                }
+              }
+#endif
               if(testMdip && mdipNeededMode[uiMode] && isContinue)
               {                
                 continue;
@@ -1619,6 +1662,35 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               }
 #endif
 #if JVET_AK0059_MDIP
+#if JVET_AL0114_ODD_MODE
+              if((testMdip && mdipNeededMode[uiMode]) || m_includeExcludingMode[uiMode])
+              {
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+                Distortion sadCost = distParamSad.distFunc(distParamSad);
+                minSadHad += std::min(sadCost * 2, distParamHad.distFunc(distParamHad));
+#else
+                minSadHad += std::min(distParamSad.distFunc(distParamSad) * 2, distParamHad.distFunc(distParamHad));
+#endif
+                uint64_t fracModeBits = MAX_UINT64;
+
+                for(int neighborMode = modeIdx - 1; neighborMode <= modeIdx + 1; neighborMode += 2)
+                {
+                  if(neighborMode <= DC_IDX || neighborMode >= NUM_LUMA_MODE || (testMdip && mdipNeededMode[neighborMode]))
+                  {
+                    continue;
+                  }
+                  CHECK(m_includeExcludingMode[neighborMode], "");
+                  loadStartStates();
+                  uint64_t neighborModeBits = xFracModeBitsIntra(pu, neighborMode, CHANNEL_TYPE_LUMA);
+                  fracModeBits = std::min(fracModeBits, neighborModeBits);
+                }
+                if(fracModeBits != MAX_UINT64)
+                {
+                  double cost = (double) minSadHad + (double) fracModeBits * sqrtLambdaForFirstPass;
+                  updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiMode), cost, firstRoundModeList, firstRoundCostList, numModesForFullRD);
+                }
+              }
+#endif
               if(testMdip && mdipNeededMode[uiMode])
               {
                 continue;
@@ -1668,6 +1740,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               {
                 updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiMode), cost, m_mpmSavedPdpModeList, m_mpmSavedPdpRdList, NUM_PDP_MODES);
               }
+#endif
+#if JVET_AL0114_ODD_MODE
+              updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, uiMode), cost, firstRoundModeList, firstRoundCostList, numModesForFullRD);
 #endif
             }
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -1752,7 +1827,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
           if (!(sps.getUseMIP() && LFNSTLoadFlag))
           {
+#if JVET_AL0114_ODD_MODE
+            static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> parentCandList = LFNSTLoadFlag ? uiRdModeList: firstRoundModeList;
+#else
             static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> parentCandList = uiRdModeList;
+#endif
 
             // Second round of SATD for extended Angular modes
             for (int modeIdx = 0; modeIdx < numModesForFullRD; modeIdx++)
@@ -1793,8 +1872,23 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #else
                     predIntraAng(COMPONENT_Y, piPred, pu);
 #endif
+#if JVET_AL0114_ODD_MODE
+                    bool pdpCondition = false;
+                    if (pdpSaveFlag)
+                    {
+                      const int sizeKey = (width << 8) + height;
+                      const int sizeIdx = g_size.find(sizeKey) != g_size.end() ? g_size[sizeKey] : -1;
+                      const int m       = sizeIdx > 12 ? 2 : 0;
+                      const int s       = sizeIdx > 12 ? 4 : 2;
+                      pdpCondition = sizeIdx >= 0 && m_refAvailable && pu.cu->cs->sps->getUsePDP() && !(mode > 1 && mode % s != m);
+                    }
+#endif
 #if JVET_AB0155_SGPM
-                    if (testSgpm && SGPMSaveFlag && sgpmNeededMode[mode])
+                    if (testSgpm && SGPMSaveFlag && sgpmNeededMode[mode]
+#if JVET_AL0114_ODD_MODE
+                      && !pdpCondition
+#endif             
+                      )
                     {
                       PelBuf predBuf(m_intraPredBuf[mode], tmpArea);
                       predBuf.copyFrom(piPred);
@@ -1802,7 +1896,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                     }
 #endif
 #if JVET_AH0076_OBIC
-                    if ((obicSaveFlag || dimdSaveFlag) && dimdNeededMode[mode] && !m_intraModeReady[mode])
+                    if ((obicSaveFlag || dimdSaveFlag) && dimdNeededMode[mode] && !m_intraModeReady[mode]
+#if JVET_AL0114_ODD_MODE
+                      && !pdpCondition
+#endif      
+                      )
                     {
                       PelBuf predBuf(m_intraPredBuf[mode], tmpArea);
                       predBuf.copyFrom(piPred);
@@ -1821,6 +1919,26 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                       continue;
                     }
 #endif
+#if JVET_AL0114_ODD_MODE
+                    bool pdpMode = false;
+                    uint32_t uiMode = mode;
+
+                    if (pdpSaveFlag)
+                    {
+                      const int sizeKey = (width << 8) + height;
+                      const int sizeIdx = g_size.find(sizeKey) != g_size.end() ? g_size[sizeKey] : -1;
+                      const int m = sizeIdx > 12 ? 2 : 0;
+                      const int s = sizeIdx > 12 ? 4 : 2;
+                      if (sizeIdx >= 0 && m_refAvailable && pu.cu->cs->sps->getUsePDP() && !(uiMode > 1 && uiMode % s != m))
+                      {
+                        CHECK(m_pdpIntraPredBuf[uiMode] == nullptr, "PDP predictor unavailable");
+                        PelBuf predBuf(m_pdpIntraPredBuf[uiMode], tmpArea);
+                        predBuf.copyFrom(piPred);
+                        m_pdpIntraPredReady[uiMode] = true;
+                        pdpMode = true;
+                      }
+                    }
+#endif
 
                     // Use the min between SAD and SATD as the cost criterion
                     // SAD is scaled by 2 to align with the scaling of HAD
@@ -1837,6 +1955,20 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                     double cost = (double) minSadHad + (double) fracModeBits * sqrtLambdaForFirstPass;
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
                     m_bestIntraSADCost = std::min(m_bestIntraSADCost, cost - (double)minSadHad + (double)sadCost);
+#endif
+#if JVET_AL0114_ODD_MODE
+                    if(testMdip)
+                    {
+                      if(pdpMode && uiMode == cu.mdipMode)
+                      {
+                        m_dSavedSadHadPdp = minSadHad;
+                        m_dSavedSadPdp = sadCost;
+                      }
+                      else if(uiMode == m_intraMPM[0])
+                      {
+                        m_mpm0SadHad = minSadHad;
+                      }
+                    }      
 #endif
                     updateCandList(ModeInfo(false, false, 0, NOT_INTRA_SUBPARTITIONS, mode), cost, uiRdModeList,
                                    candCostList, numModesForFullRD);
@@ -2876,6 +3008,31 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   {
                     continue;
                   }
+#if JVET_AL0114_ODD_MODE
+                  bool pdpMode = false;
+                  if (pdpSaveFlag)
+                  {
+                    const int sizeKey = (width << 8) + height;
+                    const int sizeIdx = g_size.find(sizeKey) != g_size.end() ? g_size[sizeKey] : -1;
+                    const int m       = sizeIdx > 12 ? 2 : 0;
+                    const int s       = sizeIdx > 12 ? 4 : 2;
+                    if (sizeIdx >= 0 && m_refAvailable && pu.cu->cs->sps->getUsePDP() && !(iMode > 1 && iMode % s != m))
+                    {
+                      pdpMode = true;
+                    }
+                  }
+                  if (dimdNeededMode[iMode] && pdpMode && idx == 0)
+                  {
+                    pu.intraDir[0] = iMode;
+                    initPredIntraParams(pu, pu.Y(), sps);
+                    predIntraAng(COMPONENT_Y, piPred, pu, false);
+
+                    PelBuf predBuf(m_pdpIntraPredBuf[iMode], tmpArea);
+                    predBuf.copyFrom(piPred);
+                    m_pdpIntraPredReady[iMode] = true;
+                  }
+                  else
+#endif
                   if (dimdNeededMode[iMode] && !m_intraModeReady[iMode])
                   {
                     pu.intraDir[0] = iMode;
@@ -2930,6 +3087,31 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 {
                   break;
                 }
+#if JVET_AL0114_ODD_MODE
+                bool pdpMode = false;
+                if (pdpSaveFlag)
+                {
+                  const int sizeKey = (width << 8) + height;
+                  const int sizeIdx = g_size.find(sizeKey) != g_size.end() ? g_size[sizeKey] : -1;
+                  const int m       = sizeIdx > 12 ? 2 : 0;
+                  const int s       = sizeIdx > 12 ? 4 : 2;
+                  if (sizeIdx >= 0 && m_refAvailable && pu.cu->cs->sps->getUsePDP() && !(dimdMode > 1 && dimdMode % s != m))
+                  {
+                    pdpMode = true;
+                  }
+                }
+                if (dimdNeededMode[dimdMode] && pdpMode)
+                {
+                  pu.intraDir[0] = dimdMode;
+                  initPredIntraParams(pu, pu.Y(), sps);
+                  predIntraAng(COMPONENT_Y, piPred, pu, false);
+
+                  PelBuf predBuf(m_pdpIntraPredBuf[dimdMode], tmpArea);
+                  predBuf.copyFrom(piPred);
+                  m_pdpIntraPredReady[dimdMode] = true;
+                }
+                else
+#endif
 #if JVET_AH0209_PDP
                 if (dimdNeededMode[dimdMode] && !m_intraModeReady[dimdMode] && !m_pdpIntraPredReady[dimdMode])
 #else
@@ -3670,9 +3852,16 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 const int s = sizeIdx > 12 ? 4 : 2;
                 isPDPMode &= (g_pdpFilters[uiMode][sizeIdx] && !(uiMode > 1 && (uiMode % s != m)));
               }
+#if JVET_AL0114_ODD_MODE
+              initIntraPatternChType(cu, area, false, 0, true, !isPDPMode, isPDPMode);
+#endif
               isPDPMode &= m_refAvailable;
               
+#if JVET_AL0114_ODD_MODE
+              if(isPDPMode && m_dSavedSadPdp != MAX_UINT64)
+#else
               if(isPDPMode)
+#endif
               {
                 sadCost = m_dSavedSadPdp;
                 minSadHad = m_dSavedSadHadPdp;
@@ -3680,7 +3869,9 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               else
               {
 #endif
+#if !JVET_AL0114_ODD_MODE
                 initIntraPatternChType(cu, area, false, 0, true, !isPDPMode, isPDPMode);
+#endif
                 predIntraAng(COMPONENT_Y, piPred, pu);
                 if (mdipNeededMode[uiMode])
                 {                  
@@ -3729,7 +3920,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
             pu.multiRefIdx = 0;
             const uint32_t uiMode = cu.obicMode[0];
             pu.intraDir[CHANNEL_TYPE_LUMA] = uiMode;
+#if JVET_AL0114_ODD_MODE
+            CHECK(!m_intraModeReady[uiMode] && !m_pdpIntraPredReady[uiMode], "");
+#else
             CHECK(!m_intraModeReady[uiMode], "`m_intraModeReady[uiMode]` is false.");
+#endif
             const Distortion sadCost = distParamSad.distFunc(distParamSad);
             const Distortion minSadHad = std::min(sadCost * 2, distParamHad.distFunc(distParamHad));
             loadStartStates();
