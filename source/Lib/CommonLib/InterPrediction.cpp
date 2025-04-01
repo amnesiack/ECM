@@ -4534,13 +4534,24 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
     filterIdx = isIBC && pu.cs->sps->getIBCFracFlag() && isLuma(compID) && filterIdx == 0 ? -1 : filterIdx;
 #endif
+#if JVET_AL0161_4TAP_TM
+    const bool use4TapTM = (filterIdx == 1 && isLuma(compID) && !bilinearMC && !isIBC) ? true : false;
+#endif
     if( yFrac == 0 )
     {
 #if JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
-      m_if.filterHor( compID, ( Pel* ) refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter );
+#if JVET_AL0161_4TAP_TM
+      m_if.filterHor(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter, use4TapTM);
 #else
-      m_if.filterHor( compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf );
+      m_if.filterHor( compID, ( Pel* ) refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter);
+#endif
+#else
+#if JVET_AL0161_4TAP_TM
+      m_if.filterHor(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, use4TapTM);
+#else
+      m_if.filterHor( compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
+#endif
 #endif
 #else
       m_if.filterHor( compID, ( Pel* ) refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, bilinearMC, bilinearMC, useAltHpelIf);
@@ -4550,9 +4561,17 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
     {
 #if JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
-      m_if.filterVer( compID, ( Pel* ) refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter );
+#if JVET_AL0161_4TAP_TM
+      m_if.filterVer(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter, use4TapTM);
 #else
-      m_if.filterVer( compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf );
+      m_if.filterVer( compID, ( Pel* ) refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter);
+#endif
+#else
+#if JVET_AL0161_4TAP_TM
+      m_if.filterVer(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, use4TapTM);
+#else
+      m_if.filterVer( compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
+#endif
 #endif
 #else
       m_if.filterVer( compID, ( Pel* ) refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, bilinearMC, bilinearMC, useAltHpelIf);
@@ -4600,6 +4619,12 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
         {
           vFilterSize = NTAPS_BILINEAR;
         }
+#if JVET_AL0161_4TAP_TM
+        if (use4TapTM)
+        {
+          vFilterSize = NTAPS_TM;
+        }
+#endif
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
         if (isLuma(compID) && filterIdx == -1)
         {
@@ -4612,15 +4637,31 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
 #endif
 #if JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
+#if JVET_AL0161_4TAP_TM
+        m_if.filterHor( compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter, use4TapTM );
+#else
         m_if.filterHor( compID, ( Pel* ) refBuf.buf - ( ( vFilterSize >> 1 ) - 1 ) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter );
+#endif
+#else
+#if JVET_AL0161_4TAP_TM
+        m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, use4TapTM);
 #else
         m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
 #endif
+#endif
         JVET_J0090_SET_CACHE_ENABLE(false);
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
+#if JVET_AL0161_4TAP_TM
+        m_if.filterVer( compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter, use4TapTM );
+#else
         m_if.filterVer( compID, ( Pel* ) tmpBuf.buf + ( ( vFilterSize >> 1 ) - 1 ) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter );
+#endif
+#else
+#if JVET_AL0161_4TAP_TM
+        m_if.filterVer(compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, use4TapTM);
 #else
         m_if.filterVer(compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
+#endif
 #endif
 #else
         m_if.filterHor( compID, ( Pel* ) refBuf.buf - ( ( vFilterSize >> 1 ) - 1 ) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, bilinearMC, bilinearMC, useAltHpelIf);
@@ -26280,14 +26321,25 @@ void InterPrediction::xGetPredBlkTpl(const CodingUnit& cu, const ComponentID com
 #endif
 #endif
   const bool useAltHpelIf = false;
+#if JVET_AL0161_4TAP_TM
+  const bool use4TapTM = (isLuma(compID) && nFilterIdx == 1) ? true : false;
+#endif
 
   if ( yFrac == 0 )
   {
-    m_if.filterHor( compID, (Pel*) ref, refStride, dst, dstStride, bw, bh, xFrac, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#if JVET_AL0161_4TAP_TM
+    m_if.filterHor(compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, xFrac, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf, 0, use4TapTM);
+#else
+    m_if.filterHor(compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, xFrac, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#endif
   }
   else if ( xFrac == 0 )
   {
-    m_if.filterVer( compID, (Pel*) ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#if JVET_AL0161_4TAP_TM
+    m_if.filterVer(compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf, 0, use4TapTM);
+#else
+    m_if.filterVer(compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#endif
   }
   else
   {
@@ -26301,6 +26353,12 @@ void InterPrediction::xGetPredBlkTpl(const CodingUnit& cu, const ComponentID com
     {
       vFilterSize = NTAPS_BILINEAR;
     }
+#if JVET_AL0161_4TAP_TM
+    if (use4TapTM)
+    {
+      vFilterSize = NTAPS_TM;
+    }
+#endif
 #else
 #if IF_12TAP
     const int vFilterSize = isLuma(compID) ? NTAPS_LUMA(0) : NTAPS_CHROMA;
@@ -26310,9 +26368,17 @@ void InterPrediction::xGetPredBlkTpl(const CodingUnit& cu, const ComponentID com
 #endif
     PelBuf tmpBuf = PelBuf(m_filteredBlockTmp[0][compID], Size(bw, bh+vFilterSize-1));
 
-    m_if.filterHor( compID, (Pel*)ref - ((vFilterSize>>1) -1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh+vFilterSize-1, xFrac, false, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#if JVET_AL0161_4TAP_TM
+    m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf, 0, use4TapTM);
+#else
+    m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#endif
     JVET_J0090_SET_CACHE_ENABLE( false );
-    m_if.filterVer( compID, tmpBuf.buf + ((vFilterSize>>1) -1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#if JVET_AL0161_4TAP_TM
+    m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf, 0, use4TapTM);
+#else
+    m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
+#endif
     JVET_J0090_SET_CACHE_ENABLE( true );
   }
 }
@@ -27861,23 +27927,46 @@ PelBuf TplMatchingCtrl::xGetRefTemplate(const PredictionUnit& curPu, const Pictu
   const int  nFilterIdx   = 1;
   const bool useAltHpelIf = false;
   const bool biMCForDMVR  = false;
+#if JVET_AL0161_4TAP_TM
+  const bool use4TapTM = (isLuma(m_compID) && !CU::isIBC(m_cu)) ? true : false;
+#endif
 
   if ( yFrac == 0 )
   {
-    m_interRes.m_if.filterHor( m_compID, (Pel*) ref, refStride, dst, dstStride, bw, bh, xFrac, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#if JVET_AL0161_4TAP_TM
+    m_interRes.m_if.filterHor( m_compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, xFrac, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf, 0, use4TapTM );
+#else
+    m_interRes.m_if.filterHor( m_compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, xFrac, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#endif
   }
   else if ( xFrac == 0 )
   {
-    m_interRes.m_if.filterVer( m_compID, (Pel*) ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#if JVET_AL0161_4TAP_TM
+    m_interRes.m_if.filterVer( m_compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf, 0, use4TapTM );
+#else
+    m_interRes.m_if.filterVer( m_compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#endif
   }
   else
   {
+#if JVET_AL0161_4TAP_TM
+    const int vFilterSize = isLuma(m_compID) ? (use4TapTM ? NTAPS_TM : NTAPS_BILINEAR) : NTAPS_CHROMA;
+#else
     const int vFilterSize = isLuma(m_compID) ? NTAPS_BILINEAR : NTAPS_CHROMA;
+#endif
     PelBuf tmpBuf = PelBuf(m_interRes.m_ifBuf, Size(bw, bh+vFilterSize-1));
 
-    m_interRes.m_if.filterHor( m_compID, (Pel*)ref - ((vFilterSize>>1) -1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh+vFilterSize-1, xFrac, false, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#if JVET_AL0161_4TAP_TM
+    m_interRes.m_if.filterHor( m_compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf, 0, use4TapTM );
+#else
+    m_interRes.m_if.filterHor( m_compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#endif
     JVET_J0090_SET_CACHE_ENABLE( false );
-    m_interRes.m_if.filterVer( m_compID, tmpBuf.buf + ((vFilterSize>>1) -1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#if JVET_AL0161_4TAP_TM
+    m_interRes.m_if.filterVer( m_compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf, 0, use4TapTM );
+#else
+    m_interRes.m_if.filterVer( m_compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
+#endif
     JVET_J0090_SET_CACHE_ENABLE( true );
   }
 
