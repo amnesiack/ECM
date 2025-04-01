@@ -2281,9 +2281,17 @@ void InterpolationFilter::filterVer(const ClpRng& clpRng, Pel const *src, int sr
  * \param  bitDepth   Bit depth
  */
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
+#if JVET_AL0161_4TAP_TM
+void InterpolationFilter::filterHor(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf, bool useBiFilt, bool use4TapTM
+#else
 void InterpolationFilter::filterHor(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf, bool useBiFilt
+#endif
+#else
+#if JVET_AL0161_4TAP_TM
+void InterpolationFilter::filterHor(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf, bool use4TapTM
 #else
 void InterpolationFilter::filterHor(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf
+#endif
 #endif
 #if JVET_AC0104_IBC_BVD_PREDICTION
                                   , const bool useCopyWithNoClipping
@@ -2315,10 +2323,25 @@ void InterpolationFilter::filterHor(const ComponentID compID, Pel const *src, in
     CHECK(frac < 0 || frac >= LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS, "Invalid fraction");
     if (nFilterIdx == 1)
     {
+#if JVET_AL0161_4TAP_TM
+      if (use4TapTM)
+      {
+        filterHor<NTAPS_TM>(clpRng, src, srcStride, dst, dstStride, width, height, isLast, g_aiExtIntraCubicFilter[frac << 2], biMCForDMVR);
+      }
+      else
+      {
+#if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
+        filterHor<NTAPS_BILINEAR>(clpRng, src, srcStride, dst, dstStride, width, height, isLast, (biMCForDMVR ? m_bilinearFilterPrec4 : m_bilinearFilter)[frac], biMCForDMVR);
+#else
+        filterHor<NTAPS_BILINEAR>(clpRng, src, srcStride, dst, dstStride, width, height, isLast, m_bilinearFilterPrec4[frac], biMCForDMVR);
+#endif
+      }
+#else
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
       filterHor<NTAPS_BILINEAR>( clpRng, src, srcStride, dst, dstStride, width, height, isLast, (biMCForDMVR ? m_bilinearFilterPrec4 : m_bilinearFilter)[frac], biMCForDMVR );
 #else
       filterHor<NTAPS_BILINEAR>(clpRng, src, srcStride, dst, dstStride, width, height, isLast, m_bilinearFilterPrec4[frac], biMCForDMVR);
+#endif
 #endif
     }
     else if (nFilterIdx == 2)
@@ -2500,9 +2523,17 @@ void InterpolationFilter::filterHor(const ComponentID compID, Pel const *src, in
  * \param  bitDepth   Bit depth
  */
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
+#if JVET_AL0161_4TAP_TM
+void InterpolationFilter::filterVer(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isFirst, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf, bool useBiFilt, bool use4TapTM)
+#else
 void InterpolationFilter::filterVer(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isFirst, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf, bool useBiFilt)
+#endif
+#else
+#if JVET_AL0161_4TAP_TM
+void InterpolationFilter::filterVer(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isFirst, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf, bool use4TapTM)
 #else
 void InterpolationFilter::filterVer(const ComponentID compID, Pel const *src, int srcStride, Pel *dst, int dstStride, int width, int height, int frac, bool isFirst, bool isLast, const ChromaFormat fmt, const ClpRng& clpRng, int nFilterIdx, bool biMCForDMVR, bool useAltHpelIf)
+#endif
 #endif
 {
   if( frac == 0 && nFilterIdx < 2 )
@@ -2522,10 +2553,25 @@ void InterpolationFilter::filterVer(const ComponentID compID, Pel const *src, in
     CHECK(frac < 0 || frac >= LUMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS, "Invalid fraction");
     if (nFilterIdx == 1)
     {
+#if JVET_AL0161_4TAP_TM
+      if (use4TapTM)
+      {
+        filterVer<NTAPS_TM>(clpRng, src, srcStride, dst, dstStride, width, height, isFirst, isLast, g_aiExtIntraCubicFilter[frac << 2], biMCForDMVR);
+      }
+      else
+      {
+#if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
+        filterVer<NTAPS_BILINEAR>(clpRng, src, srcStride, dst, dstStride, width, height, isFirst, isLast, (biMCForDMVR ? m_bilinearFilterPrec4 : m_bilinearFilter)[frac], biMCForDMVR);
+#else
+        filterVer<NTAPS_BILINEAR>(clpRng, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_bilinearFilterPrec4[frac], biMCForDMVR);
+#endif
+      }
+#else
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING
       filterVer<NTAPS_BILINEAR>( clpRng, src, srcStride, dst, dstStride, width, height, isFirst, isLast, (biMCForDMVR ? m_bilinearFilterPrec4 : m_bilinearFilter)[frac], biMCForDMVR );
 #else
       filterVer<NTAPS_BILINEAR>(clpRng, src, srcStride, dst, dstStride, width, height, isFirst, isLast, m_bilinearFilterPrec4[frac], biMCForDMVR);
+#endif
 #endif
     }
     else if (nFilterIdx == 2)

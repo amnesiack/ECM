@@ -433,6 +433,7 @@
 #define JVET_AE0091_HIGH_ACCURACY_TEMPLATE_MATCHING       1 // JVET-AE0091: High-Accuracy template matching
 #endif
 #define JVET_AK0085_TM_BOUNDARY_PADDING                   1 // Template Matching-based Reference Picture Padding
+#define JVET_AL0161_4TAP_TM                               1 // JVET-AL0161: On interpolation filter for template matching
 
 // Transform and coefficient coding
 #define TCQ_8STATES                                       1

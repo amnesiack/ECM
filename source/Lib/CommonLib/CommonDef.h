@@ -1655,6 +1655,9 @@ static const int NTAPS_BILINEAR           =                         2; ///< Numb
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
 static const int NTAPS_LUMA_IBC           =                         8; ///< Number of taps for IBC luma filter
 #endif
+#if JVET_AL0161_4TAP_TM
+static const int NTAPS_TM                 =                         4; ///< Number of taps for inter template matching filter
+#endif
 
 #if INTER_RM_SIZE_CONSTRAINTS
 static const int ATMVP_SUB_BLOCK_SIZE =                             2; ///< sub-block size for ATMVP
