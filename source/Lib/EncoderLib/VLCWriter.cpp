@@ -1882,6 +1882,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if ENABLE_DIMD
   WRITE_FLAG( pcSPS->getUseDimd() ? 1 : 0,                                             "sps_dimd_enabled_flag");
 #endif
+#if JVET_AL0108_BVG_DIMD
+  WRITE_FLAG( pcSPS->getUseBvgDimd() ? 1 : 0,                                          "sps_bvg_dimd_enabled_flag");
+#endif
 #if JVET_AE0059_INTER_CCCM
   WRITE_FLAG( pcSPS->getUseInterCccm() ? 1 : 0,                                        "sps_inter_cccm");
 #endif

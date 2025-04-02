@@ -521,6 +521,9 @@ protected:
 #if ENABLE_DIMD
   bool      m_dimd;
 #endif
+#if JVET_AL0108_BVG_DIMD
+  bool      m_bvgDimd;
+#endif
 #if JVET_W0123_TIMD_FUSION
   bool      m_timd;
 #if JVET_AJ0061_TIMD_MERGE

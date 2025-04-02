@@ -2887,6 +2887,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if ENABLE_DIMD
   READ_FLAG(uiCode, "sps_dimd_enabled_flag");                           pcSPS->setUseDimd(uiCode != 0);
 #endif
+#if JVET_AL0108_BVG_DIMD
+  READ_FLAG(uiCode, "sps_bvg_dimd_enabled_flag");                       pcSPS->setUseBvgDimd(uiCode != 0);
+#endif
 #if JVET_AE0059_INTER_CCCM
   READ_FLAG(uiCode, "sps_inter_cccm");                              pcSPS->setUseInterCccm( uiCode != 0 );
 #endif

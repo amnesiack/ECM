@@ -343,6 +343,14 @@ struct CodingUnit : public UnitArea
   int obicLocDep[OBIC_FUSION_NUM];
 #endif
 #endif
+#if JVET_AL0108_BVG_DIMD
+  bool           bvgDimdFlag;
+  int8_t         bvgDimdFusionWeight[BVG_DIMD_INTRA_NUM];
+  int8_t         bvgDimdMode[BVG_DIMD_INTRA_NUM];
+  int            bvDimdNum;
+  Mv             bvDimdList[BVG_DIMD_BV_LIST_SIZE];
+  int            bvDimdWeight[BVG_DIMD_BV_LIST_SIZE];
+#endif
 #if JVET_AG0146_DIMD_ITMP_IBC
   bool           isBvDimd;
   Mv             bvDimd;

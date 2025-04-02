@@ -319,6 +319,20 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #endif
   }
 #endif
+#if JVET_AL0108_BVG_DIMD
+  bvgDimdFlag      = other.bvgDimdFlag;
+  for (int i = 0; i < BVG_DIMD_INTRA_NUM; i++)
+  {
+    bvgDimdMode[i] = other.bvgDimdMode[i];
+    bvgDimdFusionWeight[i] = other.bvgDimdFusionWeight[i];
+  }
+  bvDimdNum = other.bvDimdNum;
+  for (int i = 0; i < BVG_DIMD_BV_LIST_SIZE; i++)
+  {
+    bvDimdList[i] = other.bvDimdList[i];
+    bvDimdWeight[i] = other.bvDimdWeight[i];
+  }
+#endif
 #if JVET_AG0146_DIMD_ITMP_IBC
   isBvDimd = other.isBvDimd;
   bvDimd = other.bvDimd;
@@ -688,6 +702,20 @@ void CodingUnit::initData()
 #if JVET_AK0056_WEIGHTED_OBIC
     obicLocDep[i] = 0;
 #endif
+  }
+#endif
+#if JVET_AL0108_BVG_DIMD
+  bvgDimdFlag      = false;
+  for (int i = 0; i < BVG_DIMD_INTRA_NUM; i++)
+  {
+    bvgDimdMode[i] = 0;
+    bvgDimdFusionWeight[i] = 0;
+  }
+  bvDimdNum = 0;
+  for (int i = 0; i < BVG_DIMD_BV_LIST_SIZE; i++)
+  {
+    bvDimdList[i] = Mv(0, 0);
+    bvDimdWeight[i] = 0;
   }
 #endif
 #if JVET_AG0146_DIMD_ITMP_IBC

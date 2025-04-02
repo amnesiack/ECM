@@ -612,6 +612,10 @@ private:
   static_vector<int64_t, NUM_LUMA_MODE> m_modesCoeffAbsSumDCT2;
   int64_t m_coeffAbsSumDCT2;
 #endif
+#if JVET_AL0108_BVG_DIMD
+  double     m_intraBestCostStore;
+  bool       m_intraBestCostValid;
+#endif
 #endif
 #if JVET_AJ0061_TIMD_MERGE
   static_vector<ModeInfo, NumTimdMode> m_uiSavedRdModeListTimd;
@@ -698,6 +702,9 @@ private:
   Distortion m_dSavedSadHadPdp;
   Distortion m_dSavedSadPdp;
   bool m_includeExcludingMode[NUM_LUMA_MODE];
+#endif
+#if JVET_AL0108_BVG_DIMD
+  Pel *m_bvgDimdPredBuf;
 #endif
   PelStorage      m_tmpStorageLCU;
   PelStorage      m_colorTransResiBuf;
@@ -804,6 +811,10 @@ public:
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool            m_skipNnLfnstMtsPass;
+#endif
+#if JVET_AL0108_BVG_DIMD
+  bool            m_skipBvgDimdLfnstMtsPass;
+  bool            m_skipBvgDimd;
 #endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   bool            m_skipCCCMSATD;

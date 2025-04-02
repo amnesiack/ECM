@@ -3978,6 +3978,13 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #if JVET_AH0076_OBIC
   bool obicModeDerived = false;
 #endif
+#if JVET_AL0108_BVG_DIMD
+  for(int i = 0; i < BVG_DIMD_INTRA_NUM; i++)
+  {
+    m_pcIntraSearch->m_bvgDimdMode[i] = -1;
+    m_pcIntraSearch->m_bvgDimdFusionWeight[i] = 0;
+  }
+#endif
 #if JVET_W0123_TIMD_FUSION
   bool timdDerived = false;
 #if JVET_AJ0061_TIMD_MERGE
@@ -4017,6 +4024,10 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   m_pcIntraSearch->m_skipNnLfnstMtsPass = false;
+#endif
+#if JVET_AL0108_BVG_DIMD
+  m_pcIntraSearch->m_skipBvgDimdLfnstMtsPass = false;
+  m_pcIntraSearch->m_skipBvgDimd = false;
 #endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   m_pcIntraSearch->m_skipCCCMSATD = false;
@@ -4566,7 +4577,11 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
 #endif
 #if JVET_AB0061_ITMP_BV_FOR_IBC
 #if !JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AL0108_BVG_DIMD
+            if (cu.tmpFlag || PU::hasBvgBv(*cu.firstPU))
+#else
             if (cu.tmpFlag)
+#endif
 #endif
             {
               PU::spanMotionInfo(*cu.firstPU);
@@ -28391,7 +28406,11 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
           IntraPrediction::deriveDimdModeList(bestCS->picture->getRecoBuf(area), area, cu, cu.candModeListForTransformMtss, cu.candCostListForTransformMtss);
         }
 #endif
-        if(cu.dimd && !cu.obicFlag)
+        if(cu.dimd && !cu.obicFlag
+#if JVET_AL0108_BVG_DIMD
+          && !cu.bvgDimdFlag
+#endif
+          )
         {
           PredictionUnit *pu = cu.firstPU;
           pu->intraDir[0] = cu.dimdMode;

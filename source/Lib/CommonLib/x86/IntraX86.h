@@ -2578,6 +2578,35 @@ template< X86_VEXT vext >
 void timdBlendingSIMD( Pel *pDst, int strideDst, Pel *pSrc, int strideSrc, int w0, int w1, int width, int height )
 {
   CHECK( (width % 4) != 0, "width should be multiple of 4" );
+#if JVET_AL0108_BVG_DIMD && USE_AVX2
+  if ((vext >= AVX2) && (width & 0x7) == 0)
+  {
+    const int shift = 6;
+    __m256i mw = _mm256_unpacklo_epi16(_mm256_set1_epi16(w0), _mm256_set1_epi16(w1));
+    __m256i msrc0, msrc1, msum0, msum1;
+
+    for (int row = 0; row < height; row++)
+    {
+      for (int col = 0; col < width; col += 8)
+      {
+        msrc0 = _mm256_castsi128_si256(_mm_lddqu_si128((__m128i*)(&pDst[col])));
+        msrc1 = _mm256_castsi128_si256(_mm_lddqu_si128((__m128i*)(&pSrc[col])));
+        msum0 = _mm256_unpacklo_epi16(msrc0, msrc1);
+        msum1 = _mm256_unpackhi_epi16(msrc0, msrc1);
+        msum0 = _mm256_madd_epi16(msum0, mw);
+        msum1 = _mm256_madd_epi16(msum1, mw);
+        msum0 = _mm256_srai_epi32(msum0, shift);
+        msum1 = _mm256_srai_epi32(msum1, shift);
+        msum0 = _mm256_packs_epi32(msum0, msum1);
+        _mm_storeu_si128((__m128i *)&pDst[col], _mm256_castsi256_si128(msum0));
+      }
+      pDst += strideDst;
+      pSrc += strideSrc;
+    }
+  }
+  else
+  {
+#endif  
   __m128i vw0 = _mm_set1_epi32( w0 );
   __m128i vw1 = _mm_set1_epi32( w1 );
   const int shift = 6;
@@ -2599,6 +2628,9 @@ void timdBlendingSIMD( Pel *pDst, int strideDst, Pel *pSrc, int strideSrc, int w
     pDst += strideDst;
     pSrc += strideSrc;
   }
+#if JVET_AL0108_BVG_DIMD && USE_AVX2
+  }
+#endif
 }
 #endif
 

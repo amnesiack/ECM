@@ -1867,6 +1867,9 @@ private:
 #if ENABLE_DIMD
   bool              m_dimd;
 #endif
+#if JVET_AL0108_BVG_DIMD
+  bool              m_bvgDimd;
+#endif
 #if JVET_W0123_TIMD_FUSION
   bool              m_timd;
 #if JVET_AJ0061_TIMD_MERGE
@@ -2681,6 +2684,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if ENABLE_DIMD
   void      setUseDimd         ( bool b )                                        { m_dimd = b; }
   bool      getUseDimd         ()                                      const     { return m_dimd; }
+#endif
+#if JVET_AL0108_BVG_DIMD
+  void      setUseBvgDimd      ( bool b )                                        { m_bvgDimd = b; }
+  bool      getUseBvgDimd      ()                                      const     { return m_bvgDimd; }
 #endif
 #if JVET_V0130_INTRA_TMP
   void      setUseIntraTMP     (bool b)                                          { m_intraTMP = b; }

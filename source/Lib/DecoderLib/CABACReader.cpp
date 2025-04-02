@@ -2564,6 +2564,12 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     return;
   }
 #endif
+#if JVET_AL0108_BVG_DIMD
+  if (cu.bvgDimdFlag)
+  {
+    return;
+  }
+#endif
   if( cu.bdpcmMode )
   {
     cu.firstPU->intraDir[0] = cu.bdpcmMode == 2? VER_IDX : HOR_IDX;
@@ -2933,8 +2939,41 @@ void CABACReader::cu_dimd_flag(CodingUnit& cu)
 
   unsigned ctxId = DeriveCtx::CtxDIMDFlag(cu);
   cu.dimd = m_BinDecoder.decodeBin(Ctx::DimdFlag(ctxId));
+#if JVET_AL0108_BVG_DIMD
+  cu.obicFlag = false;
+  cu.bvgDimdFlag = false;
+  if(!cu.dimd)
+  {
+    return;
+  }
+  const bool bvgDimdAvail = PU::isBvgDimdAvail(*cu.firstPU);
+  if (bvgDimdAvail)
+  {
+    const bool bDimd = m_BinDecoder.decodeBin(Ctx::RegularDimdFlag(0));
+    if (bDimd)
+    {
+      return;
+    }
+    const bool bObicAvail = PU::isObicAvail(*cu.firstPU);
+    if (bObicAvail)
+    {
+      cu_obic_flag(cu);
+      cu.bvgDimdFlag = !cu.obicFlag;
+    }
+    else
+    {
+      cu.bvgDimdFlag = true;
+    }
+  }
+  else
+  {
+    cu.bvgDimdFlag = false;
+#endif
 #if JVET_AH0076_OBIC
   cu_obic_flag(cu);
+#endif
+#if JVET_AL0108_BVG_DIMD
+  }
 #endif
   DTRACE(g_trace_ctx, D_SYNTAX, "cu_dimd_flag() ctx=%d pos=(%d,%d) dimd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.dimd);
 }

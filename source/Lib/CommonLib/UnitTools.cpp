@@ -1432,7 +1432,9 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
 )
 {
-#if JVET_AI0082_GPM_WITH_INTER_IBC
+#if JVET_AL0108_BVG_DIMD
+  if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu)))
+#elif JVET_AI0082_GPM_WITH_INTER_IBC
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag)))
 #else
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag)))
@@ -1500,7 +1502,11 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     return;
   }
 
+#if JVET_AL0108_BVG_DIMD
+  if (pu && (pu->cu->tmpFlag || PU::hasBvgBv(pu)))
+#else
   if (pu && pu->cu->tmpFlag)
+#endif
   {
     if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
     {
@@ -1531,6 +1537,9 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     if (pu->cu->tmpIdx > 0
 #if JVET_AG0136_INTRA_TMP_LIC
       && !pu->cu->tmpLicFlag
+#endif
+#if JVET_AL0108_BVG_DIMD
+      && !PU::hasBvgBv(pu)
 #endif
       )
     {
@@ -1625,7 +1634,11 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
     for (int n = 0; n < 5 && pBvs.size() < totalNum; n++)
     {
       const PredictionUnit* puCascaded = pu.cs->getPURestricted(posCand[n].offset(offsetX, offsetY), pu, pu.chType);
-      if (!puCascaded || ((puCascaded->cu->predMode != MODE_IBC) && (!puCascaded->cu->tmpFlag)))
+      if (!puCascaded || ((puCascaded->cu->predMode != MODE_IBC) && (!puCascaded->cu->tmpFlag)
+#if JVET_AL0108_BVG_DIMD
+        && !(PU::hasBvgBv(puCascaded))
+#endif
+        ))
       {
         continue;
       }
@@ -1759,7 +1772,11 @@ bool PU::checkValidIntraTmpMergeCand(const PredictionUnit& pu, Mv Bv)
   return validItmpBv(pu, Bv.hor, Bv.ver);
 }
 
-bool PU::validItmpBv(const PredictionUnit& pu, int tmpXdisp, int tmpYdisp)
+bool PU::validItmpBv(const PredictionUnit& pu, int tmpXdisp, int tmpYdisp
+#if JVET_AL0108_BVG_DIMD
+    , bool isAvailablePairFound
+#endif
+)
 {
   const int x = pu.lx();
   const int y = pu.ly();
@@ -1767,7 +1784,11 @@ bool PU::validItmpBv(const PredictionUnit& pu, int tmpXdisp, int tmpYdisp)
   const int h = pu.lheight();
 
   const Position p1(x + tmpXdisp + w - 1, y + tmpYdisp + h - 1);
+#if JVET_AL0108_BVG_DIMD
+  if (!isAvailablePairFound && !pu.cs->isDecomp(p1, CHANNEL_TYPE_LUMA))
+#else
   if (!pu.cs->isDecomp(p1, CHANNEL_TYPE_LUMA))
+#endif  
   {
     return 0;
   }
@@ -3487,6 +3508,16 @@ bool PU::isTmp(const PredictionUnit& pu, const ChannelType& chType)
 	return (chType == CHANNEL_TYPE_LUMA && pu.cu->tmpFlag);
 }
 #endif
+#if JVET_AL0108_BVG_DIMD
+bool PU::hasBvgBv(const PredictionUnit *pu, const ChannelType &chType) 
+{
+  return pu->cu->bvgDimdFlag && chType == CHANNEL_TYPE_LUMA;
+}
+bool PU::hasBvgBv(const PredictionUnit &pu, const ChannelType &chType) 
+{
+  return pu.cu->bvgDimdFlag && chType == CHANNEL_TYPE_LUMA;
+}
+#endif  
 bool PU::isDMChromaMIP(const PredictionUnit &pu)
 {
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
@@ -5582,7 +5613,28 @@ bool PU::checkAvailBlocks(const PredictionUnit &pu)
   return true;
 }
 #endif
-  
+#if JVET_AL0108_BVG_DIMD
+bool PU::isBvgDimdAvail(const PredictionUnit &pu)
+{
+  if (!pu.lumaPos().x && !pu.lumaPos().y)
+  {
+    return false;
+  }
+
+  if (!pu.Y().valid() || pu.cu->predMode != MODE_INTRA || !isLuma(pu.cu->chType) || !pu.cu->slice->getSPS()->getUseDimd() || !pu.cu->slice->getSPS()->getUseBvgDimd())
+  {
+    return false;
+  }
+
+  const bool allowTmp = pu.lwidth() <= pu.cs->sps->getIntraTMPMaxSize() && pu.lheight() <= pu.cs->sps->getIntraTMPMaxSize();
+  if(!allowTmp)
+  {
+    return false;
+  }
+
+  return true;
+}
+#endif  
 #if JVET_AB0155_SGPM
 uint32_t PU::getIntraDirLuma(const PredictionUnit &pu, const int partIdx)
 {
@@ -6146,7 +6198,11 @@ bool PU::dbvModeAvail(const PredictionUnit &pu)
 #endif
   {
     const PredictionUnit &lumaPU = PU::getCoLocatedLumaPU(pu);
+#if JVET_AL0108_BVG_DIMD
+    return lumaPU.cu->tmpFlag || CU::isIBC(*lumaPU.cu) || hasBvgBv(lumaPU);
+#else
     return lumaPU.cu->tmpFlag || CU::isIBC(*lumaPU.cu);
+#endif
   }
 #endif
   CompArea lumaArea = CompArea(COMPONENT_Y, pu.chromaFormat, pu.Cb().lumaPos(), recalcSize(pu.chromaFormat, CHANNEL_TYPE_CHROMA, CHANNEL_TYPE_LUMA, pu.Cb().size()));
@@ -6161,7 +6217,9 @@ bool PU::dbvModeAvail(const PredictionUnit &pu)
 #else
     const PredictionUnit *lumaPU = pu.cs->picture->cs->getPU(posList[n], CHANNEL_TYPE_LUMA);
 #endif
-#if JVET_AB0061_ITMP_BV_FOR_IBC
+#if JVET_AL0108_BVG_DIMD
+    if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU) || hasBvgBv(lumaPU))
+#elif JVET_AB0061_ITMP_BV_FOR_IBC
     if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU))
 #else
     if (CU::isIBC(*lumaPU->cu))
@@ -6221,7 +6279,9 @@ void PU::deriveChromaBv(PredictionUnit &pu)
 #else
     const PredictionUnit *lumaPU = pu.cs->picture->cs->getPU(posList[n], CHANNEL_TYPE_LUMA);
 #endif
-#if JVET_AB0061_ITMP_BV_FOR_IBC
+#if JVET_AL0108_BVG_DIMD
+    if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU) || hasBvgBv(lumaPU))
+#elif JVET_AB0061_ITMP_BV_FOR_IBC
     if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU))
 #else
     if (CU::isIBC(*lumaPU->cu))
@@ -7350,7 +7410,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   }
 #endif
 #if JVET_AB0061_ITMP_BV_FOR_IBC
-  const bool isAvailableA1 = puLeft && pu.cu != puLeft->cu && (CU::isIBC(*puLeft->cu) || puLeft->cu->tmpFlag);
+  const bool isAvailableA1 = puLeft && pu.cu != puLeft->cu && (CU::isIBC(*puLeft->cu) || puLeft->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+    || hasBvgBv(puLeft)
+#endif
+    );
 #else
   const bool isAvailableA1 = puLeft && pu.cu != puLeft->cu && CU::isIBC(*puLeft->cu);
 #endif
@@ -7512,7 +7576,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   // above
   const PredictionUnit *puAbove = cs.getPURestricted(posRT.offset(0, -1), pu, pu.chType);
 #if JVET_AB0061_ITMP_BV_FOR_IBC
-  bool isAvailableB1 = puAbove && pu.cu != puAbove->cu && (CU::isIBC(*puAbove->cu) || puAbove->cu->tmpFlag);
+  bool isAvailableB1 = puAbove && pu.cu != puAbove->cu && (CU::isIBC(*puAbove->cu) || puAbove->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+    || hasBvgBv(puAbove)
+#endif
+    );
 #else
   bool isAvailableB1 = puAbove && pu.cu != puAbove->cu && CU::isIBC(*puAbove->cu);
 #endif
@@ -7690,7 +7758,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   // above right
   const PredictionUnit *puAboveRight = cs.getPURestricted(posRT.offset(1, -1), pu, pu.chType);
 #if JVET_AB0061_ITMP_BV_FOR_IBC
-  bool isAvailableB0 = puAboveRight && pu.cu != puAboveRight->cu && (CU::isIBC(*puAboveRight->cu) || puAboveRight->cu->tmpFlag);
+  bool isAvailableB0 = puAboveRight && pu.cu != puAboveRight->cu && (CU::isIBC(*puAboveRight->cu) || puAboveRight->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+    || hasBvgBv(puAboveRight)
+#endif
+    );
 #else
   bool isAvailableB0 = puAboveRight && pu.cu != puAboveRight->cu && CU::isIBC(*puAboveRight->cu);
 #endif
@@ -7859,7 +7931,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   //left bottom
   const PredictionUnit *puLeftBottom = cs.getPURestricted(posLB.offset(-1, 1), pu, pu.chType);
 #if JVET_AB0061_ITMP_BV_FOR_IBC
-  bool isAvailableA0 = puLeftBottom && pu.cu != puLeftBottom->cu && (CU::isIBC(*puLeftBottom->cu) || puLeftBottom->cu->tmpFlag);
+  bool isAvailableA0 = puLeftBottom && pu.cu != puLeftBottom->cu && (CU::isIBC(*puLeftBottom->cu) || puLeftBottom->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+    || hasBvgBv(puLeftBottom)
+#endif
+    );
 #else
   bool isAvailableA0 = puLeftBottom && pu.cu != puLeftBottom->cu && CU::isIBC(*puLeftBottom->cu);
 #endif
@@ -8038,7 +8114,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   {
     const PredictionUnit *puAboveLeft = cs.getPURestricted(posLT.offset(-1, -1), pu, pu.chType);
 #if JVET_AB0061_ITMP_BV_FOR_IBC
-    bool isAvailableB2 = puAboveLeft && pu.cu != puAboveLeft->cu && (CU::isIBC(*puAboveLeft->cu) || puAboveLeft->cu->tmpFlag);
+    bool isAvailableB2 = puAboveLeft && pu.cu != puAboveLeft->cu && (CU::isIBC(*puAboveLeft->cu) || puAboveLeft->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+    || hasBvgBv(puAboveLeft)
+#endif
+      );
 #else
     bool isAvailableB2 = puAboveLeft && pu.cu != puAboveLeft->cu && CU::isIBC(*puAboveLeft->cu);
 #endif
@@ -8281,7 +8361,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
         }
 
         const PredictionUnit *puNonAdjacent = cs.getPURestricted(posLT.offset(offsetX, offsetY), pu, pu.chType);
-        bool isAvailableNonAdjacent = puNonAdjacent && pu.cu != puNonAdjacent->cu && (CU::isIBC(*puNonAdjacent->cu) || puNonAdjacent->cu->tmpFlag);
+        bool isAvailableNonAdjacent = puNonAdjacent && pu.cu != puNonAdjacent->cu && (CU::isIBC(*puNonAdjacent->cu) || puNonAdjacent->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+            || hasBvgBv(puNonAdjacent)
+#endif
+          );
 
 #if JVET_AI0082_GPM_WITH_INTER_IBC
         bool isAvailableNonAdjacentGpmIbc = puNonAdjacent && pu.cu != puNonAdjacent->cu && CU::isInter(*puNonAdjacent->cu) && puNonAdjacent->cu->geoFlag;
@@ -8500,7 +8584,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
         }
 
         const PredictionUnit *puNonAdjacent = cs.getPURestricted(posLT.offset(offsetX, offsetY), pu, pu.chType);
-        bool isAvailableNonAdjacent = puNonAdjacent && pu.cu != puNonAdjacent->cu && (CU::isIBC(*puNonAdjacent->cu) || puNonAdjacent->cu->tmpFlag);
+        bool isAvailableNonAdjacent = puNonAdjacent && pu.cu != puNonAdjacent->cu && (CU::isIBC(*puNonAdjacent->cu) || puNonAdjacent->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+            || hasBvgBv(puNonAdjacent)
+#endif
+          );
 
 #if JVET_AI0082_GPM_WITH_INTER_IBC
         bool isAvailableNonAdjacentGpmIbc = puNonAdjacent && pu.cu != puNonAdjacent->cu && CU::isInter(*puNonAdjacent->cu) && puNonAdjacent->cu->geoFlag;
@@ -8800,7 +8888,11 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
       {
         const PredictionUnit* puCascaded = cs.getPURestricted(posCand[n].offset(offsetX, offsetY), pu, pu.chType);
         bool                  isAvailableCascaded =
-          puCascaded && pu.cu != puCascaded->cu && (CU::isIBC(*puCascaded->cu) || puCascaded->cu->tmpFlag);
+          puCascaded && pu.cu != puCascaded->cu && (CU::isIBC(*puCascaded->cu) || puCascaded->cu->tmpFlag
+#if JVET_AL0108_BVG_DIMD
+            || hasBvgBv(puCascaded)
+#endif
+            );
 #if JVET_AI0082_GPM_WITH_INTER_IBC
         bool isAvailableCascadedGpm = puCascaded && pu.cu != puCascaded->cu && CU::isInter(*puCascaded->cu) && puCascaded->cu->geoFlag;
         if (isAvailableCascadedGpm)
@@ -30325,8 +30417,10 @@ void PU::spanMotionInfo( PredictionUnit &pu, const MergeCtx &mrgCtx )
   if (!pu.mergeFlag || pu.mergeType == MRG_TYPE_DEFAULT_N || pu.mergeType == MRG_TYPE_IBC)
   {
     MotionInfo mi;
-
-#if JVET_AB0061_ITMP_BV_FOR_IBC
+#if JVET_AL0108_BVG_DIMD
+    mi.isInter  = !CU::isIntra(*pu.cu) || pu.cu->tmpFlag || PU::hasBvgBv(pu);
+    mi.isIBCmot = CU::isIBC(*pu.cu) || pu.cu->tmpFlag || PU::hasBvgBv(pu);
+#elif JVET_AB0061_ITMP_BV_FOR_IBC
     mi.isInter  = !CU::isIntra(*pu.cu) || pu.cu->tmpFlag;
     mi.isIBCmot = CU::isIBC(*pu.cu) || pu.cu->tmpFlag;
 #else
@@ -34666,7 +34760,11 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
   PredictionUnit subPu = pu;
   subPu.UnitArea::operator=(CS::getArea(*pu.cs, UnitArea(pu.chromaFormat, Area(posSubBlock, Size{ uiMinCUW, uiMinCUW })), pu.chType));
   bool validInter = mi.isInter && !mi.isIBCmot;
-  bool validIBC = mi.isIBCmot && mi.rribcFlipType == 0 && checkIsIBCCandidateValidBi(subPu, mi) && !tmpPu->cu->tmpFlmFlag && !tmpPu->cu->tmpFusionFlag && !tmpPu->cu->ibcFilterFlag && !(tmpPu->cu->ibcLicFlag && tmpPu->cu->ibcLicIdx == IBC_LIC_IDX_M);
+  bool validIBC = mi.isIBCmot && mi.rribcFlipType == 0 && checkIsIBCCandidateValidBi(subPu, mi) && !tmpPu->cu->tmpFlmFlag && !tmpPu->cu->tmpFusionFlag && !tmpPu->cu->ibcFilterFlag && !(tmpPu->cu->ibcLicFlag && tmpPu->cu->ibcLicIdx == IBC_LIC_IDX_M)
+#if JVET_AL0108_BVG_DIMD
+    && !tmpPu->cu->bvgDimdFlag
+#endif
+    ;
   if (validInter || validIBC) // inter
 #else
   if (mi.isInter && !mi.isIBCmot) // inter
@@ -34785,7 +34883,11 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
       {
         subPu.Y().height += uiMinCUW;
       }
-      bool invalidIBC = miNeigh.isIBCmot && (miNeigh.rribcFlipType != 0 || !checkIsIBCCandidateValidBi(subPu, miNeigh) || tmpPu1->cu->tmpFlmFlag || tmpPu1->cu->tmpFusionFlag || tmpPu1->cu->ibcFilterFlag || (tmpPu1->cu->ibcLicFlag && tmpPu1->cu->ibcLicIdx == IBC_LIC_IDX_M));
+      bool invalidIBC = miNeigh.isIBCmot && (miNeigh.rribcFlipType != 0 || !checkIsIBCCandidateValidBi(subPu, miNeigh) || tmpPu1->cu->tmpFlmFlag || tmpPu1->cu->tmpFusionFlag || tmpPu1->cu->ibcFilterFlag || (tmpPu1->cu->ibcLicFlag && tmpPu1->cu->ibcLicIdx == IBC_LIC_IDX_M)
+#if JVET_AL0108_BVG_DIMD
+        || tmpPu1->cu->bvgDimdFlag
+#endif
+        );
       if (mi.interDir != miNeigh.interDir || mi.isIBCmot != miNeigh.isIBCmot || !miNeigh.isInter || invalidIBC)
 #else
       if (mi.interDir != miNeigh.interDir || miNeigh.isIBCmot || !miNeigh.isInter)
@@ -34953,7 +35055,11 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
         subPu.Y().height += uiMinCUW;
       }
       const MotionInfo& miNeigh = tmpPu->getMotionInfo(posNeighborMotion);
-      bool invalidIBC = miNeigh.isIBCmot && (miNeigh.rribcFlipType != 0 || !checkIsIBCCandidateValidBi(subPu, miNeigh) || tmpPu->cu->tmpFlmFlag || tmpPu->cu->tmpFusionFlag || tmpPu->cu->ibcFilterFlag || (tmpPu->cu->ibcLicFlag && tmpPu->cu->ibcLicIdx == IBC_LIC_IDX_M));
+      bool invalidIBC = miNeigh.isIBCmot && (miNeigh.rribcFlipType != 0 || !checkIsIBCCandidateValidBi(subPu, miNeigh) || tmpPu->cu->tmpFlmFlag || tmpPu->cu->tmpFusionFlag || tmpPu->cu->ibcFilterFlag || (tmpPu->cu->ibcLicFlag && tmpPu->cu->ibcLicIdx == IBC_LIC_IDX_M)
+#if JVET_AL0108_BVG_DIMD
+        || tmpPu->cu->bvgDimdFlag
+#endif
+        );
       if (!miNeigh.isInter || invalidIBC)
 #else
       if (!tmpPu->getMotionInfo(posNeighborMotion).isInter || tmpPu->getMotionInfo(posNeighborMotion).isIBCmot)
@@ -36286,6 +36392,17 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
         secModeFound = true;
       }
     }
+#if JVET_AL0108_BVG_DIMD
+    if (tu.cu->bvgDimdFlag)
+    {
+      int testMode = tu.cu->bvgDimdMode[1];
+      if (testMode != intraMode)
+      {
+        secondIntraMode = testMode;
+        secModeFound = true;
+      }
+    }
+#endif
     if (secModeFound == false && !tu.cu->sgpm && !tu.cu->eipFlag && intraMode != PNN_IDX && !tu.cu->timd && !tu.cu->lfnstIdx)
     {
       CHECK(tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size");
@@ -36381,6 +36498,13 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
       testMode = tu.cu->obicMode[1];
       validMode = true;
     }
+#if JVET_AL0108_BVG_DIMD
+    if (tu.cu->bvgDimdFlag)
+    {
+      testMode = tu.cu->bvgDimdMode[1];
+      validMode = true;
+    }
+#endif
 
     if (PU::isMIP(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID)))
     {
@@ -36764,6 +36888,17 @@ uint32_t PU::getFinalIntraModeForTransform( const TransformUnit &tu, const Compo
         secModeFound = true;
       }
     }
+#if JVET_AL0108_BVG_DIMD
+    if (tu.cu->bvgDimdFlag)
+    {
+      int testMode = tu.cu->bvgDimdMode[1];
+      if (testMode != intraMode)
+      {
+        secondIntraMode = testMode;
+        secModeFound = true;
+      }
+    }
+#endif
     if (secModeFound == false && !tu.cu->sgpm && !tu.cu->eipFlag && intraMode != PNN_IDX && !tu.cu->timd && !tu.cu->lfnstIdx)
     {
       CHECK(tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size");
