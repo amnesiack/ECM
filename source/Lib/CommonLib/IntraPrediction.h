@@ -1091,7 +1091,11 @@ public:
 #endif
 #endif
 #if JVET_AD0085_MPM_SORTING
-  void deriveMPMSorted            (const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx
+  void deriveMPMSorted            (
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+    bool planarDisable,
+#endif
+    const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx
 #if JVET_AK0061_PDP_MPM
     , const bool& pdpRefAvailable = false, const bool& allPDPMode = false
 #endif

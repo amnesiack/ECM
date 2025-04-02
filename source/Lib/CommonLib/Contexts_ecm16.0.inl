@@ -1127,7 +1127,30 @@ const CtxSet ContextSetCfg::IntraLumaSecondMpmIdx = ContextSetCfg::addCtxSet({
  { 153, 82, 84, DWO, DWO, },
  { 99, 250, 251, DWO, DWO, },
 });
-
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+const CtxSet ContextSetCfg::IntraLumaMPMfistIdxFlag = ContextSetCfg::addCtxSet({
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { CNU, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWS, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWE, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+  { DWO, },
+});
+#endif
 const CtxSet ContextSetCfg::IntraLumaPlanarFlag = ContextSetCfg::addCtxSet({
 // ctx 160 to 163
  { 14, 14, 26, 28, },
@@ -1151,7 +1174,6 @@ const CtxSet ContextSetCfg::IntraLumaPlanarFlag = ContextSetCfg::addCtxSet({
  { 118, 117, 83, 91, },
  { 116, 116, 148, 211, },
 });
-
 const CtxSet ContextSetCfg::CclmModeFlag = ContextSetCfg::addCtxSet({
 // ctx 164
  { 20, },

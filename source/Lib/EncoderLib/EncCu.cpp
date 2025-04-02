@@ -18337,6 +18337,9 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
       cu.dimdMode = dimdMode;
       cu.dimdBlendMode[0] = dimdBlendMode[0];
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+      cu.dimdBlendMode[1] = dimdBlendMode[1];
+#endif
 #if JVET_AK0059_MDIP
       cu.isModeExcluded = false;
 #endif

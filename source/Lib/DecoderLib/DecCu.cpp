@@ -551,7 +551,18 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #if JVET_AK0061_PDP_MPM
           bool enablePlanarSort = false;
           enablePlanarSort = PU::determinePDPTemp(*currCU.firstPU);
-          if (PU::allowMPMSorted(*currCU.firstPU) && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0 && !enablePlanarSort))
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+          bool planarDisable = false;
+          if (currCU.slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(currCU))
+          {
+            planarDisable = true;
+          }
+          if (PU::allowMPMSorted(*currCU.firstPU)
+              && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0 && !(enablePlanarSort || planarDisable)))
+#else
+          if (PU::allowMPMSorted(*currCU.firstPU)
+              && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0 && !enablePlanarSort))
+#endif
 #else
           if (PU::allowMPMSorted(*currCU.firstPU) && !(currCU.firstPU->mpmFlag && currCU.firstPU->ipredIdx == 0))
 #endif

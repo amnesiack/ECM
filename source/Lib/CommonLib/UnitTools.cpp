@@ -1845,6 +1845,13 @@ int PU::getIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t* nonMpm
 int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType &channelType /*= CHANNEL_TYPE_LUMA*/)
 #endif
 {
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+  bool planarDisable = false;
+  if (pu.cu->slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(*pu.cu)&& enableNonSortPDP)
+  {
+    planarDisable = true;
+  }
+ #endif
 #if JVET_AK0061_PDP_MPM
   bool pdpRefAvailable = false;
   if (pIntraPred != nullptr && enableNonSortPDP)
@@ -1856,7 +1863,11 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 #if JVET_AD0085_TMRL_EXTENSION && SECONDARY_MPM
   int numCand = 0;  
 #if JVET_AK0061_PDP_MPM
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+  if (!(pdpRefAvailable||planarDisable)) 
+ #else 
   if (!pdpRefAvailable) 
+ #endif
   {
     mpm[numCand++] = PLANAR_IDX; 
   }
@@ -1867,6 +1878,16 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 #if JVET_AD0085_MPM_SORTING
 #if JVET_AK0061_PDP_MPM
   int maxCand = 0;
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+  if (planarDisable||pdpRefAvailable) 
+  {
+    maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 2 : NUM_MOST_PROBABLE_MODES;
+  }
+  else
+  {
+    maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
+  }
+#else 
   if (pdpRefAvailable)
   {
     maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 2 : NUM_MOST_PROBABLE_MODES;
@@ -1875,6 +1896,7 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
   {
     maxCand = pIntraPred && mpmSort ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
   }
+#endif
 #else
   int maxCand = pIntraPred ? NUM_PRIMARY_MOST_PROBABLE_MODES + 1 : NUM_MOST_PROBABLE_MODES - 1;
 #endif
@@ -1882,16 +1904,28 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 #else
   int maxCand = NUM_MOST_PROBABLE_MODES - 1;
 #endif
-  numCand += getSpatialIpm(pu,
+  numCand += getSpatialIpm(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  planarDisable,
+#endif
+    pu,
 #if JVET_AK0061_PDP_MPM
-    pdpRefAvailable ? mpm : mpm + 1,
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+     planarDisable||pdpRefAvailable ? mpm : mpm + 1,
+ #else 
+     pdpRefAvailable ? mpm : mpm + 1,
+ #endif
 #else
     mpm + 1,
 #endif
     maxCand
 #if JVET_AC0094_REF_SAMPLES_OPT
 #if JVET_AK0061_PDP_MPM
-    , isForcedValid || pdpRefAvailable
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+      , isForcedValid || pdpRefAvailable||planarDisable
+#else 
+     , isForcedValid || pdpRefAvailable
+#endif
 #else
     , isForcedValid
 #endif
@@ -1910,7 +1944,12 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
   {
     return numCand;
   }
-  fillMPMList(pu, mpm, NUM_MOST_PROBABLE_MODES, numCand
+  fillMPMList(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  mpmSort,
+  planarDisable,
+#endif
+    pu, mpm, NUM_MOST_PROBABLE_MODES, numCand
 #if JVET_AK0061_PDP_MPM
     , false, pdpRefAvailable
 #endif
@@ -2367,7 +2406,11 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
 
       if (pIntraPred && numValidMPM > 2)
       {
-        pIntraPred->deriveMPMSorted(pu, mpm, numValidMPM, 1);
+        pIntraPred->deriveMPMSorted(
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+      false,
+ #endif
+          pu, mpm, numValidMPM, 1);
 
         if (!pu.cs->pcv->isEncoder && pu.mpmFlag && pu.ipredIdx < numValidMPM)
         {
@@ -36915,7 +36958,11 @@ int getPDPPredMode(const SizeType& width, const SizeType& height, const uint8_t&
 #endif
 
 #if JVET_AD0085_TMRL_EXTENSION
-int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCands
+int getSpatialIpm(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  bool planarDisable,
+#endif
+  const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCands
 #if JVET_AC0094_REF_SAMPLES_OPT
   , const bool& isForcedValid
 #endif
@@ -36969,7 +37016,11 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
   const int sizeKey = (width << 8) + height;
   const int sizeIdx = pdpRefAvailable ? g_size[sizeKey] : -1;
   bool allPDPMode = true;
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+  if (pdpRefAvailable&&!planarDisable)
+ #else
   if (pdpRefAvailable)
+ #endif
   {
     spatialIpm[numCand++] = PLANAR_IDX;
   }
@@ -37077,14 +37128,74 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
       }
     }
   };
-
+  #if JVET_AL0125_IMPROVEMENT_ON_MPM
+  #if SECONDARY_MPM
+  //adding dimd modes
+  if (pu.cu->slice->getSPS()->getUseDimd())
+  {
+    if (pu.cu->dimdMode != -1 && numCand < maxCands)
+    {
+      auto currMode = pu.cu->dimdMode;
+      if (extPrecision)
+      {
+        currMode = MAP67TO131(currMode);
+      }
+      spatialIpm[numCand] = currMode;
+#if JVET_AK0061_PDP_MPM
+      if (pdpRefAvailable) 
+      {
+        spatialIpm[numCand] = getPDPPredMode(width, height, spatialIpm[numCand], includedMode);
+      }
+#endif 
+      if (!includedMode[spatialIpm[numCand]])
+      {
+#if JVET_AK0061_PDP_MPM
+        if (pdpRefAvailable) 
+        {
+          allPDPMode &= g_pdpFilters[spatialIpm[numCand]][sizeIdx] != nullptr;
+        }
+#endif
+        includedMode[spatialIpm[numCand++]] = true;
+      }
+    }
+   for(int i=0;i<2;i++) 
+   {
+    if (pu.cu->dimdBlendMode[i] != -1 && numCand < maxCands)
+    {
+      auto currMode = pu.cu->dimdBlendMode[i];
+      if (extPrecision)
+      {
+        currMode = MAP67TO131(currMode);
+      }
+      spatialIpm[numCand] = currMode;
+#if JVET_AK0061_PDP_MPM
+      if (pdpRefAvailable) 
+      {
+        spatialIpm[numCand] = getPDPPredMode(width, height, spatialIpm[numCand], includedMode);
+      }
+#endif
+      if (!includedMode[spatialIpm[numCand]])
+      {
+#if JVET_AK0061_PDP_MPM
+        if (pdpRefAvailable) 
+        {
+          allPDPMode &= g_pdpFilters[spatialIpm[numCand]][sizeIdx] != nullptr;
+        }
+#endif
+        includedMode[spatialIpm[numCand++]] = true;
+      }
+    }
+   }
+  }
+#endif
+#endif
   // add spatial positions
   getIpm(topLeft.offset(-1, pu.Y().height - 1));
   getIpm(topLeft.offset(pu.Y().width - 1, -1));
   getIpm(topLeft.offset(-1, -1));
   getIpm(topLeft.offset(pu.Y().width, -1));
   getIpm(topLeft.offset(-1, pu.Y().height));
-
+#if !JVET_AL0125_IMPROVEMENT_ON_MPM
 #if SECONDARY_MPM
   //adding dimd modes
   if (pu.cu->slice->getSPS()->getUseDimd())
@@ -37142,6 +37253,7 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
     }
   }
 #endif
+#endif
 
   // non-adjacent spatial candidates
   int offsetX = 0;
@@ -37174,7 +37286,11 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
 #endif
     && numCand > ((pu.cs->slice->getSliceType() == I_SLICE) ? NUM_PRIMARY_MOST_PROBABLE_MODES - 1 : 1))
   {
-    pIntraPred->deriveMPMSorted(pu, spatialIpm, numCand, 0
+    pIntraPred->deriveMPMSorted(
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+      planarDisable,
+ #endif
+      pu, spatialIpm, numCand, 0
 #if JVET_AK0061_PDP_MPM
       , pdpRefAvailable, allPDPMode
 #endif
@@ -37203,7 +37319,12 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
   return numCand;
 }
 
-void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, const int numCand, bool extPrecision
+void fillMPMList(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+ const bool &mpmSort,
+ bool planarDisable,
+#endif
+  const PredictionUnit& pu, uint8_t* mpm, const int maxCands, const int numCand, bool extPrecision
 #if JVET_AK0061_PDP_MPM
   , const bool& pdpRefAvailable
 #endif
@@ -37240,7 +37361,11 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
 
 ///< make sure the planar mode in the mpm list
 #if JVET_AK0061_PDP_MPM 
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  if (!planarDisable&&pdpRefAvailable && !includedMode[PLANAR_IDX]) 
+#else
   if (pdpRefAvailable && !includedMode[PLANAR_IDX]) 
+#endif
   {
     includedMode[PLANAR_IDX] = true;
     mpm[idx++] = PLANAR_IDX;
@@ -37250,7 +37375,11 @@ void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int maxCands, con
   const int offset = extPrecision ? EXT_VDIA_IDX - 5 : NUM_LUMA_MODE - 6;
   const int mod = offset + 3;
 #if JVET_AK0059_MDIP
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu)&&!mpmSort)
+#else
   if(pu.cu->isModeExcluded && CU::allowMdip(*pu.cu))
+#endif
   {
     for (int deltaAngular = 0; deltaAngular < 4; deltaAngular++)
     {

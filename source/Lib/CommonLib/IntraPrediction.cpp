@@ -10310,7 +10310,11 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 #endif
     int numCand = 0;
     mpmList[numCand++] = PLANAR_IDX;
-    numCand += getSpatialIpm(pu, mpmList + 1, numRegularMode - 1
+    numCand += getSpatialIpm(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  false,
+#endif
+      pu, mpmList + 1, numRegularMode - 1
 #if JVET_AC0094_REF_SAMPLES_OPT
       , true
 #endif
@@ -10319,7 +10323,12 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 #endif
 
     );
-    fillMPMList(pu, mpmList, numRegularMode, numCand, false
+    fillMPMList(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  false,
+  false,
+#endif
+      pu, mpmList, numRegularMode, numCand, false
 #if JVET_AK0061_PDP_MPM
       , false 
 #endif
@@ -10918,7 +10927,11 @@ void IntraPrediction::xFillPDPTempReferenceSamples2(const CPelBuf& recoBuf, cons
 #endif
 
 #if JVET_AD0085_MPM_SORTING
-void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx
+void IntraPrediction::deriveMPMSorted(
+ #if JVET_AL0125_IMPROVEMENT_ON_MPM
+    bool  planarDisable,
+ #endif
+  const PredictionUnit& pu, uint8_t* mpm, int& sortedSize, int iStartIdx
 #if JVET_AK0061_PDP_MPM
   , const bool& pdpRefAvailable, const bool& allPDPMode
 #endif
@@ -10938,7 +10951,11 @@ void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, in
   static_vector<uint8_t, NUM_MOST_PROBABLE_MODES> uiModeList;
   static_vector<uint64_t, NUM_MOST_PROBABLE_MODES> uiCostList;
 #if JVET_AK0061_PDP_MPM
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  int iBestN = std::min(planarDisable||pdpRefAvailable ? NUM_PRIMARY_MOST_PROBABLE_MODES : (NUM_PRIMARY_MOST_PROBABLE_MODES - 1), sortedSize);
+#else
   int iBestN = std::min(pdpRefAvailable ? NUM_PRIMARY_MOST_PROBABLE_MODES : (NUM_PRIMARY_MOST_PROBABLE_MODES - 1), sortedSize);
+#endif
 #else
   int iBestN = std::min(NUM_PRIMARY_MOST_PROBABLE_MODES - 1, sortedSize);
 #endif
@@ -10946,7 +10963,11 @@ void IntraPrediction::deriveMPMSorted(const PredictionUnit& pu, uint8_t* mpm, in
   if (!pu.cs->pcv->isEncoder && pu.mpmFlag && pu.ipredIdx < iBestN)
   {
 #if JVET_AK0061_PDP_MPM
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+    if (pdpRefAvailable||planarDisable)
+#else
     if (pdpRefAvailable) 
+#endif
     {
       iBestN = pu.ipredIdx + 1;
     }
@@ -33924,7 +33945,11 @@ void IntraPrediction::getTmrlSearchRange(const PredictionUnit& pu, int8_t* tmrlR
 #if JVET_AK0059_MDIP
   cu.isModeExcluded = false;
 #endif
-  int numCand = getSpatialIpm(pu, tmrlIntraList, sizeMode
+  int numCand = getSpatialIpm(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  false,
+#endif
+    pu, tmrlIntraList, sizeMode
 #if JVET_AC0094_REF_SAMPLES_OPT
                             , true
 #endif
@@ -33934,7 +33959,12 @@ void IntraPrediction::getTmrlSearchRange(const PredictionUnit& pu, int8_t* tmrlR
 #endif
 
   );
-  fillMPMList(pu, tmrlIntraList, sizeMode, numCand, true
+  fillMPMList(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  false,
+  false,
+#endif
+    pu, tmrlIntraList, sizeMode, numCand, true
 #if JVET_AK0061_PDP_MPM
     , false
 #endif
@@ -34419,7 +34449,12 @@ void IntraPrediction::getChromaTmrlSearchRange(const PredictionUnit& pu, int8_t*
 #if JVET_AK0059_MDIP
   cu.isModeExcluded = false;
 #endif
-  fillMPMList(pu, tmrlIntraList, sizeMode, vaildNum, false
+  fillMPMList(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  false,
+  false,
+#endif
+    pu, tmrlIntraList, sizeMode, vaildNum, false
 #if JVET_AK0061_PDP_MPM
     ,false
 #endif

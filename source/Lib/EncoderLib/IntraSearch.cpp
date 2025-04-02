@@ -1748,7 +1748,16 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AC0105_DIRECTIONAL_PLANAR
 #if JVET_AK0061_PDP_MPM
             const bool& enablePlanarSort = PU::determinePDPTemp(pu);
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+            bool planarDisable = false;
+            if (cu.slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(cu))
+            {
+              planarDisable = true;
+            }
+            bool testDirPlanar = isLuma(partitioner.chType) && !(enablePlanarSort||planarDisable);
+#else
             bool testDirPlanar = isLuma(partitioner.chType) && !enablePlanarSort;
+#endif 
 #else
             bool testDirPlanar = isLuma(partitioner.chType);
 #endif
@@ -16150,7 +16159,16 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
 #if JVET_AK0061_PDP_MPM
   const bool& enablePlanarSort = PU::determinePDPTemp(pu);
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  bool planarDisable = false;
+  if (pu.cu->slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(*pu.cu))
+  {
+    planarDisable = true;
+  }
+  if (!(pu.cu)->slice->getPnnMode() && !(enablePlanarSort|| planarDisable))
+#else
   if (!(pu.cu)->slice->getPnnMode() && !enablePlanarSort)
+#endif 
 #else
   if (!(pu.cu)->slice->getPnnMode())
 #endif

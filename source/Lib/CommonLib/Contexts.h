@@ -513,6 +513,9 @@ public:
 #endif
 #endif
   static const CtxSet   IntraLumaPlanarFlag;
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  static const CtxSet   IntraLumaMPMfistIdxFlag;
+#endif
 #if SECONDARY_MPM
   static const CtxSet   IntraLumaMPMIdx;
 #endif
