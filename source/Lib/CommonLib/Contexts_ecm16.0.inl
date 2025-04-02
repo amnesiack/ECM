@@ -6949,6 +6949,30 @@ const CtxSet ContextSetCfg::obicFlag = ContextSetCfg::addCtxSet
  { 202, },
   });
 #endif
+#if JVET_AL0108_BVG_DIMD
+const CtxSet ContextSetCfg::RegularDimdFlag = ContextSetCfg::addCtxSet({
+ { CNU },
+ { CNU },
+ { CNU },
+ { CNU },
+ { DWS },
+ { DWS },
+ { DWS },
+ { DWS },
+ { DWE },
+ { DWE },
+ { DWE },
+ { DWE },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+ { DWO },
+  });
+#endif
 #if JVET_AI0050_INTER_MTSS
 const CtxSet ContextSetCfg::InterLFNSTIntraIdx = ContextSetCfg::addCtxSet({
 // ctx 1622

@@ -1400,6 +1400,9 @@ struct CodedCUInfo
 #if JVET_AJ0082_MM_EIP
   bool     skipEip;
 #endif
+#if JVET_AL0108_BVG_DIMD
+  bool     skipBvgDimd;
+#endif
 
   bool     validMv[NUM_REF_PIC_LIST_01][MAX_STORED_CU_INFO_REFS];
   Mv       saveMv [NUM_REF_PIC_LIST_01][MAX_STORED_CU_INFO_REFS];

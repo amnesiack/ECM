@@ -528,6 +528,9 @@ protected:
 #if ENABLE_DIMD
   bool      m_dimd;
 #endif
+#if JVET_AL0108_BVG_DIMD
+  bool      m_bvgDimd;
+#endif
 #if JVET_W0123_TIMD_FUSION
   bool      m_timd;
 #if JVET_AJ0061_TIMD_MERGE
@@ -1881,6 +1884,10 @@ public:
   void      setUseDimd                   ( bool b )       { m_dimd = b; }
   bool      getUseDimd                   ()         const { return m_dimd; }
 #endif
+#if JVET_AL0108_BVG_DIMD
+  void      setUseBvgDimd                ( bool b )       { m_bvgDimd = b; }
+  bool      getUseBvgDimd                ()         const { return m_bvgDimd; }
+#endif  
 #if JVET_W0123_TIMD_FUSION
   void      setUseTimd                   ( bool b )       { m_timd = b; }
   bool      getUseTimd                   () const         { return m_timd; }

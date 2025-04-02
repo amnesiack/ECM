@@ -2082,6 +2082,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if ENABLE_DIMD
   sps.setUseDimd            ( m_dimd );
 #endif
+#if JVET_AL0108_BVG_DIMD
+  sps.setUseBvgDimd         ( m_bvgDimd );
+#endif
 #if JVET_W0123_TIMD_FUSION
   sps.setUseTimd            ( m_timd );
 #if JVET_AJ0061_TIMD_MERGE

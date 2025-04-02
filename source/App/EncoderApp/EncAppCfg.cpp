@@ -1177,6 +1177,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if ENABLE_DIMD
   ( "DIMD",                                           m_dimd,                                            true, "Enable decoder side intra mode derivation\n" )
 #endif
+#if JVET_AL0108_BVG_DIMD
+  ( "BvgDIMD",                                        m_bvgDimd,                                         true, "Enable block vector guided decoder side intra mode derivation\n" )
+#endif
 #if JVET_W0123_TIMD_FUSION
   ( "TIMD",                                           m_timd,                                            true,  "Enable template based intra mode derivation\n" )
 #if JVET_AJ0061_TIMD_MERGE
@@ -4265,6 +4268,18 @@ bool EncAppCfg::xCheckParameter()
 #endif
   }
 #endif
+#if JVET_AL0108_BVG_DIMD
+  if (m_bvgDimd && !m_dimd)
+  {
+    msg(WARNING, "BvgDIMD is forcefully disabled since DIMD mode is set to off. \n");
+    m_bvgDimd = false;
+  }
+  if (m_bvgDimd && !m_intraTMP)
+  {
+    msg(WARNING, "BvgDIMD is forcefully disabled since IntraTMP mode is set to off. \n");
+    m_bvgDimd = false;
+  }
+#endif
   if ( m_Affine == 0 )
   {
 #if AFFINE_MMVD
@@ -5993,6 +6008,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if ENABLE_DIMD
   msg( VERBOSE, "DIMD:%d ", m_dimd );
+#endif
+#if JVET_AL0108_BVG_DIMD
+  msg( VERBOSE, "BvgDIMD:%d ", m_bvgDimd );
 #endif
 #if JVET_W0123_TIMD_FUSION && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg( VERBOSE, "TIMD:%d ", m_timd );

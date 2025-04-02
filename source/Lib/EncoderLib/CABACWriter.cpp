@@ -2111,6 +2111,16 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
     return;
   }
 #endif
+#if JVET_AL0108_BVG_DIMD
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (cu.bvgDimdFlag && !cu.slice->getPnnMode())
+#else
+  if (cu.bvgDimdFlag)
+#endif
+  {
+    return;
+  }
+#endif
   if( cu.bdpcmMode )
   {
     cu.firstPU->intraDir[0] = cu.bdpcmMode == 2? VER_IDX : HOR_IDX;
@@ -2411,6 +2421,16 @@ void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
   if (pu.cu->obicFlag && !(pu.cu)->slice->getPnnMode())
 #else
   if (pu.cu->obicFlag)
+#endif
+  {
+    return;
+  }
+#endif
+#if JVET_AL0108_BVG_DIMD
+#if JVET_AJ0249_NEURAL_NETWORK_BASED
+  if (pu.cu->bvgDimdFlag && !(pu.cu)->slice->getPnnMode())
+#else
+  if (pu.cu->bvgDimdFlag)
 #endif
   {
     return;
@@ -2869,8 +2889,32 @@ void CABACWriter::cu_dimd_flag(const CodingUnit& cu)
   }
   unsigned ctxId = DeriveCtx::CtxDIMDFlag(cu);
   m_BinEncoder.encodeBin(cu.dimd, Ctx::DimdFlag(ctxId));
+#if JVET_AL0108_BVG_DIMD
+  if(!cu.dimd)
+  {
+    return;
+  }
+  const bool bvgDimdAvail = PU::isBvgDimdAvail(*cu.firstPU);
+  if (bvgDimdAvail)
+  {
+    m_BinEncoder.encodeBin(!cu.obicFlag && !cu.bvgDimdFlag, Ctx::RegularDimdFlag(0));
+    if (cu.obicFlag || cu.bvgDimdFlag)
+    {
+      const bool bObicAvail = PU::isObicAvail(*cu.firstPU);
+      if (bObicAvail)
+      {
+        cu_obic_flag(cu);
+      }
+    }
+  }
+  else
+  {
+#endif
 #if JVET_AH0076_OBIC
   cu_obic_flag(cu);
+#endif
+#if JVET_AL0108_BVG_DIMD
+  }
 #endif
   DTRACE(g_trace_ctx, D_SYNTAX, "cu_dimd_flag() ctx=%d pos=(%d,%d) dimd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.dimd);
 }

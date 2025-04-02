@@ -154,6 +154,7 @@
 #define JVET_AH0055_INTRA_TMP_ARBVP                       1 // JVET-AH0055: AR-BVP for intra TMP merge candidates
 #define JVET_AH0200_INTRA_TMP_BV_REORDER                  1 // JVET-AH0200: Intra TMP BV reordering
 #define JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT      1 // JVET-AI0129: Intra TMP candidates with overlapping refinement window enhanced.
+#define JVET_AL0108_BVG_DIMD                              1 // JVET_AL0108: Block vector guided DIMD
 #endif
 
 #define JVET_W0123_TIMD_FUSION                            1 // JVET-W0123: Template based intra mode derivation and fusion

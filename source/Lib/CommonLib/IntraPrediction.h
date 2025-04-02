@@ -372,6 +372,15 @@ public:
   Pel m_leftRefShort[256] = { 0 };
 #endif
 #endif
+#if JVET_AL0108_BVG_DIMD
+  int8_t m_bvgDimdFusionWeight[BVG_DIMD_INTRA_NUM];
+  int8_t m_bvgDimdMode[BVG_DIMD_INTRA_NUM];
+  int    m_bvDimdNum;
+  int    m_bvDimdWeight[BVG_DIMD_BV_LIST_SIZE];
+  double m_dSavedRDCostBvgDimdSad;
+  uint64_t m_satdCostBvgDimd;
+  static_vector<Mv, BVG_DIMD_BV_LIST_SIZE> m_bvListSorted;
+#endif
 
 protected:
 #if JVET_AJ0112_REGRESSION_SGPM
@@ -972,6 +981,9 @@ public:
     , bool useExcludingMode = false
 #endif
   );
+#endif
+#if JVET_AL0108_BVG_DIMD
+  void deriveBvgDimdMode                  (const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu);
 #endif
 #if JVET_Z0050_DIMD_CHROMA_FUSION && ENABLE_DIMD
   static void deriveDimdChromaMode        (const CPelBuf &recoBufY, const CPelBuf &recoBufCb, const CPelBuf &recoBufCr, const CompArea &areaY, const CompArea &areaCb, const CompArea &areaCr, CodingUnit &cu);

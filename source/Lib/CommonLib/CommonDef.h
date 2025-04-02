@@ -796,6 +796,9 @@ static const int DIMD_IDX =                                        99; ///< inde
 #if JVET_AJ0203_DIMD_2X2_EDGE_OP
 static const uint32_t DIMD_SMALL_BLOCK_THR =                       32; ///< maximum area of a block to which 2x2 DIMD edge operator is applied
 #endif 
+#if JVET_AL0108_BVG_DIMD
+static const int BVG_DIMD_IDX =                                   600;
+#endif
 #if JVET_AH0076_OBIC
 static const int OBIC_IDX =                                       250;
 static const int OBIC_FUSION_NUM =                                  6;
@@ -2631,4 +2634,10 @@ struct lfCccmCand
 static constexpr int lfCccmMaxNumCands = 2;
 #endif
 
+#if JVET_AL0108_BVG_DIMD
+static const int BVG_DIMD_INTRA_NUM       = 3;
+static const int BVG_DIMD_BV_LIST_SIZE    = 5;
+static const int MAX_BVG_ROUGH_NUM        = 1;
+static const double BVG_DIMD_BV_LIST_THRD = 1.2;       
+#endif
 #endif // end of #ifndef  __COMMONDEF__

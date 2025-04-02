@@ -251,7 +251,11 @@ namespace PU
     , std::vector<Mv>& pSgpmMvs
 #endif
   );
-  bool validItmpBv                (const PredictionUnit& pu, int tmpXdisp, int tmpYdisp);
+  bool validItmpBv                (const PredictionUnit& pu, int tmpXdisp, int tmpYdisp
+#if JVET_AL0108_BVG_DIMD
+    , bool isAvailablePairFound = false
+#endif
+  );
   bool checkValidIntraTmpMergeCand(const PredictionUnit& pu, Mv Bv);
 #if JVET_AH0055_INTRA_TMP_ARBVP
   bool CheckBvAvailable(std::vector<Mv> &pBv, Mv curBv);
@@ -300,6 +304,10 @@ namespace PU
   bool          isMIP                 (const PredictionUnit &pu, const ChannelType &chType = CHANNEL_TYPE_LUMA);
 #if JVET_V0130_INTRA_TMP
   bool          isTmp(const PredictionUnit& pu, const ChannelType& chType = CHANNEL_TYPE_LUMA);
+#endif
+#if JVET_AL0108_BVG_DIMD
+  bool hasBvgBv(const PredictionUnit *pu, const ChannelType &chType = CHANNEL_TYPE_LUMA);
+  bool hasBvgBv(const PredictionUnit &pu, const ChannelType &chType = CHANNEL_TYPE_LUMA);
 #endif
 #if JVET_AG0058_EIP
   bool isEIP(const PredictionUnit& pu, const ChannelType& chType = CHANNEL_TYPE_LUMA);
@@ -1213,6 +1221,9 @@ namespace PU
 #if JVET_AH0076_OBIC
   bool isObicAvail(const PredictionUnit &pu);
   bool checkAvailBlocks(const PredictionUnit &pu);
+#endif
+#if JVET_AL0108_BVG_DIMD
+  bool isBvgDimdAvail(const PredictionUnit &pu);
 #endif
 }
 

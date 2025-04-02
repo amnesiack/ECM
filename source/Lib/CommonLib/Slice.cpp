@@ -4380,6 +4380,9 @@ SPS::SPS()
 #if ENABLE_DIMD
 , m_dimd                      ( false )
 #endif
+#if JVET_AL0108_BVG_DIMD
+, m_bvgDimd                   ( false )
+#endif
 #if JVET_W0123_TIMD_FUSION
 , m_timd                      ( false )
 #endif

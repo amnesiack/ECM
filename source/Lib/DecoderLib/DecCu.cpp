@@ -362,7 +362,11 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         }
 #endif
 #if ENABLE_DIMD
+#if JVET_AL0108_BVG_DIMD 
+        if (currCU.dimd && !currCU.bvgDimdFlag)
+#else
         if (currCU.dimd)
+#endif
         {
           PredictionUnit *pu = currCU.firstPU;
           const CompArea &area = currCU.Y();
@@ -379,6 +383,44 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           }
 #endif
         }
+#if JVET_AL0108_BVG_DIMD
+        else if (currCU.bvgDimdFlag)
+        {
+          PredictionUnit *pu = currCU.firstPU;
+          const CompArea &area = currCU.Y();
+          m_pcIntraPred->m_bvListSorted.clear();
+          RefTemplateType tempType = m_pcIntraPred->getRefTemplateType(currCU, currCU.blocks[COMPONENT_Y]);
+          if (tempType != NO_TEMPLATE)
+          {
+            m_pcIntraPred->getTargetTemplate(&currCU, currCU.lwidth(), currCU.lheight(), tempType);
+            m_pcIntraPred->candidateSearchIntra(&currCU, currCU.lwidth(), currCU.lheight(), tempType
+#if JVET_AG0136_INTRA_TMP_LIC || (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+                                        , false
+#endif
+            );
+          }
+          m_pcIntraPred->deriveBvgDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+          for(int i = 0; i < BVG_DIMD_INTRA_NUM; i++)
+          {
+            currCU.bvgDimdMode[i] = m_pcIntraPred->m_bvgDimdMode[i];
+            currCU.bvgDimdFusionWeight[i] = m_pcIntraPred->m_bvgDimdFusionWeight[i];
+          }
+          pu->intraDir[0] = currCU.bvgDimdMode[0];
+          currCU.bvDimdNum = m_pcIntraPred->m_bvDimdNum;
+          for(int i = 0; i < currCU.bvDimdNum; i++)
+          { 
+            currCU.bvDimdWeight[i] = m_pcIntraPred->m_bvDimdWeight[i];
+          }
+          for(int i = 0; i < BVG_DIMD_BV_LIST_SIZE; i++)
+          {
+            currCU.bvDimdList[i] = i < currCU.bvDimdNum ? m_pcIntraPred->m_bvListSorted[i]: Mv(0, 0); 
+          }
+          pu->interDir = 1;
+          pu->refIdx[REF_PIC_LIST_0] = MAX_NUM_REF;
+          pu->mv[0] = Mv(currCU.bvDimdList[0].hor << MV_FRACTIONAL_BITS_INTERNAL, currCU.bvDimdList[0].ver << MV_FRACTIONAL_BITS_INTERNAL);
+          pu->bv = Mv(currCU.bvDimdList[0].hor, currCU.bvDimdList[0].ver);
+        }
+#endif
 #if JVET_W0123_TIMD_FUSION
         else if (currCU.timd)
         {
@@ -2017,6 +2059,12 @@ void DecCu::xReconIntraQT( CodingUnit &cu )
     PU::spanMotionInfo(*cu.firstPU);
   }
 #endif
+#endif
+#if JVET_AL0108_BVG_DIMD
+  if (cu.blocks[CHANNEL_TYPE_LUMA].valid() && PU::hasBvgBv(*cu.firstPU))
+  {
+    PU::spanMotionInfo(*cu.firstPU);
+  }
 #endif
 
 #if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
