@@ -237,6 +237,7 @@
 #if JVET_AH0209_PDP
 #define JVET_AI0208_PDP_MIP                               1 // JVET_AI0208: Modifications to Matrix-based intra prediction
 #endif
+#define JVET_AL0125_IMPROVEMENT_ON_MPM                    1 // JVET-AL0125: improvement on MPM 
 #define JVET_AK0061_PDP_MPM                               1 // JVET-AK0061: On MPM with matrix-based position dependent intra prediction
 #define JVET_AI0136_ADAPTIVE_DUAL_TREE                    1 // JVET-AI0136: Adaptive dual tree in inter slices
 #define JVET_AJ0057_HL_INTRA_METHOD_CONTROL               1 // JVET-AJ0057: High-level control of intra prediction methods

@@ -1676,7 +1676,11 @@ bool storeContexts( const Slice* slice, const int ctuXPosInCtus, const int ctuYP
 int deriveAffineSubBlkSize(const int sz, const int minSbSz, const int deltaMvX, const int deltaMvY, const int shift);
 #endif
 #if JVET_AD0085_TMRL_EXTENSION
-int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCands
+int getSpatialIpm(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  bool planarDisable,
+#endif
+  const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCands
 #if JVET_AC0094_REF_SAMPLES_OPT
                 , const bool& isForcedValid
 #endif
@@ -1692,7 +1696,12 @@ int getSpatialIpm(const PredictionUnit& pu, uint8_t* spatialIpm, const int maxCa
                 , IntraPrediction* pIntraPred = nullptr
 #endif
 );
-void fillMPMList(const PredictionUnit& pu, uint8_t* mpm, const int numToFill, const int numCand, bool extPrecision = false
+void fillMPMList(
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+  const bool &mpmSort,
+  bool planarDisable,
+#endif
+  const PredictionUnit& pu, uint8_t* mpm, const int numToFill, const int numCand, bool extPrecision = false
 #if JVET_AK0061_PDP_MPM
   , const bool& pdpRefAvailable = false
 #endif

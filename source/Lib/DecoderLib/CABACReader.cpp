@@ -2709,9 +2709,27 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 #if SECONDARY_MPM
       unsigned ctx2 = ( ctx ? ( cu.firstPU->multiRefIdx == 0 ? 2 : 1 ) : 0 );
 #endif
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+      bool plannar = false;
+      if (pu->cu->slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(cu))
+      {
+        plannar = true;
+      }
+#endif
       if( pu->multiRefIdx == 0 )
       {
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+        if (plannar)
+        {
+          ipredIdx = m_BinDecoder.decodeBin(Ctx::IntraLumaMPMfistIdxFlag());
+        }
+        else
+        {
+          ipredIdx = m_BinDecoder.decodeBin(Ctx::IntraLumaPlanarFlag(ctx));
+        }
+#else
         ipredIdx = m_BinDecoder.decodeBin( Ctx::IntraLumaPlanarFlag( ctx ) );
+#endif
       }
       else
       {
@@ -2825,7 +2843,16 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
 #if JVET_AC0105_DIRECTIONAL_PLANAR
 #if JVET_AK0061_PDP_MPM
     const bool& enablePlanarSort = PU::determinePDPTemp(*pu);
+#if JVET_AL0125_IMPROVEMENT_ON_MPM
+    bool planarDisable = false;
+    if (cu.slice->getPnnMode() && IntraPredictionNN::hasPnnPrediction(cu))
+    {
+      planarDisable = true;
+    }
+    if (CU::isDirectionalPlanarAvailable(cu) && !(enablePlanarSort || planarDisable) && pu->ipredIdx == 0 && mpmFlag[k])
+#else
     if (CU::isDirectionalPlanarAvailable(cu) && !enablePlanarSort && pu->ipredIdx == 0 && mpmFlag[k])
+#endif
 #else
     if (CU::isDirectionalPlanarAvailable(cu) && pu->ipredIdx == 0 && mpmFlag[k])
 #endif
