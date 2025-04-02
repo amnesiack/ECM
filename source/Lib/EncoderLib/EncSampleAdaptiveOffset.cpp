@@ -3326,14 +3326,23 @@ void EncSampleAdaptiveOffset::deriveCcSao( CodingStructure& cs, const ComponentI
         continue;
       }
 
-      setupTempCcSaoParamFromPrv(cs, compID, prvId, m_tempCcSaoParam, g_ccSaoPrvParam[compID][prvId], m_tempCcSaoControl);
+#if JVET_AL0142_CCSAO_REUSE_CTU
+      for (int reuseMode = CCSAO_REUSE_PARAM; reuseMode < NUM_CCSAO_REUSE_MODES; reuseMode++)
+      {
+        setupTempCcSaoParamFromPrv(cs, compID, prvId, reuseMode, m_tempCcSaoParam, g_ccSaoPrvParam[compID][prvId], m_tempCcSaoControl);
+#else
+        setupTempCcSaoParamFromPrv(cs, compID, prvId,            m_tempCcSaoParam, g_ccSaoPrvParam[compID][prvId], m_tempCcSaoControl);
+#endif
 
-      getCcSaoStatistics    (cs, compID, orgYuv, srcYuv, dstYuv, m_ccSaoStatData,                             m_tempCcSaoParam);
-      getCcSaoStatisticsEdge(cs, compID, orgYuv, srcYuv, dstYuv, m_ccSaoStatDataEdge, m_ccSaoStatDataEdgePre, m_tempCcSaoParam);
+        getCcSaoStatistics    (cs, compID, orgYuv, srcYuv, dstYuv, m_ccSaoStatData,                             m_tempCcSaoParam);
+        getCcSaoStatisticsEdge(cs, compID, orgYuv, srcYuv, dstYuv, m_ccSaoStatDataEdge, m_ccSaoStatDataEdgePre, m_tempCcSaoParam);
 
-      deriveCcSaoRDO(cs, compID, m_trainingDistortion, m_ccSaoStatData, m_ccSaoStatFrame
-                   , m_ccSaoStatDataEdge,  m_ccSaoStatFrameEdge
-                   , m_bestCcSaoParam, m_tempCcSaoParam, m_bestCcSaoControl, m_tempCcSaoControl, bestCost, tempCost);
+        deriveCcSaoRDO(cs, compID, m_trainingDistortion, m_ccSaoStatData, m_ccSaoStatFrame
+                     , m_ccSaoStatDataEdge,  m_ccSaoStatFrameEdge
+                     , m_bestCcSaoParam, m_tempCcSaoParam, m_bestCcSaoControl, m_tempCcSaoControl, bestCost, tempCost);
+#if JVET_AL0142_CCSAO_REUSE_CTU
+      }
+#endif
     }
   }
 #endif
@@ -3575,6 +3584,9 @@ void EncSampleAdaptiveOffset::setupTempCcSaoParam(CodingStructure& cs, const Com
 
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
 void EncSampleAdaptiveOffset::setupTempCcSaoParamFromPrv(CodingStructure& cs, const ComponentID compID, const int prvId
+#if JVET_AL0142_CCSAO_REUSE_CTU
+                                                       , const int reuseMode
+#endif
                                                        , CcSaoEncParam& tempCcSaoParam, CcSaoPrvParam& prvCcSaoParam
                                                        , uint8_t* tempCcSaoControl)
 {
@@ -3582,7 +3594,11 @@ void EncSampleAdaptiveOffset::setupTempCcSaoParamFromPrv(CodingStructure& cs, co
   memset(tempCcSaoControl, 0, sizeof(uint8_t) * m_numCTUsInPic);
   std::fill_n(tempCcSaoControl, m_numCTUsInPic, 1);
 
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  tempCcSaoParam.reusePrv   = reuseMode;
+#else
   tempCcSaoParam.reusePrv   = true;
+#endif
   tempCcSaoParam.reusePrvId = prvId;
   tempCcSaoParam.setNum     = prvCcSaoParam.setNum;
   memcpy( tempCcSaoParam.setEnabled, prvCcSaoParam.setEnabled, sizeof( tempCcSaoParam.setEnabled ) );
@@ -3590,6 +3606,12 @@ void EncSampleAdaptiveOffset::setupTempCcSaoParamFromPrv(CodingStructure& cs, co
   memcpy( tempCcSaoParam.candPos   , prvCcSaoParam.candPos   , sizeof( tempCcSaoParam.candPos    ) );
   memcpy( tempCcSaoParam.bandNum   , prvCcSaoParam.bandNum   , sizeof( tempCcSaoParam.bandNum    ) );
   memcpy( tempCcSaoParam.offset    , prvCcSaoParam.offset    , sizeof( tempCcSaoParam.offset     ) );
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  if (reuseMode == CCSAO_REUSE_PARAM_CTU)
+  {
+    memcpy( tempCcSaoControl, prvCcSaoParam.ccSaoControl, sizeof(uint8_t) * m_numCTUsInPic );
+  }
+#endif
 
   CHECK( tempCcSaoParam.setNum > MAX_CCSAO_SET_NUM, "setNum exceeds the buffer size" );
 
@@ -7249,14 +7271,35 @@ void EncSampleAdaptiveOffset::deriveCcSaoRDO(CodingStructure& cs, const Componen
 
     int64_t curTotalDist = 0;
     double  curTotalRate = 0;
-    determineCcSaoControlIdc(cs, compID, ctuWidthC, ctuHeightC, picWidthC, picHeightC,
-                             tempCcSaoParam, tempCcSaoControl, trainingDistortion,
-                             curTotalDist, curTotalRate);
+#if JVET_AL0142_CCSAO_REUSE_CTU
+    if (tempCcSaoParam.reusePrv == CCSAO_REUSE_PARAM_CTU)
+    {
+      for (int ctbIdx = 0; ctbIdx < cs.pcv->sizeInCtus; ctbIdx++)
+      {
+        if (tempCcSaoControl[ctbIdx])
+        {
+          int setIdx = tempCcSaoControl[ctbIdx] - 1;
+          curTotalDist += trainingDistortion[setIdx][ctbIdx];
+        }
+      }
+    }
+    else
+    {
+#endif
+      determineCcSaoControlIdc(cs, compID, ctuWidthC, ctuHeightC, picWidthC, picHeightC,
+                               tempCcSaoParam, tempCcSaoControl, trainingDistortion,
+                               curTotalDist, curTotalRate);
+#if JVET_AL0142_CCSAO_REUSE_CTU
+    }
+#endif
 
     if (tempCcSaoParam.setNum > 0)
     {
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
       curTotalRate += !cs.slice->isIntra() ? 1 : 0;  // +1 reusePrv flag 
+#if JVET_AL0142_CCSAO_REUSE_CTU
+      curTotalRate += tempCcSaoParam.reusePrv ? 1 : 0;  // +1 reuseMode flag 
+#endif
       curTotalRate += tempCcSaoParam.reusePrv 
                     ? MAX_CCSAO_PRV_NUM_BITS 
                     : getCcSaoParamRate(compID, tempCcSaoParam);
@@ -7296,7 +7339,11 @@ void EncSampleAdaptiveOffset::setupCcSaoPrv(CodingStructure &cs)
 {
   for (int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
   {
+#if JVET_AL0142_CCSAO_REUSE_CTU
+    if (m_ccSaoComParam.enabled[compIdx] && m_ccSaoComParam.reusePrv[compIdx] != CCSAO_REUSE_PARAM_CTU)
+#else
     if (m_ccSaoComParam.enabled[compIdx] && !m_ccSaoComParam.reusePrv[compIdx])
+#endif
     {
       if (g_ccSaoPrvParam[compIdx].size() == MAX_CCSAO_PRV_NUM)
       {
@@ -7311,7 +7358,7 @@ void EncSampleAdaptiveOffset::setupCcSaoPrv(CodingStructure &cs)
       std::memcpy( prvParam.candPos,    m_ccSaoComParam.candPos   [compIdx], sizeof( prvParam.candPos    ) );
       std::memcpy( prvParam.bandNum,    m_ccSaoComParam.bandNum   [compIdx], sizeof( prvParam.bandNum    ) );
       std::memcpy( prvParam.offset,     m_ccSaoComParam.offset    [compIdx], sizeof( prvParam.offset     ) );
-      
+
       g_ccSaoPrvParam[compIdx].insert(g_ccSaoPrvParam[compIdx].begin(), prvParam);
     }
   }

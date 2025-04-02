@@ -112,7 +112,11 @@ struct CcSaoStatData
 struct CcSaoEncParam
 {
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  int      reusePrv;
+#else
   bool     reusePrv;
+#endif
   int      reusePrvId;
 #endif
   uint8_t  setNum;
@@ -260,6 +264,9 @@ private: //methods
                           );
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
   void setupTempCcSaoParamFromPrv(CodingStructure& cs, const ComponentID compID, const int prvId
+#if JVET_AL0142_CCSAO_REUSE_CTU
+                                , const int reuseMode
+#endif
                                 , CcSaoEncParam& tempCcSaoParam, CcSaoPrvParam& prvCcSaoParam
                                 , uint8_t* tempCcSaoControl);
 #endif

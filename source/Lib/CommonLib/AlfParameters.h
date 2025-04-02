@@ -1138,7 +1138,11 @@ struct CcSaoComParam
   bool     enabled   [MAX_NUM_COMPONENT];
 #if JVET_AE0151_CCSAO_HISTORY_OFFSETS_AND_EXT_EO
   bool     extChroma [MAX_NUM_COMPONENT];
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  int      reusePrv  [MAX_NUM_COMPONENT];
+#else
   bool     reusePrv  [MAX_NUM_COMPONENT];
+#endif
   int      reusePrvId[MAX_NUM_COMPONENT];
 #endif
   uint8_t  setNum    [MAX_NUM_COMPONENT];
@@ -1216,7 +1220,11 @@ struct CcSaoPrvParam
 {
   bool     enabled;
   bool     extChroma;
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  int      reusePrv;
+#else
   bool     reusePrv;
+#endif
   int      reusePrvId;
   int      temporalId;
   uint8_t  setNum;
@@ -1225,6 +1233,9 @@ struct CcSaoPrvParam
   uint16_t candPos   [MAX_CCSAO_SET_NUM][MAX_NUM_COMPONENT];
   uint16_t bandNum   [MAX_CCSAO_SET_NUM][MAX_NUM_COMPONENT];  
   short    offset    [MAX_CCSAO_SET_NUM][MAX_CCSAO_CLASS_NUM];
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  uint8_t  ccSaoControl[MAX_CCSAO_CTU_NUM];
+#endif
   CcSaoPrvParam()
   {
     reset();
@@ -1242,6 +1253,9 @@ struct CcSaoPrvParam
     std::memset( candPos,        0, sizeof( candPos    ) );
     std::memset( bandNum,        0, sizeof( bandNum    ) );
     std::memset( offset,         0, sizeof( offset     ) );
+#if JVET_AL0142_CCSAO_REUSE_CTU
+    std::memset( ccSaoControl,   0, sizeof( ccSaoControl ) );
+#endif
   }
   const CcSaoPrvParam& operator = ( const CcSaoPrvParam& src )
   {
@@ -1256,6 +1270,9 @@ struct CcSaoPrvParam
     std::memcpy( candPos,    src.candPos,    sizeof( candPos    ) );
     std::memcpy( bandNum,    src.bandNum,    sizeof( bandNum    ) );
     std::memcpy( offset,     src.offset,     sizeof( offset     ) );
+#if JVET_AL0142_CCSAO_REUSE_CTU
+    std::memcpy( ccSaoControl, src.ccSaoControl, sizeof( ccSaoControl ) );
+#endif
     return *this;
   }
 };

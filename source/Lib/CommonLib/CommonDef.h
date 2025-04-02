@@ -460,6 +460,9 @@ static const int MAX_CCSAO_BAND_IDC          =                     16;
 static const int MAX_CCSAO_BAND_IDC_BITS     =                      4;
 static const int MAX_CCSAO_PRV_NUM           =                     16;
 static const int MAX_CCSAO_PRV_NUM_BITS      =                      4;
+#if JVET_AL0142_CCSAO_REUSE_CTU
+static const int MAX_CCSAO_CTU_NUM           =                    256;
+#endif
 #else
 static const int N_C                            = 3; /* Num components*/
 static const int Y_C                            = 0; /* Y luma */

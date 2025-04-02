@@ -4753,6 +4753,11 @@ void HLSWriter::codeCcSao(Slice* pcSlice, PicHeader* picHeader, const SPS* sps, 
 
         if (ccSaoParam.reusePrv[compIdx])
         {
+#if JVET_AL0142_CCSAO_REUSE_CTU
+          CHECK(ccSaoParam.reusePrv  [compIdx] <= CCSAO_DONT_REUSE
+             || ccSaoParam.reusePrv  [compIdx] >= NUM_CCSAO_REUSE_MODES, "CCSAO reuseMode out of range");
+          WRITE_FLAG(ccSaoParam.reusePrv[compIdx] - 1, "ccsao_reuse_prv_mode");
+#endif
           CHECK(ccSaoParam.reusePrvId[compIdx] < 0
              || ccSaoParam.reusePrvId[compIdx] >= MAX_CCSAO_PRV_NUM, "CCSAO reusePrvId out of range");
           WRITE_CODE(ccSaoParam.reusePrvId[compIdx], MAX_CCSAO_PRV_NUM_BITS, "ccsao_reuse_prv_id"); 
