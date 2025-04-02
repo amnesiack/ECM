@@ -225,7 +225,11 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   {
     for ( int compIdx = 0; compIdx < getNumberValidComponents( cs.pcv->chrFormat ); compIdx++ )
     {
+#if JVET_AL0142_CCSAO_REUSE_CTU
+      if (cs.slice->m_ccSaoComParam.enabled[compIdx] && cs.slice->m_ccSaoComParam.reusePrv[compIdx] != CCSAO_REUSE_PARAM_CTU)
+#else
       if (cs.slice->m_ccSaoComParam.enabled[compIdx])
+#endif
       {
         const int setNum = cs.slice->m_ccSaoComParam.setNum[compIdx];
 
@@ -234,7 +238,23 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
         const Position lumaPos(rx * cs.pcv->maxCUWidth, ry * cs.pcv->maxCUHeight);
 
         ccSaoControlIdc(cs, ComponentID(compIdx), ctuRsAddr, cs.slice->m_ccSaoControl[compIdx], lumaPos, setNum);
+#if JVET_AL0142_CCSAO_REUSE_CTU
+        // Allocated ccSaoControl in ParseCcSao, assigned here
+        g_ccSaoPrvParam[compIdx][0].ccSaoControl[ctuRsAddr] = cs.slice->m_ccSaoControl[compIdx][ctuRsAddr];
+#endif
       }
+#if JVET_AL0142_CCSAO_REUSE_CTU
+      else if (cs.slice->m_ccSaoComParam.enabled[compIdx])  // && CCSAO_REUSE_PARAM_CTU
+      {
+        // load ccSaoControl
+        int prvId = cs.slice->m_ccSaoComParam.reusePrvId[compIdx];
+        cs.slice->m_ccSaoControl[compIdx][ctuRsAddr] = g_ccSaoPrvParam[compIdx][prvId].ccSaoControl[ctuRsAddr];
+      }
+      else
+      {
+        cs.slice->m_ccSaoControl[compIdx][ctuRsAddr] = 0;
+      }
+#endif
     }
   }
 #endif

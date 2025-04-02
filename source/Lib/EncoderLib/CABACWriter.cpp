@@ -294,7 +294,11 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   {
     for ( int compIdx = 0; compIdx < getNumberValidComponents( cs.pcv->chrFormat ); compIdx++ )
     {
+#if JVET_AL0142_CCSAO_REUSE_CTU
+      if (cs.slice->m_ccSaoComParam.enabled[compIdx] && cs.slice->m_ccSaoComParam.reusePrv[compIdx] != CCSAO_REUSE_PARAM_CTU)
+#else
       if (cs.slice->m_ccSaoComParam.enabled[compIdx])
+#endif
       {
         const int setNum = cs.slice->m_ccSaoComParam.setNum[compIdx];
 
@@ -304,6 +308,10 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
 
         codeCcSaoControlIdc(cs.slice->m_ccSaoControl[compIdx][ctuRsAddr], cs, ComponentID(compIdx),
                             ctuRsAddr, cs.slice->m_ccSaoControl[compIdx], lumaPos, setNum);
+#if JVET_AL0142_CCSAO_REUSE_CTU
+        // Allocated ccSaoControl in setupCcSaoPrv, assigned here
+        g_ccSaoPrvParam[compIdx][0].ccSaoControl[ctuRsAddr] = cs.slice->m_ccSaoControl[compIdx][ctuRsAddr];
+#endif
       }
     }
   }

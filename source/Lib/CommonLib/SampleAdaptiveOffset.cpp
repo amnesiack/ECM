@@ -162,6 +162,9 @@ void SampleAdaptiveOffset::create( int picWidth, int picHeight, ChromaFormat for
   m_numCTUsInWidth = ( m_picWidth / m_maxCUWidth ) + ( ( m_picWidth % m_maxCUWidth ) ? 1 : 0 );
   m_numCTUsInHeight = ( m_picHeight / m_maxCUHeight ) + ( ( m_picHeight % m_maxCUHeight ) ? 1 : 0 );
   m_numCTUsInPic = m_numCTUsInHeight * m_numCTUsInWidth;
+#if JVET_AL0142_CCSAO_REUSE_CTU
+  CHECK(m_numCTUsInPic > MAX_CCSAO_CTU_NUM, "CCSAO CTU out of range");
+#endif
 
   for (int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
   {

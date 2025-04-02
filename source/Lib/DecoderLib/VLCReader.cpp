@@ -7365,6 +7365,9 @@ void HLSyntaxReader::parseCcSao( Slice* pcSlice, PicHeader* picHeader, const SPS
 
       if (ccSaoParam.reusePrv[compIdx])
       {
+#if JVET_AL0142_CCSAO_REUSE_CTU
+        READ_FLAG(uiCode, "ccsao_reuse_prv_mode"); ccSaoParam.reusePrv[compIdx] += uiCode;
+#endif
         READ_CODE(MAX_CCSAO_PRV_NUM_BITS, uiCode, "ccsao_reuse_prv_id"); ccSaoParam.reusePrvId[compIdx] = uiCode;
         continue;
       }
@@ -7497,7 +7500,11 @@ void HLSyntaxReader::parseCcSao( Slice* pcSlice, PicHeader* picHeader, const SPS
   // setup/saveCcSaoPrvParam
   for (int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
   {
+#if JVET_AL0142_CCSAO_REUSE_CTU
+    if (ccSaoParam.enabled[compIdx] && ccSaoParam.reusePrv[compIdx] != CCSAO_REUSE_PARAM_CTU)
+#else
     if (ccSaoParam.enabled[compIdx] && !ccSaoParam.reusePrv[compIdx])
+#endif
     {
       if (g_ccSaoPrvParam[compIdx].size() == MAX_CCSAO_PRV_NUM)
       {
@@ -7512,7 +7519,7 @@ void HLSyntaxReader::parseCcSao( Slice* pcSlice, PicHeader* picHeader, const SPS
       std::memcpy( prvParam.candPos,    ccSaoParam.candPos   [compIdx], sizeof( prvParam.candPos    ) );
       std::memcpy( prvParam.bandNum,    ccSaoParam.bandNum   [compIdx], sizeof( prvParam.bandNum    ) );
       std::memcpy( prvParam.offset,     ccSaoParam.offset    [compIdx], sizeof( prvParam.offset     ) );
-      
+
       g_ccSaoPrvParam[compIdx].insert(g_ccSaoPrvParam[compIdx].begin(), prvParam);
     }
   }
