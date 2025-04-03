@@ -1915,6 +1915,25 @@ void EncLib::xInitSPS( SPS& sps )
     setMaxNumAffineMergeCand(getMaxNumAffineMergeCand() - 2);
   }
 #endif
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+  sps.setConfigBoundaryMvpExt(m_boundaryMvpExt);
+  if (m_intraPeriod == -1) 
+  {
+    if ((m_sourceWidth * m_sourceHeight) < ( 1280 * 720) )
+    {
+      sps.setConfigBoundaryMvpExt(false);
+    }
+  }
+  else
+  {
+    if ((m_sourceWidth * m_sourceHeight) >= (1280 * 720))
+    {
+      sps.setConfigBoundaryMvpExt(false);
+    }
+  }
+#endif
+
+
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   sps.setUseArmcRefinedMotion               ( m_armcRefinedMotion );
 #endif

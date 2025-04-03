@@ -1704,6 +1704,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #else
     WRITE_UVLC(AFFINE_MRG_MAX_NUM_CANDS - pcSPS->getMaxNumAffineMergeCand(), "five_minus_max_num_subblock_merge_cand");
 #endif
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    WRITE_FLAG( pcSPS->getConfigBoundaryMvpExt() ? 1 : 0,                                      "sps_boundary_mvp_ext_configure_flag" );
+#endif
     WRITE_FLAG( pcSPS->getUseAffineType() ? 1 : 0,                                             "sps_affine_type_flag" );
 #if AFFINE_MMVD
     WRITE_FLAG( pcSPS->getUseAffineMmvdMode() ? 1 : 0,                                         "sps_affine_mmvd_enabled_flag" );

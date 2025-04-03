@@ -17388,7 +17388,13 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
 
     int cand1 = 0;
     cnt = 0;
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    for (cand1 = 0; cand1 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS) - 1) && pairMergeCand.numValidMergeCand < MAX_PAIR_CANDS; cand1++)
+    {
+      for (int cand2 = cand1 + 1; cand2 < std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS); cand2++)
+#else
     for (int cand2 = 1; cand2 < std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS); cand2++)
+#endif
     {
       if (cand1 == cand2)
       {
@@ -17402,13 +17408,22 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
       pairMergeCand.altLMParaNeighbours[cnt].resetAltLinearModel();
 #endif
 #if INTER_LIC
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+      pairMergeCand.licFlags[cnt] = mvpMergeCandCtx.licFlags[rdCandList[cand1]];
+#else
       pairMergeCand.licFlags[cnt] = mvpMergeCandCtx.licFlags[rdCandList[0]];
+#endif
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
       pairMergeCand.setDefaultLICParamToCtx(cnt);
 #endif
 #endif
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+      pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[cand1]];
+      pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[cand1]];
+#else
       pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[0]];
       pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[0]];
+#endif
       pairMergeCand.candCost[cnt] = MAX_UINT64;
 #if MULTI_HYP_PRED
       pairMergeCand.addHypNeighbours[cnt].clear();
@@ -17518,6 +17533,168 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
 #endif
       }
     }
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    }
+#endif
+
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    if(!pu.cu->slice->getCheckLDB())
+    {
+      cand1 = 0;
+      int maxMulCands = MAX_MUL_CANDS;
+      int maxPairCands = MAX_PAIR_CANDS + maxMulCands;
+      for (cand1 = 0; cand1 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS)-3) && pairMergeCand.numValidMergeCand < maxPairCands; cand1++)
+      {
+        for (int cand2 = cand1+1; cand2 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS)-2) && pairMergeCand.numValidMergeCand < maxPairCands; cand2++)
+        {
+          for (int cand3 = cand2+1; cand3 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS)-1) && pairMergeCand.numValidMergeCand < maxPairCands; cand3++)
+          {
+            for (int cand4 = cand3+1; cand4 < std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS); cand4++)
+            {
+              pairMergeCand.mvFieldNeighbours[cnt * 2].setMvField(Mv(0, 0), NOT_VALID);
+              pairMergeCand.mvFieldNeighbours[cnt * 2 + 1].setMvField(Mv(0, 0), NOT_VALID);
+#if JVET_AG0276_NLIC
+              pairMergeCand.altLMFlag[cnt] = false;
+              pairMergeCand.altLMParaNeighbours[cnt].resetAltLinearModel();
+#endif
+#if INTER_LIC
+              pairMergeCand.licFlags[cnt] = mvpMergeCandCtx.licFlags[rdCandList[cand1]];
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+              pairMergeCand.setDefaultLICParamToCtx(cnt);
+#endif
+#endif
+              pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[cand1]];
+              pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[cand1]];
+              pairMergeCand.candCost[cnt] = MAX_UINT64;
+#if MULTI_HYP_PRED
+              pairMergeCand.addHypNeighbours[cnt].clear();
+#endif
+
+              // calculate average MV for L0 and L1 seperately
+              unsigned char interDir = 0;
+#if JVET_AD0213_LIC_IMP
+              bool averageUsed = false;
+#endif
+              for (int refListId = 0; refListId < (pu.cu->slice->isInterB() ? 2 : 1); refListId++)
+              {
+                const short refIdxI = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand1] * 2 + refListId].refIdx;
+                const short refIdxJ = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand2] * 2 + refListId].refIdx;
+                const short refIdxK = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand3] * 2 + refListId].refIdx;
+                const short refIdxL = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand4] * 2 + refListId].refIdx;
+
+                // four MVs are invalid, skip
+                if ((refIdxI == NOT_VALID) && (refIdxJ == NOT_VALID) && (refIdxK == NOT_VALID) && (refIdxL == NOT_VALID))
+                {
+                  continue;
+                }
+
+                interDir += 1 << refListId;
+                // four MVs are valid, average these four MVs
+                if ((refIdxI != NOT_VALID) && (refIdxJ != NOT_VALID) && (refIdxK != NOT_VALID) && (refIdxL != NOT_VALID) && refIdxI == refIdxJ && refIdxI == refIdxK && refIdxI == refIdxL)
+                {
+                  const Mv& mvI = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand1] * 2 + refListId].mv;
+                  const Mv& mvJ = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand2] * 2 + refListId].mv;
+                  const Mv& mvK = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand3] * 2 + refListId].mv;
+                  const Mv& mvL = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand4] * 2 + refListId].mv;
+
+                  // average four MVs
+                  Mv avgMv;
+                  int avgMvX = (mvI.hor + mvJ.hor + mvK.hor + mvL.hor);
+                  int avgMvY = (mvI.ver + mvJ.ver + mvK.ver + mvL.ver);
+                  avgMv.set((int)avgMvX, (int)avgMvY);
+                  roundAffineMv(avgMv.hor, avgMv.ver, 2);
+
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(avgMv, refIdxI);
+#if JVET_AD0213_LIC_IMP
+                  averageUsed = true;
+#endif
+                }
+                // only one MV is valid, take the only one MV
+                else if (refIdxI != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand1] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxI);
+                }
+                else if (refIdxJ != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand2] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxJ);
+                }
+                else if (refIdxK != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand3] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxK);
+                }
+                else if (refIdxL != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand4] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxL);
+                }
+              }
+
+              pairMergeCand.interDirNeighbours[cnt] = interDir;
+#if JVET_AD0213_LIC_IMP
+              if (averageUsed && !(((pu.cu->slice->getPOC() - pu.cu->slice->getRefPOC(REF_PIC_LIST_0, 0)) == 1) && pu.cu->slice->getPicHeader()->getMvdL1ZeroFlag()))
+              {
+                pairMergeCand.licFlags[cnt] = false;
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+                pairMergeCand.setDefaultLICParamToCtx(cnt);
+#endif
+              }
+#endif
+
+              if (interDir > 0)
+              {
+#if INTER_LIC && !JVET_AD0213_LIC_IMP
+                if (interDir == 3)
+                {
+                  pairMergeCand.licFlags[cnt] = false;
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+                  pairMergeCand.setDefaultLICParamToCtx(cnt);
+#endif
+                }
+#endif
+                uint32_t mvdSimilarityThresh = 1;
+#if TM_MRG
+                mvdSimilarityThresh =
+#if JVET_AA0132_CONFIGURABLE_TM_TOOLS
+                  pu.cs->sps->getUseTMMrgMode() &&
+#endif
+                  pu.tmMergeFlag ? PU::getTMMvdThreshold(pu) : mvdSimilarityThresh;
+#endif
+                if (!pairMergeCand.xCheckSimilarMotion(cnt, mvdSimilarityThresh))
+                {
+                  if (!mvpMergeCandCtx.xCheckSimilarMotion2Lists(cnt, &pairMergeCand, mvdSimilarityThresh))
+                  {
+                    pairAdded = true;
+                    cnt++;
+                    pairMergeCand.numValidMergeCand++;
+                    pairMergeCand.numCandToTestEnc++;
+                    if (pairMergeCand.numValidMergeCand == maxPairCands)
+                    {
+                      break;
+                    }
+                  }
+#if JVET_AD0213_LIC_IMP
+                  else
+                  {
+                    pairMergeCand.initMrgCand(cnt);
+                  }
+#endif
+                }
+#if JVET_AD0213_LIC_IMP
+                else
+                {
+                  pairMergeCand.initMrgCand(cnt);
+                }
+#endif
+              }
+            }
+          }
+        }
+      }
+    }
+#endif
 
     if (pairAdded)
     {
@@ -17902,7 +18079,13 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
 
     int cand1 = 0;
     cnt = 0;
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    for (cand1 = 0; cand1 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS) - 1) && pairMergeCand.numValidMergeCand < MAX_PAIR_CANDS; cand1++)
+    {
+      for (int cand2 = cand1 + 1; cand2 < std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS); cand2++)
+#else
     for (int cand2 = 1; cand2 < std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS); cand2++)
+#endif
     {
       if (cand1 == cand2)
       {
@@ -17916,13 +18099,22 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
       pairMergeCand.altLMParaNeighbours[cnt].resetAltLinearModel();
 #endif
 #if INTER_LIC
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+      pairMergeCand.licFlags[cnt] = mvpMergeCandCtx.licFlags[rdCandList[cand1]];
+#else
       pairMergeCand.licFlags[cnt] = mvpMergeCandCtx.licFlags[rdCandList[0]];
+#endif
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
       pairMergeCand.setDefaultLICParamToCtx(cnt);
 #endif
 #endif
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+      pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[cand1]];
+      pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[cand1]];
+#else
       pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[0]];
       pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[0]];
+#endif
       pairMergeCand.candCost[cnt] = MAX_UINT64;
 #if MULTI_HYP_PRED
       pairMergeCand.addHypNeighbours[cnt].clear();
@@ -18025,6 +18217,161 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
 #endif
       }
     }
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    }
+#endif
+
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    if(!pu.cu->slice->getCheckLDB())
+    {
+      cand1 = 0;
+      int maxMulCands = MAX_MUL_CANDS;
+      int maxPairCands = MAX_PAIR_CANDS + maxMulCands;
+      for (cand1 = 0; cand1 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS)-3) && pairMergeCand.numValidMergeCand < maxPairCands; cand1++)
+      {
+        for (int cand2 = cand1+1; cand2 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS)-2) && pairMergeCand.numValidMergeCand < maxPairCands; cand2++)
+        {
+          for (int cand3 = cand2 + 1; cand3 < (std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS) - 1) && pairMergeCand.numValidMergeCand < maxPairCands; cand3++)
+          {
+            for (int cand4 = cand3 + 1; cand4 < std::min(maxPairToBeAdded, MRG_MAX_NUM_CANDS); cand4++)
+            {
+              pairMergeCand.mvFieldNeighbours[cnt * 2].setMvField(Mv(0, 0), NOT_VALID);
+              pairMergeCand.mvFieldNeighbours[cnt * 2 + 1].setMvField(Mv(0, 0), NOT_VALID);
+#if JVET_AG0276_NLIC
+              pairMergeCand.altLMFlag[cnt] = false;
+              pairMergeCand.altLMParaNeighbours[cnt].resetAltLinearModel();
+#endif
+#if INTER_LIC
+              pairMergeCand.licFlags[cnt] = mvpMergeCandCtx.licFlags[rdCandList[cand1]];
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+              pairMergeCand.setDefaultLICParamToCtx(cnt);
+#endif
+#endif
+              pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[cand1]];
+              pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[cand1]];
+              pairMergeCand.candCost[cnt] = MAX_UINT64;
+#if MULTI_HYP_PRED
+              pairMergeCand.addHypNeighbours[cnt].clear();
+#endif
+
+              // calculate average MV for L0 and L1 seperately
+              unsigned char interDir = 0;
+#if JVET_AD0213_LIC_IMP
+              bool averageUsed = false;
+#endif
+              for (int refListId = 0; refListId < (pu.cu->slice->isInterB() ? 2 : 1); refListId++)
+              {
+                const short refIdxI = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand1] * 2 + refListId].refIdx;
+                const short refIdxJ = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand2] * 2 + refListId].refIdx;
+                const short refIdxK = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand3] * 2 + refListId].refIdx;
+                const short refIdxL = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand4] * 2 + refListId].refIdx;
+
+                // four MVs are invalid, skip
+                if ((refIdxI == NOT_VALID) && (refIdxJ == NOT_VALID) && (refIdxK == NOT_VALID) && (refIdxL == NOT_VALID))
+                {
+                  continue;
+                }
+
+                interDir += 1 << refListId;
+                // four MVs are valid, average these four MVs
+                if ((refIdxI != NOT_VALID) && (refIdxJ != NOT_VALID) && (refIdxK != NOT_VALID) && (refIdxL != NOT_VALID) && refIdxI == refIdxJ && refIdxI == refIdxK && refIdxI == refIdxL)
+                {
+                  const Mv& mvI = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand1] * 2 + refListId].mv;
+                  const Mv& mvJ = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand2] * 2 + refListId].mv;
+                  const Mv& mvK = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand3] * 2 + refListId].mv;
+                  const Mv& mvL = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand4] * 2 + refListId].mv;
+
+                  // average four MVs
+                  Mv avgMv;
+                  int avgMvX = (mvI.hor + mvJ.hor + mvK.hor + mvL.hor);
+                  int avgMvY = (mvI.ver + mvJ.ver + mvK.ver + mvL.ver);
+                  avgMv.set((int)avgMvX, (int)avgMvY);
+                  roundAffineMv(avgMv.hor, avgMv.ver, 2);
+
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(avgMv, refIdxI);
+#if JVET_AD0213_LIC_IMP
+                  averageUsed = true;
+#endif
+                }
+                // only one MV is valid, take the only one MV
+                else if (refIdxI != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand1] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxI);
+                }
+                else if (refIdxJ != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand2] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxJ);
+                }
+                else if (refIdxK != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand3] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxK);
+                }
+                else if (refIdxL != NOT_VALID)
+                {
+                  Mv singleMv = mvpMergeCandCtx.mvFieldNeighbours[rdCandList[cand4] * 2 + refListId].mv;
+                  pairMergeCand.mvFieldNeighbours[cnt * 2 + refListId].setMvField(singleMv, refIdxL);
+                }
+              }
+
+              pairMergeCand.interDirNeighbours[cnt] = interDir;
+#if JVET_AD0213_LIC_IMP
+              if (averageUsed && !(((pu.cu->slice->getPOC() - pu.cu->slice->getRefPOC(REF_PIC_LIST_0, 0)) == 1) && pu.cu->slice->getPicHeader()->getMvdL1ZeroFlag()))
+              {
+                pairMergeCand.licFlags[cnt] = false;
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+                pairMergeCand.setDefaultLICParamToCtx(cnt);
+#endif
+              }
+#endif
+
+              if (interDir > 0)
+              {
+#if INTER_LIC && !JVET_AD0213_LIC_IMP
+                if (interDir == 3)
+                {
+                  pairMergeCand.licFlags[cnt] = false;
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+                  pairMergeCand.setDefaultLICParamToCtx(cnt);
+#endif
+                }
+#endif
+                uint32_t mvdSimilarityThresh = 1;
+                if (!pairMergeCand.xCheckSimilarMotion(cnt, mvdSimilarityThresh))
+                {
+                  if (!mvpMergeCandCtx.xCheckSimilarMotion2Lists(cnt, &pairMergeCand, mvdSimilarityThresh))
+                  {
+                    pairAdded = true;
+                    cnt++;
+                    pairMergeCand.numValidMergeCand++;
+                    pairMergeCand.numCandToTestEnc++;
+                    if (pairMergeCand.numValidMergeCand == maxPairCands)
+                    {
+                      break;
+                    }
+                  }
+#if JVET_AD0213_LIC_IMP
+                  else
+                  {
+                    pairMergeCand.initMrgCand(cnt);
+                  }
+#endif
+                }
+#if JVET_AD0213_LIC_IMP
+                else
+                {
+                  pairMergeCand.initMrgCand(cnt);
+                }
+#endif
+              }
+            }
+          }
+        }
+      }
+    }
+#endif
 
     if (pairAdded)
     {
