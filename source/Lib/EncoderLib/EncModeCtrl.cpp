@@ -2745,7 +2745,12 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
     }
 
 #if TU_256
+#if JVET_AL0274_MAX_TB_SIZE_FIX
+    int maxTbSize = cs.sps->getMaxTbSize();
+    const int maxSize = std::min<int>(maxTbSize, MAX_INTRA_SIZE);
+#else
     const int maxSize = std::min<int>( MAX_TB_SIZEY, MAX_INTRA_SIZE );
+#endif
 
     if( m_pcEncCfg->getUseFastLCTU() && partitioner.currArea().lumaSize().area() > maxSize * maxSize )
     {
