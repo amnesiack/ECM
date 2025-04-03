@@ -658,6 +658,11 @@ static const int TALF_SCALE_BIT =                                   6;
 static const int TALF_SBB_SIZE =                                    4;
 static const int NUM_TALF_REUSE_CANDS =                             3;
 #endif
+
+#if JVET_AL0182_TALF_EXTENSION
+static const int TALF_EXT_SIZE =                                   24;
+#endif
+
 #if JVET_Z0139_HIST_AFF
 static const int MAX_NUM_AFFHMVP_ENTRIES_ONELIST = 5;
 static const int MAX_NUM_AFFHMVP_ENTRIES = MAX_NUM_AFFHMVP_ENTRIES_ONELIST * 2;

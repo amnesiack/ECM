@@ -9603,9 +9603,14 @@ MotionInfo getMi(const CodingStructure &cs, const Position pos, const int mode)
 
 bool AdaptiveLoopFilter::getMotionOffset(const CodingStructure &cs, const Position pos, MvField* mvField, const int mode, const int shapeIdx)
 {
+  #if JVET_AL0182_TALF_EXTENSION
+  const int extSize = 0;
+  #else
   const int extSize = shapeIdx > 0 ? 5 : 3;
+  #endif
+
   const Position topLeft = pos.offset(-extSize, -extSize);
-  const Position bottomRight = pos.offset(TALF_SBB_SIZE+extSize, TALF_SBB_SIZE+extSize);
+  const Position bottomRight = pos.offset(TALF_SBB_SIZE + extSize, TALF_SBB_SIZE + extSize);
 
   MotionInfo mi = getMi(cs, pos, mode);
   if (mi == MotionInfo())
@@ -9640,10 +9645,24 @@ bool AdaptiveLoopFilter::getMotionOffset(const CodingStructure &cs, const Positi
       CHECK(mi.refIdx[0] == NOT_VALID || mi.refIdx[1] == NOT_VALID, "mi.refIdx[0] == NOT_VALID || mi.refIdx[1] == NOT_VALID");
       const Position topLeftInPic0 = topLeft.offset(mv0.getHor(), mv0.getVer());
       const Position bottomRightInPic0 = bottomRight.offset(mv0.getHor(), mv0.getVer());
+#if  JVET_AL0182_TALF_EXTENSION 
+      bool  posInPic0 = (topLeftInPic0.x + TALF_EXT_SIZE) >= 0
+        && (topLeftInPic0.y + TALF_EXT_SIZE) >= 0
+        && bottomRightInPic0.x <= (m_picWidth - 1 + TALF_EXT_SIZE)
+        && bottomRightInPic0.y <= (m_picHeight - 1 + TALF_EXT_SIZE);
+#else
       bool  posInPic0 = topLeftInPic0.x >= 0 && topLeftInPic0.y >= 0 && bottomRightInPic0.x <= (m_picWidth - 1) && bottomRightInPic0.y <= (m_picHeight - 1);
+#endif
       const Position topLeftInPic1 = topLeft.offset(mv1.getHor(), mv1.getVer());
       const Position bottomRightInPic1 = bottomRight.offset(mv1.getHor(), mv1.getVer());
+#if  JVET_AL0182_TALF_EXTENSION 
+      bool  posInPic1 = (topLeftInPic1.x + TALF_EXT_SIZE) >= 0
+        && (topLeftInPic1.y + TALF_EXT_SIZE) >= 0
+        && bottomRightInPic1.x <= (m_picWidth - 1 + TALF_EXT_SIZE)
+        && bottomRightInPic1.y <= (m_picHeight - 1 + TALF_EXT_SIZE);
+#else
       bool  posInPic1 = topLeftInPic1.x >= 0 && topLeftInPic1.y >= 0 && bottomRightInPic1.x <= (m_picWidth - 1) && bottomRightInPic1.y <= (m_picHeight - 1);
+#endif     
       return posInPic0 && posInPic1;
     }
     else if (mode == FORWARD_TALF_MV && (mi.interDir & 1))
@@ -9655,7 +9674,14 @@ bool AdaptiveLoopFilter::getMotionOffset(const CodingStructure &cs, const Positi
       CHECK(mi.refIdx[0] == NOT_VALID, "mi.refIdx[0] == NOT_VALID");
       const Position topLeftInPic0 = topLeft.offset(mv0.getHor(), mv0.getVer());
       const Position bottomRightInPic0 = bottomRight.offset(mv0.getHor(), mv0.getVer());
+#if  JVET_AL0182_TALF_EXTENSION
+        bool  posInPic0 = (topLeftInPic0.x + TALF_EXT_SIZE) >= 0
+        && (topLeftInPic0.y + TALF_EXT_SIZE) >= 0
+        && bottomRightInPic0.x <= (m_picWidth - 1 + TALF_EXT_SIZE)
+        && bottomRightInPic0.y <= (m_picHeight - 1 + TALF_EXT_SIZE);
+#else
       bool  posInPic0 = topLeftInPic0.x >= 0 && topLeftInPic0.y >= 0 && bottomRightInPic0.x <= (m_picWidth - 1) && bottomRightInPic0.y <= (m_picHeight - 1);
+#endif
       return posInPic0;
     }
     else if (mode == BACKWARD_TALF_MV && (mi.interDir > 1))
@@ -9667,7 +9693,14 @@ bool AdaptiveLoopFilter::getMotionOffset(const CodingStructure &cs, const Positi
       CHECK(mi.refIdx[1] == NOT_VALID, "mi.refIdx[1] == NOT_VALID");
       const Position topLeftInPic1 = topLeft.offset(mv1.getHor(), mv1.getVer());
       const Position bottomRightInPic1 = bottomRight.offset(mv1.getHor(), mv1.getVer());
+#if  JVET_AL0182_TALF_EXTENSION 
+      bool  posInPic1 = (topLeftInPic1.x + TALF_EXT_SIZE) >= 0
+        && (topLeftInPic1.y + TALF_EXT_SIZE) >= 0
+        && bottomRightInPic1.x <= (m_picWidth - 1 + TALF_EXT_SIZE)
+        && bottomRightInPic1.y <= (m_picHeight - 1 + TALF_EXT_SIZE);
+#else
       bool  posInPic1 = topLeftInPic1.x >= 0 && topLeftInPic1.y >= 0 && bottomRightInPic1.x <= (m_picWidth - 1) && bottomRightInPic1.y <= (m_picHeight - 1);
+#endif
       return posInPic1;
     }
   }
