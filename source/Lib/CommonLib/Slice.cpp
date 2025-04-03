@@ -3952,6 +3952,9 @@ PicHeader::PicHeader()
 , m_scalingListAps                                ( nullptr )
 , m_numL0Weights                                  ( 0 )
 , m_numL1Weights                                  ( 0 )
+#if JVET_AL0181_ASBT
+, m_asbt                                          ( false )
+#endif
 {
   memset(m_virtualBoundariesPosX,                   0,    sizeof(m_virtualBoundariesPosX));
   memset(m_virtualBoundariesPosY,                   0,    sizeof(m_virtualBoundariesPosY));
@@ -4055,6 +4058,9 @@ void PicHeader::initPicHeader()
   m_scalingListAps                                = nullptr;
   m_numL0Weights                                  = 0;
   m_numL1Weights                                  = 0;
+#if JVET_AL0181_ASBT
+  m_asbt                                          = false;
+#endif
   memset(m_virtualBoundariesPosX,                   0,    sizeof(m_virtualBoundariesPosX));
   memset(m_virtualBoundariesPosY,                   0,    sizeof(m_virtualBoundariesPosY));
   memset(m_saoEnabledFlag,                          0,    sizeof(m_saoEnabledFlag));
@@ -4255,6 +4261,10 @@ SPS::SPS()
 , m_talf                      ( false )
 #endif
 , m_SBT                       ( false )
+#if JVET_AL0181_ASBT
+, m_asbt                      ( false )
+, m_asbtPh                    ( false )
+#endif
 , m_ISP                       ( false )
 , m_chromaFormatIdc           (CHROMA_420)
 #if !JVET_S0052_RM_SEPARATE_COLOUR_PLANE

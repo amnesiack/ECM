@@ -2071,6 +2071,24 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AI0050_SBT_LFNST
   sps.setUseSbtLFNST           ( m_useSbtLFNST );
 #endif
+#if JVET_AL0181_ASBT
+  if ( !m_PLTMode && (m_intraPeriod != 1) && (m_iQP > 22) )
+  {
+    sps.setUseASBT(true);
+    if ( m_intraPeriod > 1 || ( (m_iQP >= 27) && (m_iQP < 32) ) )
+    {
+      sps.setUseASBTphSignaling(false);
+    }
+    else
+    {
+      sps.setUseASBTphSignaling(true);
+    }
+  }
+  else
+  {
+    sps.setUseASBT(false);
+  }
+#endif
   sps.setUseSMVD                ( m_SMVD );
   sps.setUseBcw                ( m_bcw );
 #if INTER_LIC

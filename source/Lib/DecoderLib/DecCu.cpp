@@ -2879,6 +2879,38 @@ void DecCu::xDecodeInterTU( TransformUnit & currTU, const ComponentID compID )
   ComponentID signPredCompID = bIsJccr ? (bJccrWithCr ? COMPONENT_Cr : COMPONENT_Cb): compID;
 
   bool reshapeChroma = currTU.cs->slice->getPicHeader()->getLmcsEnabledFlag() && isChroma(signPredCompID) && (TU::getCbf(currTU, signPredCompID) || currTU.jointCbCr) && currTU.cs->slice->getPicHeader()->getLmcsChromaResidualScaleFlag() && currTU.blocks[signPredCompID].width * currTU.blocks[signPredCompID].height > 4;
+#if JVET_AL0181_ASBT
+  if ((currTU.asbtDecimW[compID] || currTU.asbtDecimH[compID]) && TU::getCbf(currTU, compID))
+  {
+    // First Set the right Direction:
+    if (!cs.pcv->isEncoder && (currTU.asbtDecimH[compID] || currTU.asbtDecimW[compID]) &&
+      !(currTU.blocks[COMPONENT_Y].height <= 4) &&
+      !(currTU.blocks[COMPONENT_Y].width <= 4) &&
+      !((currTU.blocks[COMPONENT_Y].width >> currTU.asbtDecimH[COMPONENT_Y]) < 4) &&
+      !((currTU.blocks[COMPONENT_Y].width >> currTU.asbtDecimW[COMPONENT_Y]) < 4) &&
+      !((currTU.blocks[COMPONENT_Y].height >> currTU.asbtDecimH[COMPONENT_Y]) < 4) &&
+      !((currTU.blocks[COMPONENT_Y].height >> currTU.asbtDecimW[COMPONENT_Y]) < 4)
+      )
+    {
+      m_pcInterPred->asbtCoordPred(currTU, currTU.asbtDecimW[compID], compID);
+      if (currTU.asbtDecimH[compID])
+      {
+        m_pcInterPred->invTransposeTransform(currTU, compID);
+      }
+    }
+    else
+    {
+      if (currTU.asbtDecimW[compID] && !currTU.asbtDecimH[compID])
+      {
+        m_pcInterPred->asbtCoord(currTU, compID, 0);
+      }
+      else
+      {
+        m_pcInterPred->asbtCoord(currTU, compID, 1);
+      }
+    }
+  }
+#endif
 #if JVET_Y0065_GPM_INTRA
   if (currTU.cs->slice->getPicHeader()->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag() && isLuma(compID) && !currTU.cu->firstPU->ciipFlag && !currTU.cu->firstPU->gpmIntraFlag && !CU::isIBC(*currTU.cu))
 #else
@@ -2892,7 +2924,31 @@ void DecCu::xDecodeInterTU( TransformUnit & currTU, const ComponentID compID )
 #endif
     cs.getPredBuf(currTU.blocks[COMPONENT_Y]).rspSignal(m_pcReshape->getFwdLUT());
   }
+#if JVET_AL0181_ASBT
+  if ((currTU.asbtDecimW[compID] || currTU.asbtDecimH[compID]) && TU::getCbf(currTU, compID))
+  {
+    Pel predResiBorder[2 * SIGN_PRED_MAX_BS];
+    if (currTU.asbtDecimW[compID] && !currTU.asbtDecimH[compID])
+    {
+      m_pcInterPred->asbtBorderResi(currTU, currTU.cs->picture->getRecoBuf(currTU.blocks[compID]),
+        currTU.cs->getPredBuf(currTU.blocks[compID]), compID,
+        predResiBorder, (currTU.cs->sps->getBitDepth(toChannelType(compID)) - 1));
+    }
+    else if (!currTU.asbtDecimW[compID] && currTU.asbtDecimH[compID])
+    {
+      m_pcInterPred->asbtBorderResiH(currTU, currTU.cs->picture->getRecoBuf(currTU.blocks[compID]),
+        currTU.cs->getPredBuf(currTU.blocks[compID]), compID,
+        predResiBorder, (currTU.cs->sps->getBitDepth(toChannelType(compID)) - 1));
+    }
+    m_pcTrQuant->predCoeffSigns(currTU, compID, reshapeChroma, predResiBorder);
+  }
+  else
+  {
+    m_pcTrQuant->predCoeffSigns(currTU, compID, reshapeChroma);
+  }
+#else
   m_pcTrQuant->predCoeffSigns(currTU, compID, reshapeChroma);
+#endif
 #if JVET_Y0065_GPM_INTRA
   if (currTU.cs->slice->getPicHeader()->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag() && isLuma(compID) && !currTU.cu->firstPU->ciipFlag && !currTU.cu->firstPU->gpmIntraFlag && !CU::isIBC(*currTU.cu))
 #else
@@ -2918,12 +2974,44 @@ void DecCu::xDecodeInterTU( TransformUnit & currTU, const ComponentID compID )
         m_pcTrQuant->invTransformNxN( currTU, COMPONENT_Cr, resiCr, qpCr );
       }
       m_pcTrQuant->invTransformICT( currTU, resiBuf, resiCr );
+#if JVET_AL0181_ASBT 
+      if (currTU.asbtDecimW[COMPONENT_Cb])
+      {
+        m_pcInterPred->upsampleOneBlock(currTU, resiBuf, COMPONENT_Cb);
+        m_pcInterPred->upsampleOneBlock(currTU, resiCr, COMPONENT_Cr);
+      }
+
+      if (currTU.asbtDecimH[COMPONENT_Cb])
+      {
+        m_pcInterPred->upsampleOneBlockH(currTU, resiBuf, COMPONENT_Cb);
+        m_pcInterPred->upsampleOneBlockH(currTU, resiCr, COMPONENT_Cr);
+      }
+#endif
     }
   }
   else
   if( TU::getCbf( currTU, compID ) )
   {
+#if JVET_AL0181_ASBT
+    if ((currTU.asbtDecimW[compID] || currTU.asbtDecimH[compID]))
+    {
+      m_pcTrQuant->invTransformNxN(currTU, compID, resiBuf, cQP);
+      if (currTU.asbtDecimW[compID] && (!currTU.asbtDecimH[compID]))
+      {
+        m_pcInterPred->upsampleOneBlock(currTU, resiBuf, compID);
+      }
+      else if ((!currTU.asbtDecimW[compID]) && currTU.asbtDecimH[compID])
+      {
+        m_pcInterPred->upsampleOneBlockH(currTU, resiBuf, compID);
+      }
+    }
+    else
+    {
+      m_pcTrQuant->invTransformNxN(currTU, compID, resiBuf, cQP);
+    }
+#else
     m_pcTrQuant->invTransformNxN( currTU, compID, resiBuf, cQP );
+#endif
   }
   else
   {

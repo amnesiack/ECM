@@ -54,7 +54,11 @@
 struct CoeffCodingContext
 {
 public:
+#if JVET_AL0181_ASBT
+  CoeffCodingContext( const TransformUnit& tu, ComponentID component, bool signHide, bool bdpcm = false , bool isTranspose = false );
+#else
   CoeffCodingContext( const TransformUnit& tu, ComponentID component, bool signHide, bool bdpcm = false );
+#endif
 #if SIGN_PREDICTION
   int  getPredSignsQualified() { return m_bSignPredQualified;}
 #endif

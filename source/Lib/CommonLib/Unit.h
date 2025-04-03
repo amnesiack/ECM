@@ -1044,6 +1044,14 @@ struct TransformUnit : public UnitArea
 #if JVET_AE0059_INTER_CCCM
   int8_t         interCccm;
 #endif
+#if JVET_AL0181_ASBT
+  int8_t         asbtDecimW[MAX_NUM_COMPONENT];
+  int8_t         asbtDecimH[MAX_NUM_COMPONENT];
+  int8_t         asbtPosx;
+  int8_t         asbtPosy;
+  CompArea       blocksResidual[MAX_NUM_COMPONENT];
+  CompArea       blocksResForDbf[MAX_NUM_COMPONENT];
+#endif
 #if JVET_AF0073_INTER_CCP_MERGE
   int8_t         interCcpMerge;
   CCPModelCandidate curCand;
@@ -1093,6 +1101,14 @@ struct TransformUnit : public UnitArea
   const CCoeffBuf getCoeffs(const ComponentID id) const;
 #if SIGN_PREDICTION
   AreaBuf<SIGN_PRED_TYPE> getCoeffSigns(const ComponentID id);
+#if JVET_AL0181_ASBT
+  const AreaBuf<SIGN_PRED_TYPE> getCoeffSigns(const ComponentID id) const;
+  void fillBlocksResForDbf(const ComponentID id);
+  void fillBlocksResForDbfPos(const ComponentID id);
+  void fillBlocksResForDbfSize(CompArea* blocksRes, const ComponentID id);
+  void initBlockRes(CompArea* blocksRes, const ComponentID id);
+  void alignAsbtDecim(const ComponentID id);
+#endif
 #if JVET_Y0141_SIGN_PRED_IMPROVE
   IdxBuf          getCoeffSignsScanIdx(const ComponentID id);
   const CIdxBuf   getCoeffSignsScanIdx(const ComponentID id) const;

@@ -3784,7 +3784,19 @@ void CABACWriter::cu_residual( const CodingUnit& cu, Partitioner& partitioner, C
     }
   }
 #endif
+#if JVET_AL0181_ASBT 
+  bool isAsbt = false;
+  for (auto& currTU : CU::traverseTUs(cu))
+  {
+    isAsbt = isAsbt || (currTU.asbtDecimH[COMPONENT_Y] || currTU.asbtDecimW[COMPONENT_Y]);
+  }
+  if (!isAsbt)
+  {
+    mts_idx          ( cu, &cuCtx );
+  }
+#else
   mts_idx            ( cu, &cuCtx );
+#endif
 
 #if SIGN_PREDICTION
   if(typeid(m_BinEncoder) == typeid(BinEncoder_Std))
@@ -9347,6 +9359,15 @@ void CABACWriter::transform_unit(const TransformUnit& tu, CUCtx& cuCtx, Partitio
       }
     }
 
+#if JVET_AL0181_ASBT  
+  if ( tu.cbf[COMPONENT_Y] != 0  && tu.cu->rootCbf && cbfLuma )
+  {
+    if ( TU::isInterAsbt( tu ) )
+    {
+      interAsbt( tu );
+    }
+  }
+#endif
 #if JVET_AF0073_INTER_CCP_MERGE
   if ( !lumaOnly )
   {
@@ -9520,12 +9541,24 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID, 
     return;
   }
 
+#if JVET_AL0181_ASBT
+  bool isTranspose = TU::isTranspostition(tu, compID);
+  if (isTranspose)
+  {
+    writeTransposeCoeff(tu, compID);
+  }
+#endif
   // determine sign hiding
   bool signHiding = cu.cs->slice->getSignDataHidingEnabledFlag();
 
   // init coeff coding context
+#if JVET_AL0181_ASBT
+  CoeffCodingContext  cctx    ( tu, compID, signHiding, false, isTranspose );
+  const TCoeff*       coeff   = isTranspose ? m_coeffTmp[compID] : tu.getCoeffs( compID ).buf;
+#else
   CoeffCodingContext  cctx    ( tu, compID, signHiding );
   const TCoeff*       coeff   = tu.getCoeffs( compID ).buf;
+#endif
 
   // determine and set last coeff position and sig group flags
   int                      scanPosLast = -1;
@@ -9548,11 +9581,20 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID, 
     {
 #endif
 #if !EXTENDED_LFNST
+#if JVET_AL0181_ASBT
+      if (cuCtx && tu.mtsIdx[compID] != MTS_SKIP && (tu.blocksResidual[compID].height >= 4) && (tu.blocksResidual[compID].width >= 4))
+#else
     if (cuCtx && tu.mtsIdx[compID] != MTS_SKIP && tu.blocks[compID].height >= 4 && tu.blocks[compID].width >= 4)
+#endif
     {
 #if JVET_AC0130_NSPT
+#if JVET_AL0181_ASBT
+      uint32_t  width = tu.blocksResidual[compID].width;
+      uint32_t height = tu.blocksResidual[compID].height;
+#else
       uint32_t  width = tu.blocks[compID].width;
       uint32_t height = tu.blocks[compID].height;
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
       bool spsIntraLfnstEnabled = ( ( tu.cu->slice->getSliceType() == I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTISlice() ) ||
                                     ( tu.cu->slice->getSliceType() != I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTPBSlice() ) );
@@ -9904,7 +9946,16 @@ void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
 
 #if JVET_AG0061_INTER_LFNST_NSPT
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
+#if JVET_AL0181_ASBT
+  bool isAsbt = false;
+  for (auto& currTU : CU::traverseTUs(cu))
+  {
+    isAsbt = isAsbt || (currTU.asbtDecimW[COMPONENT_Y] || currTU.asbtDecimH[COMPONENT_Y]);
+  }
+  if( ( spsIntraLfnstEnabled && CU::isIntra( cu ) ) || ( cu.cs->sps->getUseInterLFNST() && (CU::isInter( cu ) && !isAsbt) ) )
+#else
   if( ( spsIntraLfnstEnabled && CU::isIntra( cu ) ) || ( cu.cs->sps->getUseInterLFNST() && CU::isInter( cu ) ) )
+#endif
 #else
   if (cu.cs->sps->getUseLFNST() && (CU::isIntra(cu) || CU::isInter(cu)))
 #endif
@@ -11293,15 +11344,37 @@ void CABACWriter::codePredictedSigns( TransformUnit &tu, ComponentID compID )
   int ctxOffset = CU::isIntra( *tu.cu ) ? 0 : 2;
   const bool useSignPred = TU::getUseSignPred( tu, compID );
 
+#if JVET_AL0181_ASBT
+  bool isTranspose = TU::isTranspostition(tu, compID);
+  uint32_t width = isTranspose ? (tu.blocks[compID].width >> tu.asbtDecimH[compID]) : tu.blocksResidual[compID].width;
+  uint32_t height = isTranspose ? tu.blocks[compID].height : tu.blocksResidual[compID].height;
+  Size transposeSize = Size(width, height);
+  if (isTranspose)
+  {
+    writeTransposeCoeff(tu, compID);
+  }
+  CoeffBuf buff = isTranspose ? CoeffBuf(m_coeffTmp[compID], transposeSize) : tu.getCoeffs(compID);
+  AreaBuf<SIGN_PRED_TYPE> signBuff = isTranspose ? AreaBuf<SIGN_PRED_TYPE>(m_signPredTypeTmp[compID], transposeSize) : tu.getCoeffSigns(compID);
+#else
   CoeffBuf buff = tu.getCoeffs( compID );
   AreaBuf<SIGN_PRED_TYPE> signBuff = tu.getCoeffSigns(compID);
+#endif
   TCoeff *coeff = buff.buf;
   SIGN_PRED_TYPE         *signs    = signBuff.buf;
 #if JVET_Y0141_SIGN_PRED_IMPROVE
+#if JVET_AL0181_ASBT
+  IdxBuf signScanIdxBuff = isTranspose?IdxBuf(m_signScanIdxTmp[compID],transposeSize):tu.getCoeffSignsScanIdx(compID);
+#else
   IdxBuf signScanIdxBuff = tu.getCoeffSignsScanIdx(compID);
+#endif
   unsigned *signScanIdx = signScanIdxBuff.buf;
+#if JVET_AL0181_ASBT
+  uint32_t extAreaWidth = std::min(width, (uint32_t)SIGN_PRED_FREQ_RANGE);
+  uint32_t extAreaHeight = std::min(height, (uint32_t)SIGN_PRED_FREQ_RANGE);
+#else
   uint32_t extAreaWidth = std::min(tu.blocks[compID].width, (uint32_t)SIGN_PRED_FREQ_RANGE);
   uint32_t extAreaHeight = std::min(tu.blocks[compID].height, (uint32_t)SIGN_PRED_FREQ_RANGE);
+#endif
   if (!useSignPred)
   {
     for (uint32_t y = 0; y < extAreaHeight; y++)
@@ -11324,14 +11397,37 @@ void CABACWriter::codePredictedSigns( TransformUnit &tu, ComponentID compID )
   else
   {
     std::vector<SignCombInfo>                  signCombList;
+#if JVET_AL0181_ASBT
+    const bool lfnstEnabled = ((tu.checkLFNSTApplied(compID)) || ( (tu.asbtDecimH[compID] || tu.asbtDecimW[compID])
+                              && !((tu.asbtDecimH[compID] + tu.asbtDecimW[compID]) == 2 && (tu.blocks[compID].width <= 8 || tu.blocks[compID].height <= 8))
+                              && !(tu.blocks[compID].width <= 4) && !(tu.blocks[compID].height <= 4)));
+#else
     bool lfnstEnabled = tu.checkLFNSTApplied(compID);
+#endif
     static_vector<uint32_t, SIGN_PRED_MAX_NUM> levelList;
+#if JVET_AL0181_ASBT
+    uint32_t minAreaSize = ((tu.asbtDecimH[compID] || tu.asbtDecimW[compID]) && compID > 0) ?
+            std::min(tu.blocks[compID].height << (tu.asbtDecimH[compID] + tu.asbtDecimW[compID]), (tu.blocks[compID].width << (tu.asbtDecimH[compID] + tu.asbtDecimW[compID])))
+            : 4;
+
+    minAreaSize = std::min(minAreaSize, (uint32_t)4);
+
+    const int32_t                              maxNumPredSigns =
+    lfnstEnabled ? std::min<int>( minAreaSize, tu.cs->sps->getNumPredSigns() ) : tu.cs->sps->getNumPredSigns();
+#else
     const int32_t                              maxNumPredSigns =
       lfnstEnabled ? std::min<int>(4, tu.cs->sps->getNumPredSigns()) : tu.cs->sps->getNumPredSigns();
+#endif
     CHECK(maxNumPredSigns > levelList.max_size(), "levelList is too small");
+#if JVET_AL0181_ASBT
+    uint32_t extAreaSize = (lfnstEnabled ? minAreaSize : tu.cs->sps->getSignPredArea());
+    uint32_t spAreaWidth = std::min(width, extAreaSize);
+    uint32_t spAreaHeight = std::min(height, extAreaSize);
+#else
     uint32_t extAreaSize = (lfnstEnabled ? 4 : tu.cs->sps->getSignPredArea());
     uint32_t spAreaWidth = std::min(tu.blocks[compID].width, extAreaSize);
     uint32_t spAreaHeight = std::min(tu.blocks[compID].height, extAreaSize);
+#endif
     for (uint32_t y = 0; y < spAreaHeight; y++)
     {
       for (uint32_t x = 0; x < spAreaWidth; x++)
@@ -11573,43 +11669,87 @@ void CABACWriter::interCcpMerge(const TransformUnit& tu)
   }
 }
 #endif
-#if JVET_AK0065_TALF
-void CABACWriter::codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStructure &cs, const ComponentID compID, const int curIdx
-  , const TAlfCtbParam *filterControlIdc, Position lumaPos, const int filterCount, const int numSets, const bool newFilters)
+#if JVET_AL0181_ASBT
+void CABACWriter::interAsbt(const TransformUnit& tu)
 {
-  CHECK(curControl.filterIdx >= filterCount, "curControl.filterIdx >= filterCount");
-  const uint32_t curSliceIdx = cs.slice->getIndependentSliceIdx();
-  const uint32_t curTileIdx = cs.pps->getTileIdx(lumaPos);
-  Position       leftLumaPos = lumaPos.offset(-(int)cs.pcv->maxCUWidth, 0);
-  Position       aboveLumaPos = lumaPos.offset(0, -(int)cs.pcv->maxCUWidth);
-  bool           leftAvail = cs.getCURestricted(leftLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L) ? true : false;
-  bool           aboveAvail = cs.getCURestricted(aboveLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L) ? true : false;
-  int            ctxId = 0;
-  if (leftAvail)
+  if (TU::isInterAsbt(tu))
   {
-    ctxId += (filterControlIdc[curIdx - 1].enabledFlag ? 1 : 0);
-  }
-  if (aboveAvail)
-  {
-    ctxId += (filterControlIdc[curIdx - cs.pcv->widthInCtus].enabledFlag ? 1 : 0);
-  }
-  if (newFilters)
-  {
-    ctxId += 3;
-  }
-  m_BinEncoder.encodeBin(curControl.enabledFlag, Ctx::TAlfFilterControlFlag(ctxId)); // ON/OFF flag is context coded
-  if (curControl.enabledFlag)
-  {
-    if (numSets > 1 && !newFilters)
+    bool interAsbtW = TU::isInterAsbtW(tu);
+    bool interAsbtH = TU::isInterAsbtH(tu);
+    bool isDecimation = tu.asbtDecimH[COMPONENT_Y] || tu.asbtDecimW[COMPONENT_Y];
+
+    if (interAsbtW || interAsbtH)
     {
-      unary_max_eqprob(curControl.setIdx, numSets - 1);
+      m_BinEncoder.encodeBin(isDecimation ? 1 : 0, Ctx::AsbtEnabledFlag(((tu.cu->sbtInfo != 0) ? 1 : 0)));
     }
-    if (filterCount > 1)
+
+    if (isDecimation)
     {
-      unary_max_eqprob(curControl.filterIdx, filterCount - 1);
+      if ((interAsbtW && interAsbtH) ? (std::max(tu.blocks[0].width, tu.blocks[0].height) > MIN_ASBT_DECIM_4_SIZE) : (tu.asbtDecimW[COMPONENT_Y] ? (tu.blocks[0].width > MIN_ASBT_DECIM_4_SIZE) : (tu.blocks[0].height > MIN_ASBT_DECIM_4_SIZE)))
+      {
+        m_BinEncoder.encodeBin(tu.asbtDecimW[COMPONENT_Y] ? (tu.asbtDecimW[COMPONENT_Y] > 1 ? 1 : 0) : (tu.asbtDecimH[COMPONENT_Y] > 1 ? 1 : 0), Ctx::AsbtSecondDecim(((tu.cu->sbtInfo != 0) ? 1 : 0)));
+      }
     }
   }
 }
+void  CABACWriter::writeTransposeCoeff(const TransformUnit& tu, ComponentID compID)
+{
+  int newWidth = tu.blocks[compID].width >> tu.asbtDecimH[compID];
+  int newHeight = tu.blocks[compID].height;
+  const TCoeff* coeffBuf = tu.getCoeffs(compID).buf;
+  const AreaBuf<SIGN_PRED_TYPE> signBuf = tu.getCoeffSigns(compID);
+  const CIdxBuf signScanIdxBuf = tu.getCoeffSignsScanIdx(compID);
+
+  ScanElement* scanOrg = g_scanOrder[SCAN_GROUPED_4x4][SCAN_DIAG][gp_sizeIdxInfo->idxFrom(tu.blocksResidual[compID].width)][gp_sizeIdxInfo->idxFrom(tu.blocksResidual[compID].height)];
+  ScanElement* scanNew = g_scanOrder[SCAN_GROUPED_4x4][SCAN_DIAG][gp_sizeIdxInfo->idxFrom(newWidth)][gp_sizeIdxInfo->idxFrom(newHeight)];
+
+  for (int scanPos = 0; scanPos < newWidth * newHeight; scanPos++)
+  {
+    unsigned blkPos1 = scanOrg[scanPos].idx;
+    unsigned blkPos2 = scanNew[scanPos].idx;
+    m_coeffTmp[compID][blkPos2] = coeffBuf[blkPos1];
+    m_signPredTypeTmp[compID][blkPos2] = signBuf.buf[blkPos1];
+    m_signScanIdxTmp[compID][blkPos2] = signScanIdxBuf.buf[blkPos1];
+  }
+}
+#endif
+#if JVET_AK0065_TALF
+  void CABACWriter::codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStructure& cs, const ComponentID compID, const int curIdx
+      , const TAlfCtbParam* filterControlIdc, Position lumaPos, const int filterCount, const int numSets, const bool newFilters)
+  {
+      CHECK(curControl.filterIdx >= filterCount, "curControl.filterIdx >= filterCount");
+      const uint32_t curSliceIdx = cs.slice->getIndependentSliceIdx();
+      const uint32_t curTileIdx = cs.pps->getTileIdx(lumaPos);
+      Position       leftLumaPos = lumaPos.offset(-(int)cs.pcv->maxCUWidth, 0);
+      Position       aboveLumaPos = lumaPos.offset(0, -(int)cs.pcv->maxCUWidth);
+      bool           leftAvail = cs.getCURestricted(leftLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L) ? true : false;
+      bool           aboveAvail = cs.getCURestricted(aboveLumaPos, lumaPos, curSliceIdx, curTileIdx, CH_L) ? true : false;
+      int            ctxId = 0;
+      if (leftAvail)
+      {
+          ctxId += (filterControlIdc[curIdx - 1].enabledFlag ? 1 : 0);
+      }
+      if (aboveAvail)
+      {
+          ctxId += (filterControlIdc[curIdx - cs.pcv->widthInCtus].enabledFlag ? 1 : 0);
+      }
+      if (newFilters)
+      {
+          ctxId += 3;
+      }
+      m_BinEncoder.encodeBin(curControl.enabledFlag, Ctx::TAlfFilterControlFlag(ctxId)); // ON/OFF flag is context coded
+      if (curControl.enabledFlag)
+      {
+          if (numSets > 1 && !newFilters)
+          {
+              unary_max_eqprob(curControl.setIdx, numSets - 1);
+          }
+          if (filterCount > 1)
+          {
+              unary_max_eqprob(curControl.filterIdx, filterCount - 1);
+          }
+      }
+  }
 #endif
 #if JVET_AL0153_ALF_CCCM
 void CABACWriter::lfCccm(const CodingStructure& cs, const uint32_t ctuRsAddr)

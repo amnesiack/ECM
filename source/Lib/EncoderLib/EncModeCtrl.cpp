@@ -3272,6 +3272,15 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
           return false;
         }
 
+#if JVET_AL0181_ASBT
+        if ( bestCU && bestCU->rootCbf && ( (slice.getPic()->temporalId >= 5) && (bestCU->mtDepth < 1) ) )
+        {
+          if ( bestCU->firstTU->asbtDecimH[COMPONENT_Y] )
+          {
+            return false;
+          }
+        }
+#endif
         if( !cuECtx.get<bool>( DO_TRIH_SPLIT ) )
         {
           return false;
@@ -3283,6 +3292,15 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
           return false;
         }
 
+#if JVET_AL0181_ASBT
+        if ( bestCU && bestCU->rootCbf && ( (slice.getPic()->temporalId >= 5) && (bestCU->mtDepth < 1) ) )
+        {
+          if ( bestCU->firstTU->asbtDecimW[COMPONENT_Y] )
+          {
+            return false;
+          }
+        }
+#endif
         if( !cuECtx.get<bool>( DO_TRIV_SPLIT ) )
         {
           return false;

@@ -41,11 +41,23 @@
 #include "Picture.h"
 
 
+#if JVET_AL0181_ASBT
+CoeffCodingContext::CoeffCodingContext( const TransformUnit& tu, ComponentID component, bool signHide, bool bdpcm, bool isTranspose )
+#else
 CoeffCodingContext::CoeffCodingContext( const TransformUnit& tu, ComponentID component, bool signHide, bool bdpcm )
+#endif
   : m_compID                    (component)
   , m_chType                    (toChannelType(m_compID))
+#if JVET_AL0181_ASBT
+  , m_width                     (isTranspose ? (tu.blocks[m_compID].width >> tu.asbtDecimH[m_compID]) : tu.blocksResidual[m_compID].width)
+#else
   , m_width                     (tu.block(m_compID).width)
+#endif
+#if JVET_AL0181_ASBT
+  , m_height                    (isTranspose ? tu.blocks[m_compID].height : tu.blocksResidual[m_compID].height)
+#else
   , m_height                    (tu.block(m_compID).height)
+#endif
   , m_log2CGWidth               ( g_log2SbbSize[ floorLog2(m_width) ][ floorLog2(m_height) ][0] )
   , m_log2CGHeight              ( g_log2SbbSize[ floorLog2(m_width) ][ floorLog2(m_height) ][1] )
   , m_log2CGSize                (m_log2CGWidth + m_log2CGHeight)

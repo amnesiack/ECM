@@ -120,6 +120,11 @@
 #define NSIGCTX                                           6
 #define NGTXCTX                                           7
 #endif
+#if JVET_AL0181_ASBT
+static const int MIN_ASBT_DECIM_4_SIZE            =  8;
+static const int MIN_ABST_SIZE                    =  4;
+static const int MAX_ABST_SIZE                    =  128;
+#endif
 #if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
 static const int AFFINE_TMVP_MAX_NUM              = 20;
 static const int AFFINE_TMVP_FINAL_MAX_NUM        = 6;

@@ -2588,6 +2588,13 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     READ_FLAG(uiCode, "sps_sbt_lfnst_enabled_flag");            pcSPS->setUseSbtLFNST(uiCode != 0);
   }
 #endif
+#if JVET_AL0181_ASBT
+  READ_FLAG(uiCode, "sps_asbt_enabled_flag");                       pcSPS->setUseASBT(uiCode != 0);
+  if (pcSPS->getUseASBT())
+  {
+    READ_FLAG(uiCode, "sps_asbt_signaling_at_PH_flag");             pcSPS->setUseASBTphSignaling(uiCode != 0);
+  }
+#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
   READ_FLAG( uiCode,    "sps_dmvd_enabled_flag" );                      pcSPS->setUseDMVDMode( uiCode != 0 );
 #endif
@@ -4362,6 +4369,27 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
   else
   {
     picHeader->setDisFracMBVD(true);
+  }
+#endif
+#if JVET_AL0181_ASBT
+  if (sps->getUseASBT() && sps->getUseASBTphSignaling())
+  {
+    if (picHeader->getPicInterSliceAllowedFlag())
+    {
+      READ_FLAG(uiCode, "ph_ASBT_enabled_flag");
+      picHeader->setUseASBT(uiCode);
+    }
+  }
+  else
+  {
+    if (sps->getUseASBT())
+    {
+      picHeader->setUseASBT(1);
+    }
+    else
+    {
+      picHeader->setUseASBT(0);
+    }
   }
 #endif
 

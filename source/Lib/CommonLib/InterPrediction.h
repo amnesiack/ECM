@@ -1924,6 +1924,32 @@ public:
 #if JVET_AF0073_INTER_CCP_MERGE
   bool deriveInterCcpMergePrediction         ( TransformUnit* tu, const PelBuf& lumaReconstruction, PelBuf& inBufCb, PelBuf& inBufCr, PelBuf& outBufCb, PelBuf& outBufCr, CCPModelCandidate interCcpMergeList[], int validNum);
 #endif
+#if JVET_AL0181_ASBT 
+private:
+  int32_t * m_enerBuffer;
+  Pel * m_coordBuffer;
+  TCoeff * m_coeffTmp[MAX_NUM_COMPONENT];
+  SIGN_PRED_TYPE * m_signPredTypeTmp[MAX_NUM_COMPONENT];
+  unsigned * m_signScanIdxTmp[MAX_NUM_COMPONENT];
+  uint64_t m_sumMin[MAX_TB_SIZEY];
+  uint64_t m_sumMinH[MAX_TB_SIZEY];
+public:
+  Distortion getDistortionFullBlock          ( TransformUnit& tu, const PelBuf& lumaResi );
+  void asbtDownSampling                      ( TransformUnit &tu, ComponentID compID, const PelBuf& lumaPrediction,const PelBuf& lumaResi, PelBuf& downResi );
+  void asbtDownSamplingH                     ( TransformUnit &tu, ComponentID compID, const PelBuf& lumaPrediction,const PelBuf& lumaResi, PelBuf& downResi );
+  void initEnerPred                          ( TransformUnit& tu, const PelBuf& lumaPrediction );
+  void upsampleOneBlock                      ( TransformUnit& tu, PelBuf& image, ComponentID compID );
+  void upsampleOneBlockH                     ( TransformUnit& tu, PelBuf& image, ComponentID compID );
+  void asbtBorderResi                        ( const TransformUnit& tu, const CPelBuf& recoBuf, const CPelBuf& predBuf, const ComponentID compID, Pel* predResiBorder, const Pel defaultVal );
+  void asbtBorderResiH                       ( const TransformUnit& tu, const CPelBuf& recoBuf, const CPelBuf& predBuf, const ComponentID compID, Pel* predResiBorder, const Pel defaultVal );
+  void asbtCoord                             ( TransformUnit& tu, ComponentID compID, int dir );
+  void asbtCoordPred                         ( TransformUnit& tu, int decim, ComponentID compID );
+  void invTransposeTransform                 ( TransformUnit& tu, ComponentID compID );
+  int asbtDownSamplingPred                   ( TransformUnit &tu, ComponentID compID, const PelBuf& lumaPrediction, const PelBuf& lumaResi, PelBuf& downResi, int decim );
+  void fillCoordBuf                          ( Pel* coordBuf, const uint8_t bestPos, const int height, const int width, const int iCoordStride );
+  void fillCoordBufH                         ( Pel* coordBuf, const uint8_t bestPos, const int height, const int width, const int iCoordStride );
+  void fillDownResiBuf                       ( PelBuf& downResi, const PelBuf& lumaResi, const uint32_t offset, const int height, const int width, const int iRecStride );
+#endif
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AK0076_EXTENDED_OBMC_IBC
   void subBlockIntraForOBMC                  (PredictionUnit &subPu, const int iSub, const bool isAbove, PelUnitBuf &cTmp, IntraPrediction *pcIntraPred, const bool lumaOnly);

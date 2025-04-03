@@ -475,7 +475,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
   const int maxLog2TrDynamicRange = tu.cs->sps->getMaxLog2TrDynamicRange(toChannelType(compID));
 #endif
+#if JVET_AL0181_ASBT
+  const CompArea& area     = tu.blocksResidual[ compID ];
+#else
   const CompArea& area     = tu.blocks[ compID ];
+#endif
   const uint32_t  width    = area.width;
   const uint32_t  height   = area.height;
   const uint32_t  lfnstIdx = tu.cu->lfnstIdx;
@@ -727,7 +731,11 @@ void TrQuant::xInvLfnst( const TransformUnit &tu, const ComponentID compID )
 
 void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, const bool loadTr )
 {
+#if JVET_AL0181_ASBT
+  const CompArea& area     = tu.blocksResidual[ compID ];
+#else
   const CompArea& area     = tu.blocks[ compID ];
+#endif
   const uint32_t  width    = area.width;
   const uint32_t  height   = area.height;
   const uint32_t  lfnstIdx = tu.cu->lfnstIdx;
@@ -986,7 +994,11 @@ void TrQuant::xFwdLfnst( const TransformUnit &tu, const ComponentID compID, cons
 
 void TrQuant::invTransformNxN( TransformUnit &tu, const ComponentID &compID, PelBuf &pResi, const QpParam &cQP )
 {
+#if JVET_AL0181_ASBT
+  const CompArea &area    = tu.blocksResidual[compID];
+#else
   const CompArea &area    = tu.blocks[compID];
+#endif
   const uint32_t uiWidth      = area.width;
   const uint32_t uiHeight     = area.height;
 
@@ -1041,8 +1053,13 @@ std::vector<int> TrQuant::selectICTCandidates( const TransformUnit &tu, CompStor
   if( !CU::isIntra( *tu.cu ) )
   {
     int cbfMask = 3;
+#if JVET_AL0181_ASBT
+    resCb[cbfMask].create( tu.blocksResidual[COMPONENT_Cb] );
+    resCr[cbfMask].create( tu.blocksResidual[COMPONENT_Cr] );
+#else
     resCb[cbfMask].create( tu.blocks[COMPONENT_Cb] );
     resCr[cbfMask].create( tu.blocks[COMPONENT_Cr] );
+#endif
     fwdTransformICT( tu, resCb[0], resCr[0], resCb[cbfMask], resCr[cbfMask], cbfMask );
     std::vector<int> cbfMasksToTest;
     cbfMasksToTest.push_back( cbfMask );
@@ -1055,8 +1072,13 @@ std::vector<int> TrQuant::selectICTCandidates( const TransformUnit &tu, CompStor
     if( cbfMask )
     {
       CHECK( resCb[cbfMask].valid() || resCr[cbfMask].valid(), "target components for cbfMask=" << cbfMask << " are already present" );
+#if JVET_AL0181_ASBT
+      resCb[cbfMask].create( tu.blocksResidual[COMPONENT_Cb] );
+      resCr[cbfMask].create( tu.blocksResidual[COMPONENT_Cr] );
+#else
       resCb[cbfMask].create( tu.blocks[COMPONENT_Cb] );
       resCr[cbfMask].create( tu.blocks[COMPONENT_Cr] );
+#endif
     }
     pairDist[cbfMask] = fwdTransformICT( tu, resCb[0], resCr[0], resCb[cbfMask], resCr[cbfMask], cbfMask );
   }
@@ -1140,8 +1162,13 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
   if (isImplicitMTS || isISP)
 #endif
   {
+#if JVET_AL0181_ASBT
+    int  width = tu.blocksResidual[compID].width;
+    int  height = tu.blocksResidual[compID].height;
+#else
     int  width = tu.blocks[compID].width;
     int  height = tu.blocks[compID].height;
+#endif    
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
     if (isISP || width < 4 || height < 4)
     {
@@ -1458,13 +1485,22 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       )
     {
       CHECK(compID != COMPONENT_Y, " MTS activated for chroma");
+#if JVET_AL0181_ASBT
+      uint32_t width = tu.blocksResidual[compID].width;
+      uint32_t height = tu.blocksResidual[compID].height;
+#else
       uint32_t width = tu.blocks[compID].width;
       uint32_t height = tu.blocks[compID].height;
+#endif
       int TrIdx = (tu.mtsIdx[compID] - MTS_DST7_DST7);
       CHECK(width < 4 || height < 4, "width < 4 || height < 4 for MTS");
       uint8_t nSzIdxW = std::min(3, (floorLog2(width) - 2));
       uint8_t nSzIdxH = std::min(3, (floorLog2(height) - 2));
+#if JVET_AL0181_ASBT
+      const CompArea& area = tu.blocksResidual[compID];
+#else
       const CompArea& area = tu.blocks[compID];
+#endif
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST
       int predMode;
       if (tu.cu->tmpFlag)
@@ -1587,8 +1623,13 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
       if (tu.cs->sps->getUseMTSExt())
       {
 #endif
+#if JVET_AL0181_ASBT
+        uint32_t width = tu.blocksResidual[compID].width;
+        uint32_t height = tu.blocksResidual[compID].height;
+#else
         uint32_t width = tu.blocks[compID].width;
         uint32_t height = tu.blocks[compID].height;
+#endif
         CHECK(width < 4 || height < 4, "width < 4 || height < 4 for KLT");
         if (width <= 16 && height <= 16)
         {
@@ -1903,7 +1944,11 @@ void TrQuant::xIT( const TransformUnit &tu, const ComponentID &compID, const CCo
 #if JVET_AC0130_NSPT
 void TrQuant::xFwdNspt( const TransformUnit &tu, TCoeff* src, TCoeff* dst, const ComponentID compID, const int shift_1st, const int shift_2nd, int lfnstIdx )
 {
+#if JVET_AL0181_ASBT
+  const CompArea&   area = tu.blocksResidual[ compID ];
+#else
   const CompArea&   area = tu.blocks[ compID ];
+#endif
   const uint32_t   width = area.width;
   const uint32_t  height = area.height;
 
@@ -1978,7 +2023,11 @@ void TrQuant::xInvNspt( const TransformUnit &tu, const TCoeff* src, TCoeff* dst,
 #if JVET_R0351_HIGH_BIT_DEPTH_SUPPORT
   const int maxLog2TrDynamicRange = tu.cs->sps->getMaxLog2TrDynamicRange( toChannelType( compID ) );
 #endif
+#if JVET_AL0181_ASBT
+  const CompArea&   area = tu.blocksResidual[ compID ];
+#else
   const CompArea&   area = tu.blocks[ compID ];
+#endif
   const uint32_t   width = area.width;
   const uint32_t  height = area.height;
  
@@ -2377,7 +2426,11 @@ void TrQuant::xITransformSkip(const CCoeffBuf     &pCoeff,
                               const TransformUnit &tu,
                               const ComponentID   &compID)
 {
+#if JVET_AL0181_ASBT
+  const CompArea &area      = tu.blocksResidual[compID];
+#else
   const CompArea &area      = tu.blocks[compID];
+#endif
   const int width           = area.width;
   const int height          = area.height;
 
@@ -2400,7 +2453,11 @@ void TrQuant::xQuant(TransformUnit &tu, const ComponentID &compID, const CCoeffB
 void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const QpParam& cQP, std::vector<TrMode>* trModes, const int maxCand )
 {
         CodingStructure &cs = *tu.cs;
+#if JVET_AL0181_ASBT
+  const CompArea &rect      = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t width      = rect.width;
   const uint32_t height     = rect.height;
 
@@ -2544,7 +2601,11 @@ uint64_t TrQuant::transformNxN(TransformUnit& tu)
 {
   CHECK(!tu.cu->mtsFlag, "mtsFlag should be on for selection");
   CodingStructure &cs = *tu.cs;
+#if JVET_AL0181_ASBT
+  const CompArea &rect = tu.blocksResidual[COMPONENT_Y];
+#else
   const CompArea &rect = tu.blocks[COMPONENT_Y];
+#endif
   const uint32_t uiWidth = rect.width;
   const uint32_t uiHeight = rect.height;
 
@@ -2571,7 +2632,11 @@ void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const 
 {
         CodingStructure &cs = *tu.cs;
   const SPS &sps            = *cs.sps;
+#if JVET_AL0181_ASBT
+  const CompArea &rect = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t uiWidth        = rect.width;
   const uint32_t uiHeight       = rect.height;
 
@@ -2658,7 +2723,11 @@ void TrQuant::transformNxN( TransformUnit& tu, const ComponentID& compID, const 
 
 void TrQuant::xTransformSkip(const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, TCoeff* psCoeff)
 {
+#if JVET_AL0181_ASBT
+  const CompArea &rect = tu.blocksResidual[compID];
+#else
   const CompArea &rect = tu.blocks[compID];
+#endif
   const uint32_t width = rect.width;
   const uint32_t height = rect.height;
   const Pel *pelResi = resi.buf;
@@ -2674,7 +2743,11 @@ void TrQuant::xTransformSkip(const TransformUnit &tu, const ComponentID &compID,
 }
 
 #if SIGN_PREDICTION
+#if JVET_AL0181_ASBT
+void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const bool reshapeChroma, const Pel * tmpPredResiBorder)
+#else
 void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const bool reshapeChroma)
+#endif
 {
   bool bIsJCCR = tu.jointCbCr && isChroma(compID);
   ComponentID residCompID = compID;
@@ -2947,10 +3020,23 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   PelBuf recoBuf = cs.picture->getRecoBuf(tu.blocks[residCompID]);
   PelBuf predBuf = cs.getPredBuf(tu.blocks[residCompID]);
   Pel              predResiBorder[2 * SIGN_PRED_MAX_BS];
+#if JVET_AL0181_ASBT
+  if(tmpPredResiBorder == NULL)
+  {
+    TU::predBorderResi(tu.blocks[residCompID], recoBuf, predBuf, residCompID, tu.blocks[residCompID].width, tu.blocks[residCompID].height, predResiBorder, (1 << (tu.cs->sps->getBitDepth(toChannelType(residCompID)) - 1)));
+  }
+  else
+  {
+    memcpy(predResiBorder,tmpPredResiBorder, 2 * SIGN_PRED_MAX_BS * sizeof(Pel));
+  }
+  const uint32_t     uiWidth  = tu.blocksResidual[residCompID].width;
+  const uint32_t     uiHeight = tu.blocksResidual[residCompID].height;
+#else
   TU::predBorderResi(tu.blocks[residCompID], recoBuf, predBuf, residCompID, tu.blocks[residCompID].width, tu.blocks[residCompID].height, predResiBorder, (1 << (tu.cs->sps->getBitDepth(toChannelType(residCompID)) - 1)));
 
   const uint32_t     uiWidth  = tu.blocks[residCompID].width;
   const uint32_t     uiHeight = tu.blocks[residCompID].height;
+#endif
   const uint32_t     stride   = uiWidth + uiHeight;
   const uint32_t     length   = uiWidth + uiHeight;
 
@@ -3034,7 +3120,14 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
   }
 #endif
 #if JVET_Y0141_SIGN_PRED_IMPROVE
+#if JVET_AL0181_ASBT
+  const bool possibleTransposition = ((tu.asbtDecimH[compID] || tu.asbtDecimW[compID])
+                                      && !((tu.asbtDecimH[compID] + tu.asbtDecimW[compID]) == 2 && (tu.blocks[compID].width <= 8 || tu.blocks[compID].height <= 8))
+                                      && !(tu.blocks[compID].width <= 4) && !(tu.blocks[compID].height <= 4));
+  const uint32_t spSize = ((lfnstEnabled || possibleTransposition) ? 4 : tu.cs->sps->getSignPredArea());
+#else
   const uint32_t spSize = (lfnstEnabled ? 4 : tu.cs->sps->getSignPredArea());
+#endif
   const uint32_t signPredWidth = std::min(uiWidth, spSize);
   const uint32_t signPredHeight = std::min(uiHeight, spSize);
   const uint32_t w = std::min(uiWidth, (uint32_t)SIGN_PRED_FREQ_RANGE);
@@ -3096,7 +3189,11 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
 #endif
   Pel m_signPredTemplate[SIGN_PRED_MAX_NUM * SIGN_PRED_MAX_BS * 2];
 
+#if JVET_AL0181_ASBT
+  CoeffBuf bufTmpQuant = CoeffBuf(m_tempCoeff, tu.blocksResidual[residCompID]);
+#else
   CoeffBuf bufTmpQuant = CoeffBuf(m_tempCoeff, tu.blocks[residCompID]);
+#endif
   PelBuf   piResi(m_tempSignPredResid, uiWidth, uiHeight);
   PelBuf   piResiCr(m_tempSignPredResid + uiWidth*uiHeight, uiWidth, uiHeight);
 

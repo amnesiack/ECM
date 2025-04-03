@@ -854,6 +854,10 @@ public:
 #if JVET_AL0153_ALF_CCCM
   static const CtxSet   LfCccmFlag;
 #endif
+#if JVET_AL0181_ASBT
+  static const CtxSet   AsbtEnabledFlag;
+  static const CtxSet   AsbtSecondDecim;
+#endif
   static const unsigned NumberOfContexts;
 
   // combined sets for less complex copying

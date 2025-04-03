@@ -7022,5 +7022,57 @@ const CtxSet ContextSetCfg::PnnLuminanceFlag = ContextSetCfg::addCtxSet
   { 116, 115 }
   });
 #endif
+
+#if JVET_AL0181_ASBT
+const CtxSet ContextSetCfg::AsbtEnabledFlag = ContextSetCfg::addCtxSet
+({
+  {40, 33},
+  {48, 34},
+  {35, 35},
+  {25, 42},
+  {8, 7},
+  {2, 3},
+  {8, 8},
+  {5, 5},
+  {18, 18},
+  {4, 11},
+  {18, 18},
+  {11, 11},
+  {82, 137},
+  {132, 129},
+  {114, 132},
+  {118, 115},
+  {119, 119},
+  {119, 119},
+  {100, 117},
+  {148, 132},
+ });
+
+const CtxSet ContextSetCfg::AsbtSecondDecim = ContextSetCfg::addCtxSet
+({
+  {28, 28},
+  {43, 36},
+  {35, 35},
+  {35, 43},
+  {9, 9},
+  {7, 3},
+  {8, 8},
+  {6, 6},
+  {25, 18},
+  {18, 11},
+  {18, 18},
+  {4, 4},
+  {197, 133},
+  {113, 85},
+  {103, 117},
+  {104, 115},
+  {119, 119},
+  {119, 119},
+  {106, 198},
+  {135, 119},
+ });
+
+#endif
+
 // CONTEXTS WSA STOP
 #endif

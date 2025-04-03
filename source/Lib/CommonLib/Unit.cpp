@@ -2266,11 +2266,25 @@ TransformUnit::TransformUnit(const UnitArea& unit) : UnitArea(unit), cu(nullptr)
     m_runType[i] = nullptr;
   }
 
+#if JVET_AL0181_ASBT
+  for (uint32_t i = 0; i < getNumberValidComponents( chromaFormat ); i++)
+  {
+    blocksResidual[i] = CompArea(ComponentID(i), chromaFormat, blocks[i].x, blocks[i].y, blocks[i].width, blocks[i].height, (COMPONENT_Y == i));
+    blocksResForDbf[i] = CompArea(ComponentID(i), chromaFormat, blocks[i].x, blocks[i].y, blocks[i].width, blocks[i].height, (COMPONENT_Y == i));
+  }
+#endif
   initData();
 }
 
 TransformUnit::TransformUnit(const ChromaFormat _chromaFormat, const Area &_area) : UnitArea(_chromaFormat, _area), cu(nullptr), cs(nullptr), chType( CH_L ), next( nullptr )
 {
+#if JVET_AL0181_ASBT
+  for (uint32_t i = 0; i <getNumberValidComponents(chromaFormat); i++)
+  {
+    blocksResidual[i] = CompArea(ComponentID(i), chromaFormat, _area, true);
+    blocksResForDbf[i] = CompArea(ComponentID(i), chromaFormat, _area, true);
+  }
+#endif
   for( unsigned i = 0; i < MAX_NUM_TBLOCKS; i++ )
   {
     m_coeffs[i] = nullptr;
@@ -2302,6 +2316,10 @@ void TransformUnit::initData()
   {
     cbf[i]           = 0;
     mtsIdx[i]        = MTS_DCT2_DCT2;
+#if JVET_AL0181_ASBT
+    blocksResidual[i] = block((ComponentID) i);
+    blocksResForDbf[i] = block((ComponentID)i);
+#endif
 #if JVET_AG0061_INTER_LFNST_NSPT
     lfnstIdx[i]      = 0;
 #if JVET_AI0050_INTER_MTSS
@@ -2323,6 +2341,15 @@ void TransformUnit::initData()
   m_chromaResScaleInv = 0;
 #if JVET_AE0059_INTER_CCCM
   interCccm          = 0;
+#endif
+#if JVET_AL0181_ASBT
+  for (unsigned i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    asbtDecimW[i]    = 0;
+    asbtDecimH[i]    = 0;
+  }
+  asbtPosx           = 0;
+  asbtPosy           = 0;
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
   interCcpMerge      = 0;
@@ -2387,7 +2414,13 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
   {
     CHECKD( blocks[i].area() != other.blocks[i].area(), "Transformation units cover different areas" );
 
+#if JVET_AL0181_ASBT
+    blocksResidual[i] = other.blocksResidual[i];
+    uint32_t area = blocksResidual[i].area();
+    blocksResForDbf[i] = other.blocksResForDbf[i];
+#else
     uint32_t area = blocks[i].area();
+#endif
 
     if (m_coeffs[i] && other.m_coeffs[i] && m_coeffs[i] != other.m_coeffs[i]) memcpy(m_coeffs[i], other.m_coeffs[i], sizeof(TCoeff) * area);
 #if SIGN_PREDICTION
@@ -2430,6 +2463,15 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
 #if JVET_AE0059_INTER_CCCM
   interCccm          = other.interCccm;
 #endif
+#if JVET_AL0181_ASBT
+  for (unsigned i = 0; i < numBlocks; i++)
+  {
+    asbtDecimW[i]    = other.asbtDecimW[i];
+    asbtDecimH[i]    = other.asbtDecimH[i];
+  }
+  asbtPosx           = other.asbtPosx;
+  asbtPosy           = other.asbtPosy;
+#endif
 #if JVET_AF0073_INTER_CCP_MERGE
   interCcpMerge      = other.interCcpMerge;
   curCand            = other.curCand;
@@ -2443,7 +2485,13 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
 
   CHECKD( blocks[i].area() != other.blocks[i].area(), "Transformation units cover different areas" );
 
+#if JVET_AL0181_ASBT
+    blocksResidual[i] = other.blocksResidual[i];
+    uint32_t area = blocksResidual[i].area();
+    blocksResForDbf[i] = other.blocksResForDbf[i];
+#else
   uint32_t area = blocks[i].area();
+#endif
 
   if (m_coeffs[i] && other.m_coeffs[i] && m_coeffs[i] != other.m_coeffs[i]) memcpy(m_coeffs[i], other.m_coeffs[i], sizeof(TCoeff) * area);
 #if SIGN_PREDICTION
@@ -2486,11 +2534,86 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
 #if JVET_AE0059_INTER_CCCM
   interCccm        = other.interCccm;
 #endif
+#if JVET_AL0181_ASBT
+  asbtDecimW[i]    = other.asbtDecimW[i];
+  asbtDecimH[i]    = other.asbtDecimH[i];
+  asbtPosx         = other.asbtPosx;
+  asbtPosy         = other.asbtPosy;
+#endif
 #if JVET_AF0073_INTER_CCP_MERGE
   interCcpMerge    = other.interCcpMerge;
   curCand          = other.curCand;
 #endif
 }
+#if JVET_AL0181_ASBT
+       CoeffBuf TransformUnit::getCoeffs(const ComponentID id)       { return  CoeffBuf(m_coeffs[id], blocksResidual[id]); }
+const CCoeffBuf TransformUnit::getCoeffs(const ComponentID id) const { return CCoeffBuf(m_coeffs[id], blocksResidual[id]); }
+
+#if SIGN_PREDICTION
+AreaBuf<SIGN_PRED_TYPE> TransformUnit::getCoeffSigns(const ComponentID id)
+{
+  return AreaBuf<SIGN_PRED_TYPE>(m_coeffSigns[id], blocksResidual[id]);
+}
+
+const AreaBuf<SIGN_PRED_TYPE> TransformUnit::getCoeffSigns(const ComponentID id) const
+{
+  return AreaBuf<SIGN_PRED_TYPE>(m_coeffSigns[id], blocksResidual[id]);
+}
+
+void TransformUnit::fillBlocksResForDbf(const ComponentID id)
+{
+  fillBlocksResForDbfSize(this->blocksResForDbf, id);
+  fillBlocksResForDbfPos(id);
+}
+
+void TransformUnit::fillBlocksResForDbfPos(const ComponentID id)
+{
+  if (isLuma(id))
+  {
+    blocksResForDbf[id].x = blocks[id].x + asbtPosx;
+    blocksResForDbf[id].y = blocks[id].y + asbtPosy;
+  }
+  else
+  {
+    blocksResForDbf[id].x = blocks[id].x + (asbtPosx >> 1);
+    blocksResForDbf[id].y = blocks[id].y + (asbtPosy >> 1);
+  }
+}
+
+void TransformUnit::fillBlocksResForDbfSize(CompArea* blocksRes, const ComponentID id)
+{
+  blocksRes[id].width = blocks[id].width >> asbtDecimW[id];
+  blocksRes[id].height = blocks[id].height >> asbtDecimH[id];
+}
+
+void TransformUnit::initBlockRes(CompArea* blocksRes, const ComponentID id)
+{
+  if (id == MAX_NUM_COMPONENT)
+  {
+    blocksRes[COMPONENT_Y] = blocks[COMPONENT_Y];
+    blocksRes[COMPONENT_Y] = blocks[COMPONENT_Y];
+    blocksRes[COMPONENT_Cr] = blocks[COMPONENT_Cr];
+    blocksRes[COMPONENT_Cr] = blocks[COMPONENT_Cr];
+    blocksRes[COMPONENT_Cb] = blocks[COMPONENT_Cb];
+    blocksRes[COMPONENT_Cb] = blocks[COMPONENT_Cb];
+  }
+  else
+  {
+    blocksRes[id] = blocks[id];
+  }
+}
+
+void TransformUnit::alignAsbtDecim(const ComponentID id)
+{
+  asbtDecimH[id] = asbtDecimH[COMPONENT_Y];
+  asbtDecimW[id] = asbtDecimW[COMPONENT_Y];
+}
+#if JVET_Y0141_SIGN_PRED_IMPROVE
+      IdxBuf    TransformUnit::getCoeffSignsScanIdx(const ComponentID id) { return  IdxBuf(m_coeffSignsIdx[id], blocksResidual[id]); }
+const CIdxBuf   TransformUnit::getCoeffSignsScanIdx(const ComponentID id) const { return CIdxBuf(m_coeffSignsIdx[id], blocksResidual[id]); }
+#endif
+#endif
+#else
 
        CoeffBuf TransformUnit::getCoeffs(const ComponentID id)       { return  CoeffBuf(m_coeffs[id], blocks[id]); }
 const CCoeffBuf TransformUnit::getCoeffs(const ComponentID id) const { return CCoeffBuf(m_coeffs[id], blocks[id]); }
@@ -2503,6 +2626,7 @@ AreaBuf<SIGN_PRED_TYPE> TransformUnit::getCoeffSigns(const ComponentID id)
 #if JVET_Y0141_SIGN_PRED_IMPROVE
       IdxBuf    TransformUnit::getCoeffSignsScanIdx(const ComponentID id) { return  IdxBuf(m_coeffSignsIdx[id], blocks[id]); }
 const CIdxBuf   TransformUnit::getCoeffSignsScanIdx(const ComponentID id) const { return CIdxBuf(m_coeffSignsIdx[id], blocks[id]); }
+#endif
 #endif
 #endif
 
@@ -2619,9 +2743,15 @@ void TransformUnit::checkTuNoResidual( unsigned idx )
 
 int TransformUnit::getTbAreaAfterCoefZeroOut(ComponentID compID) const
 {
+#if JVET_AL0181_ASBT
+  int tbArea = blocksResidual[compID].width * blocksResidual[compID].height;
+  int tbZeroOutWidth = blocksResidual[compID].width;
+  int tbZeroOutHeight = blocksResidual[compID].height;
+#else
   int tbArea = blocks[compID].width * blocks[compID].height;
   int tbZeroOutWidth = blocks[compID].width;
   int tbZeroOutHeight = blocks[compID].height;
+#endif
 
 #if !TU_256
   if ( cs->sps->getUseMTS() && cu->sbtInfo != 0 && blocks[compID].width <= 32 && blocks[compID].height <= 32 && compID == COMPONENT_Y )
@@ -2657,8 +2787,13 @@ void         TransformUnit::setChromaAdj(int i)                      { m_chromaR
 #if SIGN_PREDICTION
 void TransformUnit::initSignBuffers( const ComponentID compID )
 {  
+#if JVET_AL0181_ASBT
+  uint32_t uiWidth = blocksResidual[compID].width;
+  uint32_t uiHeight = blocksResidual[compID].height;
+#else
   uint32_t uiWidth = blocks[compID].width;
   uint32_t uiHeight = blocks[compID].height;
+#endif
 
   if( cs->sps->getNumPredSigns() > 0 && uiHeight >= 4 && uiWidth >= 4 )
   {
