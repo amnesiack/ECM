@@ -539,6 +539,8 @@
 #define JVET_AL0135_CCALF_CROSS_CHROMA_INPUT              1 // JVET-AL0135: Cros-Chroma Input for CC-ALF
 #define JVET_AL0153_ALF_CCCM                              1 // JVET-AL0153: ALF-CCCM
 #define JVET_AL0142_CCSAO_REUSE_CTU                       1 // JVET-AL0142: CCSAO with reused CTU control
+#define JVET_AL0182_TALF_EXTENSION                        1 // JVET-AL0182: TALF reference picture extension
+
 
 // SIMD optimizations
 #if IF_12TAP
