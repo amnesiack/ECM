@@ -2670,6 +2670,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #else
     pcSPS->setMaxNumAffineMergeCand(AFFINE_MRG_MAX_NUM_CANDS - uiCode);
 #endif
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+    READ_FLAG(uiCode, "sps_boundary_mvp_ext_configure_flag");           pcSPS->setConfigBoundaryMvpExt   ( uiCode == 1 );
+#endif
     READ_FLAG( uiCode,  "sps_affine_type_flag" );                       pcSPS->setUseAffineType          ( uiCode != 0 );
 #if AFFINE_MMVD
     READ_FLAG( uiCode, "sps_affine_mmvd_enabled_flag" );                pcSPS->setUseAffineMmvdMode      ( uiCode != 0 );

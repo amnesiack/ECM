@@ -241,7 +241,12 @@ static const int NUM_MERGE_CANDS =                                 28 + NUM_CMVP
 static const int NUM_MERGE_CANDS =                                 28; ///< for maximum buffer of merging candidates
 #endif
 static const int NUM_TMVP_CANDS =                                  8; ///< TMVP
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+static const int MAX_MUL_CANDS =                                   2;
+static const int MAX_PAIR_CANDS =                                  6;
+#else
 static const int MAX_PAIR_CANDS =                                  4; ///< MAX Pairiwse candidates for Regular TM and BM merge modes
+#endif
 #else
 static const int NUM_MERGE_CANDS =                                 30; ///< for maximum buffer of merging candidates
 static const int NUM_TMVP_CANDS =                                   9; ///< TMVP

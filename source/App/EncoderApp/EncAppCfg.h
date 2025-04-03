@@ -723,7 +723,10 @@ protected:
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
   bool      m_sbTmvpMvExt;
 #endif
-  
+#if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
+  bool      m_boundaryMvpExt;
+#endif
+
   // ADD_NEW_TOOL : (encoder app) add tool enabling flags and associated parameters here
   bool      m_virtualBoundariesEnabledFlag;
   bool      m_virtualBoundariesPresentFlag;

@@ -403,6 +403,7 @@
 #define JVET_AK0095_ENHANCED_AFFINE_CANDIDATE             1 // JVET-AK0095: Additional temporal affine candidates and synthetic affine candidates
 #define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185 : TMVP selection for Merge and AMVP
 #define JVET_AL0160_SBSMVP                                1 // JVET-AL0160: subblock based spatial motion vector prediction
+#define JVET_AL0157_MERGE_CANDIDATE_EXTENSION             1 // JVET-AL0157 test e: Additional merge candidates
 
 // Inter template matching tools
 #define JVET_AJ0096_SATD_REORDER_INTER                    1 // JVET-AJ0096: SATD-based reordering for inter coding
