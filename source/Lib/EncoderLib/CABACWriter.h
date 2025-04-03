@@ -527,6 +527,9 @@ public:
 #if JVET_AF0073_INTER_CCP_MERGE
   void        interCcpMerge            ( const TransformUnit& tu );
 #endif
+#if JVET_AL0181_ASBT
+  void        interAsbt                ( const TransformUnit& tu );
+#endif
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT
   CABACDataStore*         m_CABACDataStore;
 #endif
@@ -544,12 +547,20 @@ private:
   void  xWriteTruncBinCode(uint32_t uiSymbol, uint32_t uiMaxSymbol);
   void        codeScanRotationModeFlag   ( const CodingUnit& cu,     ComponentID compBegin);
   void        xEncodePLTPredIndicator    ( const CodingUnit& cu,     uint32_t    maxPltSize, ComponentID compBegin);
+#if JVET_AL0181_ASBT  
+  void        writeTransposeCoeff        ( const TransformUnit& tu,  ComponentID compID );
+#endif  
 private:
   BinEncIf&         m_BinEncoder;
   OutputBitstream*  m_Bitstream;
   Ctx               m_TestCtx;
   EncCu*            m_EncCu;
   ScanElement*      m_scanOrder;
+#if JVET_AL0181_ASBT    
+  TCoeff            m_coeffTmp[MAX_NUM_COMPONENT][MAX_CU_SIZE * MAX_CU_SIZE];
+  SIGN_PRED_TYPE    m_signPredTypeTmp[MAX_NUM_COMPONENT][MAX_CU_SIZE * MAX_CU_SIZE];
+  unsigned          m_signScanIdxTmp[MAX_NUM_COMPONENT][MAX_CU_SIZE * MAX_CU_SIZE];
+#endif  
 };
 
 

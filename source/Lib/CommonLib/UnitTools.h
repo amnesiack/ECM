@@ -1255,6 +1255,12 @@ namespace TU
 #if JVET_AF0073_INTER_CCP_MERGE
   bool interCcpMergeAllowed(const TransformUnit& tu);
 #endif
+#if JVET_AL0181_ASBT
+  bool isTranspostition( const TransformUnit& tu, ComponentID compID );
+  bool isInterAsbt( const TransformUnit& tu );
+  bool isInterAsbtH( const TransformUnit& tu );
+  bool isInterAsbtW( const TransformUnit& tu );
+#endif
 }
 
 uint32_t getCtuAddr        (const Position& pos, const PreCalcValues &pcv);

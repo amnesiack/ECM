@@ -359,7 +359,11 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
 
   for( auto &currTU : CU::traverseTUs( cu ) )
   {
+#if JVET_AL0181_ASBT
+    const Area& areaTu = cu.Y().valid() ? currTU.blocksResForDbf[COMPONENT_Y] : Area( recalcPosition( cu.chromaFormat, cu.chType, CHANNEL_TYPE_LUMA, currTU.blocksResForDbf[cu.chType].pos() ), recalcSize( cu.chromaFormat, cu.chType, CHANNEL_TYPE_LUMA, currTU.blocksResForDbf[cu.chType].size() ) );
+#else
     const Area& areaTu = cu.Y().valid() ? currTU.block( COMPONENT_Y ) : Area( recalcPosition( cu.chromaFormat, cu.chType, CHANNEL_TYPE_LUMA, currTU.blocks[cu.chType].pos() ), recalcSize( cu.chromaFormat, cu.chType, CHANNEL_TYPE_LUMA, currTU.blocks[cu.chType].size() ) );
+#endif
 
     verEdgeFilter = m_stLFCUParam.internalEdge;
     horEdgeFilter = m_stLFCUParam.internalEdge;
@@ -382,11 +386,19 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
     xSetMaxFilterLengthPQFromTransformSizes( edgeDir, cu, currTU );
     if( cu.Y().valid() )
     {
+#if JVET_AL0181_ASBT
+      edgeIdx.push_back( ( edgeDir == EDGE_HOR ) ? ( currTU.blocksResForDbf[cu.chType].y - cu.blocks[cu.chType].y ) / 4 : ( currTU.blocksResForDbf[cu.chType].x - cu.blocks[cu.chType].x ) / 4 );
+#else
       edgeIdx.push_back( ( edgeDir == EDGE_HOR ) ? ( currTU.blocks[cu.chType].y - cu.blocks[cu.chType].y ) / 4 : ( currTU.blocks[cu.chType].x - cu.blocks[cu.chType].x ) / 4 );
+#endif
     }
     else
     {
+#if JVET_AL0181_ASBT
+      edgeIdx.push_back( ( edgeDir == EDGE_HOR ) ? (( currTU.blocksResForDbf[cu.chType].y - cu.blocks[cu.chType].y ) << ::getComponentScaleY(COMPONENT_Cb, cu.chromaFormat))  / 4 : (( currTU.blocksResForDbf[cu.chType].x - cu.blocks[cu.chType].x ) << ::getComponentScaleX(COMPONENT_Cb, cu.chromaFormat)) / 4 );
+#else
       edgeIdx.push_back( ( edgeDir == EDGE_HOR ) ? (( currTU.blocks[cu.chType].y - cu.blocks[cu.chType].y ) << ::getComponentScaleY(COMPONENT_Cb, cu.chromaFormat))  / 4 : (( currTU.blocks[cu.chType].x - cu.blocks[cu.chType].x ) << ::getComponentScaleX(COMPONENT_Cb, cu.chromaFormat)) / 4 );
+#endif
     }
   }
 
@@ -615,21 +627,46 @@ void LoopFilter::xSetMaxFilterLengthPQFromTransformSizes( const DeblockEdgeDir e
 
       const int shiftHor     = ( ( ch == CH_L ) ? 0 : m_shiftHor );
       const int shiftVer     = ( ( ch == CH_L ) ? 0 : m_shiftVer );
+#if JVET_AL0181_ASBT
+      const int ctuXOff      = currTU.blocksResForDbf[comp].x - (m_ctuXLumaSamples >> shiftHor); // x offset from left edge of CTU in respective channel sample units
+      const int ctuYOff      = currTU.blocksResForDbf[comp].y - (m_ctuYLumaSamples >> shiftVer); // y offset from top edge of CTU in respective channel sample units
+#else
       const int ctuXOff      = currTU.block(comp).x - ( m_ctuXLumaSamples >> shiftHor ); // x offset from left edge of CTU in respective channel sample units
       const int ctuYOff      = currTU.block(comp).y - ( m_ctuYLumaSamples >> shiftVer ); // y offset from top edge of CTU in respective channel sample units
+#endif
       const int minCUWidth   = cu.cs->pcv->minCUWidth >> shiftHor;
       const int gridShiftHor = LOG_GRID_SIZE - shiftHor;
       const int gridShiftVer = LOG_GRID_SIZE - shiftVer;
 
+#if JVET_AL0181_ASBT
+      if ( currTU.blocksResForDbf[comp].valid() && ((currTU.blocksResForDbf[comp].y == cu.block(comp).y) ? m_stLFCUParam.topEdge : m_stLFCUParam.internalEdge) ) // Edge deblocking needs to be recomputed since ISP contains whole CU chroma transforms in last TU of the CU
+      {
+        for ( int x = 0; x < currTU.blocksResForDbf[cIdx].width; x += minCUWidth)
+        {
+          const Position  posQ = Position(currTU.blocksResForDbf[ch].x + x, currTU.blocksResForDbf[ch].y );
+#else
       if ( currTU.block(comp).valid() && ( ( currTU.block(comp).y == cu.block(comp).y ) ? m_stLFCUParam.topEdge : m_stLFCUParam.internalEdge ) ) // Edge deblocking needs to be recomputed since ISP contains whole CU chroma transforms in last TU of the CU
       {
         for ( int x = 0; x < currTU.blocks[cIdx].width; x += minCUWidth )
         {
           const Position  posQ     = Position( currTU.blocks[ch].x + x, currTU.blocks[ch].y );
+#endif
           const Position  posP     = posQ.offset( 0, -1 );
+#if JVET_AL0181_ASBT
+          const int sizeQSide      = tuQ.blocksResForDbf[comp].height;
+#else
           const int sizeQSide      = tuQ.block(comp).height;
+#endif
           const TransformUnit& tuP = *cu.cs->getTU( posP, ch );
+#if JVET_AL0181_ASBT
+          if ((cu.cs->getTU(posP, ch) == NULL))
+          {
+            continue;
+          }
+          const int sizePSide      =  tuP.blocksResForDbf[comp].height ;
+#else
           const int sizePSide      = tuP.block(comp).height;
+#endif
           m_transformEdge[cIdx][(ctuXOff + x) >> gridShiftHor][ctuYOff >> gridShiftVer] = true;
 
           if ( comp == COMPONENT_Y )
@@ -668,21 +705,44 @@ void LoopFilter::xSetMaxFilterLengthPQFromTransformSizes( const DeblockEdgeDir e
 
       const int shiftHor     = ( ( ch == CH_L ) ? 0 : m_shiftHor );
       const int shiftVer     = ( ( ch == CH_L ) ? 0 : m_shiftVer );
+#if JVET_AL0181_ASBT
+      const int ctuXOff = currTU.blocksResForDbf[comp].x - (m_ctuXLumaSamples >> shiftHor); // x offset from left edge of CTU in respective channel sample units
+      const int ctuYOff = currTU.blocksResForDbf[comp].y - (m_ctuYLumaSamples >> shiftVer); // y offset from top edge of CTU in respective channel sample units
+#else
       const int ctuXOff      = currTU.block(comp).x - ( m_ctuXLumaSamples >> shiftHor ); // x offset from left edge of CTU in respective channel sample units
       const int ctuYOff      = currTU.block(comp).y - ( m_ctuYLumaSamples >> shiftVer ); // y offset from top edge of CTU in respective channel sample units
+#endif
       const int minCUHeight  = cu.cs->pcv->minCUHeight >> shiftVer;
       const int gridShiftHor = LOG_GRID_SIZE - shiftHor;
       const int gridShiftVer = LOG_GRID_SIZE - shiftVer;
 
+#if JVET_AL0181_ASBT
+      if ( currTU.blocksResForDbf[comp].valid() && ( (currTU.blocksResForDbf[comp].x == cu.block(comp).x) ? m_stLFCUParam.leftEdge : m_stLFCUParam.internalEdge ) ) // Edge deblocking needs to be recomputed since ISP contains whole CU chroma transforms in last TU of the CU
+      {
+        for ( int y = 0; y < currTU.blocksResForDbf[cIdx].height; y += minCUHeight )
+        {
+          const Position  posQ     = Position( currTU.blocksResForDbf[ch].x, currTU.blocksResForDbf[ch].y + y );
+#else
       if ( currTU.block(comp).valid() && ( ( currTU.block(comp).x == cu.block(comp).x ) ? m_stLFCUParam.leftEdge : m_stLFCUParam.internalEdge ) ) // Edge deblocking needs to be recomputed since ISP contains whole CU chroma transforms in last TU of the CU
       {
         for ( int y = 0; y < currTU.blocks[cIdx].height; y += minCUHeight )
         {
           const Position  posQ     = Position( currTU.blocks[ch].x, currTU.blocks[ch].y + y );
+#endif
           const Position  posP     = posQ.offset( -1, 0 );
+#if JVET_AL0181_ASBT
+          const int sizeQSide      =  tuQ.blocksResForDbf[comp].width;
+          if ( cu.cs->getTU(posP, ch) == NULL )
+          {
+            continue;
+          }
+          const TransformUnit& tuP = *cu.cs->getTU(posP, ch);
+          const int sizePSide      = tuP.blocksResForDbf[comp].width;          
+#else
           const int sizeQSide      = tuQ.block(comp).width;
           const TransformUnit& tuP = *cu.cs->getTU( posP, ch );
           const int sizePSide      = tuP.block(comp).width;
+#endif
           m_transformEdge[cIdx][ctuXOff >> gridShiftHor][(ctuYOff + y) >> gridShiftVer] = true;
 #if JVET_AB0171_ASYMMETRIC_DB_FOR_GDR
           bool isBorderVB = false;

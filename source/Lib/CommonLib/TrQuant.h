@@ -196,7 +196,11 @@ public:
   void   lambdaAdjustColorTrans(bool forward) { m_quant->lambdaAdjustColorTrans(forward); }
   void   resetStore() { m_quant->resetStore(); }
 #if SIGN_PREDICTION
+#if JVET_AL0181_ASBT
+  void predCoeffSigns( TransformUnit &tu, const ComponentID compID, const bool reshapeChroma,const Pel * tmpPredResiBorder = NULL );
+#else
   void predCoeffSigns( TransformUnit &tu, const ComponentID compID, const bool reshapeChroma );
+#endif
 #endif
 
 #if ENABLE_SPLIT_PARALLELISM

@@ -148,6 +148,16 @@ InterPrediction::InterPrediction()
 , m_isDeriveOobMask(false)
 #endif
 {
+#if JVET_AL0181_ASBT 
+  m_enerBuffer = new int32_t[MAX_CU_SIZE * MAX_CU_SIZE];
+  m_coordBuffer = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
+  for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    m_coeffTmp[i] = new TCoeff[MAX_CU_SIZE * MAX_CU_SIZE];
+    m_signPredTypeTmp[i] = new SIGN_PRED_TYPE[MAX_CU_SIZE * MAX_CU_SIZE];
+    m_signScanIdxTmp[i] = new unsigned[MAX_CU_SIZE * MAX_CU_SIZE];
+  }
+#endif
 #if JVET_AF0057
   dmvrEnableEncoderCheck = false;
 #endif
@@ -374,6 +384,16 @@ InterPrediction::InterPrediction()
 
 InterPrediction::~InterPrediction()
 {
+#if JVET_AL0181_ASBT
+  delete[] m_enerBuffer;
+  delete[] m_coordBuffer;
+  for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    delete[] m_coeffTmp[i];
+    delete[] m_signScanIdxTmp[i];
+    delete[] m_signPredTypeTmp[i];
+  }
+#endif
   destroy();
 }
 
@@ -44397,6 +44417,921 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
     return true;
   }
 #endif
+#if JVET_AL0181_ASBT
+  void InterPrediction::initEnerPred(TransformUnit& tu, const PelBuf& lumaPrediction)
+  {
+    Pel* lumaPredictionBuf = lumaPrediction.buf;
+    const int iRecStride = lumaPrediction.stride;
+    const int height = tu.lumaSize().height;
+    const int width = tu.lumaSize().width;
+
+    AreaBuf<int32_t>  enerFuncPrediction = AreaBuf<int32_t>(m_enerBuffer, tu.blocks[COMPONENT_Y]);
+
+    int32_t* enerFuncPredictionBuf = enerFuncPrediction.buf;
+    const int iEnerStride = enerFuncPrediction.stride;
+    int offY = 0;
+    int offEner = 0;
+    int32_t valH = 0;
+    int32_t valV = 0;
+    for (int y = 0; y < height; y++)
+    {
+      for (int x = 0; x < width; x++)
+      {
+        int fc = (x > 0) ? (x - 1) : 0;
+        int lc = (x < (width - 1)) ? x + 1 : x;
+        int fr = (y > 0) ? offY - iRecStride : 0;
+        int lr = (y < (height - 1)) ? offY + iRecStride : offY;
+
+        valV = (lumaPredictionBuf[fc + fr] + lumaPredictionBuf[fc + lr] + 2 * lumaPredictionBuf[fc + offY] - \
+          lumaPredictionBuf[lc + fr] - lumaPredictionBuf[lc + lr] - 2 * lumaPredictionBuf[lc + offY]);
+        valH = (lumaPredictionBuf[fr + fc] + lumaPredictionBuf[fr + lc] + 2 * lumaPredictionBuf[fr + x] - \
+          lumaPredictionBuf[lr + fc] - lumaPredictionBuf[lr + lc] - 2 * lumaPredictionBuf[lr + x]);
+        enerFuncPredictionBuf[x + offEner] = (int32_t)valV * valV + valH * valH;
+      }
+      offY += iRecStride;
+      offEner += iEnerStride;
+    }
+
+    offEner = 0;
+
+    if (width / 2 >= 4 && height / 2 >= 4)
+    {
+      std::fill_n(m_sumMin, width, 0);
+      std::fill_n(m_sumMinH, height, 0);
+      for (int j = 0; j < height; j++)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          m_sumMin[i] += enerFuncPrediction.buf[i + offEner];
+          m_sumMinH[j] += enerFuncPrediction.buf[i + offEner];
+        }
+        offEner += iEnerStride;
+      }
+    }
+    else if (width / 2 >= 4)
+    {
+      std::fill_n(m_sumMin, width, 0);
+      for (int j = 0; j < height; j++)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          m_sumMin[i] += enerFuncPrediction.buf[i + offEner];
+        }
+        offEner += iEnerStride;
+      }
+    }
+    else
+    {
+      std::fill_n(m_sumMinH, height, 0);
+      for (int j = 0; j < height; j++)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          m_sumMinH[j] += enerFuncPrediction.buf[i + offEner];
+        }
+        offEner += iEnerStride;
+      }
+    }
+  }
+
+  void InterPrediction::upsampleOneBlock(TransformUnit& tu, PelBuf& image, ComponentID compID)
+  {
+    const int iResiStride = image.stride;
+    Pel* imageBuf = image.buf;
+
+    const CompArea& rect = tu.blocks[compID];
+    const uint32_t width = rect.width;
+    const uint32_t height = rect.height;
+
+    int offResiY = 0;
+
+    const int newWidth = tu.blocksResidual[compID].width;
+
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    Pel* coordBuf = coord.buf;
+
+    const int iCoordStride = coord.stride;
+    int offCoordY = 0;
+
+    for (int j = 0; j < height; j++)
+    {
+      int c = width - 1;
+      for (int i = newWidth - 1; i >= 0; i--)
+      {
+        while (c > coordBuf[i + offCoordY])
+        {
+          imageBuf[c + offResiY] = 0;
+          c--;
+        }
+        imageBuf[c + offResiY] = imageBuf[i + offResiY];
+        c--;
+      }
+      while (c >= 0)
+      {
+        imageBuf[c + offResiY] = 0;
+        c--;
+      }
+      offCoordY += iCoordStride;
+      offResiY += iResiStride;
+    }
+  }
+
+  void InterPrediction::upsampleOneBlockH(TransformUnit& tu, PelBuf& image, ComponentID compID)
+  {
+    const int iResiStride = image.stride;
+    Pel* imageBuf = image.buf;
+    const CompArea& rect = tu.blocks[compID];
+    const uint32_t width = rect.width;
+    const uint32_t height = rect.height;
+
+    const int newHeight = tu.blocksResidual[compID].height;
+
+    int offResiY = 0;
+    int offyl = 0;
+
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    const int iCoordStride = coord.stride;
+    Pel* coordBuf = coord.buf;
+    int offCoordY = 0;
+
+    for (int i = 0; i < width; i++)
+    {
+      int l = height - 1;
+      offCoordY = (newHeight - 1) * iCoordStride;
+      offResiY = (newHeight - 1) * iResiStride;
+      offyl = (height - 1) * iResiStride;
+
+      for (int j = newHeight - 1; j >= 0; j--)
+      {
+        while (l > coordBuf[i + offCoordY])
+        {
+          imageBuf[offyl + i] = 0;
+          offyl -= iResiStride;
+          l--;
+        }
+        imageBuf[offyl + i] = imageBuf[offResiY + i];
+        offyl -= iResiStride;
+        offCoordY -= iCoordStride;
+        offResiY -= iResiStride;
+        l--;
+      }
+      while (l >= 0)
+      {
+        imageBuf[offyl + i] = 0;
+        offyl -= iResiStride;
+        l--;
+      }
+    }
+  }
+
+  void InterPrediction::asbtBorderResi(const TransformUnit& tu, const CPelBuf& recoBuf, const CPelBuf& predBuf, const ComponentID compID, Pel* predResiBorder, const Pel defaultVal)
+  {
+    int width = tu.blocksResidual[compID].width;
+    int height = tu.blocksResidual[compID].height;
+
+    const Pel* pReco = recoBuf.buf;
+    const Pel* pPred = predBuf.buf;
+    const ptrdiff_t strideReco = recoBuf.stride;
+    const ptrdiff_t stridePred = predBuf.stride;
+
+    const bool useLeft = tu.blocks[compID].x != 0 || tu.blocks[compID].y == 0;
+    const bool useTop = tu.blocks[compID].y != 0 || tu.blocks[compID].x == 0;
+
+    Pel* dst = predResiBorder + height;
+    PelBuf coordBuf = PelBuf(m_coordBuffer, tu.blocks[compID].width, tu.blocks[compID].height);
+
+    const Pel* pCoord = coordBuf.buf;
+    const ptrdiff_t strideCoord = coordBuf.stride;
+    if (useLeft)
+    {
+      if (tu.blocks[compID].x != 0)
+      {
+        for (int32_t y = 0; y < height; y++)
+        {
+          Pel coord = pCoord[y * strideCoord];
+          Pel predVal = 0;
+          if (coord == 0)
+          {
+            predVal = 2 * pReco[y * strideReco - 1] - pReco[y * strideReco - 2];
+          }
+          else if (coord == 1)
+          {
+            predVal = 2 * pPred[y * stridePred] - pReco[y * strideReco - 1];
+          }
+          else
+          {
+            predVal = 2 * pPred[y * stridePred - 1 + coord] - pPred[y * stridePred - 2 + coord];
+          }
+          dst[~y] = predVal - pPred[y * stridePred + coord];
+        }
+      }
+      else
+      {
+        for (int32_t y = 0; y < height; y++)
+        {
+          Pel coord = pCoord[y * strideCoord];
+          Pel predVal = 0;
+          if (coord == 0)
+          {
+            predVal = defaultVal;
+          }
+          else if (coord == 1)
+          {
+            predVal = 2 * pPred[y * stridePred] - defaultVal;
+          }
+          else
+          {
+            predVal = 2 * pPred[y * stridePred - 1 + coord] - pPred[y * stridePred - 2 + coord];
+          }
+          dst[~y] = predVal - pPred[y * stridePred + coord];
+        }
+      }
+    }
+
+    if (useTop)
+    {
+      if (tu.blocks[compID].y != 0)
+      {
+        for (int32_t x = 0; x < width; x++)
+        {
+          Pel coord = pCoord[x];
+          Pel predVal = 2 * pReco[coord - strideReco] - pReco[coord - 2 * strideReco];
+          dst[x] = predVal - pPred[coord];
+        }
+      }
+      else
+      {
+        for (int32_t x = 0; x < width; x++)
+        {
+          Pel coord = pCoord[x];
+          dst[x] = defaultVal - pPred[coord];
+        }
+      }
+    }
+  }
+
+  void InterPrediction::asbtBorderResiH(const TransformUnit& tu, const CPelBuf& recoBuf, const CPelBuf& predBuf, const ComponentID compID, Pel* predResiBorder, const Pel defaultVal)
+  {
+    int width = tu.blocksResidual[compID].width;
+    int height = tu.blocksResidual[compID].height;
+    const Pel* pReco = recoBuf.buf;
+    const Pel* pPred = predBuf.buf;
+    const ptrdiff_t strideReco = recoBuf.stride;
+    const ptrdiff_t stridePred = predBuf.stride;
+
+    const bool useLeft = tu.blocks[compID].x != 0 || tu.blocks[compID].y == 0;
+    const bool useTop = tu.blocks[compID].y != 0 || tu.blocks[compID].x == 0;
+
+    Pel* dst = predResiBorder + height;
+    PelBuf coordBuf = PelBuf(m_coordBuffer, tu.blocks[compID].width, tu.blocks[compID].height);
+
+    const Pel* pCoord = coordBuf.buf;
+    const ptrdiff_t strideCoord = coordBuf.stride;
+    if (useLeft)
+    {
+      if (tu.blocks[compID].x != 0)
+      {
+        for (int32_t y = 0; y < height; y++)
+        {
+          Pel coord = pCoord[y * strideCoord];
+          Pel predVal = 2 * pReco[coord * strideReco - 1] - pReco[coord * strideReco - 2];
+          dst[~y] = predVal - pPred[coord * stridePred];
+        }
+      }
+      else
+      {
+        for (int32_t y = 0; y < height; y++)
+        {
+          Pel coord = pCoord[y * strideCoord];
+          dst[~y] = defaultVal - pPred[coord * stridePred];
+        }
+      }
+    }
+
+    if (useTop)
+    {
+      if (tu.blocks[compID].y != 0)
+      {
+        for (int32_t x = 0; x < width; x++)
+        {
+          Pel coord = pCoord[x];
+          Pel predVal = 0;
+          if (coord == 0)
+          {
+            predVal = 2 * pReco[x - strideReco] - pReco[x - 2 * strideReco];
+          }
+          else if (coord == 1)
+          {
+            predVal = 2 * pPred[x] - pReco[x - strideReco];
+          }
+          else
+          {
+            predVal = 2 * pPred[x + (coord - 1) * stridePred] - pPred[x + (coord - 2) * stridePred];
+          }
+          dst[x] = predVal - pPred[x + coord * stridePred];
+        }
+      }
+      else
+      {
+        for (int32_t x = 0; x < width; x++)
+        {
+          Pel coord = pCoord[x];
+          Pel predVal = 0;
+          if (coord == 0)
+          {
+            predVal = defaultVal;
+          }
+          else if (coord == 1)
+          {
+            predVal = 2 * pPred[x] - defaultVal;
+          }
+          else
+          {
+            predVal = 2 * pPred[x + (coord - 1) * stridePred] - pPred[x + (coord - 2) * stridePred];
+          }
+          dst[x] = predVal - pPred[x + coord * stridePred];
+        }
+      }
+    }
+  }
+
+  void InterPrediction::asbtCoord(TransformUnit& tu, ComponentID compID, int dir)
+  {
+    CompStorage lumaPred;
+    AreaBuf<int32_t> enerFuncPrediction = AreaBuf<int32_t>(m_enerBuffer, tu.blocks[compID]);
+
+    if (!(tu.jointCbCr && isChroma(compID)))
+    {
+      lumaPred.create(tu.blocks[compID]);
+      lumaPred.copyFrom(tu.cs->getPredBuf(tu.blocks[compID]));
+    }
+    PelBuf lumaPredBuf = lumaPred;
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    Pel* coordBuf = coord.buf;
+    const int iCoordStride = coord.stride;
+    const int iEnerStride = enerFuncPrediction.stride;
+    const int height = tu.blocks[compID].height;
+    const int width = tu.blocks[compID].width;
+
+    if (!isChroma(compID))
+    {
+      initEnerPred(tu, lumaPredBuf);
+    }
+    const int newWidth = tu.blocksResidual[compID].width;
+    const int newHeight = tu.blocksResidual[compID].height;
+    int dirNb = 0;
+    if (dir == 0)
+    {
+      dirNb = width - newWidth;
+    }
+    else
+    {
+      dirNb = height - newHeight;
+    }
+
+    if (isChroma(compID))
+    {
+      if (dir == 0)
+      {
+        fillCoordBuf(coordBuf, tu.asbtPosx >> 1, height, newWidth, iCoordStride);
+      }
+      else
+      {
+        fillCoordBufH(coordBuf, tu.asbtPosy >> 1, newHeight, width, iCoordStride);
+      }
+
+      if (tu.jointCbCr && isChroma(compID))
+      {
+        tu.alignAsbtDecim(COMPONENT_Cr);
+        tu.alignAsbtDecim(COMPONENT_Cb);
+        tu.fillBlocksResForDbfSize(tu.blocksResidual, COMPONENT_Cr);
+        tu.fillBlocksResForDbfSize(tu.blocksResidual, COMPONENT_Cb);
+        tu.fillBlocksResForDbf(COMPONENT_Cr);
+        tu.fillBlocksResForDbf(COMPONENT_Cb);
+      }
+      else
+      {
+        tu.alignAsbtDecim(compID);
+        tu.fillBlocksResForDbfSize(tu.blocksResidual, compID);
+        tu.fillBlocksResForDbf(compID);
+      }
+      return;
+    }
+
+    //determine the best subblock position
+    uint64_t sumMin[MAX_TB_SIZEY];
+    uint64_t bestMin = 0;
+    int bestPos = 0;
+    uint64_t actualEner = 0;
+    int offEner = 0;
+    if (dir == 0)
+    {
+      std::fill_n(sumMin, width, 0);
+      for (int j = 0; j < height; j++)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          sumMin[i] += enerFuncPrediction.buf[i + offEner];
+        }
+        offEner += iEnerStride;
+      }
+    }
+    else
+    {
+      std::fill_n(sumMin, height, 0);
+      for (int j = 0; j < height; j++)
+      {
+        for (int i = 0; i < width; i++)
+        {
+          sumMin[j] += enerFuncPrediction.buf[i + offEner];
+        }
+        offEner += iEnerStride;
+      }
+    }
+    
+    int newDirSize = dir == 0 ? newWidth : newHeight;
+    for (int i = 0; i < newDirSize; i++)
+    {
+      actualEner += sumMin[i];
+    }
+    bestMin = actualEner;
+    
+    for (int w = 1; w < dirNb; w++)
+    {
+      actualEner -= sumMin[w - 1];
+      actualEner += sumMin[w - 1 + newDirSize];
+      if (bestMin < actualEner)
+      {
+        bestMin = actualEner;
+        bestPos = w;
+      }
+    }
+    if (dir == 0)
+    {
+      fillCoordBuf(coordBuf, bestPos, height, newWidth, iCoordStride);
+      tu.asbtPosx = bestPos;
+      tu.asbtPosy = 0;
+    }
+    else
+    {
+      fillCoordBufH(coordBuf, bestPos, newHeight, width, iCoordStride);
+      tu.asbtPosx = 0;
+      tu.asbtPosy = bestPos;
+    }
+
+    if (isLuma(compID))
+    {
+      tu.alignAsbtDecim(COMPONENT_Cr);
+      tu.alignAsbtDecim(COMPONENT_Cb);
+      tu.fillBlocksResForDbf(COMPONENT_Y);
+      tu.fillBlocksResForDbf(COMPONENT_Cr);
+      tu.fillBlocksResForDbf(COMPONENT_Cb);
+    }
+  }
+
+  void InterPrediction::asbtCoordPred(TransformUnit& tu, int decim, ComponentID compID)
+  {
+    CompStorage lumaPred;
+    PelBuf lumaPredBuf;
+
+    if (!(tu.jointCbCr && isChroma(compID)))
+    {
+      lumaPred.create(tu.blocks[compID]);
+      lumaPred.copyFrom(tu.cs->getPredBuf(tu.blocks[compID]));
+      lumaPredBuf = lumaPred;
+    }
+
+    const int height = tu.blocks[compID].height;
+    const int width = tu.blocks[compID].width;
+
+    if (!isChroma(compID))
+    {
+      initEnerPred(tu, lumaPredBuf);
+    }
+
+    uint64_t* sumMin = m_sumMin;
+    uint64_t* sumMinH = m_sumMinH;
+    uint64_t bestMin = 0;
+
+    int bestPos = 0;
+    int bestDir = 0;
+    int newWidth = tu.blocks[compID].width >> decim;
+    int nbColumn = width - newWidth;
+    int newHeight = tu.blocks[compID].height >> decim;
+    int nbLine = height - newHeight;
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    Pel* coordBuf = coord.buf;
+    const int iCoordStride = coord.stride;
+    if (isChroma(compID))
+    {
+      if (tu.jointCbCr && isChroma(compID))
+      {
+        tu.alignAsbtDecim(COMPONENT_Cr);
+        tu.alignAsbtDecim(COMPONENT_Cb);
+        tu.fillBlocksResForDbfSize(tu.blocksResidual, COMPONENT_Cr);
+        tu.fillBlocksResForDbfSize(tu.blocksResidual, COMPONENT_Cb);
+        tu.fillBlocksResForDbf(COMPONENT_Cr);
+        tu.fillBlocksResForDbf(COMPONENT_Cb);
+      }
+      else
+      {
+        tu.alignAsbtDecim(compID);
+        tu.fillBlocksResForDbfSize(tu.blocksResidual, compID);
+        tu.fillBlocksResForDbf(compID);
+      }
+
+      tu.asbtDecimH[compID] = tu.asbtDecimH[COMPONENT_Y];
+      tu.asbtDecimW[compID] = tu.asbtDecimW[COMPONENT_Y];
+
+      int bestDir = (tu.asbtDecimH[COMPONENT_Y] != 0);
+      if (bestDir == 0)
+      {
+        fillCoordBuf(coordBuf, tu.asbtPosx >> 1, height, newWidth, iCoordStride);
+      }
+      else
+      {
+        fillCoordBufH(coordBuf, tu.asbtPosy >> 1, newHeight, width, iCoordStride);
+      }
+      return;
+    }
+
+    uint64_t actualEner = 0;
+
+    if (newWidth >= 4)
+    {
+      for (int i = 0; i < newWidth; i++)
+      {
+        actualEner += sumMin[i];
+      }
+      bestMin = actualEner;
+
+      for (int w = 1; w < nbColumn; w++)
+      {
+        actualEner -= sumMin[w - 1];
+        actualEner += sumMin[w - 1 + newWidth];
+        if (bestMin < actualEner)
+        {
+          bestMin = actualEner;
+          bestPos = w;
+          bestDir = 0;
+        }
+      }
+    }
+    if (newHeight >= 4)
+    {
+      actualEner = 0;
+      for (int j = 0; j < newHeight; j++)
+      {
+        actualEner += sumMinH[j];
+      }
+      if (bestMin < actualEner)
+      {
+        bestMin = actualEner;
+        bestPos = 0;
+        bestDir = 1;
+      }
+      for (int h = 1; h < nbLine; h++)
+      {
+        actualEner -= sumMinH[h - 1];
+        actualEner += sumMinH[h - 1 + newHeight];
+        if (bestMin < actualEner)
+        {
+          bestMin = actualEner;
+          bestPos = h;
+          bestDir = 1;
+        }
+      }
+    }
+    tu.asbtPosx = bestDir ? 0 : bestPos;
+    tu.asbtPosy = bestDir ? bestPos : 0;
+    if (bestDir == 0)
+    {
+      fillCoordBuf(coordBuf, bestPos, height, newWidth, iCoordStride);
+    }
+    else
+    {
+      fillCoordBufH(coordBuf, bestPos, newHeight, width, iCoordStride);
+    }
+
+    if (tu.jointCbCr && isChroma(compID))
+    {
+      tu.asbtDecimH[COMPONENT_Cr] = bestDir ? decim : 0;
+      tu.asbtDecimW[COMPONENT_Cr] = bestDir ? 0 : decim;
+      tu.fillBlocksResForDbfSize(tu.blocksResidual, COMPONENT_Cb);
+      tu.asbtDecimH[COMPONENT_Cb] = bestDir ? decim : 0;
+      tu.asbtDecimW[COMPONENT_Cb] = bestDir ? 0 : decim;
+      tu.fillBlocksResForDbfSize(tu.blocksResidual, COMPONENT_Cb);
+
+      tu.fillBlocksResForDbf(COMPONENT_Cr);
+      tu.fillBlocksResForDbf(COMPONENT_Cb);
+    }
+    else
+    {
+      tu.asbtDecimH[compID] = bestDir ? decim : 0;
+      tu.asbtDecimW[compID] = bestDir ? 0 : decim;
+      tu.blocksResidual[compID].width = tu.blocks[compID].width >> tu.asbtDecimW[compID];
+      tu.blocksResidual[compID].height = tu.blocks[compID].height >> tu.asbtDecimH[compID];
+      tu.fillBlocksResForDbf(compID);
+    }
+
+    if (isLuma(compID))
+    {
+      tu.alignAsbtDecim(COMPONENT_Cr);
+      tu.alignAsbtDecim(COMPONENT_Cb);
+      tu.fillBlocksResForDbf(COMPONENT_Y);
+      tu.fillBlocksResForDbf(COMPONENT_Cr);
+      tu.fillBlocksResForDbf(COMPONENT_Cb);
+    }
+  }
+
+  int InterPrediction::asbtDownSamplingPred(TransformUnit& tu, ComponentID compID, const PelBuf& lumaPrediction, const PelBuf& lumaResi, PelBuf& downResi, int decim)
+  {
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    Pel* coordBuf = coord.buf;
+    const int iCoordStride = coord.stride;
+    const int iRecStride = lumaResi.stride;
+    const int height = tu.blocks[compID].height;
+    const int width = tu.blocks[compID].width;
+    int newWidth = tu.blocksResidual[compID].width >> decim;
+    int nbColumn = width - newWidth;
+    int newHeight = tu.blocksResidual[compID].height >> decim;
+    int nbLine = height - newHeight;
+
+    if (isChroma(compID))
+    {
+      int bestDir = tu.asbtDecimH[COMPONENT_Y] != 0;
+      if (bestDir == 0)
+      {
+        fillCoordBuf(coordBuf, tu.asbtPosx >> 1, height, newWidth, iCoordStride);
+        fillDownResiBuf(downResi, lumaResi, tu.asbtPosx >> 1, height, newWidth, iRecStride);
+      }
+      else
+      {
+        fillCoordBufH(coordBuf, tu.asbtPosy >> 1, newHeight, width, iCoordStride);
+        fillDownResiBuf(downResi, lumaResi, (tu.asbtPosy >> 1) * iRecStride, newHeight, width, iRecStride);
+      }
+      return bestDir;
+    }
+    uint64_t* sumMin = m_sumMin;
+    uint64_t* sumMinH = m_sumMinH;
+    uint64_t bestMin = 0;
+
+    int bestPos = 0;
+    int bestDir = 0;
+    uint64_t actualEner = 0;
+
+    if (newWidth >= 4)
+    {
+      for (int i = 0; i < newWidth; i++)
+      {
+        actualEner += sumMin[i];
+      }
+      bestMin = actualEner;
+      for (int w = 1; w < nbColumn; w++)
+      {
+        actualEner -= sumMin[w - 1];
+        actualEner += sumMin[w - 1 + newWidth];
+        if (bestMin < actualEner)
+        {
+          bestMin = actualEner;
+          bestPos = w;
+          bestDir = 0;
+        }
+      }
+    }
+
+    if (newHeight >= 4)
+    {
+      actualEner = 0;
+      for (int j = 0; j < newHeight; j++)
+      {
+        actualEner += sumMinH[j];
+      }
+
+      if (bestMin < actualEner)
+      {
+        bestMin = actualEner;
+        bestPos = 0;
+        bestDir = 1;
+      }
+
+      for (int h = 1; h < nbLine; h++)
+      {
+        actualEner -= sumMinH[h - 1];
+        actualEner += sumMinH[h - 1 + newHeight];
+        if (bestMin < actualEner)
+        {
+          bestMin = actualEner;
+          bestPos = h;
+          bestDir = 1;
+        }
+      }
+    }
+
+    if (bestDir == 0)
+    {
+      fillCoordBuf(coordBuf, bestPos, height, newWidth, iCoordStride);
+      fillDownResiBuf(downResi, lumaResi, bestPos, height, newWidth, iRecStride);
+    }
+    else
+    {
+      fillCoordBufH(coordBuf, bestPos, newHeight, width, iCoordStride);
+      fillDownResiBuf(downResi, lumaResi, bestPos * iRecStride, newHeight, width, iRecStride);
+    }
+
+    tu.asbtPosx = bestDir ? 0 : bestPos;
+    tu.asbtPosy = bestDir ? bestPos : 0;
+
+    return bestDir;
+  }
+
+  void InterPrediction::invTransposeTransform(TransformUnit& tu, ComponentID compID)
+  {
+    TCoeff* coeffBuf = tu.getCoeffs(compID).buf;
+    AreaBuf<SIGN_PRED_TYPE> signBuff = tu.getCoeffSigns(compID);
+    IdxBuf signScanIdxBuff = tu.getCoeffSignsScanIdx(compID);
+
+    int newWidth = tu.blocks[compID].width;
+    int newHeight = tu.blocks[compID].height >> tu.asbtDecimH[compID];
+    int oldWidth = tu.blocks[compID].width >> tu.asbtDecimH[compID];
+    int oldHeight = tu.blocks[compID].height;
+
+    ScanElement* scanOrg = g_scanOrder[SCAN_GROUPED_4x4][SCAN_DIAG][gp_sizeIdxInfo->idxFrom(oldWidth)][gp_sizeIdxInfo->idxFrom(oldHeight)];
+    ScanElement* scanNew = g_scanOrder[SCAN_GROUPED_4x4][SCAN_DIAG][gp_sizeIdxInfo->idxFrom(newWidth)][gp_sizeIdxInfo->idxFrom(newHeight)];
+
+    for (int scanPos = 0; scanPos < newWidth * newHeight; scanPos++)
+    {
+      unsigned blkPos1 = scanOrg[scanPos].idx;
+      unsigned blkPos2 = scanNew[scanPos].idx;
+      m_coeffTmp[compID][blkPos2] = coeffBuf[blkPos1];
+      m_signPredTypeTmp[compID][blkPos2] = signBuff.buf[blkPos1];
+      m_signScanIdxTmp[compID][blkPos2] = signScanIdxBuff.buf[blkPos1];
+    }
+    for (int scanPos = 0; scanPos < newWidth * newHeight; scanPos++)
+    {
+      unsigned blkPos2 = scanNew[scanPos].idx;
+      coeffBuf[blkPos2] = m_coeffTmp[compID][blkPos2];
+      signBuff.buf[blkPos2] = m_signPredTypeTmp[compID][blkPos2];
+      signScanIdxBuff.buf[blkPos2] = m_signScanIdxTmp[compID][blkPos2];
+    }
+  }
+
+  void InterPrediction::asbtDownSampling(TransformUnit& tu, ComponentID compID, const PelBuf& lumaPrediction, const PelBuf& lumaResi, PelBuf& downResi)
+  {
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    const int iRecStride = lumaResi.stride;
+    const int iCoordStride = coord.stride;
+    const int height = tu.blocks[compID].height;
+    const int width = tu.blocks[compID].width;
+    Pel* coordBuf = coord.buf;
+    const int newWidth = tu.blocksResidual[compID].width;
+    int nbColumn = width - newWidth;
+
+    if (isChroma(compID))
+    {
+      fillCoordBuf(coordBuf, tu.asbtPosx >> 1, height, newWidth, iCoordStride);
+      fillDownResiBuf(downResi, lumaResi, tu.asbtPosx >> 1, height, newWidth, iRecStride);
+      return;
+    }
+    //determine the best subblock position
+    uint64_t* sumMin = m_sumMin;
+    uint64_t bestMin = 0;
+    int bestPos = 0;
+    uint64_t actualEner = 0;
+
+    for (int i = 0; i < newWidth; i++)
+    {
+      actualEner += sumMin[i];
+    }
+    bestMin = actualEner;
+
+    for (int w = 1; w < nbColumn; w++)
+    {
+      actualEner -= sumMin[w - 1];
+      actualEner += sumMin[w - 1 + newWidth];
+      if (bestMin < actualEner)
+      {
+        bestMin = actualEner;
+        bestPos = w;
+      }
+    }
+    fillCoordBuf(coordBuf, bestPos, height, newWidth, iCoordStride);
+    fillDownResiBuf(downResi, lumaResi, bestPos, height, newWidth, iRecStride);
+
+    tu.asbtPosx = bestPos;
+    tu.asbtPosy = 0;
+  }
+
+  void InterPrediction::asbtDownSamplingH(TransformUnit& tu, ComponentID compID, const PelBuf& lumaPrediction, const PelBuf& lumaResi, PelBuf& downResi)
+  {
+    const int height = tu.blocks[compID].height;
+    const int width = tu.blocks[compID].width;
+
+    PelBuf coord = PelBuf(m_coordBuffer, tu.blocks[compID]);
+    Pel* coordBuf = coord.buf;
+
+    const int iCoordStride = coord.stride;
+    const int iRecStride = lumaResi.stride;
+    const int newHeight = tu.blocksResidual[compID].height;
+    int nbLine = height - newHeight;
+
+    if (isChroma(compID))
+    {
+      fillCoordBufH(coordBuf, tu.asbtPosy >> 1, newHeight, width, iCoordStride);
+      fillDownResiBuf(downResi, lumaResi, (tu.asbtPosy >> 1) * iRecStride, newHeight, width, iRecStride);
+      return;
+    }
+
+    uint64_t bestMin = 0;
+    int bestPos = 0;
+    uint64_t actualEner = 0;
+    uint64_t* sumMinH = m_sumMinH;
+
+    for (int j = 0; j < newHeight; j++)
+    {
+      actualEner += sumMinH[j];
+    }
+    bestMin = actualEner;
+
+    for (int h = 1; h < nbLine; h++)
+    {
+      actualEner -= sumMinH[h - 1];
+      actualEner += sumMinH[h - 1 + newHeight];
+      if (bestMin < actualEner)
+      {
+        bestMin = actualEner;
+        bestPos = h;
+      }
+    }
+
+    fillCoordBufH(coordBuf, bestPos, newHeight, width, iCoordStride);
+    fillDownResiBuf(downResi, lumaResi, bestPos * iRecStride, newHeight, width, iRecStride);
+
+    tu.asbtPosx = 0;
+    tu.asbtPosy = bestPos;
+  }
+
+  Distortion InterPrediction::getDistortionFullBlock(TransformUnit& tu, const PelBuf& lumaResi)
+  {
+    const int height = tu.blocksResidual[0].height;
+    const int width = tu.blocksResidual[0].width;
+    int offy = 0;
+    Distortion uiSum = 0;
+    Intermediate_Int iTemp;
+
+    for (int j = 0; j < height; j++)
+    {
+      for (int i = 0; i < width; i++)
+      {
+        iTemp = lumaResi.buf[i + offy];
+        uiSum += (Distortion)(iTemp * iTemp);
+      }
+      offy += lumaResi.stride;
+    }
+    return uiSum;
+  }
+
+  void InterPrediction::fillCoordBuf(Pel* coordBuf, const uint8_t bestPos, const int height, const int width, const int iCoordStride)
+  {
+    int offCoord = 0;
+    for (int j = 0; j < height; j++)
+    {
+      for (int i = 0; i < width; i++)
+      {
+        coordBuf[i + offCoord] = i + bestPos;
+      }
+      offCoord += iCoordStride;
+    }
+  }
+
+  void InterPrediction::fillCoordBufH(Pel* coordBuf, const uint8_t bestPos, const int height, const int width, const int iCoordStride)
+  {
+    int offCoord = 0;
+    for (int j = 0; j < height; j++)
+    {
+      for (int i = 0; i < width; i++)
+      {
+        coordBuf[i + offCoord] = j + bestPos;
+      }
+      offCoord += iCoordStride;
+    }
+  }
+
+  void InterPrediction::fillDownResiBuf(PelBuf& downResi, const PelBuf& lumaResi, const uint32_t offset, const int height, const int width, const int iRecStride)
+  {
+    int offY = 0;
+    for (int j = 0; j < height; j++)
+    {
+      for (int i = 0; i < width; i++)
+      {
+        downResi.buf[i + offY] = lumaResi.buf[i + offset + offY];
+      }
+      offY += iRecStride;
+    }
+  }
+  
+#endif
+
 
 #if JVET_AJ0161_OBMC_EXT_WITH_INTRA_PRED
 #if JVET_AK0076_EXTENDED_OBMC_IBC

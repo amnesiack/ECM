@@ -1653,6 +1653,10 @@ private:
 #if JVET_AI0050_SBT_LFNST
   bool              m_sbtLFNST;
 #endif
+#if JVET_AL0181_ASBT
+  bool              m_asbt;
+  bool              m_asbtPh;
+#endif
   bool              m_ISP;
   ChromaFormat      m_chromaFormatIdc;
 #if !JVET_S0052_RM_SEPARATE_COLOUR_PLANE
@@ -2606,6 +2610,12 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AI0050_SBT_LFNST
   void                    setUseSbtLFNST(bool b)                                                          { m_sbtLFNST = b; }
   bool                    getUseSbtLFNST() const                                                          { return m_sbtLFNST; }
+#endif
+#if JVET_AL0181_ASBT
+  void                    setUseASBT(bool b)                                                              { m_asbt = b; }
+  bool                    getUseASBT() const                                                              { return m_asbt; }
+  void                    setUseASBTphSignaling(bool b)                                                   { m_asbtPh = b; }
+  bool                    getUseASBTphSignaling() const                                                   { return m_asbtPh; }
 #endif
   void                    setUseISP( bool b )                                                             { m_ISP = b; }
   bool                    getUseISP() const                                                               { return m_ISP; }
@@ -3573,6 +3583,9 @@ private:
   WPScalingParam              m_weightPredTable[NUM_REF_PIC_LIST_01][MAX_NUM_REF][MAX_NUM_COMPONENT];   // [REF_PIC_LIST_0 or REF_PIC_LIST_1][refIdx][0:Y, 1:U, 2:V]
   int                         m_numL0Weights;                                           //!< number of weights for L0 list
   int                         m_numL1Weights;                                           //!< number of weights for L1 list
+#if JVET_AL0181_ASBT
+  bool                        m_asbt;
+#endif
 
 public:
                               PicHeader();
@@ -3797,6 +3810,10 @@ public:
   unsigned                    getMaxTTSize(SliceType   slicetype,
                                        ChannelType chType = CHANNEL_TYPE_LUMA) const    { return slicetype == I_SLICE ? (chType == CHANNEL_TYPE_LUMA ? m_maxTTSize[0] : m_maxTTSize[2]) : m_maxTTSize[1];                                  }
 
+#if JVET_AL0181_ASBT
+  void                        setUseASBT(bool b)                                        { m_asbt = b;                                                                                  }
+  bool                        getUseASBT() const                                        { return m_asbt;                                                                               }
+#endif
   void                        setAlfAPSs(std::vector<int> apsIDs)                       { m_alfApsId.resize(m_numAlfAps);
                                                                                           for (int i = 0; i < m_numAlfAps; i++)
                                                                                           {

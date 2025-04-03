@@ -3934,7 +3934,19 @@ void CABACReader::cu_residual( CodingUnit& cu, Partitioner &partitioner, CUCtx& 
     transform_unit(currTU, cuCtx, partitioner, -1, true);
   }
 #endif
+#if JVET_AL0181_ASBT 
+  bool isAsbt = false;
+  for (auto& currTU : CU::traverseTUs(cu))
+  {
+    isAsbt = isAsbt || (currTU.asbtDecimH[COMPONENT_Y] || currTU.asbtDecimW[COMPONENT_Y]);
+  }
+  if (!isAsbt)
+  {
+    mts_idx          (cu, cuCtx);
+  }
+#else
   mts_idx            ( cu, cuCtx );
+#endif
 #if SIGN_PREDICTION
   for( auto &currTU : CU::traverseTUs( cu ) )
   {
@@ -9483,6 +9495,47 @@ void CABACReader::transform_unit(TransformUnit& tu, CUCtx& cuCtx, Partitioner& p
       cuCtx.isChromaQpAdjCoded = true;
     }
   }
+#if JVET_AL0181_ASBT
+  tu.blocksResidual[COMPONENT_Y].size() = tu.blocks[COMPONENT_Y].size();
+  tu.blocksResidual[COMPONENT_Cr].size() = tu.blocks[COMPONENT_Cr].size();
+  tu.blocksResidual[COMPONENT_Cb].size() = tu.blocks[COMPONENT_Cb].size();
+  tu.blocksResForDbf[COMPONENT_Y].size() = tu.blocks[COMPONENT_Y].size();
+  tu.blocksResForDbf[COMPONENT_Cr].size() = tu.blocks[COMPONENT_Cr].size();
+  tu.blocksResForDbf[COMPONENT_Cb].size() = tu.blocks[COMPONENT_Cb].size();
+
+  for (unsigned i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    tu.asbtDecimW[i] = 0;
+    tu.asbtDecimH[i] = 0;
+  }
+
+  if (cbfLuma != 0 && tu.cu->rootCbf)
+  {
+    interAsbt(tu);
+    for (unsigned i = 0; i < MAX_NUM_COMPONENT; i++)
+    {
+      if (tu.asbtDecimW[i] > 0)
+      {
+        tu.blocksResidual[i].width = tu.blocks[i].width >> tu.asbtDecimW[i];
+      }
+
+      if (tu.asbtDecimH[i] > 0)
+      {
+        tu.blocksResidual[i].height = tu.blocks[i].height >> tu.asbtDecimH[i];
+      }
+    }
+    if (chromaCbfs.Cb == 0)
+    {
+      tu.asbtDecimW[COMPONENT_Cb] = 0;
+      tu.asbtDecimH[COMPONENT_Cb] = 0;
+    }
+    if (chromaCbfs.Cr == 0)
+    {
+      tu.asbtDecimW[COMPONENT_Cr] = 0;
+      tu.asbtDecimH[COMPONENT_Cr] = 0;
+    }
+  }
+#endif
 
 #if JVET_AF0073_INTER_CCP_MERGE
   if ( !lumaOnly )
@@ -9658,11 +9711,20 @@ void CABACReader::residual_coding( TransformUnit& tu, ComponentID compID, CUCtx&
   tu.lastPosition[compID] = cctx.scanPosLast();
 #endif
 #if !EXTENDED_LFNST
+#if JVET_AL0181_ASBT
+  if (tu.mtsIdx[compID] != MTS_SKIP && tu.blocksResidual[compID].height >= 4 && tu.blocksResidual[compID].width >= 4)
+#else
   if (tu.mtsIdx[compID] != MTS_SKIP && tu.blocks[compID].height >= 4 && tu.blocks[compID].width >= 4 )
+#endif
   {
 #if JVET_AC0130_NSPT
+#if JVET_AL0181_ASBT
+    uint32_t  width = tu.blocksResidual[ compID ].width;
+    uint32_t height = tu.blocksResidual[ compID ].height;
+#else
     uint32_t  width = tu.blocks[ compID ].width;
     uint32_t height = tu.blocks[ compID ].height;
+#endif
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
     bool spsIntraLfnstEnabled = ( ( tu.cu->slice->getSliceType() == I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTISlice() ) ||
                                   ( tu.cu->slice->getSliceType() != I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTPBSlice() ) );
@@ -9695,7 +9757,11 @@ void CABACReader::residual_coding( TransformUnit& tu, ComponentID compID, CUCtx&
   }
 #endif
 
+#if JVET_AL0181_ASBT
+  if( tu.mtsIdx[compID] != MTS_SKIP && tu.blocksResidual[compID].height >= 4 && tu.blocksResidual[compID].width >= 4 )
+#else
   if( tu.mtsIdx[compID] != MTS_SKIP && tu.blocks[compID].height >= 4 && tu.blocks[compID].width >= 4 )
+#endif
   {
 #if JVET_AG0061_INTER_LFNST_NSPT
     const int lfnstLastScanPosTh = isLuma( compID ) ? ( CU::isIntra( *( tu.cu ) ) ? LFNST_LAST_SIG_LUMA : LFNST_LAST_SIG_LUMA_INTER ) : LFNST_LAST_SIG_CHROMA;
@@ -9999,7 +10065,17 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
 
 #if JVET_AG0061_INTER_LFNST_NSPT
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
+#if JVET_AL0181_ASBT
+  bool isAsbt = false;
+
+  for (auto &currTU : CU::traverseTUs(cu))
+  {
+    isAsbt = isAsbt || ( currTU.asbtDecimW[COMPONENT_Y] ||currTU.asbtDecimH[COMPONENT_Y] );
+  }
+  if( ( spsIntraLfnstEnabled && CU::isIntra( cu ) ) || ( cu.cs->sps->getUseInterLFNST() && (CU::isInter(cu) && !isAsbt) ) )
+#else
   if( ( spsIntraLfnstEnabled && CU::isIntra( cu ) ) || ( cu.cs->sps->getUseInterLFNST() && CU::isInter( cu ) ) )
+#endif
 #else
   if (cu.cs->sps->getUseLFNST() && (CU::isIntra(cu) || CU::isInter(cu)))
 #endif
@@ -11227,8 +11303,24 @@ void CABACReader::parsePredictedSigns( TransformUnit &tu, ComponentID compID )
   const CtxSet* ctx = &Ctx::signPred[toChannelType( compID )];
   int ctxOffset = CU::isIntra( *tu.cu ) ? 0 : 2;
 #if JVET_Y0141_SIGN_PRED_IMPROVE
+#if JVET_AL0181_ASBT
+  const bool lfnstEnabled = ((tu.checkLFNSTApplied(compID)) || ((tu.asbtDecimH[compID] || tu.asbtDecimW[compID])
+                            && !((tu.asbtDecimH[compID] + tu.asbtDecimW[compID]) == 2 && (tu.blocks[compID].width <= 8 || tu.blocks[compID].height <= 8))
+                            && !(tu.blocks[compID].width <= 4) && !(tu.blocks[compID].height <= 4)));
+#else
   bool lfnstEnabled = tu.checkLFNSTApplied(compID);
+#endif
+#if JVET_AL0181_ASBT
+  uint32_t minAreaSize = ((tu.asbtDecimH[compID] || tu.asbtDecimW[compID]) && compID > 0) ?
+    std::min(tu.blocks[compID].height << (tu.asbtDecimH[compID] + tu.asbtDecimW[compID]), (tu.blocks[compID].width << (tu.asbtDecimH[compID] + tu.asbtDecimW[compID])))
+    : 4;
+
+  minAreaSize = std::min(minAreaSize, (uint32_t)4);
+
+  const int32_t maxNumPredSigns = lfnstEnabled ? std::min<int>(minAreaSize, tu.cs->sps->getNumPredSigns()) : tu.cs->sps->getNumPredSigns();
+#else
   const int32_t maxNumPredSigns = lfnstEnabled ? std::min<int>(4, tu.cs->sps->getNumPredSigns()) : tu.cs->sps->getNumPredSigns();
+#endif
 #else
   const int32_t maxNumPredSigns = tu.cs->sps->getNumPredSigns();
 #endif
@@ -11241,12 +11333,26 @@ void CABACReader::parsePredictedSigns( TransformUnit &tu, ComponentID compID )
   TCoeff *coeff = buff.buf;
   SIGN_PRED_TYPE         *signs    = signBuff.buf;
 #if JVET_Y0141_SIGN_PRED_IMPROVE
+#if JVET_AL0181_ASBT
+  uint32_t extAreaWidth = std::min(tu.blocksResidual[compID].width, (uint32_t)SIGN_PRED_FREQ_RANGE);
+  uint32_t extAreaHeight = std::min(tu.blocksResidual[compID].height, (uint32_t)SIGN_PRED_FREQ_RANGE);
+#else
   uint32_t extAreaWidth = std::min(tu.blocks[compID].width, (uint32_t)SIGN_PRED_FREQ_RANGE);
   uint32_t extAreaHeight = std::min(tu.blocks[compID].height, (uint32_t)SIGN_PRED_FREQ_RANGE);
+#endif
+#if JVET_AL0181_ASBT
+  uint32_t extAreaSize = (lfnstEnabled ? minAreaSize : tu.cs->sps->getSignPredArea());
+#else
   uint32_t extAreaSize = (lfnstEnabled ? 4 : tu.cs->sps->getSignPredArea());
+#endif
 #if JVET_AC0130_NSPT
+#if JVET_AL0181_ASBT
+  uint32_t spAreaWidth = useSignPred ? std::min( tu.blocksResidual[compID].width, extAreaSize ) : extAreaWidth;
+  uint32_t spAreaHeight = useSignPred ? std::min( tu.blocksResidual[compID].height, extAreaSize ) : extAreaHeight;
+#else
   uint32_t spAreaWidth = useSignPred ? std::min( tu.blocks[compID].width, extAreaSize ) : extAreaWidth;
   uint32_t spAreaHeight = useSignPred ? std::min( tu.blocks[compID].height, extAreaSize ) : extAreaHeight;
+#endif
 #else
   uint32_t spAreaWidth = useSignPred ? std::min(tu.blocks[compID].width, extAreaSize) : extAreaWidth;
   uint32_t spAreaHeight = useSignPred ? std::min(tu.blocks[compID].height, extAreaSize) : extAreaHeight;
@@ -11439,6 +11545,79 @@ void CABACReader::interCccm(TransformUnit& tu)
   {
     tu.interCccm = m_BinDecoder.decodeBin(Ctx::InterCccmFlag(0));
     DTRACE(g_trace_ctx, D_SYNTAX, "inter_cccm() pos=(%d,%d) inter_cccm_flag=%d\n", tu.blocks[tu.chType].x, tu.blocks[tu.chType].y, tu.interCccm);
+  }
+}
+#endif
+#if JVET_AL0181_ASBT
+void CABACReader::interAsbt(TransformUnit& tu)
+{
+  for (unsigned i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    tu.asbtDecimW[i] = 0;
+    tu.asbtDecimH[i] = 0;
+  }
+  bool isDecimation = false;
+  if (TU::isInterAsbt(tu))
+  {
+    bool interAsbtW = TU::isInterAsbtW(tu);
+    bool interAsbtH = TU::isInterAsbtH(tu);
+
+    if (interAsbtW || interAsbtH)
+    {
+      isDecimation = m_BinDecoder.decodeBin(Ctx::AsbtEnabledFlag(((tu.cu->sbtInfo != 0) ? 1 : 0)));
+    }
+    if (isDecimation)
+    {
+      if (interAsbtW && interAsbtH)
+      {
+        tu.asbtDecimW[COMPONENT_Y] = 1;
+        tu.asbtDecimW[COMPONENT_Cr] = 1;
+        tu.asbtDecimW[COMPONENT_Cb] = 1;
+        tu.asbtDecimH[COMPONENT_Y] = tu.asbtDecimW[COMPONENT_Y] ? 0 : 1;
+        tu.asbtDecimH[COMPONENT_Cr] = tu.asbtDecimW[COMPONENT_Cr] ? 0 : 1;
+        tu.asbtDecimH[COMPONENT_Cb] = tu.asbtDecimW[COMPONENT_Cb] ? 0 : 1;
+      }
+      else
+      {
+        tu.asbtDecimW[COMPONENT_Y] = interAsbtW;
+        tu.asbtDecimH[COMPONENT_Y] = interAsbtH;
+        tu.asbtDecimW[COMPONENT_Cr] = interAsbtW;
+        tu.asbtDecimH[COMPONENT_Cr] = interAsbtH;
+        tu.asbtDecimW[COMPONENT_Cb] = interAsbtW;
+        tu.asbtDecimH[COMPONENT_Cb] = interAsbtH;
+      }
+
+      if ((interAsbtW && interAsbtH) ? (std::max(tu.blocks[0].width, tu.blocks[0].height) > MIN_ASBT_DECIM_4_SIZE) : (tu.asbtDecimW[COMPONENT_Y] ? (tu.blocks[0].width > MIN_ASBT_DECIM_4_SIZE) : (tu.blocks[0].height > MIN_ASBT_DECIM_4_SIZE)))
+      {
+        if (m_BinDecoder.decodeBin(Ctx::AsbtSecondDecim(((tu.cu->sbtInfo != 0) ? 1 : 0))))
+        {
+          if (tu.asbtDecimW[COMPONENT_Y])
+          {
+            if ((tu.blocks[COMPONENT_Y].width >> 2) < 4)
+            {
+              tu.asbtDecimW[COMPONENT_Y] = 0;
+              tu.asbtDecimH[COMPONENT_Y] = 2;
+              tu.asbtDecimW[COMPONENT_Cr] = 0;
+              tu.asbtDecimH[COMPONENT_Cr] = 2;
+              tu.asbtDecimW[COMPONENT_Cb] = 0;
+              tu.asbtDecimH[COMPONENT_Cb] = 2;
+            }
+            else
+            {
+              tu.asbtDecimW[COMPONENT_Y]++;
+              tu.asbtDecimW[COMPONENT_Cr]++;
+              tu.asbtDecimW[COMPONENT_Cb]++;
+            }
+          }
+          else
+          {
+            tu.asbtDecimH[COMPONENT_Y]++;
+            tu.asbtDecimH[COMPONENT_Cr]++;
+            tu.asbtDecimH[COMPONENT_Cb]++;
+          }
+        }
+      }
+    }
   }
 }
 #endif

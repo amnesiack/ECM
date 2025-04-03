@@ -480,6 +480,7 @@
 #define JVET_AI0050_INTER_MTSS                            1 // JVET-AI0050: Multiple LFNST/NSPT kernel set selection for GPM coded block
 #define JVET_AI0050_SBT_LFNST                             1 // JVET-AI0050: Enable LFNST/NSPT for SBT coded block
 #define JVET_AJ0260_SBT_CORNER_MODE                       1 // JVET-AJ0260: Corner mode for SBT
+#define JVET_AL0181_ASBT                                  1 // JVET-AL0181: Advanced SBT with direction and position inference
 #define JVET_AK0064_CCP_LFNST_NSPT                        1 // JVET-AK0064: LFNST/NSPT set derivation for CCP coded block
 #define JVET_AK0097_LAST_POS_SIGNALING                    1 // JVET-AK0097: Secondary prefix in last XY binarization 
 #define JVET_AK0217_INTRA_MTSS                            1 // JVET-AK0217: Multiple transform set selection for intra LFNST/NSPT with subsampled DIMD 

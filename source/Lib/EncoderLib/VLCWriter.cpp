@@ -1647,6 +1647,13 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     WRITE_FLAG( pcSPS->getUseSbtLFNST() ? 1 : 0,                                               "sps_sbt_lfnst_enabled_flag");
   }
 #endif
+#if JVET_AL0181_ASBT
+  WRITE_FLAG( pcSPS->getUseASBT() ? 1 : 0,                                                     "sps_asbt_enabled_flag");
+  if (pcSPS->getUseASBT())
+  {
+    WRITE_FLAG(pcSPS->getUseASBTphSignaling() ? 1 : 0,                                         "sps_asbt_signaling_at_PH_flag ");
+  }
+#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
   WRITE_FLAG( pcSPS->getUseDMVDMode() ? 1 : 0,                                                 "sps_dmvd_enabled_flag" );
 #endif
@@ -2925,6 +2932,15 @@ void HLSWriter::codePictureHeader( PicHeader* picHeader, bool writeRbspTrailingB
   else
   {
     picHeader->setDisFracMBVD(true);
+  }
+#endif
+#if JVET_AL0181_ASBT
+  if (sps->getUseASBT() && sps->getUseASBTphSignaling())
+  {
+    if (picHeader->getPicInterSliceAllowedFlag())
+    {
+      WRITE_FLAG(picHeader->getUseASBT(), "ph_ASBT_enabled_flag");
+    }
   }
 #endif
 

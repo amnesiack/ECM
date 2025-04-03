@@ -466,6 +466,9 @@ public:
 #if JVET_AF0073_INTER_CCP_MERGE
   void        interCcpMerge             ( TransformUnit& tu );
 #endif
+#if JVET_AL0181_ASBT
+void          interAsbt                 ( TransformUnit& tu );
+#endif 
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT
   CABACDataStore*         m_CABACDataStore;
 #endif

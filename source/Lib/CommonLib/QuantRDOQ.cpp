@@ -509,7 +509,11 @@ void QuantRDOQ::xDestroyScalingList()
 
 void QuantRDOQ::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx& ctx)
 {
+#if JVET_AL0181_ASBT
+  const CompArea &rect      = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t uiWidth        = rect.width;
   const uint32_t uiHeight       = rect.height;
 
@@ -572,7 +576,11 @@ void QuantRDOQ::xRateDistOptQuant(TransformUnit &tu, const ComponentID &compID, 
   const FracBitsAccess& fracBits = ctx.getFracBitsAcess();
 
   const SPS &sps            = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea &rect      = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t uiWidth        = rect.width;
   const uint32_t uiHeight       = rect.height;
   const ChannelType chType  = toChannelType(compID);
@@ -1201,7 +1209,11 @@ void QuantRDOQ::xRateDistOptQuantTS( TransformUnit &tu, const ComponentID &compI
   const FracBitsAccess& fracBits = ctx.getFracBitsAcess();
 
   const SPS &sps            = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea &rect      = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t width      = rect.width;
   const uint32_t height     = rect.height;
   const ChannelType chType  = toChannelType(compID);
@@ -1419,7 +1431,11 @@ void QuantRDOQ::forwardBDPCM(TransformUnit &tu, const ComponentID &compID, const
   const FracBitsAccess& fracBits = ctx.getFracBitsAcess();
 
   const SPS &sps = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea &rect = tu.blocksResidual[compID];
+#else
   const CompArea &rect = tu.blocks[compID];
+#endif
   const uint32_t width = rect.width;
   const uint32_t height = rect.height;
   const ChannelType chType = toChannelType(compID);

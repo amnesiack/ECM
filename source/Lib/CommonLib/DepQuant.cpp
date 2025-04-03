@@ -1097,7 +1097,11 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
     const int         qpPer                 = qpDQ / 6;
     const int         qpRem                 = qpDQ - 6 * qpPer;
     const SPS &       sps                   = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+    const CompArea&   area                  = tu.blocksResidual[compID];
+#else
     const CompArea &  area                  = tu.blocks[compID];
+#endif
     const ChannelType chType                = toChannelType(compID);
     const int         channelBitDepth       = sps.getBitDepth(chType);
     const int         maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(chType);
@@ -1146,7 +1150,11 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
 #endif
   {
     //----- set basic parameters -----
+#if JVET_AL0181_ASBT
+    const CompArea&     area     = tu.blocksResidual[compID];
+#else
     const CompArea &    area     = tu.blocks[compID];
+#endif
     const int           numCoeff = area.area();
     const SizeType      hsId     = gp_sizeIdxInfo->idxFrom(area.width);
     const SizeType      vsId     = gp_sizeIdxInfo->idxFrom(area.height);
@@ -2628,15 +2636,27 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
 #if TCQ_8STATES
     const int numStates = 2 << tu.cs->slice->getDepQuantEnabledIdc();
 #endif
+#if JVET_AL0181_ASBT
+    const TUParameters& tuPars = *g_Rom.getTUPars(tu.blocksResidual[compID], compID);
+#else
     const TUParameters &tuPars = *g_Rom.getTUPars(tu.blocks[compID], compID);
+#endif
     m_quant.initQuantBlock(tu, compID, cQP, lambda);
     TCoeff *      qCoeff   = tu.getCoeffs(compID).buf;
     const TCoeff *tCoeff   = srcCoeff.buf;
+#if JVET_AL0181_ASBT
+    const int     numCoeff = tu.blocksResidual[compID].area();
+#else
     const int     numCoeff = tu.blocks[compID].area();
+#endif
     ::memset(tu.getCoeffs(compID).buf, 0x00, numCoeff * sizeof(TCoeff));
     absSum = 0;
 
+#if JVET_AL0181_ASBT
+    const CompArea& area     = tu.blocksResidual[compID];
+#else
     const CompArea &area     = tu.blocks[compID];
+#endif
     const uint32_t  width    = area.width;
     const uint32_t  height   = area.height;
     const uint32_t  lfnstIdx = tu.cu->lfnstIdx;
@@ -2956,7 +2976,11 @@ void DepQuant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffB
     const int       qpDQ            = cQP.Qp(tu.mtsIdx[compID] == MTS_SKIP) + 1;
     const int       qpPer           = qpDQ / 6;
     const int       qpRem           = qpDQ - 6 * qpPer;
+#if JVET_AL0181_ASBT
+    const CompArea    &rect         = tu.blocksResidual[compID];
+#else
     const CompArea &rect            = tu.blocks[compID];
+#endif
     const int       width           = rect.width;
     const int       height          = rect.height;
     uint32_t        scalingListType = getScalingListType(tu.cu->predMode, compID);
@@ -2999,7 +3023,11 @@ void DepQuant::getPredictedSigns(TransformUnit &tu, const ComponentID compID,
     TCoeff         *coeff      = bufQCoeffs.buf;
     const ptrdiff_t strideC    = bufQCoeffs.stride;
 
+#if JVET_AL0181_ASBT
+    const CompArea &area     = tu.blocksResidual[compID];
+#else
     const CompArea &area     = tu.blocks[compID];
+#endif
     const int       numCoeff = area.area();
 
     const SizeType     hsId = gp_sizeIdxInfo->idxFrom(area.width);
@@ -3027,11 +3055,23 @@ void DepQuant::getPredictedSigns(TransformUnit &tu, const ComponentID compID,
     const SIGN_PRED_TYPE   *signs    = bufSigns.buf;
     const ptrdiff_t strideS  = bufSigns.stride;
 
+#if JVET_AL0181_ASBT
+    const bool lfnstEnabled = ((tu.checkLFNSTApplied(compID)) || ((tu.asbtDecimH[compID] || tu.asbtDecimW[compID])
+                                && !((tu.asbtDecimH[compID] + tu.asbtDecimW[compID]) == 2 && (tu.blocks[compID].width <= 8 || tu.blocks[compID].height <= 8))
+                                && !(tu.blocks[compID].width <= 4) && !(tu.blocks[compID].height <= 4)));
+    uint32_t minAreaSize = ((tu.asbtDecimH[compID] || tu.asbtDecimW[compID]) && compID > 0) ?
+                                std::min(tu.blocks[compID].height << (tu.asbtDecimH[compID] + tu.asbtDecimW[compID]), (tu.blocks[compID].width << (tu.asbtDecimH[compID] + tu.asbtDecimW[compID]))) : 4;
+                                minAreaSize = std::min( minAreaSize , (uint32_t) 4 );     
+    const uint32_t extAreaSize    = lfnstEnabled ? minAreaSize : tu.cs->sps->getSignPredArea();
+    const uint32_t signPredHeight = std::min(tu.blocksResidual[compID].height, extAreaSize);
+    const uint32_t signPredWidth  = std::min(tu.blocksResidual[compID].width, extAreaSize);
+#else
     const bool lfnstEnabled = tu.checkLFNSTApplied(compID);
 
     const uint32_t extAreaSize    = lfnstEnabled ? 4 : tu.cs->sps->getSignPredArea();
     const uint32_t signPredHeight = std::min(tu.blocks[compID].height, extAreaSize);
     const uint32_t signPredWidth  = std::min(tu.blocks[compID].width, extAreaSize);
+#endif
 
     uint32_t numAreaSigns = 0;
 
@@ -3086,8 +3126,13 @@ void DepQuant::getPredictedSigns(TransformUnit &tu, const ComponentID compID,
       CHECK(numAreaSigns != predSignsXYLevel.size(), "sign prediction number error");
     }
 
+#if JVET_AL0181_ASBT
+    const int32_t maxNumPredSigns =
+      lfnstEnabled ? std::min<int>(minAreaSize, tu.cs->sps->getNumPredSigns()) : tu.cs->sps->getNumPredSigns();
+#else
     const int32_t maxNumPredSigns =
       lfnstEnabled ? std::min<int>(4, tu.cs->sps->getNumPredSigns()) : tu.cs->sps->getNumPredSigns();
+#endif
 
     for (int idx = 0; idx < predSignsXYLevel.size(); idx++)
     {
@@ -3160,7 +3205,11 @@ void DepQuant::dequant(const TransformUnit &tu, CoeffBuf &dstCoeff, const Compon
     const int       qpDQ            = cQP.Qp(tu.mtsIdx[compID] == MTS_SKIP) + 1;
     const int       qpPer           = qpDQ / 6;
     const int       qpRem           = qpDQ - 6 * qpPer;
+#if JVET_AL0181_ASBT
+    const CompArea    &rect         = tu.blocksResidual[compID];
+#else
     const CompArea &rect            = tu.blocks[compID];
+#endif
     const int       width           = rect.width;
     const int       height          = rect.height;
     uint32_t        scalingListType = getScalingListType(tu.cu->predMode, compID);

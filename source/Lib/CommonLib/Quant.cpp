@@ -141,7 +141,11 @@ Quant::~Quant()
 
 void invResDPCM( const TransformUnit &tu, const ComponentID &compID, CoeffBuf &dstBuf )
 {
+#if JVET_AL0181_ASBT
+  const CompArea &rect = tu.blocksResidual[compID];
+#else
   const CompArea &rect = tu.blocks[compID];
+#endif
   const int      wdt = rect.width;
   const int      hgt = rect.height;
   const CCoeffBuf coeffs = tu.getCoeffs(compID);
@@ -186,7 +190,11 @@ void invResDPCM( const TransformUnit &tu, const ComponentID &compID, CoeffBuf &d
 
 void fwdResDPCM( TransformUnit &tu, const ComponentID &compID )
 {
+#if JVET_AL0181_ASBT
+  const CompArea &rect = tu.blocksResidual[compID];
+#else
   const CompArea &rect = tu.blocks[compID];
+#endif
   const int      wdt = rect.width;
   const int      hgt = rect.height;
   CoeffBuf       coeffs = tu.getCoeffs(compID);
@@ -359,7 +367,11 @@ void Quant::dequant(const TransformUnit &tu,
                        const QpParam       &cQP)
 {
   const SPS            *sps                = tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea       &area               = tu.blocksResidual[compID];
+#else
   const CompArea       &area               = tu.blocks[compID];
+#endif
   const uint32_t            uiWidth            = area.width;
   const uint32_t            uiHeight           = area.height;
         TCoeff   *const piCoef             = dstCoeff.buf;
@@ -962,7 +974,11 @@ void Quant::xDestroyScalingList()
 void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx& ctx)
 {
   const SPS &sps            = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea &rect      = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t uiWidth        = rect.width;
   const uint32_t uiHeight       = rect.height;
   const int channelBitDepth = sps.getBitDepth(toChannelType(compID));
@@ -1087,7 +1103,11 @@ void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf 
 bool Quant::xNeedRDOQ(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, const QpParam &cQP)
 {
   const SPS &sps            = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea &rect      = tu.blocksResidual[compID];
+#else
   const CompArea &rect      = tu.blocks[compID];
+#endif
   const uint32_t uiWidth        = rect.width;
   const uint32_t uiHeight       = rect.height;
   const int channelBitDepth = sps.getBitDepth(toChannelType(compID));
@@ -1155,7 +1175,11 @@ bool Quant::xNeedRDOQ(TransformUnit &tu, const ComponentID &compID, const CCoeff
 void Quant::transformSkipQuantOneSample(TransformUnit &tu, const ComponentID &compID, const TCoeff &resiDiff, TCoeff &coeff, const uint32_t &uiPos, const QpParam &cQP, const bool bUseHalfRoundingPoint)
 {
   const SPS           &sps = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea      &rect                           = tu.blocksResidual[compID];
+#else
   const CompArea      &rect                           = tu.blocks[compID];
+#endif
   const uint32_t           uiWidth                        = rect.width;
   const uint32_t           uiHeight                       = rect.height;
   const int            maxLog2TrDynamicRange          = sps.getMaxLog2TrDynamicRange(toChannelType(compID));
@@ -1219,7 +1243,11 @@ void Quant::transformSkipQuantOneSample(TransformUnit &tu, const ComponentID &co
 void Quant::invTrSkipDeQuantOneSample(TransformUnit &tu, const ComponentID &compID, const TCoeff &inSample, Pel &reconSample, const uint32_t &uiPos, const QpParam &cQP)
 {
   const SPS           &sps                    = *tu.cs->sps;
+#if JVET_AL0181_ASBT
+  const CompArea      &rect                   = tu.blocksResidual[compID];
+#else
   const CompArea      &rect                   = tu.blocks[compID];
+#endif
   const uint32_t           uiWidth                = rect.width;
   const uint32_t           uiHeight               = rect.height;
   const int            QP_per                 = cQP.per(tu.mtsIdx[compID] == MTS_SKIP);

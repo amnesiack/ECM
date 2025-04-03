@@ -35762,8 +35762,16 @@ bool TU::isTSAllowed(const TransformUnit &tu, const ComponentID compID)
   SizeType transformSkipMaxSize = 1 << maxSize;
   tsAllowed &= !(tu.cu->bdpcmMode && isLuma(compID));
   tsAllowed &= !(tu.cu->bdpcmModeChroma && isChroma(compID));
+#if JVET_AL0181_ASBT
+  tsAllowed &= tu.blocksResidual[compID].width <= transformSkipMaxSize && tu.blocksResidual[compID].height <= transformSkipMaxSize;
+#else
   tsAllowed &= tu.blocks[compID].width <= transformSkipMaxSize && tu.blocks[compID].height <= transformSkipMaxSize;
+#endif
   tsAllowed &= !tu.cu->sbtInfo;
+#if JVET_AL0181_ASBT
+  tsAllowed &= !( tu.asbtDecimW[COMPONENT_Y] );
+  tsAllowed &= !( tu.asbtDecimH[COMPONENT_Y] );
+#endif
 #if JVET_AJ0061_TIMD_MERGE
   tsAllowed &= !tu.cu->timdMrg;
 #endif
@@ -35783,14 +35791,22 @@ int TU::getICTMode( const TransformUnit& tu, int jointCbCr )
 
 bool TU::needsSqrt2Scale( const TransformUnit &tu, const ComponentID &compID )
 {
+#if JVET_AL0181_ASBT
+  const Size &size = tu.blocksResidual[compID];
+#else
   const Size &size=tu.blocks[compID];
+#endif
   const bool isTransformSkip = (tu.mtsIdx[compID] == MTS_SKIP);
   return (!isTransformSkip) && (((floorLog2(size.width) + floorLog2(size.height)) & 1) == 1);
 }
 
 bool TU::needsBlockSizeTrafoScale( const TransformUnit &tu, const ComponentID &compID )
 {
+#if JVET_AL0181_ASBT
+  return needsSqrt2Scale( tu, compID ) || isNonLog2BlockSize( tu.blocksResidual[compID] );
+#else
   return needsSqrt2Scale( tu, compID ) || isNonLog2BlockSize( tu.blocks[compID] );
+#endif
 }
 
 TransformUnit* TU::getPrevTU( const TransformUnit &tu, const ComponentID compID )
@@ -35836,6 +35852,83 @@ bool TU::interCccmAllowed(const TransformUnit& tu)
 }
 #endif
 
+#if JVET_AL0181_ASBT
+bool TU::isTranspostition(const TransformUnit& tu, ComponentID compID)
+{
+  if (!tu.asbtDecimH[compID])
+  {
+    return false;
+  }
+  if ((tu.blocks[compID].width >> tu.asbtDecimH[compID]) < (isLuma(compID) ? 4 : 2))
+  {
+    return false;
+  }
+  if ((tu.blocks[COMPONENT_Y].height <= 4) || (tu.blocks[COMPONENT_Y].width <= 4))
+  {
+    return false;
+  }
+  return true;
+}
+
+bool TU::isInterAsbt(const TransformUnit& tu)
+{
+  if (!tu.cu->slice->getPicHeader()->getUseASBT())
+  {
+    return false;
+  }
+
+  if (tu.cs->slice->isIntra())
+  {
+    return false;
+  }
+
+  if (tu.cu->firstPU->ciipFlag)
+  {
+    return false;
+  }
+
+  if (tu.cu->firstPU->gpmIntraFlag)
+  {
+    return false;
+  }
+
+  if (tu.cu->predMode == MODE_INTRA || tu.cu->predMode == MODE_IBC || tu.cu->predMode == MODE_PLT)
+  {
+    return false;
+  }
+  if (tu.cu->skip || tu.cu->mmvdSkip)
+  {
+    return false;
+  }
+  return true;
+}
+
+bool TU::isInterAsbtW(const TransformUnit& tu)
+{
+  if (tu.lumaSize().width <= MIN_ABST_SIZE)
+  {
+    return false;
+  }
+  if (tu.lumaSize().width > MAX_ABST_SIZE)
+  {
+    return false;
+  }
+  return true;
+}
+
+bool TU::isInterAsbtH(const TransformUnit& tu)
+{
+  if (tu.lumaSize().height <= MIN_ABST_SIZE)
+  {
+    return false;
+  }
+  if (tu.lumaSize().height > MAX_ABST_SIZE)
+  {
+    return false;
+  }
+  return true;
+}
+#endif
 #if JVET_AF0073_INTER_CCP_MERGE
 bool TU::interCcpMergeAllowed(const TransformUnit& tu)
 {
@@ -36045,14 +36138,37 @@ bool TU::getDelayedSignCoding( const TransformUnit &tu, const ComponentID compID
 {
   const uint32_t maxSize = CU::isIntra( *tu.cu ) ? SIGN_PRED_MAX_BS_INTRA : SIGN_PRED_MAX_BS_INTER;
 
+#if JVET_AL0181_ASBT
+  const uint32_t width = tu.blocksResidual[compID].width;
+  const uint32_t height = tu.blocksResidual[compID].height;
+#else
   const uint32_t width = tu.blocks[compID].width;
   const uint32_t height = tu.blocks[compID].height;
-  if( tu.cs->sps->getNumPredSigns() <= 0 || tu.mtsIdx[compID] == MTS_SKIP )
+#endif
+  if ( tu.cs->sps->getNumPredSigns() <= 0 || tu.mtsIdx[compID] == MTS_SKIP )
   {
     return false;
   }
 
-  if( width < 4 || height < 4 || width > maxSize || height > maxSize )
+#if JVET_AL0181_ASBT
+  if ( isChroma(compID) && (tu.asbtDecimW[compID] || tu.asbtDecimH[compID]) )
+  {
+    if ( tu.jointCbCr )
+    {
+      return false;
+    }
+    int maxDecim = (tu.asbtDecimW[COMPONENT_Y] > tu.asbtDecimH[COMPONENT_Y]) ? tu.asbtDecimW[COMPONENT_Y] : tu.asbtDecimH[COMPONENT_Y];
+    if ( (tu.blocks[compID].width>>maxDecim ) >= 2 &&  (tu.blocks[compID].height>>maxDecim) >= 2 )
+    {
+      if ((tu.blocks[compID].width>>maxDecim) < 4 || (tu.blocks[compID].height>>maxDecim) < 4 )
+      {
+        return false;
+      }
+    }
+  }
+#endif
+
+  if ( width < 4 || height < 4 || width > maxSize || height > maxSize )
   {
     return false;
   }
@@ -36061,6 +36177,23 @@ bool TU::getDelayedSignCoding( const TransformUnit &tu, const ComponentID compID
 
 bool TU::getUseSignPred( const TransformUnit &tu, const ComponentID compID )
 {
+#if JVET_AL0181_ASBT
+  if ( isChroma(compID) && ( tu.asbtDecimW[compID] || tu.asbtDecimH[compID] ) )
+  {
+    if ( tu.jointCbCr )
+    {
+      return false;
+    }
+    int maxDecim = (tu.asbtDecimW[COMPONENT_Y] > tu.asbtDecimH[COMPONENT_Y]) ? tu.asbtDecimW[COMPONENT_Y] : tu.asbtDecimH[COMPONENT_Y];
+    if ( (tu.blocks[compID].width >> maxDecim ) >= 2 &&  (tu.blocks[compID].height >> maxDecim) >= 2 )
+    {
+      if( (tu.blocks[compID].width >> maxDecim) < 4 || (tu.blocks[compID].height >> maxDecim) < 4 )
+      {
+        return false;
+      }
+    }
+  }
+#endif
 #if JVET_Y0141_SIGN_PRED_IMPROVE
 #if JVET_V0130_INTRA_TMP
   return TU::getDelayedSignCoding( tu, compID ) && (!tu.cu->lfnstIdx || !tu.cu->tmpFlag);
@@ -36127,8 +36260,13 @@ void TU::predBorderResi(const Position blkPos, const CPelBuf &recoBuf, const CPe
 Position TU::posSignHidingFirstCG( const TransformUnit &tu, ComponentID compID )
 {
   Position pos( -1, -1 );
+#if JVET_AL0181_ASBT
+  int width = tu.blocksResidual[compID].width;
+  int height = tu.blocksResidual[compID].height;
+#else
   int width = tu.blocks[compID].width;
   int height = tu.blocks[compID].height;
+#endif
   if( tu.cu->cs->slice->getSignDataHidingEnabledFlag() && width >= 4 && height >= 4 )
   {
     // Mayte use 4x3 size is enough
@@ -36660,7 +36798,11 @@ std::pair<uint32_t,uint32_t> PU::getFinalIntraModeForTransform(bool &secondBucke
 uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUnit& tu, const ComponentID compID)
 #endif
 {
+#if JVET_AL0181_ASBT
+  const CompArea& area = tu.blocksResidual[ compID ];
+#else
   const CompArea& area = tu.blocks[ compID ];
+#endif
   uint32_t intraMode = PU::getFinalIntraMode( *tu.cs->getPU( area.pos(), toChannelType( compID ) ), toChannelType( compID ) );
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
   uint32_t secondIntraMode = NOT_VALID;

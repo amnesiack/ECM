@@ -388,6 +388,13 @@ void InterSearch::destroy()
   }
   delete[] m_interCcpMergeStorage;
 #endif
+#if JVET_AL0181_ASBT
+  for (int i = 0; i < 10; i++)
+  {
+    delete[] m_interasbt[i];
+  }
+  delete[] m_interasbt;
+#endif
 #if JVET_AG0098_AMVP_WITH_SBTMVP
   if (m_amvpSbTmvpBufValid)
   {
@@ -564,6 +571,13 @@ void InterSearch::init( EncCfg*        pcEncCfg,
   for (int i = 0; i < 12; i++)
   {
     m_interCccmStorage[i] = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
+  }
+#endif
+#if JVET_AL0181_ASBT
+  m_interasbt = new Pel * [10];
+  for (int i = 0; i < 10; i++)
+  {
+    m_interasbt[i] = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
   }
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
@@ -12841,6 +12855,12 @@ void InterSearch::xEncodeInterResidualQT(CodingStructure &cs, Partitioner &parti
           m_CABACEstimator->interCccm(currTU);
         }
 #endif
+#if JVET_AL0181_ASBT  
+        if (compID == COMPONENT_Y && TU::getCbf(currTU, compID))
+        {
+          m_CABACEstimator->interAsbt(currTU);
+        }
+#endif
         if( compID == COMPONENT_Cr )
         {
           const int cbfMask = ( TU::getCbf( currTU, COMPONENT_Cb ) ? 2 : 0) + ( TU::getCbf( currTU, COMPONENT_Cr ) ? 1 : 0 );
@@ -13340,6 +13360,21 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
     saveCS.area.repositionTo(currArea);
     saveCS.clearTUs();
     TransformUnit & bestTU = saveCS.addTU(CS::getArea(cs, currArea, partitioner.chType), partitioner.chType);
+#if JVET_AL0181_ASBT
+    PelBuf  lumaResi = PelBuf(m_interasbt[0], tu.blocks[COMPONENT_Y]);
+    PelBuf  lumaPred = PelBuf(m_interasbt[1], tu.blocks[COMPONENT_Y]);
+    PelBuf  dwnSplResi = PelBuf(m_interasbt[2], tu.blocks[COMPONENT_Y]);
+    PelBuf  chromaPred[2] = { PelBuf(m_interasbt[4], tu.blocks[COMPONENT_Cb]), \
+                              PelBuf(m_interasbt[5], tu.blocks[COMPONENT_Cr])};
+    PelBuf  chromaResi[2] = { PelBuf(m_interasbt[6], tu.blocks[COMPONENT_Cb]), \
+                              PelBuf(m_interasbt[7], tu.blocks[COMPONENT_Cr])};
+
+    PelBuf  chromaDwnSplResi = PelBuf(m_interasbt[8], tu.blocks[COMPONENT_Cr]);
+    tu.initBlockRes(tu.blocksResidual, MAX_NUM_COMPONENT);
+    bestTU.initBlockRes(bestTU.blocksResidual, MAX_NUM_COMPONENT);
+    tu.initBlockRes(tu.blocksResForDbf, MAX_NUM_COMPONENT);
+    bestTU.initBlockRes(bestTU.blocksResForDbf, MAX_NUM_COMPONENT);
+#endif
 
 #if JVET_AE0059_INTER_CCCM || JVET_AF0073_INTER_CCP_MERGE
     CodingStructure &saveCS2 = *m_pSaveCS[1];
@@ -13497,6 +13532,160 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       }
 #endif
 
+#if JVET_AL0181_ASBT
+      bool earlyTermBreak = false;
+#if JVET_AA0133_INTER_MTS_OPT
+      bool skipRemainingMTS = false;
+      bool skipMTSPass = false;
+      int  countSkipMTSLoop = 0;
+#endif
+      bool asbtAllowed = false;
+      bool asbtAllowedW = false;
+      bool asbtAllowedH = false;
+      if (isLuma(compID))
+      {
+        asbtAllowed = TU::isInterAsbt(tu) && !cu.mtsFlag && !cu.lfnstFlag && !tu.noResidual;
+        asbtAllowedW = asbtAllowed && TU::isInterAsbtW(tu);
+        asbtAllowedH = asbtAllowed && TU::isInterAsbtH(tu);
+      }
+      else
+      {
+        asbtAllowed = tu.asbtDecimH[COMPONENT_Y] || tu.asbtDecimW[COMPONENT_Y];
+        int maxDecim = std::max(tu.asbtDecimH[COMPONENT_Y], tu.asbtDecimW[COMPONENT_Y]);
+        tu.asbtDecimH[compID] = 0;
+        tu.asbtDecimW[compID] = 0;
+
+        if (asbtAllowed)
+        {
+          asbtAllowedW = ((compArea.size().width >> maxDecim) >= 2);
+          asbtAllowedH = ((compArea.size().height >> maxDecim) >= 2);
+        }
+      }
+      CompArea compAreaDwn = compArea;
+      int nbH = 1, nbW = 1;
+      if (asbtAllowedH && compID == COMPONENT_Y)
+      {
+        if (tu.blocks[0].height > MIN_ASBT_DECIM_4_SIZE)
+        {
+          nbH = 3;
+        }
+        else
+        {
+          nbH = 2;
+        }
+      }
+      if (asbtAllowedW && compID == COMPONENT_Y)
+      {
+        if (tu.blocks[0].width > MIN_ASBT_DECIM_4_SIZE)
+        {
+          nbW = 3;
+        }
+        else
+        {
+          nbW = 2;
+        }
+      }
+      int dir = 0;
+      Distortion distTu = MAX_UINT64;
+
+      int rdoAsbtorder[3] = { 0, 2, 1 };
+      if (((asbtAllowedW || asbtAllowedH) ? std::max(nbW, nbH) : 1) == 2)
+      {
+        rdoAsbtorder[1] = 1;
+      }
+      bool isEstimated = false;
+      for (int asbtindex = 0; (asbtindex < ((asbtAllowedW || asbtAllowedH) ? std::max(nbW, nbH) : 1)); asbtindex++)
+      {
+        if (asbtindex == 2 && isEstimated)
+        {
+          if ((!bestTU.cbf[0]) && (bestTU.asbtDecimH[COMPONENT_Y] || bestTU.asbtDecimW[COMPONENT_Y]))
+          {
+            continue;
+          }
+        }
+        int asbtMode = rdoAsbtorder[asbtindex];
+        if (compID == COMPONENT_Y)
+        {
+          tu.blocksResidual[COMPONENT_Y].size() = compArea.size();
+          compAreaDwn.size() = compArea.size();
+          tu.asbtDecimH[COMPONENT_Y] = 0;
+          tu.asbtDecimW[COMPONENT_Y] = 0;
+          tu.blocksResForDbf[COMPONENT_Y].size() = compArea.size();
+          tu.blocksResForDbf[COMPONENT_Y].pos() = tu.blocks[COMPONENT_Y].pos();
+        }
+
+        if (compID == COMPONENT_Y && asbtMode)
+        {
+          tu.blocksResidual[COMPONENT_Y].size() = compArea.size();
+          tu.blocksResForDbf[COMPONENT_Y].size() = compArea.size();
+
+          if (nbW > asbtMode && nbH > asbtMode)
+          {
+            dir = 0;
+            dir = asbtDownSamplingPred(tu, compID, lumaPred, lumaResi, dwnSplResi, asbtMode);
+            if (dir == 0)
+            {
+              compAreaDwn.size().width = compArea.size().width >> asbtMode;
+              compAreaDwn.size().height = compArea.size().height;
+              tu.asbtDecimH[COMPONENT_Y] = 0;
+              tu.asbtDecimW[COMPONENT_Y] = asbtMode;
+              tu.blocksResForDbf[COMPONENT_Y].width = compArea.size().width >> asbtMode;
+              tu.fillBlocksResForDbfPos(COMPONENT_Y);
+            }
+            else if (dir == 1)
+            {
+              compAreaDwn.size().width = compArea.size().width;
+              compAreaDwn.size().height = compArea.size().height >> asbtMode;
+              tu.asbtDecimH[COMPONENT_Y] = asbtMode;
+              tu.asbtDecimW[COMPONENT_Y] = 0;
+              tu.blocksResForDbf[COMPONENT_Y].height = compArea.size().height >> asbtMode;
+              tu.fillBlocksResForDbfPos(COMPONENT_Y);
+            }
+            tu.blocksResidual[COMPONENT_Y].size() = compAreaDwn.size();
+            tu.blocksResForDbf[COMPONENT_Y].size() = compAreaDwn.size();
+          }
+          else if (nbW > asbtMode)
+          {
+            dir = 0;
+            compAreaDwn.size().width = compArea.size().width >> asbtMode;
+            compAreaDwn.size().height = compArea.size().height;
+            tu.blocksResidual[COMPONENT_Y].size() = compAreaDwn.size();
+            asbtDownSampling(tu, compID, lumaPred, lumaResi, dwnSplResi);
+            tu.asbtDecimH[COMPONENT_Y] = 0;
+            tu.asbtDecimW[COMPONENT_Y] = asbtMode;
+            tu.blocksResForDbf[COMPONENT_Y].size() = compAreaDwn.size();
+            tu.fillBlocksResForDbfPos(COMPONENT_Y);
+          }
+          else if (nbH > asbtMode)
+          {
+            dir = 1;
+            compAreaDwn.size().width = compArea.size().width;
+            compAreaDwn.size().height = compArea.size().height >> asbtMode;
+            tu.blocksResidual[COMPONENT_Y].size() = compAreaDwn.size();
+            asbtDownSamplingH(tu, compID, lumaPred, lumaResi, dwnSplResi);
+            tu.asbtDecimH[COMPONENT_Y] = asbtMode;
+            tu.asbtDecimW[COMPONENT_Y] = 0;
+            tu.blocksResForDbf[COMPONENT_Y].size() = compAreaDwn.size();
+            tu.fillBlocksResForDbfPos(COMPONENT_Y);
+          }
+          if (tu.asbtDecimH[COMPONENT_Y] || tu.asbtDecimW[COMPONENT_Y])
+          {
+            Distortion distTuAsbt = getDistortionFullBlock(tu, dwnSplResi);
+            if (distTu > 2 * distTuAsbt)
+            {
+              asbtAllowedH = 0;
+              asbtAllowedW = 0;
+              continue;
+            }
+            uint64_t minNonZeroResiFracBits = 12 << SCALE_BITS;
+            if (m_pcRdCost->calcRdCost(0, distTuAsbt) < m_pcRdCost->calcRdCost(minNonZeroResiFracBits, 0))
+            {
+              continue;
+            }
+            isEstimated = true;
+          }
+        }
+#endif
 #if JVET_AA0133_INTER_MTS_OPT
       const bool mtsAllowed = CU::isMTSAllowed(*tu.cu, compID) && cu.mtsFlag;
 #if JVET_AG0061_INTER_LFNST_NSPT
@@ -13640,7 +13829,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
         m_pcRdCost->lambdaAdjustColorTrans(true, compID);
       }
-#if JVET_AA0133_INTER_MTS_OPT
+#if JVET_AA0133_INTER_MTS_OPT && !JVET_AL0181_ASBT
       bool skipRemainingMTS = false;
       bool skipMTSPass = false;
       int  countSkipMTSLoop = 0;
@@ -13650,6 +13839,9 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       {
         if (!TU::getCbf(tu, COMPONENT_Y))
         {
+#if JVET_AL0181_ASBT
+          earlyTermBreak = true;
+#endif
           break;
         }
 #if JVET_AF0073_INTER_CCP_MERGE
@@ -13698,6 +13890,9 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         }
         else
         {
+#if JVET_AL0181_ASBT
+          earlyTermBreak = true;
+#endif
           break;
         }
 
@@ -13721,6 +13916,9 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         if (!TU::getCbf(tu, COMPONENT_Y))
 #endif
         {
+#if JVET_AL0181_ASBT
+          earlyTermBreak = true;
+#endif
           break;
         }
         if (!lumaRecoReady)
@@ -13783,11 +13981,88 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         }
       }
 #endif
+#if JVET_AL0181_ASBT
+      if (isChroma(compID))
+      {
+        if (tu.asbtDecimH[COMPONENT_Y] || tu.asbtDecimW[COMPONENT_Y])
+        {
+          if (isChroma(compID) && tu.interCccm)
+          {
+            chromaPred[compID - 1].copyFrom(interCccmPredBuf[compID]);
+            chromaResi[compID - 1].copyFrom(interCccmOrgResiBuf[compID]);
+          }
+          else if (isChroma(compID) && tu.interCcpMerge)
+          {
+            chromaPred[compID - 1].copyFrom(interCcpMergePredBuf[compID - 1]);
+            chromaResi[compID - 1].copyFrom(interCcpMergeOrgResiBuf[compID - 1]);
+          }
+          else
+          {
+            chromaPred[compID - 1].copyFrom(csFull->getPredBuf(compArea));
+            chromaResi[compID - 1].copyFrom(cs.getOrgResiBuf(compArea));
+          }
+
+          int maxDecim = std::max(tu.asbtDecimH[COMPONENT_Y], tu.asbtDecimW[COMPONENT_Y]);
+          if (asbtAllowedH && asbtAllowedW)
+          {
+            tu.blocksResidual[compID].size() = compArea.size();
+            tu.blocksResForDbf[compID].size() = compArea.size();
+
+            dir = 0;
+            dir = asbtDownSamplingPred(tu, compID, chromaPred[compID - 1], chromaResi[compID - 1], chromaDwnSplResi, maxDecim);
+
+            if (dir == 0)
+            {
+              compAreaDwn.size().width = compArea.size().width >> maxDecim;
+              compAreaDwn.size().height = compArea.size().height;
+              tu.asbtDecimH[compID] = 0;
+              tu.asbtDecimW[compID] = maxDecim;
+            }
+            else
+            {
+              compAreaDwn.size().width = compArea.size().width;
+              compAreaDwn.size().height = compArea.size().height >> maxDecim;
+              tu.asbtDecimH[compID] = maxDecim;
+              tu.asbtDecimW[compID] = 0;
+            }
+            tu.blocksResidual[compID].size() = compAreaDwn.size();
+            tu.blocksResForDbf[compID].size() = compAreaDwn.size();
+            tu.fillBlocksResForDbfPos(compID);
+          }
+          else if (asbtAllowedW)
+          {
+            compAreaDwn.size().width = compArea.size().width >> maxDecim;
+            compAreaDwn.size().height = compArea.size().height;
+            tu.blocksResidual[compID].size() = compAreaDwn.size();
+            asbtDownSampling(tu, compID, chromaPred[compID - 1], chromaResi[compID - 1], chromaDwnSplResi);
+            tu.asbtDecimH[compID] = 0;
+            tu.asbtDecimW[compID] = maxDecim;
+            tu.blocksResForDbf[compID].size() = compAreaDwn.size();
+            tu.fillBlocksResForDbfPos(compID);
+          }
+          else
+          {
+            compAreaDwn.size().width = compArea.size().width;
+            compAreaDwn.size().height = compArea.size().height >> maxDecim;
+            tu.blocksResidual[compID].size() = compAreaDwn.size();
+            asbtDownSamplingH(tu, compID, chromaPred[compID - 1], chromaResi[compID - 1], chromaDwnSplResi);
+            tu.asbtDecimH[compID] = maxDecim;
+            tu.asbtDecimW[compID] = 0;
+            tu.blocksResForDbf[compID].size() = compAreaDwn.size();
+            tu.fillBlocksResForDbfPos(compID);
+          }
+        }
+      }
+#endif
 
       const int numTransformCandidates = nNumTransformCands;
       for( int transformMode = 0; transformMode < numTransformCandidates; transformMode++ )
       {
+#if JVET_AL0181_ASBT
+        const bool isFirstMode = (transformMode == 0 && asbtMode == 0);
+#else
           const bool isFirstMode  = transformMode == 0;
+#endif
 
           // copy the original residual into the residual buffer
 #if JVET_S0234_ACT_CRS_FIX
@@ -13795,6 +14070,19 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
           {
             csFull->getResiBuf(compArea).copyFrom(colorTransResidual.bufs[compID]);
           }
+#if JVET_AL0181_ASBT
+          else if (tu.asbtDecimH[compID] || tu.asbtDecimW[compID])
+          {
+            if (isLuma(compID))
+            {
+              csFull->getResiBuf(compAreaDwn).copyFrom(dwnSplResi.subBuf(0, 0, compAreaDwn.size().width, compAreaDwn.size().height));
+            }
+            else
+            {
+              csFull->getResiBuf(compAreaDwn).copyFrom(chromaDwnSplResi.subBuf(0, 0, compAreaDwn.size().width, compAreaDwn.size().height));
+            }
+          }
+#endif
 #if JVET_AE0059_INTER_CCCM
           else if (isChroma(compID) && tu.interCccm)
           {
@@ -13994,9 +14282,40 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
               m_CABACEstimator->interCccm(tu);
             }
 #endif
+#if JVET_AL0181_ASBT
+            if (compID == COMPONENT_Y && (tu.asbtDecimH[COMPONENT_Y] || tu.asbtDecimW[COMPONENT_Y]))
+            {
+              continue;
+            }
+
+            if (isChroma(compID) && (tu.asbtDecimH[compID] || tu.asbtDecimW[compID]) && (currAbsSum == 0))
+            {
+              tu.asbtDecimH[compID] = 0;
+              tu.asbtDecimW[compID] = 0;
+            }
+#endif
             }
 
             nonCoeffFracBits = m_CABACEstimator->getEstFracBits();
+
+#if JVET_AL0181_ASBT
+            if ((asbtMode == 0) && (asbtAllowedH || asbtAllowedW) && (compID == COMPONENT_Y))
+            {
+              distTu = nonCoeffDist;
+              uint64_t minNonZeroResiFracBits = 12 << SCALE_BITS;
+              if (m_pcRdCost->calcRdCost(0, nonCoeffDist) < m_pcRdCost->calcRdCost(minNonZeroResiFracBits, 0))
+              {
+                asbtAllowedH = 0;
+                asbtAllowedW = 0;
+              }
+              else
+              {
+                lumaPred.copyFrom(csFull->getPredBuf(tu.blocks[COMPONENT_Y]));
+                initEnerPred(tu, csFull->getPredBuf(tu.blocks[COMPONENT_Y]));
+                lumaResi.copyFrom(cs.getOrgResiBuf(compArea));
+              }
+            }
+#endif
 #if WCG_EXT
             if( m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() )
             {
@@ -14062,6 +14381,12 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
               m_CABACEstimator->interCccm(tu);
             }
 #endif
+#if JVET_AL0181_ASBT 
+            if (isLuma(compID) && (asbtAllowedW || asbtAllowedH))
+            {
+              m_CABACEstimator->interAsbt(tu);
+            }
+#endif
             if( compID == COMPONENT_Cr )
             {
               const int cbfMask = ( tu.cbf[COMPONENT_Cb] ? 2 : 0 ) + 1;
@@ -14103,6 +14428,19 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
                 }
               }
+#if JVET_AL0181_ASBT
+              if (isChroma(compID) && (tu.asbtDecimW[COMPONENT_Y] || tu.asbtDecimH[COMPONENT_Y]))
+              {
+                int maxDecim = (tu.asbtDecimW[COMPONENT_Y] > tu.asbtDecimH[COMPONENT_Y]) ? tu.asbtDecimW[COMPONENT_Y] : tu.asbtDecimH[COMPONENT_Y];
+                if ((tu.blocks[compID].width >> maxDecim) >= 2 && (tu.blocks[compID].height >> maxDecim) >= 2)
+                {
+                  if ((tu.blocks[compID].width >> maxDecim) < 4 || (tu.blocks[compID].height >> maxDecim) < 4)
+                  {
+                    doSignPrediction = false;
+                  }
+                }
+              }
+#endif
               if (doSignPrediction)
               {
 #endif
@@ -14131,7 +14469,30 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
                   tu.cs->getPredBuf(tu.blocks[compID]).copyFrom(interCcpMergePredBuf[compID-1]);
                 }
 #endif
+#if JVET_AL0181_ASBT
+                if ((tu.asbtDecimW[compID] || tu.asbtDecimH[compID]))
+                {
+                  Pel predResiBorder[2 * SIGN_PRED_MAX_BS];
+                  if (tu.asbtDecimW[compID] && !tu.asbtDecimH[compID])
+                  {
+                    asbtBorderResi(tu, tu.cs->picture->getRecoBuf(tu.blocks[compID]), tu.cs->getPredBuf(tu.blocks[compID]), compID,
+                      predResiBorder, (tu.cs->sps->getBitDepth(toChannelType(compID)) - 1));
+
+                  }
+                  else if (!tu.asbtDecimW[compID] && tu.asbtDecimH[compID])
+                  {
+                    asbtBorderResiH(tu, tu.cs->picture->getRecoBuf(tu.blocks[compID]), tu.cs->getPredBuf(tu.blocks[compID]), compID,
+                      predResiBorder, (tu.cs->sps->getBitDepth(toChannelType(compID)) - 1));
+                  }
+                  m_pcTrQuant->predCoeffSigns(tu, compID, reshapeChroma, predResiBorder);
+                }
+                else
+                {
+                  m_pcTrQuant->predCoeffSigns(tu, compID, reshapeChroma);
+                }
+#else
                 m_pcTrQuant->predCoeffSigns(tu, compID, reshapeChroma);
+#endif
 #if JVET_AE0059_INTER_CCCM
                 if (tu.interCccm && isChroma(compID))
                 {
@@ -14199,7 +14560,16 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
               }
               if (isLuma(compID))
 #endif
+#if JVET_AL0181_ASBT 
+              {
+                if (!(tu.asbtDecimH[compID] || tu.asbtDecimW[compID]))
+                {
+                  m_CABACEstimator->mts_idx(cu, &cuCtx);
+                }
+              }
+#else
                 m_CABACEstimator->mts_idx(cu, &cuCtx);
+#endif
 
               if (compID == COMPONENT_Y && tu.mtsIdx[compID] > MTS_SKIP && !cuCtx.mtsLastScanPos)
               {
@@ -14225,6 +14595,16 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 #endif
 
                 m_pcTrQuant->invTransformNxN(tu, compID, resiBuf, cQP);
+#if JVET_AL0181_ASBT
+                if (tu.asbtDecimW[compID] && !tu.asbtDecimH[compID])
+                {
+                  upsampleOneBlock(tu, resiBuf, compID);
+                }
+                if (!tu.asbtDecimW[compID] && tu.asbtDecimH[compID])
+                {
+                  upsampleOneBlockH(tu, resiBuf, compID);
+                }
+#endif
 #if JVET_S0234_ACT_CRS_FIX
                 if (!colorTransFlag && slice.getLmcsEnabledFlag() && isChroma(compID) && slice.getPicHeader()->getLmcsChromaResidualScaleFlag() && tu.blocks[compID].width*tu.blocks[compID].height > 4)
 #else
@@ -14312,7 +14692,11 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
           }
 #if JVET_AG0061_INTER_LFNST_NSPT
 #if JVET_AI0050_SBT_LFNST
+#if JVET_AL0181_ASBT
+          else if ((cu.mtsFlag && compID == COMPONENT_Y) || (transformMode > 0) || (cu.lfnstFlag && !tu.noResidual && compID == COMPONENT_Y) || asbtMode)
+#else
           else if ((cu.mtsFlag && compID == COMPONENT_Y) || (transformMode > 0) || (cu.lfnstFlag && !tu.noResidual && compID == COMPONENT_Y))
+#endif
 #else
           else if ((cu.mtsFlag && compID == COMPONENT_Y) || (transformMode > 0) || (cu.lfnstFlag && compID == COMPONENT_Y))
 #endif
@@ -14331,6 +14715,10 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             currCompCost     = nonCoeffCost;
 
             tu.cbf[compID] = 0;
+#if JVET_AL0181_ASBT
+            tu.asbtDecimH[compID] = 0;
+            tu.asbtDecimW[compID] = 0;
+#endif
           }
 #if JVET_AA0133_INTER_MTS_OPT
 #if JVET_AG0061_INTER_LFNST_NSPT
@@ -14373,6 +14761,10 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
               csFull->getResiBuf( compArea ).fill( 0 );
               tu.cbf[compID]   = 0;
 
+#if JVET_AL0181_ASBT
+              tu.asbtDecimH[compID] = 0;
+              tu.asbtDecimW[compID] = 0;
+#endif
               currAbsSum       = 0;
               currCompFracBits = nonCoeffFracBits;
               currCompDist     = nonCoeffDist;
@@ -14391,6 +14783,14 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             CHECK( currCompFracBits > 0 || currAbsSum, "currCompFracBits > 0 when tu noResidual" );
           }
       }
+#if JVET_AL0181_ASBT
+      } 
+      if (earlyTermBreak)
+      {
+        break;
+      }
+#endif
+
 #if JVET_AF0073_INTER_CCP_MERGE
       minCostInterCcpIdx[interCccm][c] = minCost[c] / 3.0;
 #endif
@@ -14624,6 +15024,10 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       }
 
       CompStorage      orgResiCb[4], orgResiCr[4];   // 0:std, 1-3:jointCbCr
+#if JVET_AL0181_ASBT
+      CompArea crAreaDown = crArea;
+      CompArea cbAreaDown = cbArea;
+#endif
       std::vector<int> jointCbfMasksToTest;
       if ( checkJointCbCr )
       {
@@ -14638,6 +15042,127 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         else
         {
 #endif
+#if JVET_AL0181_ASBT 
+          if ( tu.asbtDecimH[COMPONENT_Y] || tu.asbtDecimW[COMPONENT_Y] )
+          {
+            if ( tu.interCccm )
+            {
+              chromaPred[0].copyFrom(interCccmPredBuf[COMPONENT_Cb]);
+              chromaResi[0].copyFrom(interCccmOrgResiBuf[COMPONENT_Cb]);
+              chromaPred[1].copyFrom(interCccmPredBuf[COMPONENT_Cr]);
+              chromaResi[1].copyFrom(interCccmOrgResiBuf[COMPONENT_Cr]);
+            }
+            else if ( tu.interCcpMerge )
+            {
+              chromaPred[0].copyFrom(interCcpMergePredBuf[0]);
+              chromaResi[0].copyFrom(interCcpMergeOrgResiBuf[0]);
+              chromaPred[1].copyFrom(interCcpMergePredBuf[1]);
+              chromaResi[1].copyFrom(interCcpMergeOrgResiBuf[1]);
+            }
+            else
+            {
+              chromaPred[0].copyFrom(csFull->getPredBuf(tu.blocks[COMPONENT_Cb]));
+              chromaResi[0].copyFrom(cs.getOrgResiBuf(cbArea));
+              chromaPred[1].copyFrom(csFull->getPredBuf(tu.blocks[COMPONENT_Cr]));
+              chromaResi[1].copyFrom(cs.getOrgResiBuf(crArea));
+            }
+
+            orgResiCb[0].copyFrom(chromaResi[COMPONENT_Cb-1]);
+            orgResiCr[0].copyFrom(chromaResi[COMPONENT_Cr-1]);
+
+            int maxDecim = std::max( tu.asbtDecimH[COMPONENT_Y], tu.asbtDecimW[COMPONENT_Y] );
+            bool asbtAllowedW = (tu.blocks[COMPONENT_Cr].width >> maxDecim) >= 2;
+            bool asbtAllowedH = (tu.blocks[COMPONENT_Cr].height >> maxDecim) >= 2;
+            tu.blocksResidual[COMPONENT_Cr].size() = tu.blocks[COMPONENT_Cr].size();
+            tu.blocksResidual[COMPONENT_Cb].size() = tu.blocks[COMPONENT_Cb].size();
+            tu.blocksResForDbf[COMPONENT_Cr].size() = tu.blocks[COMPONENT_Cr].size();
+            tu.blocksResForDbf[COMPONENT_Cb].size() = tu.blocks[COMPONENT_Cb].size();
+
+            if ( asbtAllowedW && asbtAllowedH )
+            {
+              int dir = asbtDownSamplingPred ( tu, COMPONENT_Cb, chromaPred[COMPONENT_Cb-1], chromaResi[COMPONENT_Cb-1], orgResiCb[0], maxDecim );
+              if( dir == 0 )
+              {
+                tu.blocksResidual[COMPONENT_Cr].width = tu.blocksResidual[COMPONENT_Cr].width >> maxDecim;
+                tu.blocksResidual[COMPONENT_Cb].width  =tu.blocksResidual[COMPONENT_Cb].width >> maxDecim;
+
+                tu.asbtDecimH[COMPONENT_Cr]=0;
+                tu.asbtDecimW[COMPONENT_Cr]=maxDecim;
+                tu.asbtDecimH[COMPONENT_Cb]=0;
+                tu.asbtDecimW[COMPONENT_Cb]=maxDecim;
+
+                crAreaDown.size().width = tu.blocksResidual[COMPONENT_Cr].width;
+                cbAreaDown.size().width = tu.blocksResidual[COMPONENT_Cb].width;
+                asbtDownSampling ( tu, COMPONENT_Cr, chromaPred[COMPONENT_Cr-1], chromaResi[COMPONENT_Cr-1], orgResiCr[0] );
+
+                tu.blocksResForDbf[COMPONENT_Cr].width = crAreaDown.size().width;
+                tu.blocksResForDbf[COMPONENT_Cb].width = crAreaDown.size().width;
+                tu.fillBlocksResForDbfPos(COMPONENT_Cr);
+                tu.fillBlocksResForDbfPos(COMPONENT_Cb);
+              }
+              else
+              {
+                tu.blocksResidual[COMPONENT_Cr].height = tu.blocksResidual[COMPONENT_Cr].height >> maxDecim;
+                tu.blocksResidual[COMPONENT_Cb].height = tu.blocksResidual[COMPONENT_Cb].height >> maxDecim;
+
+                tu.asbtDecimW[COMPONENT_Cr] = 0;
+                tu.asbtDecimH[COMPONENT_Cr] = maxDecim;
+                tu.asbtDecimW[COMPONENT_Cb] = 0;
+                tu.asbtDecimH[COMPONENT_Cb] = maxDecim;
+
+                crAreaDown.size().height = tu.blocksResidual[COMPONENT_Cr].height;
+                cbAreaDown.size().height = tu.blocksResidual[COMPONENT_Cb].height;
+
+                asbtDownSamplingH ( tu, COMPONENT_Cr, chromaPred[COMPONENT_Cr-1], chromaResi[COMPONENT_Cr-1], orgResiCr[0] );
+                tu.blocksResForDbf[COMPONENT_Cr].height = crAreaDown.size().height;
+                tu.blocksResForDbf[COMPONENT_Cb].height = crAreaDown.size().height;
+                tu.fillBlocksResForDbfPos(COMPONENT_Cr);
+                tu.fillBlocksResForDbfPos(COMPONENT_Cb);
+              }
+            }
+            else if ( asbtAllowedW )
+            {
+              tu.blocksResidual[COMPONENT_Cr].width = tu.blocksResidual[COMPONENT_Cr].width >> maxDecim;
+              tu.blocksResidual[COMPONENT_Cb].width = tu.blocksResidual[COMPONENT_Cb].width >> maxDecim;
+
+              tu.asbtDecimH[COMPONENT_Cr] = 0;
+              tu.asbtDecimW[COMPONENT_Cr] = maxDecim;
+              tu.asbtDecimH[COMPONENT_Cb] = 0;
+              tu.asbtDecimW[COMPONENT_Cb] = maxDecim;
+
+              asbtDownSampling ( tu, COMPONENT_Cb, chromaPred[COMPONENT_Cb-1], chromaResi[COMPONENT_Cb-1], orgResiCb[0]);
+              asbtDownSampling ( tu, COMPONENT_Cr, chromaPred[COMPONENT_Cr-1], chromaResi[COMPONENT_Cr-1], orgResiCr[0]);
+              crAreaDown.size().width = tu.blocksResidual[COMPONENT_Cr].width;
+              cbAreaDown.size().width = tu.blocksResidual[COMPONENT_Cb].width;
+              tu.blocksResForDbf[COMPONENT_Cr].width = crAreaDown.size().width;
+              tu.blocksResForDbf[COMPONENT_Cb].width = crAreaDown.size().width;
+              tu.fillBlocksResForDbfPos(COMPONENT_Cr);
+              tu.fillBlocksResForDbfPos(COMPONENT_Cb);
+            }
+            else
+            {
+              tu.blocksResidual[COMPONENT_Cr].height = tu.blocksResidual[COMPONENT_Cr].height >> maxDecim;
+              tu.blocksResidual[COMPONENT_Cb].height = tu.blocksResidual[COMPONENT_Cb].height >> maxDecim;
+              tu.asbtDecimW[COMPONENT_Cr] = 0;
+              tu.asbtDecimH[COMPONENT_Cr] = maxDecim;
+              tu.asbtDecimW[COMPONENT_Cb] = 0;
+              tu.asbtDecimH[COMPONENT_Cb] = maxDecim;
+
+              asbtDownSamplingH ( tu, COMPONENT_Cb, chromaPred[COMPONENT_Cb-1], chromaResi[COMPONENT_Cb-1], orgResiCb[0] );
+              asbtDownSamplingH ( tu, COMPONENT_Cr, chromaPred[COMPONENT_Cr-1], chromaResi[COMPONENT_Cr-1], orgResiCr[0] );
+
+              crAreaDown.size().height = tu.blocksResidual[COMPONENT_Cr].height;
+              cbAreaDown.size().height = tu.blocksResidual[COMPONENT_Cb].height;
+              tu.blocksResForDbf[COMPONENT_Cr].height = crAreaDown.size().height;
+              tu.blocksResForDbf[COMPONENT_Cb].height = crAreaDown.size().height;
+              tu.fillBlocksResForDbfPos(COMPONENT_Cr);
+              tu.fillBlocksResForDbfPos(COMPONENT_Cb);
+            }
+            orgResiCb[0].resizeTo( tu.blocksResidual[COMPONENT_Cb] );
+            orgResiCr[0].resizeTo( tu.blocksResidual[COMPONENT_Cr] );
+          }
+          else 
+#endif 
 #if JVET_AE0059_INTER_CCCM
           if (tu.interCccm)
           {
@@ -14737,8 +15262,13 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         m_CABACEstimator->getCtx() = ctxStart;
         m_CABACEstimator->resetBits();
 
+#if JVET_AL0181_ASBT
+        PelBuf cbResi = csFull->getResiBuf(cbAreaDown);
+        PelBuf crResi = csFull->getResiBuf(crAreaDown);
+#else
         PelBuf cbResi = csFull->getResiBuf(cbArea);
         PelBuf crResi = csFull->getResiBuf(crArea);
+#endif
         cbResi.copyFrom(orgResiCb[cbfMask]);
         crResi.copyFrom(orgResiCr[cbfMask]);
 
@@ -14811,6 +15341,22 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
           currCompFracBits = m_CABACEstimator->getEstFracBits();
 
           m_pcTrQuant->invTransformICT(tu, cbResi, crResi);
+#if JVET_AL0181_ASBT
+          if (tu.asbtDecimW[codeCompId])
+          {
+            cbResi.resizeTo(cbArea);
+            crResi.resizeTo(crArea);
+            upsampleOneBlock(tu, cbResi, COMPONENT_Cb);
+            upsampleOneBlock(tu, crResi, COMPONENT_Cr);
+          }
+          else if (tu.asbtDecimH[codeCompId])
+          {
+            cbResi.resizeTo(cbArea);
+            crResi.resizeTo(crArea);
+            upsampleOneBlockH(tu, cbResi, COMPONENT_Cb);
+            upsampleOneBlockH(tu, crResi, COMPONENT_Cr);
+          }
+#endif
 #if JVET_S0234_ACT_CRS_FIX
           if (!colorTransFlag && reshape)
 #else
@@ -15040,6 +15586,12 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         }
         if( TU::getCbf( tu, compID ) )
         {
+#if JVET_AL0181_ASBT  
+          if (compID == COMPONENT_Y && (TU::getCbfAtDepth(tu, COMPONENT_Cr, currDepth) == 0 && TU::getCbfAtDepth(tu, COMPONENT_Cb, currDepth) == 0))
+          {
+            m_CABACEstimator->interAsbt(tu);
+          }
+#endif
           m_CABACEstimator->residual_coding( tu, compID );
         }
         uiSingleDist += uiSingleDistComp[compID];
