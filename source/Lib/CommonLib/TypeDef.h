@@ -97,6 +97,7 @@
 #define REMOVE_VPDU                                       1 // Remove VPDU restriction on BT/TT splitting
 #if TU_256
 #define LMCS_CHROMA_CALC_CU                               1 // Derive chroma LMCS parameter based on neighbor CUs. Needed by VPDU removal and 128x128 transform.
+#define JVET_AL0274_MAX_TB_SIZE_FIX                       1 // JVET-AL0274: Encoder only BF for allowing Log2MaxTbSize to be 6 instead of 7 by default
 #endif
 #define JVET_AI0087_BTCUS_RESTRICTION                     1 // JVET-AI0087: Restriction on BT CUs from applying QT like partitioning structure
 #define JVET_AJ0226_MTT_SKIP                              1 // JVET-AJ0226: MTT early termination applied to 64x64 & 32x32 luma CUs  

@@ -1296,6 +1296,12 @@ bool CU::interCcpMergeZeroRootCbfAllowed(const CodingUnit& cu)
   {
     return false;
   }
+#if JVET_AL0274_MAX_TB_SIZE_FIX
+  if (cu.cs->pcv->isEncoder && (cu.Y().width > cu.cs->sps->getMaxTbSize() || cu.Y().height > cu.cs->sps->getMaxTbSize()))
+  {
+    return 0;
+  }
+#endif
 
   return true;
 }
