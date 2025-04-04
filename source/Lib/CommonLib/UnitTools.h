@@ -361,9 +361,17 @@ namespace PU
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+  int      getNSPTBucket              ( const TransformUnit& tu, bool secondBucket, const ComponentID compID );
+#else
   int      getNSPTBucket(const TransformUnit& tu, bool secondBucket);
+#endif
+#else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+  int      getNSPTBucket              ( const TransformUnit &tu, const ComponentID compID  );
 #else
   int      getNSPTBucket              ( const TransformUnit &tu );
+#endif
 #endif
 #endif
   bool     getUseLFNST8               ( int width, int height );

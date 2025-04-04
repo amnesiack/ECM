@@ -37317,15 +37317,29 @@ int PU::getNSPTMatrixDim( int width, int height )
 
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+int PU::getNSPTBucket(const TransformUnit& tu, bool secondBucket, const ComponentID compID)
+#else
 int PU::getNSPTBucket(const TransformUnit& tu, bool secondBucket)
+#endif
 {
   const CodingUnit& cu = *tu.cu;
   int nsptBucket = secondBucket == false ? 0 : 1; // conventional intra mode
 
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+  const CompArea& area = tu.blocks[compID];
+  uint32_t intraMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
+#if JVET_AK0222_SGPM_DIMD_LFNST
+  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || intraMode == PNN_IDX)
+#else
+  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm || intraMode == PNN_IDX)
+#endif
+#else
 #if JVET_AK0222_SGPM_DIMD_LFNST
   if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag)
 #else
   if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm)
+#endif
 #endif
   {
     nsptBucket = secondBucket == false ? 1 : 0;
@@ -37338,10 +37352,20 @@ int PU::getNSPTBucket(const TransformUnit& tu, bool secondBucket)
   return(nsptBucket);
 }
 #else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+int PU::getNSPTBucket(const TransformUnit& tu, const ComponentID compID)
+#else
 int PU::getNSPTBucket(const TransformUnit& tu)
+#endif
 {
   const CodingUnit& cu = *tu.cu;
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+  const CompArea& area = tu.blocks[compID];
+  uint32_t intraMode = PU::getFinalIntraMode(*tu.cs->getPU(area.pos(), toChannelType(compID)), toChannelType(compID));
+  if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm || intraMode == PNN_IDX)
+#else
   if (cu.timd || cu.dimd || cu.eipFlag || cu.mipFlag || cu.sgpm)
+#endif
   {
     return 1;
   }

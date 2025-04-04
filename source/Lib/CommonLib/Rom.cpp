@@ -707,8 +707,12 @@ void destroyPdpFilters()
 }
 #endif
 
-#if JVET_AC0130_NSPT
-#include "RomNSPT.h"
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+#include "RomNSPT_al0215.h"
+#elif JVET_AJ0175_NSPT_FOR_NONREG_MODES
+#include "RomNSPT_aj0175.h"
+#elif JVET_AC0130_NSPT
+#include "RomNSPT_ac0130.h"
 #endif
 
 #if ENABLE_TRACING

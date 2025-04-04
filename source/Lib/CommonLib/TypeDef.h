@@ -472,6 +472,9 @@
 #if JVET_AC0130_NSPT
 #define JVET_AE0086_LARGE_NSPT                            1 // JVET-AE0086: Large NSPT kernels (4x32, 8x32)
 #define JVET_AJ0175_NSPT_FOR_NONREG_MODES                 1 // JVET-AJ0175: NSPT for non-regular modes
+#if JVET_AJ0175_NSPT_FOR_NONREG_MODES
+#define JVET_AL0215_NSPT_SET_FOR_INTRANN                  1 // JVET-AL0215: 4.4c NSPT set for IntraNN and NSPT kernel retraining
+#endif
 #endif
 #define JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST              1 // JVET-AC0115: Modifications of MTS/LFNST for Intra TMP coded block
 #define JVET_AE0125_SHIFT_QUANTIZATION_CENTER             1 // JVET-AE0125: Shifting quantization center
