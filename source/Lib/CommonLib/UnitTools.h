@@ -311,6 +311,9 @@ namespace PU
 #endif
 #if JVET_AG0058_EIP
   bool isEIP(const PredictionUnit& pu, const ChannelType& chType = CHANNEL_TYPE_LUMA);
+#if JVET_AL0106_BV_EIP
+  bool isBvEip(const PredictionUnit& pu, const ChannelType& chType = CHANNEL_TYPE_LUMA);
+#endif
 #endif
   bool          isDMChromaMIP         (const PredictionUnit &pu);
 #if JVET_AB0155_SGPM
@@ -1820,6 +1823,9 @@ bool     getAllowedEip(const CodingUnit &cu, const ComponentID compId);
 int getAllowedCurEip(const CodingUnit& cu, const ComponentID compId, static_vector<EIPInfo, NUM_DERIVED_EIP>& eipInfoList, bool bMmEip = false);
 #else 
 int getAllowedCurEip(const CodingUnit& cu, const ComponentID compId, static_vector<EIPInfo, NUM_DERIVED_EIP>& eipInfoList);
+#endif
+#if JVET_AL0106_BV_EIP
+bool     allowBvEip(const CodingUnit& cu);
 #endif
 #endif
 

@@ -2721,6 +2721,40 @@ void CABACWriter::cu_eip_flag(const CodingUnit& cu)
       }
       else
       {
+#if JVET_AL0106_BV_EIP
+        CHECK(cu.firstPU->intraDir[0] >= NUM_DERIVED_EIP, "cu.firstPU->intraDir[0] >= NUM_DERIVED_EIP");
+        static_vector<EIPInfo, NUM_DERIVED_EIP> eipInfoList;
+#if JVET_AJ0082_MM_EIP
+        m_BinEncoder.encodeBin(cu.eipMmFlag, Ctx::EipFlag(2));
+        if (!cu.eipMmFlag && allowBvEip(cu))
+        {
+          m_BinEncoder.encodeBin(cu.bvEip, Ctx::EipFlag(3));
+          if (cu.bvEip)
+          {
+            return;
+          }
+        }
+
+        int eipNum = getAllowedCurEip(cu, COMPONENT_Y, eipInfoList, cu.eipMmFlag);
+        int eipIdx = cu.firstPU->intraDir[0];
+        if (eipNum > 1)
+        {
+          xWriteTruncBinCode(eipIdx, eipNum);
+        }
+#else
+#if JVET_AL0106_BV_EIP
+        if (allowBvEip(cu))
+        {
+          m_BinEncoder.encodeBin(cu.bvEip, Ctx::EipFlag(2));
+          if (cu.bvEip)
+          {
+            return;
+          }
+        }
+#endif
+        xWriteTruncBinCode(cu.firstPU->intraDir[0], getAllowedCurEip(cu, COMPONENT_Y, eipInfoList));
+#endif
+#else
         CHECK(cu.firstPU->intraDir[0] >= NUM_DERIVED_EIP, "cu.firstPU->intraDir[0] >= NUM_DERIVED_EIP");
         static_vector<EIPInfo, NUM_DERIVED_EIP> eipInfoList;
 #if JVET_AJ0082_MM_EIP
@@ -2734,6 +2768,7 @@ void CABACWriter::cu_eip_flag(const CodingUnit& cu)
         }
 #else
         xWriteTruncBinCode(cu.firstPU->intraDir[0], getAllowedCurEip(cu, COMPONENT_Y, eipInfoList));
+#endif
 #endif
       }
     }

@@ -895,6 +895,12 @@ static const double ENC_EIP_SAD_CHK_RATE = 1.1;
 static const int NUM_EIP_COMB = NUM_EIP_SHAPE * NUM_EIP_BASE_RECOTYPE;
 static const int NUM_DERIVED_EIP                  = NUM_EIP_SHAPE * 3;
 #endif  
+#if JVET_AL0106_BV_EIP
+static const int L2_EIP_REG[] = { 288, 256, 224, 192, 128 };
+static const int L2_SAMPLE_THR[] = { 128, 256, 512, 2024, MAX_INT };
+static const int MAX_BV_EIP = 1;
+static const int BV_EIP_TEMP_SIZE = 4;
+#endif
 #endif
 #if JVET_AJ0267_ADAPTIVE_HOG
 static const int MAX_DIMD_TEMPLATE_SIZE =                           12;

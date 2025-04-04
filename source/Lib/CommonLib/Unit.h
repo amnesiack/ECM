@@ -490,6 +490,9 @@ struct CodingUnit : public UnitArea
 #if JVET_AJ0082_MM_EIP
   bool              eipMmFlag;
 #endif
+#if JVET_AL0106_BV_EIP
+  bool              bvEip;
+#endif
 #endif
 #if ENABLE_OBMC
   bool           obmcFlag;
