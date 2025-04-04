@@ -6466,6 +6466,68 @@ void IntraPrediction::geneChromaFusionPred(const ComponentID compId, PelBuf &piP
   }
 #endif
 
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+  if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
+  {
+    if (pu.cs->slice->isIntra())
+    {
+      const int  bitDepth = pu.cu->slice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA);
+      static int                        modelThr       = 0;
+      static CccmModel cccmModelCb[2] = { CccmModel( CCCM_NUM_PARAMS, bitDepth), CccmModel( CCCM_NUM_PARAMS, bitDepth) };
+      static CccmModel cccmModelCr[2] = { CccmModel( CCCM_NUM_PARAMS, bitDepth), CccmModel( CCCM_NUM_PARAMS, bitDepth) };
+
+      if (compId == COMPONENT_Cb)
+      {
+        pu2.cccmFlag = 1;
+#if JVET_AC0054_GLCCCM
+        pu2.glCccmFlag = 0;
+#endif
+#if JVET_AD0202_CCCM_MDF
+        pu2.cccmMultiFilterIdx = 0;
+#endif
+        xGetLumaRecPixels(pu2, area);
+        modelThr = xCccmCalcRefAver(pu2);
+        xCccmCalcModels(pu2, cccmModelCb[0], cccmModelCr[0], 1, modelThr);
+        xCccmCalcModels(pu2, cccmModelCb[1], cccmModelCr[1], 2, modelThr);
+      }
+
+      xCccmApplyModel(pu2, compId, compId == COMPONENT_Cb ? cccmModelCb[0] : cccmModelCr[0], 1, modelThr, predLmBuffer);
+      xCccmApplyModel(pu2, compId, compId == COMPONENT_Cb ? cccmModelCb[1] : cccmModelCr[1], 2, modelThr, predLmBuffer);
+
+#if JVET_AD0188_CCP_MERGE
+      if (compId == COMPONENT_Cr)
+      {
+#if JVET_AC0054_GLCCCM
+        pu.curCand.type = ((pu.glCccmFlag ? CCP_TYPE_GLCCCM : CCP_TYPE_CCCM) | CCP_TYPE_MMLM);
+        pu.curCand.corOffX = m_cccmBlkArea.x - m_cccmRefArea.x;
+        pu.curCand.corOffY = m_cccmBlkArea.y - m_cccmRefArea.y;
+#else
+        pu.curCand.type = (CCP_TYPE_CCCM | CCP_TYPE_MMLM);
+#endif
+        PU::cccmModelToCcpParams(pu.curCand, cccmModelCb, cccmModelCr, modelThr
+#if JVET_AB0174_CCCM_DIV_FREE
+          , m_cccmLumaOffset
+#endif
+        );
+      }
+#endif
+    }
+    else
+    {
+      predIntraChromaLM(compId, predLmBuffer, pu2, area, pu2.intraDir[1]);
+
+#if JVET_AD0188_CCP_MERGE
+      pu.curCand      = pu2.curCand;
+      pu.curCand.type = CCP_TYPE_CCLM;
+
+      if (PU::isMultiModeLM(pu2.intraDir[1]))
+      {
+        pu.curCand.type |= CCP_TYPE_MMLM;
+      }
+#endif
+    }
+  }
+#else
 #if JVET_AD0120_LBCCP
   static int cclmSAD  = MAX_INT;
   static int cccmSAD  = MAX_INT;
@@ -6567,6 +6629,7 @@ void IntraPrediction::geneChromaFusionPred(const ComponentID compId, PelBuf &piP
 #if JVET_AD0120_LBCCP
   }
 #endif
+#endif
 
 #if JVET_AC0071_DBV && JVET_AA0070_RRIBC
 #if JVET_AH0136_CHROMA_REORDERING
@@ -6585,7 +6648,7 @@ void IntraPrediction::geneChromaFusionPred(const ComponentID compId, PelBuf &piP
   int  w1 = 2;
   int  shift = 2;
 
-#if JVET_AD0120_LBCCP
+#if JVET_AD0120_LBCCP && !JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   if (pu.cs->slice->isIntra() && PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX) && pu.cs->sps->getTMnoninterToolsEnableFlag())
 #else

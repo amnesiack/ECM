@@ -4050,12 +4050,20 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     CodingStructure &cs = *cu.cs;
     const UnitArea localUnitArea(cs.area.chromaFormat, Area(0, 0, (pu.Cb().width) << 1, (pu.Cb().height) << 1));
     m_pcIntraSearch->m_ddCcpStorageTemp = m_pcIntraSearch->m_ddCcpStorage.getBuf(localUnitArea);
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+    for (int i = 0; i < 5; i++)
+#else
     for (int i = 0; i < 2; i++)
+#endif
     {
       m_pcIntraSearch->m_ddCcpFusionStorageTemp[i] = m_pcIntraSearch->m_ddCcpFusionStorage[i].getBuf(localUnitArea);
     }
     m_pcIntraSearch->m_skipDdCcpMergeFusionList = false;
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+    for (int i = 0; i < 5; i++)
+#else
     for (int i = 0; i < 2; i++)
+#endif
     {
       m_pcIntraSearch->m_ddccpMergeFusionCost[i] = MAX_DOUBLE;
     }

@@ -719,6 +719,9 @@ private:
   PelStorage      m_cccmStorage[CCCM_NUM_MODES];
 #endif
 #endif
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+  PelStorage      m_ccpFusionStorage[MAX_CCP_FUSION_NUM];
+#endif
 
 #if JVET_AD0188_CCP_MERGE
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
@@ -739,6 +742,22 @@ private:
 
 #if JVET_AJ0081_CHROMA_TMRL
   PelStorage     m_chromaMrlStorage[CHROMA_TMRL_LIST_SIZE];
+#endif
+
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+  struct crossComponentPredictionModeInfo
+  {
+    int    bufIdx;
+    int    intraModeIndex; // indicate which intra mode
+    int    ccpModeIndex;   // 1:regular cccm, 2~4:cccm-mdf
+                           // 12:noSubCccm, 13:glcccm, 14:BvgCccm, 15:ddccp, 16:glm
+                           // 21:ccpMergeMode, 22:ccpMergeMode fusions
+                           // 31:slopeAdj
+                           // 41:intraFusionMode
+    int    isLbccp;
+    int    isMrl;
+    double cost = MAX_DOUBLE;
+  };
 #endif
 
 #if JVET_AD0120_LBCCP
@@ -835,10 +854,17 @@ public:
   std::vector<DecoderDerivedCcpCandidate> m_decoderDerivedCcpList;
   bool            m_skipDdCcpMergeFusionList;
   int             m_numCcpMergefusionRdo;
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+  double m_ddccpMergeFusionCost[5];
+  int m_ddCcpMergeFusionModeIndex[5];
+  PelStorage      m_ddCcpFusionStorage[5];
+  PelUnitBuf      m_ddCcpFusionStorageTemp[5];
+#else
   double          m_ddccpMergeFusionCost[2];
   int             m_ddCcpMergeFusionModeIndex[2];
   PelStorage      m_ddCcpFusionStorage[2];
   PelUnitBuf      m_ddCcpFusionStorageTemp[2];
+#endif
 #endif  
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool            m_isDimdPredictionSaved;

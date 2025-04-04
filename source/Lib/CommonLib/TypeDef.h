@@ -52,6 +52,7 @@
 #include <cstdint>
 
 
+
 #define AHG7_LN_TOOLOFF_CFG                               1
 #define FIXFILTER_CFG                                     1
 #define AHG7_MTS_TOOLOFF_CFG                              1
@@ -185,6 +186,7 @@
 #if JVET_Z0050_DIMD_CHROMA_FUSION
 #define JVET_AC0119_LM_CHROMA_FUSION                      1 // JVET-AC0119: On Chroma Fusion improvement
 #endif
+#define JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS   1 // JVET-AL0191: intra chroma encoder optimization with CCP constraints
 #define JVET_Z0050_CCLM_SLOPE                             1 // JVET-Z0050: CCLM with slope adjustments
 #define JVET_AA0057_CCCM                                  1 // JVET-AA0057: Convolutional cross-component model (CCCM)
 #if JVET_AA0057_CCCM
@@ -1562,6 +1564,26 @@ enum WeightedPredictionMethod
   WP_PER_PICTURE_WITH_HISTOGRAM_AND_PER_COMPONENT_AND_CLIPPING              =3,
   WP_PER_PICTURE_WITH_HISTOGRAM_AND_PER_COMPONENT_AND_CLIPPING_AND_EXTENSION=4
 };
+
+#if JVET_AA0057_CCCM
+enum CccmModes
+{
+  CCCM_LM_CHROMA          = 0,
+  CCCM_MDLM_L_MODE        = 1,
+  CCCM_MDLM_T_MODE        = 2,
+  CCCM_MMLM_CHROMA_MODE   = 3,
+  CCCM_MMLM_L_MODE        = 4,
+  CCCM_MMLM_T_MODE        = 5,
+#if JVET_AC0054_GLCCCM
+  GLCCCM_LM_CHROMA        = 6,
+  GLCCCM_MDLM_L_MODE      = 7,
+  GLCCCM_MDLM_T_MODE      = 8,
+  GLCCCM_MMLM_CHROMA_MODE = 9,
+  GLCCCM_MMLM_L_MODE      = 10,
+  GLCCCM_MMLM_T_MODE      = 11
+#endif
+};
+#endif
 
 enum FastInterSearchMode
 {

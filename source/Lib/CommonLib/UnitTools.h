@@ -1199,7 +1199,11 @@ namespace PU
 #endif
 #if JVET_AA0057_CCCM
   bool cccmSingleModeAvail(const PredictionUnit& pu, int intraMode);
-  bool cccmMultiModeAvail (const PredictionUnit& pu, int intraMode);
+  bool cccmMultiModeAvail (const PredictionUnit& pu, int intraMode
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+    , bool mmlmFusion = false
+#endif
+  );
 #if JVET_AB0143_CCCM_TS
   bool isLeftCccmMode(const PredictionUnit& pu, int intraMode);
   bool isTopCccmMode(const PredictionUnit& pu, int intraMode);
