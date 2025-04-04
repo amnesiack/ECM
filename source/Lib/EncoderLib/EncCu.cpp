@@ -5447,6 +5447,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
 
   AffineMergeCtx affineMergeCtx;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  RefineTmvpSbTmvpParams*    encSbTmvpParams    = new RefineTmvpSbTmvpParams   [SUB_TMVP_NUM];
+  RefineTmvpSbTmvpSubParams* encSbTmvpSubParams = new RefineTmvpSbTmvpSubParams[SUB_TMVP_NUM * (tempCS->area.lumaSize().area() >> 4)];
+  AffineMergeCtx affineNoSbtmvpMergeCtx;
+#endif
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
   AffineMergeCtx affineBMMergeCtx;
   AffineMergeCtx affineBMMergeL0;
@@ -5673,6 +5678,46 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       bool isLD = pu.cs->slice->getCheckLDC();
       m_pcInterSearch->adjustMergeCandidatesInOneCandidateGroup(pu, tmvpMergeCandCtx, (isLD ? REGULAR_ARMC_NUM_LD : REGULAR_ARMC_NUM), -1, true);
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      int refineTmvpTargetRefIdx = TMVP_REFINE_PRE_SET_TARGET_REF_IDX, refineTmvpL0Idx = 0, refineTmvpL1Idx = 1;
+      Mv   refineTmvpColMv, refineTmvpOrgMv[2];
+      for (int refineTmvpIdx = 0; refineTmvpIdx < tmvpMergeCandCtx.numValidMergeCand; refineTmvpIdx++)
+      {
+        refineTmvpL0Idx = refineTmvpIdx << 1;
+        refineTmvpL1Idx = refineTmvpL0Idx + 1;
+        refineTmvpOrgMv[0] = tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].mv;
+        refineTmvpOrgMv[1] = tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].mv;
+        if (tmvpMergeCandCtx.refineTmvpParams.refineTmvpRefList[refineTmvpL0Idx] == REF_PIC_LIST_0)
+        {
+          refineTmvpTargetRefIdx = tmvpMergeCandCtx.refineTmvpParams.refineTmvpTargetRefIdx[refineTmvpL0Idx];
+          Position refineTmvpPosition(tmvpMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL0Idx][0], tmvpMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL0Idx][1]);
+          m_pcInterSearch->refineTmvpCoverSearchForRefinedMv(false/*refineTmvpIsSbTmvp*/, pu, REF_PIC_LIST_0, refineTmvpPosition, refineTmvpColMv,
+              tmvpMergeCandCtx.refineTmvpParams.refineTmvpRefIdx[refineTmvpL0Idx], tmvpMergeCandCtx.refineTmvpParams.refineTmvpSbFlag[refineTmvpL0Idx],
+              tmvpMergeCandCtx.refineTmvpParams.refineTmvpCol[refineTmvpL0Idx], &refineTmvpTargetRefIdx, 0/*sbTmvpType*/,
+              tmvpMergeCandCtx.refineTmvpParams.refineTmvpColRefPicList[refineTmvpL0Idx], tmvpMergeCandCtx.refineTmvpParams.refineTmvpColRefPOC[refineTmvpL0Idx],
+              *(tmvpMergeCandCtx.refineTmvpParams.refineTmvpMiPtr[refineTmvpL0Idx]));
+          tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].refIdx = refineTmvpTargetRefIdx;
+          tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].mv     = refineTmvpColMv;
+        }
+        if (tmvpMergeCandCtx.refineTmvpParams.refineTmvpRefList[refineTmvpL1Idx] == REF_PIC_LIST_1)
+        {
+          refineTmvpTargetRefIdx = tmvpMergeCandCtx.refineTmvpParams.refineTmvpTargetRefIdx[refineTmvpL1Idx];
+          Position refineTmvpPosition(tmvpMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL1Idx][0], tmvpMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL1Idx][1]);
+          m_pcInterSearch->refineTmvpCoverSearchForRefinedMv(false/*refineTmvpIsSbTmvp*/, pu, REF_PIC_LIST_1, refineTmvpPosition, refineTmvpColMv,
+              tmvpMergeCandCtx.refineTmvpParams.refineTmvpRefIdx[refineTmvpL1Idx], tmvpMergeCandCtx.refineTmvpParams.refineTmvpSbFlag[refineTmvpL1Idx],
+              tmvpMergeCandCtx.refineTmvpParams.refineTmvpCol[refineTmvpL1Idx], &refineTmvpTargetRefIdx, 0/*sbTmvpType*/,
+              tmvpMergeCandCtx.refineTmvpParams.refineTmvpColRefPicList[refineTmvpL1Idx], tmvpMergeCandCtx.refineTmvpParams.refineTmvpColRefPOC[refineTmvpL1Idx],
+              *(tmvpMergeCandCtx.refineTmvpParams.refineTmvpMiPtr[refineTmvpL1Idx]));
+          tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].refIdx = refineTmvpTargetRefIdx;
+          tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].mv     = refineTmvpColMv;
+        }
+        if (tmvpMergeCandCtx.xCheckSimilarMotion( refineTmvpIdx, 1 ))
+        {
+          tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].mv = refineTmvpOrgMv[0];
+          tmvpMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].mv = refineTmvpOrgMv[1];
+        }
+      }
+#endif
     }
 #else
     if (sps.getUseAML()
@@ -5723,14 +5768,22 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
     if (!tplAvail)
     {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      PU::getInterMergeCandidates(m_pcInterSearch, pu, mergeCtx, 0, -1);
+#else
       PU::getInterMergeCandidates(pu, mergeCtx, 0, -1);
+#endif
       mergeCtx.numValidMergeCand = pu.cs->sps->getMaxNumMergeCand();
     }
     else
 #endif
 #endif
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    PU::getInterMergeCandidates(m_pcInterSearch, pu, mergeCtx
+#else
     PU::getInterMergeCandidates(pu, mergeCtx
+#endif
       , 0
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM
       , -1
@@ -5894,6 +5947,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mergeCtx.addHypNeighbours[ui].clear();
 #endif
       mergeCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      mergeCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
+      mergeCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #if JVET_AG0276_LIC_FLAG_SIGNALING
       mergeCtxOppositeLic.bcwIdx[ui] = BCW_DEFAULT;
 #if JVET_AG0276_NLIC
@@ -5914,6 +5971,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mergeCtxOppositeLic.addHypNeighbours[ui].clear();
 #endif
       mergeCtxOppositeLic.candCost[ui] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      mergeCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
+      mergeCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #endif
     }
 #endif
@@ -5942,6 +6003,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mergeOrgCtx.addHypNeighbours[ui].clear();
 #endif
       mergeOrgCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      mergeOrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
+      mergeOrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
+#endif
     }
 #endif
 
@@ -5996,10 +6061,18 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
     }
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    PU::getInterMergeCandidates(m_pcInterSearch, pu, mergeCtxtmp, 0);
+#else
     PU::getInterMergeCandidates(pu, mergeCtxtmp, 0);
+#endif
 #if JVET_AG0135_AFFINE_CIIP
     pu.tmMergeFlag = true;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    PU::getInterMergeCandidates(m_pcInterSearch, pu, mergeCtxCIIPtmp, 0);
+#else
     PU::getInterMergeCandidates(pu, mergeCtxCIIPtmp, 0);
+#endif
     pu.tmMergeFlag = false;
 #endif
 #endif
@@ -6220,6 +6293,46 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         bool isLD = pu.cs->slice->getCheckLDC();
         m_pcInterSearch->adjustMergeCandidatesInOneCandidateGroup(pu, tmvpTmMergeCandCtx, (isLD ? TM_ARMC_NUM_LD : TM_ARMC_NUM), -1, true);
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        int refineTmvpTargetRefIdx = TMVP_REFINE_PRE_SET_TARGET_REF_IDX, refineTmvpL0Idx = 0, refineTmvpL1Idx = 1;
+        Mv   refineTmvpColMv, refineTmvpOrgMv[2];
+        for (int refineTmvpIdx = 0; refineTmvpIdx < tmvpTmMergeCandCtx.numValidMergeCand; refineTmvpIdx++)
+        {
+          refineTmvpL0Idx = refineTmvpIdx << 1;
+          refineTmvpL1Idx = refineTmvpL0Idx + 1;
+          refineTmvpOrgMv[0] = tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].mv;
+          refineTmvpOrgMv[1] = tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].mv;
+          if (tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpRefList[refineTmvpL0Idx] == REF_PIC_LIST_0)
+          {
+            refineTmvpTargetRefIdx = tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpTargetRefIdx[refineTmvpL0Idx];
+            Position refineTmvpPosition(tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL0Idx][0], tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL0Idx][1]);
+            m_pcInterSearch->refineTmvpCoverSearchForRefinedMv(false/*refineTmvpIsSbTmvp*/, pu, REF_PIC_LIST_0, refineTmvpPosition, refineTmvpColMv,
+                tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpRefIdx[refineTmvpL0Idx], tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpSbFlag[refineTmvpL0Idx],
+                tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpCol[refineTmvpL0Idx], &refineTmvpTargetRefIdx, 0/*sbTmvpType*/,
+                tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpColRefPicList[refineTmvpL0Idx], tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpColRefPOC[refineTmvpL0Idx],
+                *(tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpMiPtr[refineTmvpL0Idx]));
+            tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].refIdx = refineTmvpTargetRefIdx;
+            tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].mv     = refineTmvpColMv;
+          }
+          if (tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpRefList[refineTmvpL1Idx] == REF_PIC_LIST_1)
+          {
+            refineTmvpTargetRefIdx = tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpTargetRefIdx[refineTmvpL1Idx];
+            Position refineTmvpPosition(tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL1Idx][0], tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL1Idx][1]);
+            m_pcInterSearch->refineTmvpCoverSearchForRefinedMv(false/*refineTmvpIsSbTmvp*/, pu, REF_PIC_LIST_1, refineTmvpPosition, refineTmvpColMv,
+                tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpRefIdx[refineTmvpL1Idx], tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpSbFlag[refineTmvpL1Idx],
+                tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpCol[refineTmvpL1Idx], &refineTmvpTargetRefIdx, 0/*sbTmvpType*/,
+                tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpColRefPicList[refineTmvpL1Idx], tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpColRefPOC[refineTmvpL1Idx],
+                *(tmvpTmMergeCandCtx.refineTmvpParams.refineTmvpMiPtr[refineTmvpL1Idx]));
+            tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].refIdx = refineTmvpTargetRefIdx;
+            tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].mv     = refineTmvpColMv;
+          }
+          if (tmvpTmMergeCandCtx.xCheckSimilarMotion( refineTmvpIdx, 1 ))
+          {
+            tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL0Idx].mv = refineTmvpOrgMv[0];
+            tmvpTmMergeCandCtx.mvFieldNeighbours[refineTmvpL1Idx].mv = refineTmvpOrgMv[1];
+          }
+        }
+#endif
       }
 #else
       if (sps.getUseAML()
@@ -6272,12 +6385,20 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC && JVET_Y0134_TMVP_NAMVP_CAND_REORDERING
       if (!tplAvail)
       {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        PU::getInterMergeCandidates(m_pcInterSearch, pu, tmMrgCtx, 0, -1);
+#else
         PU::getInterMergeCandidates(pu, tmMrgCtx, 0, -1);
+#endif
         tmMrgCtx.numValidMergeCand = pu.cs->sps->getMaxNumTMMergeCand();
       }
       else
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      PU::getInterMergeCandidates(m_pcInterSearch, pu, tmMrgCtx, 0
+#else
       PU::getInterMergeCandidates(pu, tmMrgCtx, 0
+#endif
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM
         , -1
         , (sps.getUseAML()
@@ -6441,6 +6562,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           tmMrgCtx.addHypNeighbours[ui].clear();
 #endif
           tmMrgCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+          tmMrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
+          tmMrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
+#endif
         }
 #endif
 #if JVET_AG0276_LIC_FLAG_SIGNALING
@@ -6470,6 +6595,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           tmMrgCtxOppositeLic.addHypNeighbours[ui].clear();
 #endif
           tmMrgCtxOppositeLic.candCost[ui] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+          tmMrgCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
+          tmMrgCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
+#endif
         }
 #endif
 #endif
@@ -6805,7 +6934,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         }
       }
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      PU::getAffineMergeCand(m_pcInterSearch, encSbTmvpParams, encSbTmvpSubParams, pu, affineMergeCtx
+#else
       PU::getAffineMergeCand(pu, affineMergeCtx
+#endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION  
         , mrgCtxAll
 #endif
@@ -6821,12 +6954,65 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         , isTmvpOptUsed ? &affineTMVPCtx : NULL
 #endif
       );
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      PU::getAffineMergeCand(m_pcInterSearch, nullptr, nullptr, pu, affineNoSbtmvpMergeCtx
+#if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
+        , mrgCtxAll
+#endif
+#if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION && JVET_W0090_ARMC_TM
+        , m_pcInterSearch
+#endif
+#if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
+        , affineRMVFCtx
+        , affineRMVFOriCtx
+        , addNumRMVF
+#endif
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+        , isTmvpOptUsed ? &affineTMVPCtx : NULL
+#endif
+        , -1, false, false, true
+      );
+#endif
 #if JVET_AG0276_LIC_FLAG_SIGNALING
       int cntAffOppositeLic = 0;
       affineMergeCtxOppositeLic.numAffCandToTestEnc = 0;
       affineMergeCtxOppositeLic.numValidMergeCand = 0;
       if (hasOppositelicAff && pu.cs->sps->getUseAffMergeOppositeLic())
       {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        for (int i = 0; i < affineNoSbtmvpMergeCtx.numValidMergeCand; i++)
+        {
+          for (int mvNum = 0; mvNum < 3; mvNum++)
+          {
+            affineMergeCtxOppositeLic.mvFieldNeighbours[(cntAffOppositeLic << 1) + 0][mvNum] = affineNoSbtmvpMergeCtx.mvFieldNeighbours[(i << 1) + 0][mvNum];
+            affineMergeCtxOppositeLic.mvFieldNeighbours[(cntAffOppositeLic << 1) + 1][mvNum] = affineNoSbtmvpMergeCtx.mvFieldNeighbours[(i << 1) + 1][mvNum];
+          }
+          affineMergeCtxOppositeLic.interDirNeighbours[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.interDirNeighbours[i];
+          affineMergeCtxOppositeLic.affineType[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.affineType[i];
+          affineMergeCtxOppositeLic.mergeType[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.mergeType[i];
+          affineMergeCtxOppositeLic.bcwIdx[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.bcwIdx[i];
+#if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
+          affineMergeCtxOppositeLic.colIdx[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.colIdx[i];
+#endif
+#if JVET_AG0276_NLIC
+          affineMergeCtxOppositeLic.altLMFlag[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.altLMFlag[i];
+          affineMergeCtxOppositeLic.altLMParaNeighbours[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.altLMParaNeighbours[i];
+#endif
+#if INTER_LIC
+          affineMergeCtxOppositeLic.licFlags[cntAffOppositeLic] = !affineNoSbtmvpMergeCtx.licFlags[i];
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+          affineMergeCtxOppositeLic.licInheritPara[cntAffOppositeLic] = false;
+#endif
+#endif
+#if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
+          affineMergeCtxOppositeLic.obmcFlags[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.obmcFlags[i];
+#endif
+          affineMergeCtxOppositeLic.candCost[cntAffOppositeLic] = affineNoSbtmvpMergeCtx.candCost[i];
+          cntAffOppositeLic++;
+          affineMergeCtxOppositeLic.numValidMergeCand++;
+        }
+        affineMergeCtxOppositeLic.numAffCandToTestEnc = std::min(affineMergeCtxOppositeLic.numValidMergeCand, affineNoSbtmvpMergeCtx.numAffCandToTestEnc);
+#else
         for (int i = 0; i < affineMergeCtx.numValidMergeCand; i++)
         {
           if (affineMergeCtx.mergeType[i] == MRG_TYPE_DEFAULT_N)
@@ -6866,17 +7052,26 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           }
         }
         affineMergeCtxOppositeLic.numAffCandToTestEnc = std::min(affineMergeCtxOppositeLic.numValidMergeCand, affineMergeCtx.numAffCandToTestEnc);
+#endif
         affineMergeCtxOppositeLic.maxNumMergeCand = affineMergeCtxOppositeLic.numValidMergeCand;
       }
 #endif
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
       if (checkaffBmMrg)
       {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        PU::getBMAffineMergeCand(m_pcInterSearch, pu, affineBMMergeCtx, affineRMVFOriCtx, -1);
+#else
         PU::getBMAffineMergeCand(pu, affineBMMergeCtx, affineRMVFOriCtx, -1);
+#endif
       }
 #endif
 #if JVET_W0090_ARMC_TM
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      affineMergeCtxTmp = affineNoSbtmvpMergeCtx;
+#else
       affineMergeCtxTmp = affineMergeCtx;
+#endif
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
       affineMergeCtxTmp.numValidMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand();
       affineMergeCtxTmp.maxNumMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand();
@@ -7208,6 +7403,16 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           m_pcInterSearch->adjustAffineMergeCandidates(pu, affineMergeCtx, -1, affineMergeCtx.maxNumMergeCand);
           affineMergeCtx.numValidMergeCand = pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand();
           affineMergeCtx.maxNumMergeCand = pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand();
+        }
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        for (int refineTmvpIdx = 0; refineTmvpIdx < affineMergeCtx.numValidMergeCand; refineTmvpIdx++)
+        {
+          if (affineMergeCtx.mergeType[refineTmvpIdx] == MRG_TYPE_SUBPU_ATMVP && affineMergeCtx.colIdx[refineTmvpIdx] >= 0
+              && (pu.cu->slice->getCheckLDC() == true || pu.cu->slice->getSPS()->getRefineTmvpCfgIdx() < 2))
+          {
+            PU::refineTmvpGetInterMergeSubPuMvpCand(m_pcInterSearch, pu, *affineMergeCtx.mrgCtx, encSbTmvpParams, encSbTmvpSubParams, affineMergeCtx.colIdx[refineTmvpIdx]);
+          }
         }
 #endif
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
@@ -8341,6 +8546,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           tmpBMMergeCtx.addHypNeighbours[ui].clear();
 #endif
           tmpBMMergeCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+          tmpBMMergeCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
+          tmpBMMergeCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
+#endif
         }
         tmpBMMergeCtx.numValidMergeCand = 0;
 #endif
@@ -8414,7 +8623,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
         if (!tplAvail)
         {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+          PU::getInterBMCandidates(m_pcInterSearch, pu, bmMrgCtx
+#else
           PU::getInterBMCandidates(pu, bmMrgCtx
+#endif
 #if JVET_AI0187_TMVP_FOR_CMVP 
             , tmpBMMergeCtx
 #endif
@@ -8428,8 +8641,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         else
 #endif
 #endif
-
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        PU::getInterBMCandidates(m_pcInterSearch, pu, bmMrgCtx
+#else
         PU::getInterBMCandidates(pu, bmMrgCtx
+#endif
 #if JVET_AI0187_TMVP_FOR_CMVP
           , tmpBMMergeCtx
 #endif
@@ -8485,6 +8701,46 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
             {
               bmMrgCtx.numCandToTestEnc = bmMrgCtx.numValidMergeCand;
             }
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+            int refineTmvpTargetRefIdx = TMVP_REFINE_PRE_SET_TARGET_REF_IDX, refineTmvpL0Idx = 0, refineTmvpL1Idx = 1;
+            Mv   refineTmvpColMv, refineTmvpOrgMv[2];
+            for (int refineTmvpIdx = 0; refineTmvpIdx < bmMrgCtx.numValidMergeCand; refineTmvpIdx++)
+            {
+              refineTmvpL0Idx = refineTmvpIdx << 1;
+              refineTmvpL1Idx = refineTmvpL0Idx + 1;
+              refineTmvpOrgMv[0] = bmMrgCtx.mvFieldNeighbours[refineTmvpL0Idx].mv;
+              refineTmvpOrgMv[1] = bmMrgCtx.mvFieldNeighbours[refineTmvpL1Idx].mv;
+              if (bmMrgCtx.refineTmvpParams.refineTmvpRefList[refineTmvpL0Idx] == REF_PIC_LIST_0)
+              {
+                refineTmvpTargetRefIdx = bmMrgCtx.refineTmvpParams.refineTmvpTargetRefIdx[refineTmvpL0Idx];
+                Position refineTmvpPosition(bmMrgCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL0Idx][0], bmMrgCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL0Idx][1]);
+                m_pcInterSearch->refineTmvpCoverSearchForRefinedMv(false/*refineTmvpIsSbTmvp*/, pu, REF_PIC_LIST_0, refineTmvpPosition, refineTmvpColMv,
+                    bmMrgCtx.refineTmvpParams.refineTmvpRefIdx[refineTmvpL0Idx], bmMrgCtx.refineTmvpParams.refineTmvpSbFlag[refineTmvpL0Idx],
+                    bmMrgCtx.refineTmvpParams.refineTmvpCol[refineTmvpL0Idx], &refineTmvpTargetRefIdx, 0/*sbTmvpType*/,
+                    bmMrgCtx.refineTmvpParams.refineTmvpColRefPicList[refineTmvpL0Idx], bmMrgCtx.refineTmvpParams.refineTmvpColRefPOC[refineTmvpL0Idx],
+                    *(bmMrgCtx.refineTmvpParams.refineTmvpMiPtr[refineTmvpL0Idx]));
+                bmMrgCtx.mvFieldNeighbours[refineTmvpL0Idx].refIdx = refineTmvpTargetRefIdx;
+                bmMrgCtx.mvFieldNeighbours[refineTmvpL0Idx].mv     = refineTmvpColMv;
+              }
+              if (bmMrgCtx.refineTmvpParams.refineTmvpRefList[refineTmvpL1Idx] == REF_PIC_LIST_1)
+              {
+                refineTmvpTargetRefIdx = bmMrgCtx.refineTmvpParams.refineTmvpTargetRefIdx[refineTmvpL1Idx];
+                Position refineTmvpPosition(bmMrgCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL1Idx][0], bmMrgCtx.refineTmvpParams.refineTmvpPosition[refineTmvpL1Idx][1]);
+                m_pcInterSearch->refineTmvpCoverSearchForRefinedMv(false/*refineTmvpIsSbTmvp*/, pu, REF_PIC_LIST_1, refineTmvpPosition, refineTmvpColMv,
+                    bmMrgCtx.refineTmvpParams.refineTmvpRefIdx[refineTmvpL1Idx], bmMrgCtx.refineTmvpParams.refineTmvpSbFlag[refineTmvpL1Idx],
+                    bmMrgCtx.refineTmvpParams.refineTmvpCol[refineTmvpL1Idx], &refineTmvpTargetRefIdx, 0/*sbTmvpType*/,
+                    bmMrgCtx.refineTmvpParams.refineTmvpColRefPicList[refineTmvpL1Idx], bmMrgCtx.refineTmvpParams.refineTmvpColRefPOC[refineTmvpL1Idx],
+                    *(bmMrgCtx.refineTmvpParams.refineTmvpMiPtr[refineTmvpL1Idx]));
+                bmMrgCtx.mvFieldNeighbours[refineTmvpL1Idx].refIdx = refineTmvpTargetRefIdx;
+                bmMrgCtx.mvFieldNeighbours[refineTmvpL1Idx].mv     = refineTmvpColMv;
+              }
+              if (bmMrgCtx.xCheckSimilarMotion( refineTmvpIdx, 1 ))
+              {
+                bmMrgCtx.mvFieldNeighbours[refineTmvpL0Idx].mv = refineTmvpOrgMv[0];
+                bmMrgCtx.mvFieldNeighbours[refineTmvpL1Idx].mv = refineTmvpOrgMv[1];
+              }
+            }
+#endif
 #endif
 #else
             m_pcInterSearch->adjustMergeCandidatesInOneCandidateGroup(pu, bmMrgCtx, pu.cs->sps->getMaxNumBMMergeCand());
@@ -8518,6 +8774,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
   }
 #if AFFINE_MMVD && MERGE_ENC_OPT
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  int afMmvdBaseIdxToMergeIdxOffset = 0;
+#else
 #if JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
   int  afMmvdBaseIdxToMergeIdxOffset = 
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS
@@ -8527,6 +8786,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
                                        (int)PU::getMergeIdxFromAfMmvdBaseIdx(affineMergeCtxTmp, 0);
 #else
   int  afMmvdBaseIdxToMergeIdxOffset = (int)PU::getMergeIdxFromAfMmvdBaseIdx(affineMergeCtx, 0);
+#endif
 #endif
   int  afMmvdBaseCount = std::min<int>((int)AF_MMVD_BASE_NUM, affineMergeCtx.numValidMergeCand - afMmvdBaseIdxToMergeIdxOffset);
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_AA0093_ENHANCED_MMVD_EXTENSION
@@ -10925,6 +11185,10 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AF0057
   m_pcInterSearch->xDmvrSetEncoderCheckFlag(false);
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  delete [] encSbTmvpParams;
+  delete [] encSbTmvpSubParams;
+#endif
 }
 
 #if JVET_W0097_GPM_MMVD_TM
@@ -11250,7 +11514,11 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 
 #if TM_MRG
 #if JVET_AE0046_BI_GPM
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  PU::getGeoMergeCandidates(pu, mergeCtx[GEO_TM_OFF], m_pcInterSearch, &m_mergeCand, true);
+#else
   PU::getGeoMergeCandidates(pu, mergeCtx[GEO_TM_OFF], &m_mergeCand, true);
+#endif
 #else
   PU::getGeoMergeCandidates(pu, mergeCtx[GEO_TM_OFF], &m_mergeCand);
 #endif
@@ -20937,7 +21205,11 @@ void EncCu::xCheckSATDCostAffineMmvdMerge(       CodingStructure*& tempCS,
   pu.numMergedAddHyps = 0;
 #endif
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  int baseIdxToMergeIdxOffset = 0;
+#else
   int baseIdxToMergeIdxOffset = (int)PU::getMergeIdxFromAfMmvdBaseIdx(affineMergeCtx, 0);
+#endif
   int baseCount               = std::min<int>((int)AF_MMVD_BASE_NUM, affineMergeCtx.numValidMergeCand - baseIdxToMergeIdxOffset);
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS && JVET_AA0093_ENHANCED_MMVD_EXTENSION
   if (!tempCS->sps->getUseTMMMVD())

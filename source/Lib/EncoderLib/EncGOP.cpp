@@ -3445,6 +3445,10 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
     pcSlice->generateEqualPocDist();
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    int refineTmvpNumRefIdx[2] = { pcSlice->getNumRefIdx(REF_PIC_LIST_0), pcSlice->getNumRefIdx(REF_PIC_LIST_1) };
+    pcSlice->getPic()->cs->createTemporaryRefineTmvpCsData(pcSlice->isIntra(), refineTmvpNumRefIdx, false);
+#endif
 #if JVET_AI0183_MVP_EXTENSION
     pcSlice->generateIntersectingMv();
 #endif

@@ -881,6 +881,10 @@ public:
 #if JVET_AE0169_IBC_MBVD_LIST_DERIVATION
   MvField ibcMbvdBaseBvFrac[IBC_MBVD_BASE_NUM][2];
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  RefineTmvpCtxModellingParams refineTmvpParams;
+  void copyRefineTmvpCtxModellingParams(MergeCtx &orgMergeCtx, uint32_t srcMrgIdxL0, uint32_t srcMrgIdxL1, uint32_t dstMrgIdxL0, uint32_t dstMrgIdxL1);
+#endif
   bool setIbcMbvdMergeCandiInfo(PredictionUnit& pu, int candIdx, int candIdxMaped = -1, int candIdx1 = -1, int candIdxMaped1 = -1);
 #else
   bool setIbcMbvdMergeCandiInfo(PredictionUnit& pu, int candIdx, int candIdxMaped = -1);

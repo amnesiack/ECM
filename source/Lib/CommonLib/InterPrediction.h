@@ -1636,6 +1636,14 @@ public:
 #endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM || MULTI_PASS_DMVR
   static Distortion getDecoderSideDerivedMvCost (const Mv& mvStart, const Mv& mvCur, int searchRangeInFullPel, int weight);
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  bool refineTmvpCompareTwoMotionInfo(MotionInfo& srcMotionInfo, const MotionInfo& dstMotionInfo, RefPicList targetRefList, int scaleFactor);
+  void refineTmvpCoverSearchForRefinedMv(bool refineTmvpIsSbTmvp, const PredictionUnit &pu, const RefPicList &eRefPicList, const Position &_pos, Mv& rcMv,
+      const int &refIdx, bool sbFlag, int col, int* targetRefIdx, int sbTmvpType, RefPicList refineTmvpColRefPicList, int colRefPOC, const MotionInfo& refineTmvpMiAddr);
+  void refineTmvpSearchForRefinedMv(bool refineTmvpIsSbTmvp, const PredictionUnit& pu,
+      const int srcRefList, const int srcRefIdx, const int dstRefList, const int dstRefIdx,
+      Mv& dstMv, int horMin, int horMax, int verMin, int verMax);
+#endif
 #if MULTI_PASS_DMVR
   void       xBDMVRUpdateSquareSearchCostLog    (Distortion* costLog, int bestDirect);
 #endif

@@ -7405,7 +7405,11 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
 #if JVET_AG0098_AMVP_WITH_SBTMVP
       if (pu.amvpSbTmvpFlag)
       {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        PU::getAmvpSbTmvp(this, pu, mergeCtx, pu.interDir == 1 ? pu.mv[0] : pu.mv[1]);
+#else
         PU::getAmvpSbTmvp(pu, mergeCtx, pu.interDir == 1 ? pu.mv[0] : pu.mv[1]);
+#endif
       }
 #endif
       PU::spanMotionInfo(pu, mergeCtx
@@ -7713,7 +7717,11 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
           && (pu.interDir & (1 << uiRefListIdx)) && (absMvd[0] != Mv(0, 0) || absMvd[1] != Mv(0, 0) || absMvd[2] != Mv(0, 0)) && pu.isMvdPredApplicable())
         {
           AffineAMVPInfo affineAMVPInfo;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+          PU::fillAffineMvpCand(this, pu, eRefPicList, pu.refIdx[uiRefListIdx], affineAMVPInfo
+#else
           PU::fillAffineMvpCand(pu, eRefPicList, pu.refIdx[uiRefListIdx], affineAMVPInfo
+#endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
             , this
 #endif    
@@ -8000,7 +8008,11 @@ void InterSearch::predInterSearchAdditionalHypothesis(PredictionUnit& pu, const 
 #endif
       if (!m_mhpMrgTempBufSet)
       {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        PU::getGeoMergeCandidates(fakePredData, m_geoMrgCtx, this);
+#else
         PU::getGeoMergeCandidates(fakePredData, m_geoMrgCtx);
+#endif
       }
 #if JVET_W0097_GPM_MMVD_TM
       maxNumMergeCandidates = min((int)maxNumMergeCandidates, m_geoMrgCtx.numValidMergeCand);
@@ -8195,7 +8207,11 @@ void InterSearch::predInterSearchAdditionalHypothesis(PredictionUnit& pu, const 
         const int iRefIdxPred = MHRefPics[tempMHPredData.refIdx].refIdx;
         const RefPicList eRefPicList = RefPicList(iRefPicList);
         uint32_t uiBits = x.bits + getAdditionalHypothesisInitialBits(tempMHPredData, numWeights, iNumMHRefPics);
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        auto amvpInfo = PU::getMultiHypMVPCands(this, pu, tempMHPredData);
+#else
         auto amvpInfo = PU::getMultiHypMVPCands(pu, tempMHPredData);
+#endif
         Mv cMvPred = amvpInfo.mvCand[tempMHPredData.mvpIdx];
         if ((pu.addHypData.size() + 1 - pu.numMergedAddHyps) < sps.getMaxNumAddHyps())
           uiBits++;
@@ -9748,7 +9764,11 @@ void InterSearch::xAmvpSbTmvpMotionEstimation(PredictionUnit& pu, PelUnitBuf& or
   Mv mvPred = rcMv;
   Mv mvCand = rcMv;
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  PU::getAmvpSbTmvp(this, pu, mrgCtx, mvCand, useAmvpSbTmvpBuf, m_amvpSbTmvpBufTLPos, m_amvpSbTmvpBufValid, m_amvpSbTmvpMotionBuf);
+#else
   PU::getAmvpSbTmvp(pu, mrgCtx, mvCand, useAmvpSbTmvpBuf, m_amvpSbTmvpBufTLPos, m_amvpSbTmvpBufValid, m_amvpSbTmvpMotionBuf);
+#endif
   if (!useAmvpSbTmvpBuf)
   {
     PU::spanMotionInfo(pu, mrgCtx);
@@ -9800,7 +9820,11 @@ void InterSearch::xAmvpSbTmvpMotionEstimation(PredictionUnit& pu, PelUnitBuf& or
           continue; // Skip this this pos
       }
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      PU::getAmvpSbTmvp(this, pu, mrgCtx, mvCand, useAmvpSbTmvpBuf, m_amvpSbTmvpBufTLPos, m_amvpSbTmvpBufValid, m_amvpSbTmvpMotionBuf);
+#else
       PU::getAmvpSbTmvp(pu, mrgCtx, mvCand, useAmvpSbTmvpBuf, m_amvpSbTmvpBufTLPos, m_amvpSbTmvpBufValid, m_amvpSbTmvpMotionBuf);
+#endif
       if (!useAmvpSbTmvpBuf)
       {
         PU::spanMotionInfo(pu, mrgCtx);
@@ -12435,7 +12459,11 @@ void InterSearch::xEstimateAffineAMVP( PredictionUnit&  pu,
   Distortion uiBestCost = std::numeric_limits<Distortion>::max();
 
   // Fill the MV Candidates
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  PU::fillAffineMvpCand( this, pu, eRefPicList, iRefIdx, affineAMVPInfo
+#else
   PU::fillAffineMvpCand( pu, eRefPicList, iRefIdx, affineAMVPInfo 
+#endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
                 , this
 #endif 

@@ -1408,6 +1408,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
   ("BoundaryMvpExt",                                  m_boundaryMvpExt,                                  true, "BoundaryMvpExt" )
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  ("RefineTmvpCfgIdx",                                m_refineTmvpCfgIdx,                                  0u, "RefineTmvpCfgIdx")
+#endif
   // ADD_NEW_TOOL : (encoder app) add parsing parameters here
   ( "VirtualBoundariesPresentInSPSFlag",              m_virtualBoundariesPresentFlag,                    true, "Virtual Boundary position information is signalled in SPS or PH (1:SPS, 0:PH)  [default: on]" )
   ("NumVerVirtualBoundaries",                         m_numVerVirtualBoundaries,                           0u, "Number of vertical virtual boundaries (0-3, inclusive)")
@@ -6209,6 +6212,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
   msg(VERBOSE, "BoundaryMvpExt:%d ", m_boundaryMvpExt);
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  msg(VERBOSE, "RefineTmvpCfgIdx:%d ", m_refineTmvpCfgIdx);
 #endif
 
   // transform and coefficient coding

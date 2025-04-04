@@ -1781,6 +1781,10 @@ void MergeCtx::initMrgCand(int cnt)
 #if JVET_AI0187_TMVP_FOR_CMVP
   candtype[cnt] = -1;
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  refineTmvpParams.refineTmvpRefList[(cnt << 1)] = REF_PIC_LIST_X;
+  refineTmvpParams.refineTmvpRefList[(cnt << 1) + 1] = REF_PIC_LIST_X;
+#endif
 }
 #endif
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
@@ -2510,6 +2514,37 @@ void MergeCtx::setGeoMrgDuplicate( const PredictionUnit& pu )
         }
       }
     }
+  }
+}
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+void MergeCtx::copyRefineTmvpCtxModellingParams(MergeCtx &orgMergeCtx, uint32_t srcMrgIdxL0, uint32_t srcMrgIdxL1, uint32_t dstMrgIdxL0, uint32_t dstMrgIdxL1)
+{
+  refineTmvpParams.refineTmvpRefList    [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpRefList    [srcMrgIdxL0];
+  refineTmvpParams.refineTmvpRefList    [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpRefList    [srcMrgIdxL1];
+  if (orgMergeCtx.refineTmvpParams.refineTmvpRefList[srcMrgIdxL0] == REF_PIC_LIST_0)
+  {
+    refineTmvpParams.refineTmvpCol          [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpCol          [srcMrgIdxL0];
+    refineTmvpParams.refineTmvpRefIdx       [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpRefIdx       [srcMrgIdxL0];
+    refineTmvpParams.refineTmvpTargetRefIdx [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpTargetRefIdx [srcMrgIdxL0];
+    refineTmvpParams.refineTmvpSbFlag       [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpSbFlag       [srcMrgIdxL0];
+    refineTmvpParams.refineTmvpPosition     [dstMrgIdxL0][0] = orgMergeCtx.refineTmvpParams.refineTmvpPosition     [srcMrgIdxL0][0];
+    refineTmvpParams.refineTmvpPosition     [dstMrgIdxL0][1] = orgMergeCtx.refineTmvpParams.refineTmvpPosition     [srcMrgIdxL0][1];
+    refineTmvpParams.refineTmvpColRefPicList[dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPicList[srcMrgIdxL0];
+    refineTmvpParams.refineTmvpColRefPOC    [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPOC    [srcMrgIdxL0];
+    refineTmvpParams.refineTmvpMiPtr        [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpMiPtr        [srcMrgIdxL0];
+  }
+  if (orgMergeCtx.refineTmvpParams.refineTmvpRefList[srcMrgIdxL1] == REF_PIC_LIST_1)
+  {
+    refineTmvpParams.refineTmvpCol          [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpCol          [srcMrgIdxL1];
+    refineTmvpParams.refineTmvpRefIdx       [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpRefIdx       [srcMrgIdxL1];
+    refineTmvpParams.refineTmvpTargetRefIdx [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpTargetRefIdx [srcMrgIdxL1];
+    refineTmvpParams.refineTmvpSbFlag       [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpSbFlag       [srcMrgIdxL1];
+    refineTmvpParams.refineTmvpPosition     [dstMrgIdxL1][0] = orgMergeCtx.refineTmvpParams.refineTmvpPosition     [srcMrgIdxL1][0];
+    refineTmvpParams.refineTmvpPosition     [dstMrgIdxL1][1] = orgMergeCtx.refineTmvpParams.refineTmvpPosition     [srcMrgIdxL1][1];
+    refineTmvpParams.refineTmvpColRefPicList[dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPicList[srcMrgIdxL1];
+    refineTmvpParams.refineTmvpColRefPOC    [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPOC    [srcMrgIdxL1];
+    refineTmvpParams.refineTmvpMiPtr        [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpMiPtr        [srcMrgIdxL1];
   }
 }
 #endif

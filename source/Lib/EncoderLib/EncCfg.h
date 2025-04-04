@@ -1262,6 +1262,9 @@ protected:
 #if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
   bool         m_boundaryMvpExt;
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  unsigned int m_refineTmvpCfgIdx;
+#endif
 
 public:
   EncCfg()
@@ -2128,7 +2131,10 @@ public:
   void      setConfigBoundaryMvpExt( bool n )                 { m_boundaryMvpExt = n; }
   bool      getConfigBoundaryMvpExt()                   const { return m_boundaryMvpExt; }
 #endif
-
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void      setRefineTmvpCfgIdx( unsigned n )             { m_refineTmvpCfgIdx = n; }
+  bool      getRefineTmvpCfgIdx()                   const { return m_refineTmvpCfgIdx; }
+#endif
 
   // ADD_NEW_TOOL : (encoder lib) add access functions here
   void      setVirtualBoundariesEnabledFlag( bool b ) { m_virtualBoundariesEnabledFlag = b; }
