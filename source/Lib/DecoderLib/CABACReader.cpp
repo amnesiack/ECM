@@ -3450,7 +3450,11 @@ void CABACReader::nonLocalCCPIndex(PredictionUnit &pu)
 #endif
       pu.idxNonLocalCCP += unary_max_eqprob(MAX_CCP_CAND_LIST_SIZE - 1);
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+      if (PU::hasCCPMergeFusionFlag(pu) && pu.idxNonLocalCCP == 1)
+#else
       if (PU::hasCCPMergeFusionFlag(pu))
+#endif
       {
         pu.ccpMergeFusionFlag = m_BinDecoder.decodeBin(Ctx::CCPMergeFusionFlag(0));
         if (pu.ccpMergeFusionFlag)
@@ -3611,6 +3615,13 @@ void CABACReader::cccmFlag(PredictionUnit& pu)
 #endif
 #if JVET_AD0202_CCCM_MDF
       bool isCccmWithMdfEnabled = true;
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+      if (!(intraDir == MMLM_CHROMA_IDX || intraDir == LM_CHROMA_IDX || intraDir == MDLM_L_IDX || intraDir == MDLM_T_IDX))
+      {
+        isCccmWithMdfEnabled = false;
+      }
+      else
+#endif
       if (intraDir == MMLM_CHROMA_IDX)
       {
         isCccmWithMdfEnabled = PU::isMultiCccmWithMdf(pu, MMLM_CHROMA_IDX);
@@ -3660,7 +3671,14 @@ void CABACReader::cccmFlag(PredictionUnit& pu)
       if (!pu.cccmNoSubFlag)
 #endif
       {
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+        if (intraDir == LM_CHROMA_IDX || intraDir == MDLM_L_IDX || intraDir == MDLM_T_IDX || intraDir == MMLM_CHROMA_IDX)
+        {
+#endif
         pu.glCccmFlag = m_BinDecoder.decodeBin( Ctx::CccmFlag( ctxId ) );
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+        }
+#endif
       }
 #endif
 #if JVET_AD0202_CCCM_MDF
@@ -3770,7 +3788,14 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
       if (PU::hasChromaFusionFlag(pu, pu.intraDir[1]))
       {
 #if JVET_AH0136_CHROMA_REORDERING
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+        if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
+        {
+#endif
         intraChromaFusionMode(pu);
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+        }
+#endif
 #else
         if (m_BinDecoder.decodeBin(Ctx::ChromaFusionMode()) == 1)
         {
@@ -3791,7 +3816,14 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
     if (PU::hasChromaFusionFlag(pu, pu.intraDir[1]))
     {
 #if JVET_AC0119_LM_CHROMA_FUSION
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+      if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
+      {
+#endif
       intraChromaFusionMode(pu);
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+      }
+#endif
 #else
       if (m_BinDecoder.decodeBin(Ctx::ChromaFusionMode()) == 1)
       {
@@ -3813,7 +3845,14 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
       if (PU::hasChromaFusionFlag(pu, pu.intraDir[1]))
       {
 #if JVET_AC0119_LM_CHROMA_FUSION
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+        if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
+        {
+#endif
         intraChromaFusionMode(pu);
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+        }
+#endif
 #else
         if (m_BinDecoder.decodeBin(Ctx::ChromaFusionMode()) == 1)
         {
@@ -3836,7 +3875,14 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
   if (PU::hasChromaFusionFlag(pu, pu.intraDir[1]))
   {
 #if JVET_AC0119_LM_CHROMA_FUSION
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+    if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
+    {
+#endif
     intraChromaFusionMode(pu);
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+    }
+#endif
 #else
     if (m_BinDecoder.decodeBin(Ctx::ChromaFusionMode()) == 1)
     {

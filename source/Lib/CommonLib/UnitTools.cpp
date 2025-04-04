@@ -3579,7 +3579,11 @@ bool PU::cccmSingleModeAvail(const PredictionUnit& pu, int intraMode)
   return modeIsOk && (area.x > 0 || area.y > 0);
 }
   
-bool PU::cccmMultiModeAvail(const PredictionUnit& pu, int intraMode)
+bool PU::cccmMultiModeAvail(const PredictionUnit& pu, int intraMode
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+  , bool mmlmFusion
+#endif
+)
 {
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   if ( pu.cs->sps->getUseCccm() == 0 )
@@ -3614,6 +3618,12 @@ bool PU::cccmMultiModeAvail(const PredictionUnit& pu, int intraMode)
   {
     nsamples = ((area.width + th) * (area.height + tv) - (area.area()));
     nSampleCheck = (nsamples >= 64);
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+    if (mmlmFusion)
+    {
+      nSampleCheck = nSampleCheck && ((area.width + area.height) > 8);
+    }
+#endif
   }
   else if (intraMode == MMLM_L_IDX)
   {
@@ -5833,7 +5843,11 @@ void PU::getIntraChromaCandModes(const PredictionUnit &pu, unsigned modeList[NUM
 bool PU::hasGlmFlag(const PredictionUnit &pu, const int mode)
 {
   int  chrMode      = mode < 0 ? pu.intraDir[1] : mode;
+#if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
+  bool hasGlmFlag   = chrMode == LM_CHROMA_IDX || chrMode == MDLM_L_IDX;
+#else
   bool hasGlmFlag   = chrMode == LM_CHROMA_IDX || chrMode == MDLM_L_IDX || chrMode == MDLM_T_IDX;
+#endif
 #if JVET_AA0057_CCCM
   hasGlmFlag       &= !pu.cccmFlag;
 #endif
