@@ -4069,6 +4069,13 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
     }
   }
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  m_pcIntraSearch->m_skipCcpMergeAdjustSatd = false;
+  m_pcIntraSearch->m_skipCcpMergeAdjustListConstruction = false;
+  m_pcIntraSearch->m_ccpMergeAdjustListSize = 0;
+  m_pcIntraSearch->m_skipCcpMergeListConstruction = false;
+  m_pcIntraSearch->m_ccpMergeListSize = 0;
+#endif
   for( int trGrpIdx = 0; trGrpIdx < grpNumMax; trGrpIdx++ )
   {
     const uint8_t startMtsFlag = trGrpIdx > 0;

@@ -2174,6 +2174,12 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AD0188_CCP_MERGE
   sps.setUseCcpMerge        ( m_ccpMerge );
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  if (sps.getUseCcpMerge())
+  {
+    sps.setMaxNumCcpMergeAdjustCand ( m_intraPeriod == 1 && m_sourceWidth * m_sourceHeight >= 3840 * 2160 ? m_maxNumCcpMergeAdjustCand - 1 : (m_intraPeriod != 1 && m_sourceWidth * m_sourceHeight >= 3840 * 2160 ? 0 : m_maxNumCcpMergeAdjustCand) );
+  }
+#endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   sps.setUseDdCcpFusion     ( m_ddCcpFusion );
 #endif

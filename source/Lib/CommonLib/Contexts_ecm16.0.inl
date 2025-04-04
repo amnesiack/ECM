@@ -6671,6 +6671,31 @@ const CtxSet ContextSetCfg::nonLocalCCP = ContextSetCfg::addCtxSet({
  { 131, },
 });
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+const CtxSet ContextSetCfg::ccpMergeAdjust = ContextSetCfg::addCtxSet({
+  { CNU, CNU },
+  { CNU, CNU },
+  { CNU, CNU },
+  { CNU, CNU },
+  { DWS, DWS },
+  { DWS, DWS },
+  { DWS, DWS },
+  { DWS, DWS },
+  { DWE, DWE },
+  { DWE, DWE },
+  { DWE, DWE },
+  { DWE, DWE },
+  { DWO, DWO },
+  { DWO, DWO },
+  { DWO, DWO },
+  { DWO, DWO },
+  { DWO, DWO },
+  { DWO, DWO },
+  { DWO, DWO },
+  { DWO, DWO },
+});
+#endif
+
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
 const CtxSet ContextSetCfg::decoderDerivedCCP = ContextSetCfg::addCtxSet
 ({

@@ -725,6 +725,9 @@ private:
 #if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
   PelStorage      m_ccpFusionStorage[MAX_CCP_FUSION_NUM];
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  PelStorage      m_ccpMergeAdjustStorage[MAX_CCP_CAND_LIST_SIZE<<1];
+#endif
 
 #if JVET_AD0188_CCP_MERGE
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
@@ -757,6 +760,9 @@ private:
                            // 21:ccpMergeMode, 22:ccpMergeMode fusions
                            // 31:slopeAdj
                            // 41:intraFusionMode
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+                           // 51:ccpMergeMode with adjustment
+#endif
     int    isLbccp;
     int    isMrl;
     double cost = MAX_DOUBLE;
@@ -872,6 +878,18 @@ public:
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool            m_isDimdPredictionSaved;
   bool            m_isObicPredictionSaved;
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  bool            m_skipCcpMergeAdjustSatd;
+  int             m_isCcpMergeAdjustEnabledInRdo[MAX_CCP_CAND_LIST_SIZE << 1];
+  bool m_skipCcpMergeAdjustListConstruction;
+  int m_ccpMergeAdjustListSize;
+  CCPModelCandidate m_candListAdjust[MAX_CCP_CAND_LIST_INIT_SIZE << 1];
+
+  bool m_skipCcpMergeListConstruction;
+  int m_ccpMergeListSize;
+  CCPModelCandidate m_candListCcpMerge[MAX_CCP_CAND_LIST_SIZE];
+  int m_fusionList[MAX_CCP_FUSION_NUM * 2];
 #endif
   IntraSearch();
   ~IntraSearch();

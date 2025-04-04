@@ -1342,6 +1342,9 @@ void PredictionUnit::initData()
   curCand = {};
   curCand.type = CCP_TYPE_NONE;
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  ccpMergeAdjustFlag = 0;
+#endif
 #if JVET_AD0120_LBCCP || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   ccInsideFilter = 0;
 #endif
@@ -1574,6 +1577,9 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
 #if JVET_AD0188_CCP_MERGE
   idxNonLocalCCP  = predData.idxNonLocalCCP;
   curCand = predData.curCand;
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  ccpMergeAdjustFlag = predData.ccpMergeAdjustFlag;
 #endif
 #if JVET_AD0120_LBCCP || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   ccInsideFilter = predData.ccInsideFilter;
@@ -1816,6 +1822,9 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
 #if JVET_AD0188_CCP_MERGE
   idxNonLocalCCP  = other.idxNonLocalCCP;
   curCand = other.curCand;
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  ccpMergeAdjustFlag = other.ccpMergeAdjustFlag;
 #endif
 
 #if JVET_AD0120_LBCCP || JVET_AG0154_DECODER_DERIVED_CCP_FUSION

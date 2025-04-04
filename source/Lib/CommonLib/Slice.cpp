@@ -4425,6 +4425,9 @@ SPS::SPS()
 #if JVET_AD0188_CCP_MERGE
 , m_ccpMerge                      ( false )
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+, m_maxNumCcpMergeAdjustCand  ( 0 )
+#endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
 , m_ddCcpFusion               ( false )
 #endif

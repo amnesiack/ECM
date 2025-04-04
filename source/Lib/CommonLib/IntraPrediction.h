@@ -527,8 +527,13 @@ private:
   Pel* m_decoderDerivedCcpProbeTemplateL[2];
   Pel* m_ddCCPFusionTempCb[MAX_DDCCP_CAND_LIST_SIZE];
   Pel* m_ddCCPFusionTempCr[MAX_DDCCP_CAND_LIST_SIZE];
-  Pel* m_CCPFusionTempCb[MAX_CCP_CAND_LIST_SIZE];
-  Pel* m_CCPFusionTempCr[MAX_CCP_CAND_LIST_SIZE];
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  Pel* m_ccpFusionTempCb[MAX_CCP_CAND_LIST_INIT_SIZE];
+  Pel* m_ccpFusionTempCr[MAX_CCP_CAND_LIST_INIT_SIZE];
+#else
+  Pel* m_ccpFusionTempCb[MAX_CCP_CAND_LIST_SIZE];
+  Pel* m_ccpFusionTempCr[MAX_CCP_CAND_LIST_SIZE];
+#endif
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
   Pel* m_pCcpMerge[2];
@@ -915,6 +920,12 @@ public:
 #else
   void reorderCCPCandidates       ( PredictionUnit &pu, CCPModelCandidate candList[], int reorderlistSize );
   int  xGetOneCCPCandCost         ( PredictionUnit &pu, CCPModelCandidate &ccpCand );
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  int xGetCostCCCM(const PredictionUnit &pu, const ComponentID compID, const CompArea &chromaArea, CccmModel cccmModel[2], int modelThr, int lumaOffset, int chromaOffset[2], bool aboveAvailable, bool leftAvailable, PelBuf chromaReco, int type, int refSizeX = 0, int refSizeY = 0, const int cccmMultiFilterIdx = -1, int modelIdx = 0, int* cand0 = nullptr, int* cand1 = nullptr);
+  int  xGetOneCCPCandCost         ( PredictionUnit &pu, CCPModelCandidate &ccpCand, CompArea chromaArea, CccmModel cccmModel[], bool aboveAvailable, bool leftAvailable, PelBuf chromaReco, const int candIdx = 0, int compMode = 0, int modelIdx = 0, int* cand0 = nullptr, int* cand1 = nullptr );
+  bool deriveCcpMergeAdjustCands (PredictionUnit &pu, CompArea chromaArea, CCPModelCandidate candList[], int& modelNum);
+  void adjustCCPCandidates ( PredictionUnit &pu, CCPModelCandidate candList[], int maxCandNum, int candIdx = -1);
 #endif
   void predCCPCandidate           ( PredictionUnit &pu, PelBuf &predCb, PelBuf &predCr);
 

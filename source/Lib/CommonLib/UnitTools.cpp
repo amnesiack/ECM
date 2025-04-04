@@ -4111,6 +4111,21 @@ bool PU::hasCcInsideFilterFlag(const PredictionUnit &pu, int intraMode)
 }
 #endif
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+bool PU::hasCcpMergeAdjustFlag(const PredictionUnit& pu)
+{
+  if (pu.cs->sps->getMaxNumCcpMergeAdjustCand() <= 0)
+  {
+    return false;
+  }
+  if (!pu.chromaPos().x && !pu.chromaPos().y)
+  {
+    return false;
+  }
+  return true;
+}
+#endif
+
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
 bool PU::hasCCPMergeFusionFlag(const PredictionUnit& pu)
 {
@@ -4126,6 +4141,12 @@ bool PU::hasCCPMergeFusionFlag(const PredictionUnit& pu)
 #endif
 #if JVET_AA0057_CCCM
   if (pu.cu->slice->getSPS()->getUseCccm() == 0)
+  {
+    return false;
+  }
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  if (pu.ccpMergeAdjustFlag)
   {
     return false;
   }
@@ -4246,7 +4267,11 @@ const PredictionUnit *PU::getPUFromPos(const PredictionUnit &pu, const ChannelTy
 }
 
 #if JVET_AF0073_INTER_CCP_MERGE
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candList[], bool isInterCcp, int validNum, CCPModelCandidate interCcpMergeList[], int selIdx, CCPModelCandidate candList2[], int candNum)
+#else
 int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candList[], bool isInterCcp, int validNum, CCPModelCandidate interCcpMergeList[], int selIdx)
+#endif
 #else
 int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candList[], int selIdx)
 #endif
@@ -4255,10 +4280,18 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
   bool    found1stCCLM = false;
   int64_t scaleCclm[2] = { 0 };
   int     shiftCclm[2] = { 3 };
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  bool isCcpMergeAdjust = pu.ccpMergeAdjustFlag;
+  const int maxCandNum = isCcpMergeAdjust ? MAX_CCP_CAND_LIST_INIT_SIZE : MAX_CCP_CAND_LIST_SIZE;
+#endif
 
 #if JVET_AF0073_INTER_CCP_MERGE
   maxCandIdx = isInterCcp ? validNum : 0;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  if (validNum && !isCcpMergeAdjust)
+#else
   if (validNum)
+#endif
   {
     for (int i = 0; i < validNum; i++)
     {
@@ -4337,6 +4370,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
     pu.chromaPos().offset(-1, -1)
   };
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  if (isCcpMergeAdjust && candNum > 0)
+  {
+    candList[maxCandIdx++] = candList2[0];
+  }
+#endif
   for (const Position &posLT : posCand)
   {
     const PredictionUnit* puRef = getPUFromPos(pu, CHANNEL_TYPE_CHROMA, posLT);
@@ -4346,6 +4385,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
     if (puRef != nullptr && puRef->curCand.type > 0)
 #endif
     {
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      if (isCcpMergeAdjust && puRef->curCand.type <= 8)
+      {
+        continue;
+      }
+#endif
       if (!tryToAddOnePU(puRef))
       {
         continue;
@@ -4359,7 +4404,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         found1stCCLM = true;
       }
       maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      if (maxCandIdx == maxCandNum)
+#else
       if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
       {
         return maxCandIdx;
       }
@@ -4371,6 +4420,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
       {
         if (tuRef.curCand.type > 0)
         {
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+          if (isCcpMergeAdjust && tuRef.curCand.type <= 8)
+          {
+            continue;
+          }
+#endif
           if (!tryToAddOneTU(&tuRef))
           {
             continue;
@@ -4384,7 +4439,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
             found1stCCLM = true;
           }
           maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+          if (maxCandIdx == maxCandNum)
+#else
           if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
           {
             return maxCandIdx;
           }
@@ -4469,12 +4528,20 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         shiftChromaMv.set(0, 0);
       }
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      for (int iDistanceIndex = 0; iDistanceIndex < 5 && maxCandIdx < maxCandNum; iDistanceIndex++)
+#else
       for (int iDistanceIndex = 0; iDistanceIndex < 5 && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; iDistanceIndex++)
+#endif
       {
         const int iNADistanceHor = pu.Cb().width * iDistanceIndex;
         const int iNADistanceVer = pu.Cb().height * iDistanceIndex;
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < maxCandNum; naspIdx++)
+#else
         for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; naspIdx++)
+#endif
         {
           switch (idxMap[iDistanceIndex][naspIdx])
           {
@@ -4541,6 +4608,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
             {
               const CCPModelCandidate currCCPModel = pColPic->cs->m_ccpModelLUT[modelIdx - 1];
               CHECK(currCCPModel.type <= 0, "Invalid type");
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+              if (isCcpMergeAdjust && currCCPModel.type <= 8)
+              {
+                continue;
+              }
+#endif
               if (!tryToAddOneModel(currCCPModel))
               {
                 continue;
@@ -4554,7 +4627,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
                 found1stCCLM = true;
               }
               maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+              if (maxCandIdx == maxCandNum)
+#else
               if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
               {
                 return maxCandIdx;
               }
@@ -4590,12 +4667,20 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
       const int numNACandidate[5] = { 2, 2, 2, 2, 2 };
       const int idxMap[5][2] = { { 0, 1 },{ 0, 2 },{ 0, 2 },{ 0, 2 },{ 0, 2 } };
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      for (int iDistanceIndex = 0; iDistanceIndex < 5 && maxCandIdx < maxCandNum; iDistanceIndex++)
+#else
       for (int iDistanceIndex = 0; iDistanceIndex < 5 && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; iDistanceIndex++)
+#endif
       {
         const int iNADistanceHor = pu.Cb().width  * iDistanceIndex;
         const int iNADistanceVer = pu.Cb().height * iDistanceIndex;
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < maxCandNum; naspIdx++)
+#else
         for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; naspIdx++)
+#endif
         {
           switch (idxMap[iDistanceIndex][naspIdx])
           {
@@ -4662,6 +4747,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
             {
               const CCPModelCandidate currCCPModel = pColPic->cs->m_ccpModelLUT[modelIdx-1];
               CHECK(currCCPModel.type <= 0, "Invalid type");
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+              if (isCcpMergeAdjust && currCCPModel.type <= 8)
+              {
+                continue;
+              }
+#endif
               if (!tryToAddOneModel(currCCPModel))
               {
                 continue;
@@ -4675,7 +4766,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
                 found1stCCLM = true;
               }
               maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+              if (maxCandIdx == maxCandNum)
+#else
               if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
               {
                 return maxCandIdx;
               }
@@ -4705,12 +4800,20 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
     { 0, 1, 2, 3, 4, 5, 6, 7, 8 }
   };
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  for (int iDistanceIndex = 0; iDistanceIndex < 7 && maxCandIdx < maxCandNum; iDistanceIndex++)
+#else
   for (int iDistanceIndex = 0; iDistanceIndex < 7 && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; iDistanceIndex++)
+#endif
   {
     const int iNADistanceHor = horNAInterval * (iDistanceIndex + 1);
     const int iNADistanceVer = verNAInterval * (iDistanceIndex + 1);
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+    for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < maxCandNum; naspIdx++)
+#else
     for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; naspIdx++)
+#endif
     {
       switch (idxMap[iDistanceIndex][naspIdx])
       {
@@ -4736,6 +4839,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
       if (puRef != nullptr && puRef->curCand.type > 0)
 #endif
       {
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        if (isCcpMergeAdjust && puRef->curCand.type <= 8)
+        {
+          continue;
+        }
+#endif
         if (!tryToAddOnePU(puRef))
         {
           continue;
@@ -4749,7 +4858,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
           found1stCCLM = true;
         }
         maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        if (maxCandIdx == maxCandNum)
+#else
         if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
         {
           return maxCandIdx;
         }
@@ -4761,6 +4874,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         {
           if (tuRef.curCand.type > 0)
           {
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+            if (isCcpMergeAdjust && tuRef.curCand.type <= 8)
+            {
+              continue;
+            }
+#endif
             if (!tryToAddOneTU(&tuRef))
             {
               continue;
@@ -4774,7 +4893,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
               found1stCCLM = true;
             }
             maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+            if (maxCandIdx == maxCandNum)
+#else
             if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
             {
               return maxCandIdx;
             }
@@ -4790,12 +4913,20 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
   const int idxMap2[7][5]        = { { 0, 1, 2, 3 }, { 0, 1, 2, 3 }, { 0, 1, 2, 3 }, { 0, 1, 2, 3 },
                                      { 0, 1, 2, 3 }, { 0, 1, 2, 3 }, { 0, 1, 2, 3 } };
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  for (int iDistanceIndex = 0; iDistanceIndex < 7 && maxCandIdx < maxCandNum; iDistanceIndex++)
+#else
   for (int iDistanceIndex = 0; iDistanceIndex < 7 && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; iDistanceIndex++)
+#endif
   {
     const int horNADistance = horNAInterval * (iDistanceIndex + 1);
     const int verNADistance = verNAInterval * (iDistanceIndex + 1);
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+    for (int naspIdx = 0; naspIdx < numNACandidate2[iDistanceIndex] && maxCandIdx < maxCandNum; naspIdx++)
+#else
     for (int naspIdx = 0; naspIdx < numNACandidate2[iDistanceIndex] && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; naspIdx++)
+#endif
     {
       switch (idxMap2[iDistanceIndex][naspIdx])
       {
@@ -4816,6 +4947,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
       if (puRef != nullptr && puRef->curCand.type > 0)
 #endif
       {
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        if (isCcpMergeAdjust && puRef->curCand.type <= 8)
+        {
+          continue;
+        }
+#endif
         if (!tryToAddOnePU(puRef))
         {
           continue;
@@ -4829,7 +4966,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
           found1stCCLM = true;
         }
         maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        if (maxCandIdx == maxCandNum)
+#else
         if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
         {
           return maxCandIdx;
         }
@@ -4841,6 +4982,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         {
           if (tuRef.curCand.type > 0)
           {
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+            if (isCcpMergeAdjust && tuRef.curCand.type <= 8)
+            {
+              continue;
+            }
+#endif
             if (!tryToAddOneTU(&tuRef))
             {
               continue;
@@ -4854,7 +5001,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
               found1stCCLM = true;
             }
             maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+            if (maxCandIdx == maxCandNum)
+#else
             if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
             {
               return maxCandIdx;
             }
@@ -4889,6 +5040,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
       pu.cs->getOneModelFromCCPLut(ccpLut.lutCCP, curModel, idx);
 #endif
       candList[maxCandIdx] = curModel;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      if (isCcpMergeAdjust && curModel.type <= 8)
+      {
+        continue;
+      }
+#endif
       bool duplication = false;
       for (int j = 0; j < maxCandIdx; j++)
       {
@@ -4912,7 +5069,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         found1stCCLM = true;
       }
       maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      if (maxCandIdx == maxCandNum)
+#else
       if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
       {
         return maxCandIdx;
       }
@@ -5038,12 +5199,20 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         shiftChromaMv.set(0,0);
       }
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      for (int iDistanceIndex = 0; iDistanceIndex < 5 && maxCandIdx < maxCandNum; iDistanceIndex++)
+#else
       for (int iDistanceIndex = 0; iDistanceIndex < 5 && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; iDistanceIndex++)
+#endif
       {
         const int iNADistanceHor = pu.Cb().width  * iDistanceIndex;
         const int iNADistanceVer = pu.Cb().height * iDistanceIndex;
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+        for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < maxCandNum; naspIdx++)
+#else
         for (int naspIdx = 0; naspIdx < numNACandidate[iDistanceIndex] && maxCandIdx < MAX_CCP_CAND_LIST_SIZE; naspIdx++)
+#endif
         {
           switch (idxMap[iDistanceIndex][naspIdx])
           {
@@ -5110,6 +5279,12 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
             {
               const CCPModelCandidate currCCPModel = pColPic->cs->m_ccpModelLUT[modelIdx-1];
               CHECK(currCCPModel.type <= 0, "Invalid type");
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+              if (isCcpMergeAdjust && currCCPModel.type <= 8)
+              {
+                continue;
+              }
+#endif
               if (!tryToAddOneModel(currCCPModel))
               {
                 continue;
@@ -5123,7 +5298,11 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
                 found1stCCLM = true;
               }
               maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+              if (maxCandIdx == maxCandNum)
+#else
               if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
               {
                 return maxCandIdx;
               }
@@ -5135,14 +5314,38 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
   }
 #endif
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  if (isCcpMergeAdjust && candNum > 0 && maxCandIdx < maxCandNum)
+  {
+    for (int i = 1; i < candNum; i++)
+    {
+      const CCPModelCandidate currCCPModel = candList2[i];
+      if (!tryToAddOneModel(currCCPModel))
+      {
+        continue;
+      }
+      maxCandIdx++;
+      if (maxCandIdx == maxCandNum)
+      {
+        return maxCandIdx;
+      }
+    }
+  }
+  if (maxCandIdx < maxCandNum && !isCcpMergeAdjust)
+#else
   if (maxCandIdx < MAX_CCP_CAND_LIST_SIZE)
+#endif
   {
     unsigned uiInternalBitDepth = pu.cs->sps->getBitDepth(CHANNEL_TYPE_CHROMA);
     const int defaultA[MAX_CCP_CAND_LIST_SIZE] = { 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6 };
     const int defaultB = 1 << (uiInternalBitDepth - 1);
     const int defaultShift = 3;
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+    for (int posIdx = 0; posIdx < maxCandNum; posIdx++)
+#else
     for (int posIdx = 0; posIdx < MAX_CCP_CAND_LIST_SIZE; posIdx++)
+#endif
     {
       CCPModelCandidate curModel;
       curModel.type         = CCP_TYPE_CCLM;
@@ -5205,14 +5408,22 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
         return maxCandIdx + 1;
       }
       maxCandIdx++;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      if (maxCandIdx == maxCandNum)
+#else
       if (maxCandIdx == MAX_CCP_CAND_LIST_SIZE)
+#endif
       {
         return maxCandIdx;
       }
     }
   }
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  CHECK((!isCcpMergeAdjust && maxCandIdx > MAX_CCP_CAND_LIST_SIZE) || (isCcpMergeAdjust && maxCandIdx > MAX_CCP_CAND_LIST_INIT_SIZE), "Invlid number of non-adj CCCM candidates");
+#else
   CHECK(maxCandIdx > MAX_CCP_CAND_LIST_SIZE, "Invlid number of non-adj CCCM candidates");
+#endif
   return maxCandIdx;
 }
 
