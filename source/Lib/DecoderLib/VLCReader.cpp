@@ -2978,7 +2978,15 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   READ_FLAG(uiCode, "sps_bvg_cccm");                                pcSPS->setUseBvgCccm(uiCode != 0);
 #endif
 #if JVET_AD0188_CCP_MERGE
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  READ_FLAG(uiCode, "sps_ccp_merge");                               pcSPS->setUseCcpMerge(uiCode != 0);
+  if (pcSPS->getUseCcpMerge())
+  {
+    READ_UVLC(uiCode, "max_num_ccp_merge_with_adjustment_cand"); pcSPS->setMaxNumCcpMergeAdjustCand(uiCode);
+  }
+#else
   READ_UVLC(uiCode, "sps_ccp_merge");                               pcSPS->setUseCcpMerge(uiCode);
+#endif
 #endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   if (pcSPS->getUseCccm())

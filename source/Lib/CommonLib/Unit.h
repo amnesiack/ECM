@@ -708,6 +708,9 @@ struct IntraPredictionData
   int       idxNonLocalCCP;
   CCPModelCandidate curCand;
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  int       ccpMergeAdjustFlag;
+#endif
 #if JVET_AD0120_LBCCP || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   int       ccInsideFilter;
 #endif

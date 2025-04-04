@@ -1913,6 +1913,9 @@ private:
 #if JVET_AD0188_CCP_MERGE
   bool              m_ccpMerge;
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  int               m_maxNumCcpMergeAdjustCand;
+#endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   bool              m_ddCcpFusion;
 #endif
@@ -2766,6 +2769,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AD0188_CCP_MERGE
   void      setUseCcpMerge     ( bool i )                                        { m_ccpMerge = i; }
   bool      getUseCcpMerge     ()                                      const     { return m_ccpMerge; }
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  void      setMaxNumCcpMergeAdjustCand ( int i )                                { m_maxNumCcpMergeAdjustCand = i; }
+  int       getMaxNumCcpMergeAdjustCand     ()                         const     { return m_maxNumCcpMergeAdjustCand; }
 #endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   void      setUseDdCcpFusion  ( bool i )                                        { m_ddCcpFusion = i; }

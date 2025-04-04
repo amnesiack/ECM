@@ -1230,6 +1230,9 @@ namespace PU
   bool hasCcInsideFilterFlag(const PredictionUnit &pu, int intraMode);
   bool isModetobeFiltered(int intraMode);
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  bool hasCcpMergeAdjustFlag(const PredictionUnit& pu);
+#endif
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
   bool hasCCPMergeFusionFlag(const PredictionUnit& pu);
 #endif
@@ -1279,7 +1282,11 @@ namespace PU
   const PredictionUnit *getPUFromPos(const PredictionUnit &pu, const ChannelType &chType, const Position &refPos);
   bool  hasNonLocalCCP(const PredictionUnit &pu);
 #if JVET_AF0073_INTER_CCP_MERGE
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+int   getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candList[], bool isInterCcp = false, int validNum = 0, CCPModelCandidate interCcpMergeList[] = NULL, int selIdx = -1, CCPModelCandidate candList2[] = NULL, int candNum = 0);
+#else
   int   getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candList[], bool isInterCcp = false, int validNum = 0, CCPModelCandidate interCcpMergeList[] = NULL, int selIdx = -1);
+#endif
 #else
   int   getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candList[], int selIdx = -1);
 #endif

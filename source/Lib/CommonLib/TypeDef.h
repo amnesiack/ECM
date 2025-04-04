@@ -223,6 +223,7 @@
 #define JVET_AD0188_CCP_MERGE                             1 // JVET-AD0188: Non-local cross-component prediction and cross-component merge mode
 #if JVET_AD0188_CCP_MERGE
 #define JVET_AE0097_RM_OFFSET_UPDATE_IN_CCP_MERGE         1 // JVET-AE0097: Remove offset update process in CCP merge
+#define JVET_AL0126_CCP_MERGE_WITH_ADJUST                 1 // JVET_AL0126: CCP merge mode with adjustment
 #endif
 #define JVET_AD0120_LBCCP                                 1 // JVET-AD0120: Local-Boosting Cross-Component Prediction, wherein the template part is controlled by CCCM SPS
 #define JVET_AE0043_CCP_MERGE_TEMPORAL                    1 // JVET-AE0043: Cross-component merge mode with temporal candidates

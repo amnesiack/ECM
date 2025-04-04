@@ -3303,6 +3303,21 @@ void CABACWriter::nonLocalCCPIndex(const PredictionUnit &pu)
         else
         {
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+          if (PU::hasCcpMergeAdjustFlag(pu))
+          {
+            m_BinEncoder.encodeBin(pu.ccpMergeAdjustFlag ? 1 : 0, Ctx::ccpMergeAdjust(0));
+            if (pu.ccpMergeAdjustFlag)
+            {
+              m_BinEncoder.encodeBin(pu.ccpMergeAdjustFlag > 1 ? 1 : 0, Ctx::ccpMergeAdjust(1));
+            }
+          }
+          if (pu.ccpMergeAdjustFlag)
+          {
+            unary_max_eqprob(pu.idxNonLocalCCP - 1, pu.cs->sps->getMaxNumCcpMergeAdjustCand() - 1);
+          }
+          else
+#endif
         unary_max_eqprob(pu.idxNonLocalCCP - 1, MAX_CCP_CAND_LIST_SIZE - 1);
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
 #if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS

@@ -2084,6 +2084,10 @@ static const int MAX_CCP_FUSION_NUM = 12;
 #endif
 #if JVET_AD0188_CCP_MERGE
 static const int MAX_CCP_CAND_LIST_SIZE = 12;
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+static const int MAX_CCP_CAND_LIST_INIT_SIZE = 15;
+static const int MAX_NUM_DERIVED_CCP_ADJUST_CAND =6;
+#endif
 static const int MAX_NUM_HCCP_CANDS     = 6;
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
 static const int NUM_CCP_PARAMS = CCCM_NO_SUB_NUM_PARAMS;

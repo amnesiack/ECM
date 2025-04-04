@@ -1106,11 +1106,34 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     if (compID == COMPONENT_Cb)
     {
       PelBuf            predCr = cs.getPredBuf(tu.blocks[COMPONENT_Cr]);
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      CCPModelCandidate candList[MAX_CCP_CAND_LIST_INIT_SIZE];
+#else
       CCPModelCandidate candList[MAX_CCP_CAND_LIST_SIZE];
+#endif
 
       int candIdx = pu.idxNonLocalCCP - 1;
 
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      static CCPModelCandidate cand[MAX_NUM_DERIVED_CCP_ADJUST_CAND];
+      int candFlyNum = 0;
+      int candNum = PU::getCCPModelCandidateList(pu, candList, false, 0, NULL, -1, &cand[0], candFlyNum);
+      if (pu.ccpMergeAdjustFlag && candNum < MAX_CCP_CAND_LIST_INIT_SIZE)
+      {
+        m_pcIntraPred->deriveCcpMergeAdjustCands(pu, pu.blocks[1], &cand[0], candFlyNum);
+        for (int i = 0; i < candFlyNum; i++)
+        {
+          candList[candNum] = cand[i];
+          candNum++;
+          if (candNum >= MAX_CCP_CAND_LIST_INIT_SIZE)
+          {
+            break;
+          }
+        }
+      }
+#else
       int candNum         = PU::getCCPModelCandidateList(pu, candList);
+#endif
       bool hasFilteredCCCM   = false;
       bool hasFilteredCCLM   = false;
       bool hasFilteredNSCCCM = false;
@@ -1198,17 +1221,46 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       CHECK(pu.idxNonLocalCCP < 1 || pu.idxNonLocalCCP > MAX_CCP_CAND_LIST_SIZE, " Invalid idxNonLocalCCP index");
 
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
-      int FusionList[MAX_CCP_FUSION_NUM * 2] = { MAX_CCP_FUSION_NUM };
-      m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum, FusionList);
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      int fusionList[MAX_CCP_CAND_LIST_INIT_SIZE * 2] = { MAX_CCP_CAND_LIST_INIT_SIZE };
+#else
+      int fusionList[MAX_CCP_FUSION_NUM * 2] = { MAX_CCP_FUSION_NUM };
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      if (pu.ccpMergeAdjustFlag)
+      {
+        int fusionList2[MAX_CCP_CAND_LIST_INIT_SIZE * 2] = { MAX_CCP_CAND_LIST_INIT_SIZE };
+        m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum, fusionList2);
+        candNum = std::min(candNum, MAX_CCP_CAND_LIST_SIZE);
+        int savedCcpMergeAdjustMinus1 = pu.ccpMergeAdjustFlag;
+        if (savedCcpMergeAdjustMinus1 == 2)
+        {
+          pu.ccpMergeAdjustFlag = 1;
+          m_pcIntraPred->adjustCCPCandidates(pu, candList, candNum, candIdx);
+          pu.ccpMergeAdjustFlag = savedCcpMergeAdjustMinus1;
+          m_pcIntraPred->adjustCCPCandidates(pu, candList, candNum, candIdx);
+          pu.ccpMergeAdjustFlag = savedCcpMergeAdjustMinus1;
+        }
+        else
+        {
+          m_pcIntraPred->adjustCCPCandidates(pu, candList, candNum, candIdx);
+        }
+      }
+      else
+#endif
+      m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum, fusionList);
 #else
       m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum);
+#endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+      candNum = std::min(candNum, MAX_CCP_CAND_LIST_SIZE);
 #endif
       pu.curCand = candList[candIdx];
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
       if (pu.ddNonLocalCCPFusion > 0)
       {
         int Idx = 2 * (pu.ddNonLocalCCPFusion - 1);
-        m_pcIntraPred->predDecoderDerivedCcpMergeFusion(pu, piPred, predCr, candList[FusionList[Idx]], candList[FusionList[Idx + 1]]);
+        m_pcIntraPred->predDecoderDerivedCcpMergeFusion(pu, piPred, predCr, candList[fusionList[Idx]], candList[fusionList[Idx + 1]]);
       }
       else
 #endif

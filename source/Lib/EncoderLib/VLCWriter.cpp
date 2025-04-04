@@ -1965,7 +1965,15 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   WRITE_FLAG(pcSPS->getUseBvgCccm() ? 1 : 0, "sps_bvg_cccm");
 #endif
 #if JVET_AD0188_CCP_MERGE
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  WRITE_FLAG(pcSPS->getUseCcpMerge() ? 1 : 0, "sps_ccp_merge");
+  if (pcSPS->getUseCcpMerge())
+  {
+    WRITE_UVLC(pcSPS->getMaxNumCcpMergeAdjustCand(), "max_num_ccp_merge_with_adjustment_cand");
+  }
+#else
   WRITE_UVLC(pcSPS->getUseCcpMerge(), "sps_ccp_merge");
+#endif
 #endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   if (pcSPS->getUseCccm())

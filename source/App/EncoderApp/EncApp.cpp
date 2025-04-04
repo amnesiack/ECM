@@ -1004,6 +1004,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AD0188_CCP_MERGE
   m_cEncLib.setUseCcpMerge                                       ( m_ccpMerge );
 #endif
+#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
+  m_cEncLib.setMaxNumCcpMergeAdjustCand                          ( m_maxNumCcpMergeAdjustCand );
+#endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   m_cEncLib.setUseDdCcpFusion                                    ( m_cccm ? m_ddCcpFusion : false );
 #endif
