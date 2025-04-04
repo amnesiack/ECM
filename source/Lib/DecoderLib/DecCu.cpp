@@ -347,8 +347,12 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         break;
       case MODE_PLT:
       case MODE_INTRA:
-#if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE || JVET_AL0106_BV_EIP)
+#if JVET_AL0106_BV_EIP
+        if (currCU.dimd || currCU.sgpm || (chType == CHANNEL_TYPE_LUMA && currCU.tmpFlag) || PU::isBvEip(*currCU.firstPU))
+#else
         if (currCU.dimd || currCU.sgpm || (chType == CHANNEL_TYPE_LUMA && currCU.tmpFlag))
+#endif
         {
           m_pcIntraPred->m_bvBasedMergeCandidates.clear();
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
@@ -1485,6 +1489,24 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
           m_pcIntraPred->reorderEipCands(pu, eipMergeCandList);
           pu.cu->eipModel = eipMergeCandList[pu.intraDir[CHANNEL_TYPE_LUMA]];
         }
+#if JVET_AL0106_BV_EIP
+        else if (pu.cu->bvEip)
+        {
+          static_vector<EipModelCandidate, MAX_BV_EIP> eipBvCandList;
+          RefTemplateType tempType = m_pcIntraPred->getRefTemplateType(*(tu.cu), tu.cu->blocks[COMPONENT_Y]);
+          m_pcIntraPred->getTargetTemplate(tu.cu, pu.lwidth(), pu.lheight(), tempType);
+          m_pcIntraPred->candidateSearchIntra(tu.cu, pu.lwidth(), pu.lheight(), tempType
+#if JVET_AG0136_INTRA_TMP_LIC || (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+            , false
+#endif
+          );
+
+          m_pcIntraPred->initBvEipParams(pu);
+          m_pcIntraPred->getBvEipCands(pu, eipBvCandList);
+          m_pcIntraPred->setEipBvInfo(pu);
+          pu.cu->eipModel = eipBvCandList[0];
+        }
+#endif
         else 
         {
           static_vector<EipModelCandidate, NUM_DERIVED_EIP> eipModelCandList;
@@ -2061,7 +2083,11 @@ void DecCu::xReconIntraQT( CodingUnit &cu )
 #endif
 #endif
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+  if (cu.blocks[CHANNEL_TYPE_LUMA].valid() && (PU::hasBvgBv(*cu.firstPU) || PU::isBvEip(*cu.firstPU)))
+#else
   if (cu.blocks[CHANNEL_TYPE_LUMA].valid() && PU::hasBvgBv(*cu.firstPU))
+#endif
   {
     PU::spanMotionInfo(*cu.firstPU);
   }

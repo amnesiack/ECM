@@ -671,6 +671,9 @@ private:
 #if JVET_AG0058_EIP
   Pel* m_eipPredBuf[NUM_DERIVED_EIP];
   Pel* m_eipMergePredBuf[MAX_MERGE_EIP];
+#if JVET_AL0106_BV_EIP
+  Pel* m_eipBvPredBuf[MAX_BV_EIP];
+#endif
   static_vector<ModeInfo, NUM_DERIVED_EIP + MAX_MERGE_EIP> m_uiSavedRdModeListEip;
   static_vector<ModeInfo, NUM_DERIVED_EIP + MAX_MERGE_EIP> m_uiSavedHadModeListEip;
   static_vector<double, NUM_DERIVED_EIP + MAX_MERGE_EIP>   m_dSavedModeCostEip;
@@ -942,6 +945,9 @@ public:
 #if JVET_AG0058_EIP
   EipModelCandidate m_eipModel[NUM_DERIVED_EIP];
   EipModelCandidate m_eipMergeModel[MAX_MERGE_EIP];
+#if JVET_AL0106_BV_EIP
+  EipModelCandidate m_eipBvModel[MAX_BV_EIP];
+#endif
 #endif
 protected:
 

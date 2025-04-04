@@ -381,6 +381,12 @@ public:
   uint64_t m_satdCostBvgDimd;
   static_vector<Mv, BVG_DIMD_BV_LIST_SIZE> m_bvListSorted;
 #endif
+#if JVET_AL0106_BV_EIP
+  bool m_tmpSparseSearchCand;
+  int  m_tmpSparseSearchXdisp;
+  int  m_tmpSparseSearchYdisp;
+  void setEipBvInfo(PredictionUnit& pu);
+#endif
 
 protected:
 #if JVET_AJ0112_REGRESSION_SGPM
@@ -421,6 +427,10 @@ protected:
   int        numMmSamplesBuf[2][NUM_EIP_SHAPE * NUM_EIP_BASE_RECOTYPE];
   int        m_numSigEip;
 #endif 
+#if JVET_AL0106_BV_EIP
+  int        m_bvEipTempSize[2];
+  Pel        m_bvEipBuffer[(MAX_EIP_SIZE + BV_EIP_TEMP_SIZE) * (MAX_EIP_SIZE + BV_EIP_TEMP_SIZE)];
+#endif
 #endif
 private:
 #if JVET_AG0136_INTRA_TMP_LIC
@@ -1162,6 +1172,10 @@ public:
 #endif
 #endif
 #if JVET_AG0058_EIP
+#if JVET_AL0106_BV_EIP
+  void initBvEipParams           (const PredictionUnit& pu);
+  void getBvEipCands             (const PredictionUnit& pu, static_vector<EipModelCandidate, MAX_BV_EIP>& candList, const ComponentID compId = COMPONENT_Y);
+#endif
   void initEipParams             (const PredictionUnit& pu, const ComponentID compId);
   void eipPred                   (const PredictionUnit& pu, PelBuf& piPred, const ComponentID compId = COMPONENT_Y);
   void getCurEipCands            (const PredictionUnit& pu, static_vector<EipModelCandidate, NUM_DERIVED_EIP>& candList, const ComponentID compId = COMPONENT_Y, const bool fastTest = true); 
@@ -1171,7 +1185,11 @@ public:
   void getNeiEipCands            (const PredictionUnit &pu, static_vector<EipModelCandidate, MAX_MERGE_EIP> &candList, const ComponentID compId = COMPONENT_Y);
   void reorderEipCands           (const PredictionUnit &pu, static_vector<EipModelCandidate, MAX_MERGE_EIP> &candList, const ComponentID compId = COMPONENT_Y);
 #if JVET_AH0086_EIP_BIAS_AND_CLIP
-  void setInputsVec              (Pel *inputs, PelBuf &reco, int w, int h, int filterShape);
+  void setInputsVec              (Pel *inputs, PelBuf &reco, int w, int h, int filterShape
+#if JVET_AL0205_EIP_FILTER_SHAPES
+    , int blockWidth, int blockHeight
+#endif
+  );
 #endif
 #if JVET_AJ0082_MM_EIP
   inline Pel getEipInputsAvg(Pel *inputs, int filterShape)

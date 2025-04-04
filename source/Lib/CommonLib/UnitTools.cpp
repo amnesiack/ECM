@@ -1439,7 +1439,11 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 )
 {
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+  if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu) && !PU::isBvEip(*pu)))
+#else
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu)))
+#endif
 #elif JVET_AI0082_GPM_WITH_INTER_IBC
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag)))
 #else
@@ -1509,7 +1513,11 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
   }
 
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+  if (pu && (pu->cu->tmpFlag || PU::hasBvgBv(pu) || PU::isBvEip(*pu)))
+#else
   if (pu && (pu->cu->tmpFlag || PU::hasBvgBv(pu)))
+#endif
 #else
   if (pu && pu->cu->tmpFlag)
 #endif
@@ -1546,6 +1554,9 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
 #if JVET_AL0108_BVG_DIMD
       && !PU::hasBvgBv(pu)
+#endif
+#if JVET_AL0106_BV_EIP
+      && !PU::isBvEip(*pu)
 #endif
       )
     {
@@ -1643,6 +1654,9 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
       if (!puCascaded || ((puCascaded->cu->predMode != MODE_IBC) && (!puCascaded->cu->tmpFlag)
 #if JVET_AL0108_BVG_DIMD
         && !(PU::hasBvgBv(puCascaded))
+#endif
+#if JVET_AL0106_BV_EIP
+        && !isBvEip(*puCascaded)
 #endif
         ))
       {
@@ -6219,7 +6233,11 @@ bool PU::dbvModeAvail(const PredictionUnit &pu)
   {
     const PredictionUnit &lumaPU = PU::getCoLocatedLumaPU(pu);
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+    return lumaPU.cu->tmpFlag || CU::isIBC(*lumaPU.cu) || hasBvgBv(lumaPU) || isBvEip(lumaPU);
+#else
     return lumaPU.cu->tmpFlag || CU::isIBC(*lumaPU.cu) || hasBvgBv(lumaPU);
+#endif
 #else
     return lumaPU.cu->tmpFlag || CU::isIBC(*lumaPU.cu);
 #endif
@@ -6238,7 +6256,11 @@ bool PU::dbvModeAvail(const PredictionUnit &pu)
     const PredictionUnit *lumaPU = pu.cs->picture->cs->getPU(posList[n], CHANNEL_TYPE_LUMA);
 #endif
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+    if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU) || hasBvgBv(lumaPU) || isBvEip(*lumaPU))
+#else
     if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU) || hasBvgBv(lumaPU))
+#endif
 #elif JVET_AB0061_ITMP_BV_FOR_IBC
     if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU))
 #else
@@ -6300,7 +6322,11 @@ void PU::deriveChromaBv(PredictionUnit &pu)
     const PredictionUnit *lumaPU = pu.cs->picture->cs->getPU(posList[n], CHANNEL_TYPE_LUMA);
 #endif
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+    if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU) || hasBvgBv(lumaPU) || isBvEip(*lumaPU))
+#else
     if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU) || hasBvgBv(lumaPU))
+#endif
 #elif JVET_AB0061_ITMP_BV_FOR_IBC
     if (CU::isIBC(*lumaPU->cu) || isTmp(*lumaPU))
 #else
@@ -7434,6 +7460,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
 #if JVET_AL0108_BVG_DIMD
     || hasBvgBv(puLeft)
 #endif
+#if JVET_AL0106_BV_EIP
+    || isBvEip(*puLeft)
+#endif
     );
 #else
   const bool isAvailableA1 = puLeft && pu.cu != puLeft->cu && CU::isIBC(*puLeft->cu);
@@ -7599,6 +7628,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   bool isAvailableB1 = puAbove && pu.cu != puAbove->cu && (CU::isIBC(*puAbove->cu) || puAbove->cu->tmpFlag
 #if JVET_AL0108_BVG_DIMD
     || hasBvgBv(puAbove)
+#endif
+#if JVET_AL0106_BV_EIP
+    || isBvEip(*puAbove)
 #endif
     );
 #else
@@ -7782,6 +7814,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
 #if JVET_AL0108_BVG_DIMD
     || hasBvgBv(puAboveRight)
 #endif
+#if JVET_AL0106_BV_EIP
+    || isBvEip(*puAboveRight)
+#endif
     );
 #else
   bool isAvailableB0 = puAboveRight && pu.cu != puAboveRight->cu && CU::isIBC(*puAboveRight->cu);
@@ -7954,6 +7989,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
   bool isAvailableA0 = puLeftBottom && pu.cu != puLeftBottom->cu && (CU::isIBC(*puLeftBottom->cu) || puLeftBottom->cu->tmpFlag
 #if JVET_AL0108_BVG_DIMD
     || hasBvgBv(puLeftBottom)
+#endif
+#if JVET_AL0106_BV_EIP
+    || isBvEip(*puLeftBottom)
 #endif
     );
 #else
@@ -8137,6 +8175,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
     bool isAvailableB2 = puAboveLeft && pu.cu != puAboveLeft->cu && (CU::isIBC(*puAboveLeft->cu) || puAboveLeft->cu->tmpFlag
 #if JVET_AL0108_BVG_DIMD
     || hasBvgBv(puAboveLeft)
+#endif
+#if JVET_AL0106_BV_EIP
+    || isBvEip(*puAboveLeft)
 #endif
       );
 #else
@@ -8385,6 +8426,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
 #if JVET_AL0108_BVG_DIMD
             || hasBvgBv(puNonAdjacent)
 #endif
+#if JVET_AL0106_BV_EIP
+            || isBvEip(*puNonAdjacent)
+#endif
           );
 
 #if JVET_AI0082_GPM_WITH_INTER_IBC
@@ -8607,6 +8651,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
         bool isAvailableNonAdjacent = puNonAdjacent && pu.cu != puNonAdjacent->cu && (CU::isIBC(*puNonAdjacent->cu) || puNonAdjacent->cu->tmpFlag
 #if JVET_AL0108_BVG_DIMD
             || hasBvgBv(puNonAdjacent)
+#endif
+#if JVET_AL0106_BV_EIP
+            || isBvEip(*puNonAdjacent)
 #endif
           );
 
@@ -8911,6 +8958,9 @@ void PU::getIBCMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, const
           puCascaded && pu.cu != puCascaded->cu && (CU::isIBC(*puCascaded->cu) || puCascaded->cu->tmpFlag
 #if JVET_AL0108_BVG_DIMD
             || hasBvgBv(puCascaded)
+#endif
+#if JVET_AL0106_BV_EIP
+            || isBvEip(*puCascaded)
 #endif
             );
 #if JVET_AI0082_GPM_WITH_INTER_IBC
@@ -31493,8 +31543,13 @@ void PU::spanMotionInfo( PredictionUnit &pu, const MergeCtx &mrgCtx )
   {
     MotionInfo mi;
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+    mi.isInter = !CU::isIntra(*pu.cu) || pu.cu->tmpFlag || PU::hasBvgBv(pu) || isBvEip(pu);
+    mi.isIBCmot = CU::isIBC(*pu.cu) || pu.cu->tmpFlag || PU::hasBvgBv(pu) || isBvEip(pu);
+#else
     mi.isInter  = !CU::isIntra(*pu.cu) || pu.cu->tmpFlag || PU::hasBvgBv(pu);
     mi.isIBCmot = CU::isIBC(*pu.cu) || pu.cu->tmpFlag || PU::hasBvgBv(pu);
+#endif
 #elif JVET_AB0061_ITMP_BV_FOR_IBC
     mi.isInter  = !CU::isIntra(*pu.cu) || pu.cu->tmpFlag;
     mi.isIBCmot = CU::isIBC(*pu.cu) || pu.cu->tmpFlag;
@@ -35819,7 +35874,11 @@ bool CU::isMTSAllowed(const CodingUnit &cu, const ComponentID compID)
 bool CU::isMdirAllowed(const CodingUnit& cu)
 {
   int minSize = cu.sgpm ? MIN_SGPM_MTSS_SIZE : MIN_MTSS_SIZE;
+#if JVET_AL0106_BV_EIP
+  bool mdirAllowed = cu.lfnstIdx && (cu.dimd || cu.timd || cu.mipFlag || cu.tmpFlag || cu.sgpm || (cu.eipFlag && (cu.eipMerge || cu.eipMmFlag)));
+#else
   bool mdirAllowed = cu.lfnstIdx && (cu.dimd || cu.timd || cu.mipFlag || cu.tmpFlag || cu.sgpm || cu.eipFlag);
+#endif
 
   mdirAllowed &= cu.lwidth()*cu.lheight() >= minSize;
 
@@ -40358,6 +40417,23 @@ bool PU::isEIP(const PredictionUnit& pu, const ChannelType& chType)
 {
   return pu.cu->eipFlag && chType == CH_L;
 }
+
+#if JVET_AL0106_BV_EIP
+bool PU::isBvEip(const PredictionUnit& pu, const ChannelType& chType)
+{
+  return (pu.cu->eipFlag && pu.cu->bvEip && chType == CH_L);
+}
+
+bool allowBvEip(const CodingUnit& cu)
+{
+  if (!cu.cs->sps->getUseEip() || !cu.cs->sps->getUseIntraTMP())
+  {
+    return false;
+  }
+
+  return true;
+}
+#endif
 
 Position getRecoLinesEIP(const CodingUnit& cu, const ComponentID compId)
 {

@@ -230,6 +230,8 @@
 #if JVET_AG0058_EIP
 #define JVET_AI0066_REGULARIZED_EIP                       1 // JVET-AI0066: L2 Regularization for EIP
 #define JVET_AJ0082_MM_EIP                                1 // JVET-AJ0082: Multi-model EIP
+#define JVET_AL0106_BV_EIP                                1 // JVET-AL0106: Block vector guided EIP
+#define JVET_AL0205_EIP_FILTER_SHAPES                     1 // JVET-AL0205: EIP filters with diagonal shapes
 #endif
 #define JVET_AG0154_DECODER_DERIVED_CCP_FUSION            1 // JVET-AG0154: Decoder derived CCP mode with fusion candidates
 #define JVET_AG0059_CCP_MERGE_ENHANCEMENT                 1 // JVET-AG0059: Enhancements on CCP merge for chroma intra coding

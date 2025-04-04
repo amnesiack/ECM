@@ -3018,6 +3018,62 @@ void CABACReader::cu_eip_flag(CodingUnit& cu)
     cu.eipFlag = m_BinDecoder.decodeBin(Ctx::EipFlag(0));
     if (cu.eipFlag)
     {
+#if JVET_AL0106_BV_EIP
+      if (getAllowedEip(cu, COMPONENT_Y) && getAllowedEipMerge(cu, COMPONENT_Y))
+      {
+        cu.eipMerge = m_BinDecoder.decodeBin(Ctx::EipFlag(1));
+      }
+      else if (getAllowedEipMerge(cu, COMPONENT_Y))
+      {
+        cu.eipMerge = true;
+      }
+      else
+      {
+        cu.eipMerge = false;
+      }
+
+      if (cu.eipMerge)
+      {
+        cu.firstPU->intraDir[0] = unary_max_eqprob(NUM_EIP_MERGE_SIGNAL - 1);
+      }
+      else
+      {
+        unsigned int symbol = 0;
+        static_vector<EIPInfo, NUM_DERIVED_EIP> eipInfoList;
+#if JVET_AJ0082_MM_EIP
+        cu.eipMmFlag = m_BinDecoder.decodeBin(Ctx::EipFlag(2));
+        if (!cu.eipMmFlag && allowBvEip(cu))
+        {
+          cu.bvEip = m_BinDecoder.decodeBin(Ctx::EipFlag(3));
+          if (cu.bvEip)
+          {
+            cu.firstPU->intraDir[0] = 0;
+            return;
+          }
+        }
+
+        int eipNum = getAllowedCurEip(cu, COMPONENT_Y, eipInfoList, cu.eipMmFlag);
+        if (eipNum > 1)
+        {
+          xReadTruncBinCode(symbol, eipNum);
+        }
+#else
+#if JVET_AL0106_BV_EIP
+        if (allowBvEip(cu))
+        {
+          cu.bvEip = m_BinDecoder.decodeBin(Ctx::EipFlag(2));
+          if (cu.bvEip)
+          {
+            cu.firstPU->intraDir[0] = 0;
+            return;
+          }
+        }
+#endif
+        xReadTruncBinCode(symbol, getAllowedCurEip(cu, COMPONENT_Y, eipInfoList));
+#endif
+        cu.firstPU->intraDir[0] = symbol;
+      }
+#else
       if (getAllowedEip(cu, COMPONENT_Y) && getAllowedEipMerge(cu, COMPONENT_Y))
       {
         cu.eipMerge = m_BinDecoder.decodeBin(Ctx::EipFlag(1));
@@ -3050,6 +3106,7 @@ void CABACReader::cu_eip_flag(CodingUnit& cu)
 #endif
         cu.firstPU->intraDir[0] = symbol;
       }
+#endif
     }
   }
   else
