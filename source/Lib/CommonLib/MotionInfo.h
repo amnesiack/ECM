@@ -338,6 +338,46 @@ struct MotionInfo
   }
 };
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+struct RefineTmvpSbTmvpParams
+{
+  bool     refineTmvpValid;
+  int16_t  refineTmvpCol;
+  int16_t  refineTmvpSubIdx;
+  int16_t  refineTmvpFixRefIdx;
+  int16_t  refineTmvpSbTmvpType;
+  bool     refineTmvpIsRefined;
+};
+struct RefineTmvpSbTmvpSubParams
+{
+  RefPicList         refineTmvpSubRefList[NUM_REF_PIC_LIST_01];
+  int16_t            refineTmvpSubPosition[NUM_REF_PIC_LIST_01][2];
+  int16_t            refineTmvpSubTargetRefIdx[NUM_REF_PIC_LIST_01];
+  RefPicList         refineTmvpSubColRefPicList[NUM_REF_PIC_LIST_01];
+  int16_t            refineTmvpSubColRefPOC[NUM_REF_PIC_LIST_01];
+  const MotionInfo*  refineTmvpSubMi[NUM_REF_PIC_LIST_01];
+};
+struct RefineTmvpTmvpFirstPassParams
+{
+  bool                refineTmvpNeedDoRefine;
+  RefPicList          refineTmvpColRefPicList;
+  int16_t             refineTmvpColRefPOC;
+  const MotionInfo*   refineTmvpMiPtr;
+};
+struct RefineTmvpCtxModellingParams
+{
+  RefPicList  refineTmvpRefList[NUM_MERGE_CANDS << 1];
+  bool        refineTmvpSbFlag[NUM_MERGE_CANDS << 1];
+  int16_t     refineTmvpPosition[NUM_MERGE_CANDS << 1][2];
+  int16_t     refineTmvpRefIdx[NUM_MERGE_CANDS << 1];
+  int16_t     refineTmvpTargetRefIdx[NUM_MERGE_CANDS << 1];
+  int16_t     refineTmvpCol[NUM_MERGE_CANDS << 1];
+  RefPicList  refineTmvpColRefPicList[NUM_MERGE_CANDS << 1];
+  int16_t     refineTmvpColRefPOC[NUM_MERGE_CANDS << 1];
+  const MotionInfo* refineTmvpMiPtr[NUM_MERGE_CANDS << 1];
+};
+#endif
+
 #if JVET_Z0054_BLK_REF_PIC_REORDER
 struct MotionInfoPred
 {

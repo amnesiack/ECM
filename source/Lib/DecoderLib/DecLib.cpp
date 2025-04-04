@@ -2241,6 +2241,10 @@ void DecLib::xActivateParameterSets( const InputNALUnit nalu )
 #if JVET_AK0065_TALF
     pSlice->m_tAlfCtbControl = m_cALF.getTAlfControl();
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    int refineTmvpNumRefIdx[2] = { pSlice->getNumRefIdx(REF_PIC_LIST_0), pSlice->getNumRefIdx(REF_PIC_LIST_1) };
+    m_pcPic->cs->createTemporaryRefineTmvpCsData(pSlice->isIntra(), refineTmvpNumRefIdx, true);
+#endif
   }
   else
   {

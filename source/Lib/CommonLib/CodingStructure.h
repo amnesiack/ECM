@@ -122,6 +122,9 @@ public:
   bool m_isTopLayer;
   void destroyTemporaryCsData();
   void createTemporaryCsData(const bool isPLTused);
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void createTemporaryRefineTmvpCsData(bool isIntra, int* numRefPic, bool isDec);
+#endif
 #if JVET_Z0118_GDR
   bool isCuCrossIRA(int begX) const;
   bool isCuCrossVB(int endX) const;
@@ -407,6 +410,10 @@ public:
   IntersectingMvData* getIntersectingMvBuf()     { return m_intersectingMvBuf; };
 #else
 public:
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  int* tmvpRefinedMv[2/*colIdx*/][NUM_REF_PIC_LIST_01/*colRefList*/][NUM_REF_PIC_LIST_01/*cureRefList*/][MAX_NUM_REF/*cureRefIdx*/][2/*non-SbTmvp, SbTmvp*/][2/*hor, ver*/];
+  int* tmvpRefinedAvailable[2/*colIdx*/];
 #endif
   CodingStructure *bestParent;
   double        tmpColorSpaceCost;

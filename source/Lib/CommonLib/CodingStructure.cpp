@@ -176,6 +176,26 @@ CodingStructure::CodingStructure(CUCache& cuCache, PUCache& puCache, TUCache& tu
 #if JVET_AI0183_MVP_EXTENSION
   m_intersectingMvBuf = nullptr;
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  for (int refineTmvpColIdx = 0; refineTmvpColIdx < 2; refineTmvpColIdx++)
+  {
+    for (int refineTmvpColRefList = 0; refineTmvpColRefList < 2; refineTmvpColRefList++)
+    {
+      for (int refineTmvpCurRefList = 0; refineTmvpCurRefList < 2; refineTmvpCurRefList++)
+      {
+        for (int refineTmvpCurRefIdx = 0; refineTmvpCurRefIdx < MAX_NUM_REF; refineTmvpCurRefIdx++)
+        {
+          for (int refineTmvpModeType = 0; refineTmvpModeType < 2; refineTmvpModeType++)
+          {
+            tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][0] = nullptr;
+            tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][1] = nullptr;
+          }
+        }
+      }
+    }
+    tmvpRefinedAvailable[refineTmvpColIdx] = nullptr;
+  }
+#endif
 }
 
 void CodingStructure::destroy()
@@ -313,6 +333,38 @@ void CodingStructure::destroyTemporaryCsData()
     m_intersectingMvBuf = nullptr;
   }
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  for (int refineTmvpColIdx = 0; refineTmvpColIdx < 2; refineTmvpColIdx++)
+  {
+    for (int refineTmvpColRefList = 0; refineTmvpColRefList < 2; refineTmvpColRefList++)
+    {
+      for (int refineTmvpCurRefList = 0; refineTmvpCurRefList < 2; refineTmvpCurRefList++)
+      {
+        for (int refineTmvpCurRefIdx = 0; refineTmvpCurRefIdx < MAX_NUM_REF; refineTmvpCurRefIdx++)
+        {
+          for (int refineTmvpModeType = 0; refineTmvpModeType < 2; refineTmvpModeType++)
+          {
+            if (tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][0] != nullptr)
+            {
+              delete [] tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][0];
+              tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][0] = nullptr;
+            }
+            if (tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][1] != nullptr)
+            {
+              delete [] tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][1];
+              tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][1] = nullptr;
+            }
+          }
+        }
+      }
+    }
+    if (tmvpRefinedAvailable[refineTmvpColIdx] != nullptr)
+    {
+      delete [] tmvpRefinedAvailable[refineTmvpColIdx];
+      tmvpRefinedAvailable[refineTmvpColIdx] = nullptr;
+    }
+  }
+#endif
 }
 
 void CodingStructure::createTemporaryCsData(const bool isPLTused)
@@ -342,10 +394,54 @@ void CodingStructure::createTemporaryCsData(const bool isPLTused)
     mcMaskChroma[i] = (bool*)xMalloc(bool, extendLumaArea);
   }
 #endif
-#if JVET_AI0183_MVP_EXTENSION
+#if JVET_AI0183_MVP_EXTENSION && !JVET_AL0214_MV_REFINEMENT_FOR_TMVP
   m_intersectingMvBuf = new IntersectingMvData[unitScale[0].scale(area.blocks[0].size()).area()];
 #endif
 }
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+void CodingStructure::createTemporaryRefineTmvpCsData(bool isIntra, int* numRefPic, bool isDec)
+{
+  if (isIntra)
+  {
+    return;
+  }
+#if JVET_AI0183_MVP_EXTENSION
+  m_intersectingMvBuf = new IntersectingMvData[unitScale[0].scale(area.blocks[0].size()).area()];
+#endif
+  int refineTmvpBufSize = (area.lumaSize().area() >> 4);
+  size_t refineTmvpTempBufSize = sizeof(int) * refineTmvpBufSize;
+  tmvpRefinedAvailable[0] = new int[refineTmvpBufSize];
+  for (int refineTmvpIdx = 0; refineTmvpIdx < refineTmvpBufSize; refineTmvpIdx++)
+  {
+    tmvpRefinedAvailable[0][refineTmvpIdx] = MAX_INT;
+  }
+  tmvpRefinedAvailable[1] = new int[refineTmvpBufSize];
+  std::memcpy(tmvpRefinedAvailable[1], tmvpRefinedAvailable[0], refineTmvpTempBufSize);
+  if (isDec)
+  {
+    return;
+  }
+  for (int refineTmvpColIdx = 0; refineTmvpColIdx < 2; refineTmvpColIdx++)
+  {
+    for (int refineTmvpColRefList = 0; refineTmvpColRefList < 2; refineTmvpColRefList++)
+    {
+      for (int refineTmvpCurRefList = 0; refineTmvpCurRefList < 2; refineTmvpCurRefList++)
+      {
+        for (int refineTmvpCurRefIdx = 0; refineTmvpCurRefIdx < numRefPic[refineTmvpCurRefList]; refineTmvpCurRefIdx++)
+        {
+          for (int refineTmvpModeType = 0; refineTmvpModeType < 2; refineTmvpModeType++)
+          {
+            tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][0] = new int[refineTmvpBufSize];
+            tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][1] = new int[refineTmvpBufSize];
+            std::memcpy(tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][0], tmvpRefinedAvailable[0], refineTmvpTempBufSize);
+            std::memcpy(tmvpRefinedMv[refineTmvpColIdx][refineTmvpColRefList][refineTmvpCurRefList][refineTmvpCurRefIdx][refineTmvpModeType][1], tmvpRefinedAvailable[0], refineTmvpTempBufSize);
+          }
+        }
+      }
+    }
+  }
+}
+#endif
 
 void CodingStructure::releaseIntermediateData()
 {

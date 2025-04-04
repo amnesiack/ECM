@@ -726,7 +726,10 @@ protected:
 #if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
   bool      m_boundaryMvpExt;
 #endif
-
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  unsigned  m_refineTmvpCfgIdx;
+#endif
+  
   // ADD_NEW_TOOL : (encoder app) add tool enabling flags and associated parameters here
   bool      m_virtualBoundariesEnabledFlag;
   bool      m_virtualBoundariesPresentFlag;

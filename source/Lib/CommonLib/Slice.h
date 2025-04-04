@@ -2080,6 +2080,9 @@ private:
 #if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
   bool m_boundaryMvpExt;
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  unsigned int      m_refineTmvpCfgIdx;
+#endif
 
 public:
 
@@ -2969,6 +2972,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_AL0157_MERGE_CANDIDATE_EXTENSION
   void      setConfigBoundaryMvpExt(bool n)                       { m_boundaryMvpExt = n; }
   bool      getConfigBoundaryMvpExt()                       const { return m_boundaryMvpExt; }
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void          setRefineTmvpCfgIdx( unsigned n )                 { m_refineTmvpCfgIdx = n; }
+  unsigned int  getRefineTmvpCfgIdx()                       const { return m_refineTmvpCfgIdx; }
 #endif
 };
 

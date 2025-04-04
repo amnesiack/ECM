@@ -417,7 +417,17 @@ namespace PU
 #if TM_MRG
   int      reorderInterMergeCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx, int numCand, uint32_t mvdSimilarityThresh );
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void refineTmvpCoverGetColocatedMVP           (InterPrediction* refineTmvpInterPred, const PredictionUnit &pu, bool refineTmvpInputC0Available, bool refineTmvpInputC1Available, RefPicList refineTmvpInputRefList,
+                                         const Position & refineTmvpInputPosC0, const Position & refineTmvpInputPosC1, const int refineTmvpInputRefIdx, bool refineTmvpInputSbFlag, const int refineTmvpInputCol,
+                                         Mv& refineTmvpOutputColoMv, int* refineTmvpOutputRefIdx, bool& refineTmvpOutputExistMv, int refineTmvpSbTmvpType = 0, bool refineTmvpIsSbTmvp = false);
+  bool refineTmvpGetColocatedMVP                (bool refineTmvpIsSbTmvp, InterPrediction* refineTmvpInterPred, const PredictionUnit &pu, const RefPicList &eRefPicList,
+                                         const Position &pos, Mv& rcMv, const int &refIdx, bool sbFlag, int col, int* targetRefIdx, int sbTmvpType);
+
+  void getInterMergeCandidates        (InterPrediction* refineTmvpInterPred, const PredictionUnit &pu, MergeCtx& mrgCtx,
+#else
   void getInterMergeCandidates        (const PredictionUnit &pu, MergeCtx& mrgCtx,
+#endif
     int mmvdList,
     const int& mrgCandIdx = -1 
 #if JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM
@@ -493,6 +503,9 @@ namespace PU
   
 #if JVET_AK0185_TMVP_SELECTION
   bool collectTMVP(
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    InterPrediction* refineTmvpInterPred,
+#endif
     const PredictionUnit& pu,
     const std::vector<Position>& posList,
     const std::vector<bool>& availList,
@@ -521,8 +534,13 @@ namespace PU
     int  amvpRefList = -1
   );
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void addTmvp2AMVP(InterPrediction* refineTmvpInterPred, PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, int colIdx, AMVPInfo* pInfo, bool oneTmvpFlag = false);
+  void addTmvp2AffineAMVP(InterPrediction* refineTmvpInterPred, PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, AffineAMVPInfo& affiAMVPInfo, bool oneTmvpFlag = false);
+#else
   void addTmvp2AMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, int colIdx, AMVPInfo* pInfo, bool oneTmvpFlag = false);
   void addTmvp2AffineAMVP(const PredictionUnit& pu, RefPicList eRefPicList, const std::vector<Position>& posList, const std::vector<bool>& availList, Mv& cColMv, const int refIdxCol, AffineAMVPInfo& affiAMVPInfo, bool oneTmvpFlag = false);
+#endif
 #endif
 
 #if JVET_AE0159_FIBC
@@ -558,6 +576,9 @@ namespace PU
 #endif
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
     , int sbTmvpType = 0
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  , RefineTmvpTmvpFirstPassParams* refineTmvpFirstPassParams = nullptr
 #endif
   );
 #if JVET_AI0197_AFFINE_TMVP
@@ -604,6 +625,9 @@ namespace PU
 #if TM_AMVP || JVET_AC0060_IBC_BVP_CLUSTER_RRIBC_BVD_SIGN_DERIV
                                      , InterPrediction* interPred = nullptr
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+                                     , InterPrediction* refineTmvpInterPred = nullptr
+#endif
   );
 #if (JVET_Z0084_IBC_TM && IBC_TM_AMVP) || JVET_AC0060_IBC_BVP_CLUSTER_RRIBC_BVD_SIGN_DERIV
 #if JVET_AE0169_BIPREDICTIVE_IBC
@@ -614,7 +638,11 @@ namespace PU
 #else
   void fillIBCMvpCand                 (PredictionUnit &pu, AMVPInfo &amvpInfo);
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void fillAffineMvpCand              (InterPrediction* refineTmvpInterPred, PredictionUnit &pu, const RefPicList &eRefPicList, const int &refIdx, AffineAMVPInfo &affiAMVPInfo
+#else
   void fillAffineMvpCand              (      PredictionUnit &pu, const RefPicList &eRefPicList, const int &refIdx, AffineAMVPInfo &affiAMVPInfo
+#endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
     , InterPrediction* interPred = nullptr
 #endif
@@ -807,7 +835,11 @@ namespace PU
   void setMotion2Buf(const PredictionUnit& pu, MergeCtx& mrgCtx, MotionInfo mi, MotionBuf &mb, int bufX, int bufY, int bufW, int bufH);
 #endif
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void getAffineMergeCand( InterPrediction* refineTmvpInterPred, RefineTmvpSbTmvpParams* refineTmvpSbTmvpParams, RefineTmvpSbTmvpSubParams* refineTmvpSbTmvpSubParams, const PredictionUnit &pu, AffineMergeCtx& affMrgCtx,
+#else
   void getAffineMergeCand( const PredictionUnit &pu, AffineMergeCtx& affMrgCtx, 
+#endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION   
     MergeCtx mrgCtx[2],
 #endif
@@ -854,7 +886,11 @@ namespace PU
 #endif
 #endif
   );
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void getBMAffineMergeCand(InterPrediction* refineTmvpInterPred, const PredictionUnit &pu, AffineMergeCtx& affineBMMergeCtx, AffineMergeCtx affineMergeRMVFCtx, int mrgCandIdx = -1);
+#else
   void getBMAffineMergeCand(const PredictionUnit &pu, AffineMergeCtx& affineBMMergeCtx, AffineMergeCtx affineMergeRMVFCtx, int mrgCandIdx = -1);
+#endif
   bool getBMNonAdjCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &affMrgCtx, const int mrgCandIdx = -1);
 #endif
 #if AFFINE_MMVD
@@ -868,7 +904,12 @@ namespace PU
   void setAffineBdofRefinedMotion     (      PredictionUnit &pu, Mv* mvBufDecAffineBDOF);
   bool checkDoAffineBdofRefine        (const PredictionUnit &pu, InterPrediction *interPred);
 #endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void refineTmvpGetInterMergeSubPuMvpCand(InterPrediction* refineTmvpInterPred, const PredictionUnit &pu, MergeCtx& mrgCtx, RefineTmvpSbTmvpParams* refineTmvpSbTmvpParams, RefineTmvpSbTmvpSubParams* refineTmvpSbTmvpSubParams, int idxSbTmvpParams);
+  bool getInterMergeSubPuMvpCand      (InterPrediction* refineTmvpInterPred, RefineTmvpSbTmvpParams* refineTmvpSbTmvpParams, RefineTmvpSbTmvpSubParams* refineTmvpSbTmvpSubParams, const PredictionUnit &pu, MergeCtx& mrgCtx, bool& LICFlag, const int count
+#else
   bool getInterMergeSubPuMvpCand      (const PredictionUnit &pu, MergeCtx& mrgCtx, bool& LICFlag, const int count
+#endif
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION && JVET_AF0163_TM_SUBBLOCK_REFINEMENT
     , bool isRefined
 #endif
@@ -893,7 +934,11 @@ namespace PU
   void getTMVPCandOpt(const PredictionUnit &pu, RefPicList refList, int refIdx, MergeCtx &mrgCtx, MergeCtx mergeCtx, int col = 0);
 #endif
 #if JVET_AG0098_AMVP_WITH_SBTMVP
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void getAmvpSbTmvp(InterPrediction* refineTmvpInterPred, PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, const bool useAmvpSbTmvpBuf = false, const Position bufTL = Position(0, 0), bool* tmvpBufValid = nullptr, MotionInfo* tmvpMotionBuf = nullptr);
+#else
   void getAmvpSbTmvp(PredictionUnit &pu, MergeCtx& mrgCtx, const Mv mvShift, const bool useAmvpSbTmvpBuf = false, const Position bufTL = Position(0, 0), bool* tmvpBufValid = nullptr, MotionInfo* tmvpMotionBuf = nullptr);
+#endif
   void clipColPos(int& posX, int& posY, const PredictionUnit& pu);
   void scalePositionInRef(PredictionUnit& pu, const PPS& pps, RefPicList refList, int refIdx, Position& PosY);
 #endif
@@ -916,7 +961,11 @@ namespace PU
     , const uint32_t mvdSimilarityThresh = 1
 #endif
   );
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void getInterBMCandidates(InterPrediction* refineTmvpInterPred, const PredictionUnit &pu, MergeCtx& mrgCtx,
+#else
   void getInterBMCandidates(const PredictionUnit &pu, MergeCtx& mrgCtx,
+#endif
 #if JVET_AI0187_TMVP_FOR_CMVP
     MergeCtx& tmpMrgCtx1,
 #endif
@@ -994,7 +1043,11 @@ namespace PU
 #if JVET_W0097_GPM_MMVD_TM
 #if TM_MRG
 #if JVET_AE0046_BI_GPM
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  void getGeoMergeCandidates(PredictionUnit& pu, MergeCtx& GeoMrgCtx, InterPrediction* refineTmvpInterPred, MergeCtx* mergeCtx = NULL, bool is4GPM = false);
+#else
   void getGeoMergeCandidates(PredictionUnit& pu, MergeCtx& GeoMrgCtx, MergeCtx* mergeCtx = NULL, bool is4GPM = false);
+#endif
 #else
   void getGeoMergeCandidates(PredictionUnit &pu, MergeCtx &GeoMrgCtx, MergeCtx* mergeCtx = NULL);
 #endif
@@ -1111,14 +1164,25 @@ namespace PU
   int checkExtRegularAmvpCondition(const PredictionUnit& pu);
 #endif
 
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  int getRoundMvComp(int x);
+#endif
+
 #if INTER_LIC
   void spanLicFlags(PredictionUnit &pu, const bool LICFlag);
 #endif
 #if MULTI_HYP_PRED
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  Mv   getMultiHypMVP(InterPrediction* refineTmvpInterPred, PredictionUnit &pu, const MultiHypPredictionData &mhData);
+  AMVPInfo getMultiHypMVPCands(InterPrediction* refineTmvpInterPred, PredictionUnit &pu, const MultiHypPredictionData &mhData);
+  AMVPInfo getMultiHypMVPCandsMerge(InterPrediction* refineTmvpInterPred, PredictionUnit &pu, const RefPicList eRefPicList, const int refIdx);
+  AMVPInfo getMultiHypMVPCandsAMVP(InterPrediction* refineTmvpInterPred, PredictionUnit &pu, const RefPicList eRefPicList, const int refIdx);
+#else
   Mv   getMultiHypMVP(PredictionUnit &pu, const MultiHypPredictionData &mhData);
   AMVPInfo getMultiHypMVPCands(PredictionUnit &pu, const MultiHypPredictionData &mhData);
   AMVPInfo getMultiHypMVPCandsMerge(PredictionUnit &pu, const RefPicList eRefPicList, const int refIdx);
   AMVPInfo getMultiHypMVPCandsAMVP(PredictionUnit &pu, const RefPicList eRefPicList, const int refIdx);
+#endif
 #endif
 #if JVET_Z0054_BLK_REF_PIC_REORDER
   bool useRefCombList(const PredictionUnit &pu);

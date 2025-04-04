@@ -15471,7 +15471,11 @@ void  InterPrediction::sortInterMergeMMVDCandidates(PredictionUnit& pu, MergeCtx
 #if JVET_AA0093_ENHANCED_MMVD_EXTENSION
 void  InterPrediction::sortAffineMergeCandidates(PredictionUnit pu, AffineMergeCtx& affMrgCtx, uint32_t * affMmvdLUT, int16_t afMMVDIdx, bool fromStart)
 {
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  int baseIdxToMergeIdxOffset = 0;
+#else
   int baseIdxToMergeIdxOffset = (int)PU::getMergeIdxFromAfMmvdBaseIdx(affMrgCtx, 0);
+#endif
   int baseCount               = std::min<int>((int)AF_MMVD_BASE_NUM, affMrgCtx.numValidMergeCand - baseIdxToMergeIdxOffset);
   const int tempNum = baseCount * AF_MMVD_MAX_REFINE_NUM;
   const int groupSize = std::min<int>(tempNum, ADAPTIVE_SUB_GROUP_SIZE_MMVD_AFF);
@@ -17445,6 +17449,10 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
       pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[0]];
 #endif
       pairMergeCand.candCost[cnt] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1)] = REF_PIC_LIST_X;
+      pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #if MULTI_HYP_PRED
       pairMergeCand.addHypNeighbours[cnt].clear();
 #endif
@@ -17877,6 +17885,10 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
     altLMMergeCand.bcwIdx[altLMMergeCand.numValidMergeCand] = altLMMrgCtx.bcwIdx[mrgIdx];
     altLMMergeCand.addHypNeighbours[altLMMergeCand.numValidMergeCand].clear();
     altLMMergeCand.candCost[altLMMergeCand.numValidMergeCand] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    altLMMergeCand.refineTmvpParams.refineTmvpRefList[(altLMMergeCand.numValidMergeCand << 1)] = REF_PIC_LIST_X;
+    altLMMergeCand.refineTmvpParams.refineTmvpRefList[(altLMMergeCand.numValidMergeCand << 1) + 1] = REF_PIC_LIST_X;
+#endif
 
     altLMMergeCand.numValidMergeCand++;
     altLMMergeCand.numCandToTestEnc++;
@@ -17905,6 +17917,10 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
       inheritedMrgCand.bcwIdx[inheritedMrgCand.numValidMergeCand] = altLMMrgCtx.bcwIdx[mrgIdx];
       inheritedMrgCand.addHypNeighbours[inheritedMrgCand.numValidMergeCand].clear();
       inheritedMrgCand.candCost[inheritedMrgCand.numValidMergeCand] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      inheritedMrgCand.refineTmvpParams.refineTmvpRefList[(inheritedMrgCand.numValidMergeCand << 1)] = REF_PIC_LIST_X;
+      inheritedMrgCand.refineTmvpParams.refineTmvpRefList[(inheritedMrgCand.numValidMergeCand << 1) + 1] = REF_PIC_LIST_X;
+#endif
 
       inheritedMrgCand.numValidMergeCand++;
       inheritedMrgCand.numCandToTestEnc++;
@@ -18136,6 +18152,10 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
       pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[0]];
 #endif
       pairMergeCand.candCost[cnt] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1)] = REF_PIC_LIST_X;
+      pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #if MULTI_HYP_PRED
       pairMergeCand.addHypNeighbours[cnt].clear();
 #endif
@@ -18791,8 +18811,15 @@ void  InterPrediction::updateCandInTwoCandidateGroups(MergeCtx& mrgCtx, uint32_t
   {
     mrgCtxTmp.bcwIdx[uiMergeCand] = mrgCtx.bcwIdx[uiMergeCand];
     mrgCtxTmp.interDirNeighbours[uiMergeCand] = mrgCtx.interDirNeighbours[uiMergeCand];
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    uint32_t uiMergeCandDoubleL0 = uiMergeCand << 1, uiMergeCandDoubleL1 = uiMergeCandDoubleL0 + 1;
+    mrgCtxTmp.mvFieldNeighbours[uiMergeCandDoubleL0]    = mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL0];
+    mrgCtxTmp.mvFieldNeighbours[uiMergeCandDoubleL1]    = mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL1];
+    mrgCtxTmp.copyRefineTmvpCtxModellingParams(mrgCtx, uiMergeCandDoubleL0, uiMergeCandDoubleL1, uiMergeCandDoubleL0, uiMergeCandDoubleL1);
+#else
     mrgCtxTmp.mvFieldNeighbours[(uiMergeCand << 1)] = mrgCtx.mvFieldNeighbours[(uiMergeCand << 1)];
     mrgCtxTmp.mvFieldNeighbours[(uiMergeCand << 1) + 1] = mrgCtx.mvFieldNeighbours[(uiMergeCand << 1) + 1];
+#endif
     mrgCtxTmp.useAltHpelIf[uiMergeCand] = mrgCtx.useAltHpelIf[uiMergeCand];
 #if JVET_AG0276_NLIC
     mrgCtxTmp.altLMFlag[uiMergeCand] = mrgCtx.altLMFlag[uiMergeCand];
@@ -18844,8 +18871,16 @@ void  InterPrediction::updateCandInTwoCandidateGroups(MergeCtx& mrgCtx, uint32_t
     {
       mrgCtx.bcwIdx[uiMergeCand] = mrgCtxTmp.bcwIdx[rdCandList[uiMergeCand]];
       mrgCtx.interDirNeighbours[uiMergeCand] = mrgCtxTmp.interDirNeighbours[rdCandList[uiMergeCand]];
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      uint32_t uiMergeCandDoubleL0 = uiMergeCand << 1,               uiMergeCandDoubleL1 = uiMergeCandDoubleL0 + 1;
+      uint32_t rdCandDoubleL0      = (rdCandList[uiMergeCand] << 1), rdCandDoubleL1      = rdCandDoubleL0 + 1;
+      mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL0] = mrgCtxTmp.mvFieldNeighbours[rdCandDoubleL0];
+      mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL1] = mrgCtxTmp.mvFieldNeighbours[rdCandDoubleL1];
+      mrgCtx.copyRefineTmvpCtxModellingParams(mrgCtxTmp, rdCandDoubleL0, rdCandDoubleL1, uiMergeCandDoubleL0, uiMergeCandDoubleL1);
+#else
       mrgCtx.mvFieldNeighbours[(uiMergeCand << 1)] = mrgCtxTmp.mvFieldNeighbours[(rdCandList[uiMergeCand] << 1)];
       mrgCtx.mvFieldNeighbours[(uiMergeCand << 1) + 1] = mrgCtxTmp.mvFieldNeighbours[(rdCandList[uiMergeCand] << 1) + 1];
+#endif
       mrgCtx.useAltHpelIf[uiMergeCand] = mrgCtxTmp.useAltHpelIf[rdCandList[uiMergeCand]];
 #if JVET_AG0276_NLIC
       mrgCtx.altLMFlag[uiMergeCand] = mrgCtxTmp.altLMFlag[rdCandList[uiMergeCand]];
@@ -18875,8 +18910,15 @@ void  InterPrediction::updateCandInOneCandidateGroup(MergeCtx& mrgCtx, uint32_t*
   {
     mrgCtxTmp.bcwIdx[uiMergeCand] = mrgCtx.bcwIdx[uiMergeCand];
     mrgCtxTmp.interDirNeighbours[uiMergeCand] = mrgCtx.interDirNeighbours[uiMergeCand];
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    uint32_t uiMergeCandDoubleL0 = uiMergeCand << 1, uiMergeCandDoubleL1 = uiMergeCandDoubleL0 + 1;
+    mrgCtxTmp.mvFieldNeighbours[uiMergeCandDoubleL0]    = mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL0];
+    mrgCtxTmp.mvFieldNeighbours[uiMergeCandDoubleL1]    = mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL1];
+    mrgCtxTmp.copyRefineTmvpCtxModellingParams(mrgCtx, uiMergeCandDoubleL0, uiMergeCandDoubleL1, uiMergeCandDoubleL0, uiMergeCandDoubleL1);
+#else
     mrgCtxTmp.mvFieldNeighbours[(uiMergeCand << 1)] = mrgCtx.mvFieldNeighbours[(uiMergeCand << 1)];
     mrgCtxTmp.mvFieldNeighbours[(uiMergeCand << 1) + 1] = mrgCtx.mvFieldNeighbours[(uiMergeCand << 1) + 1];
+#endif
     mrgCtxTmp.useAltHpelIf[uiMergeCand] = mrgCtx.useAltHpelIf[uiMergeCand];
 #if JVET_AG0276_NLIC
     mrgCtxTmp.altLMFlag[uiMergeCand] = mrgCtx.altLMFlag[uiMergeCand];
@@ -18900,8 +18942,16 @@ void  InterPrediction::updateCandInOneCandidateGroup(MergeCtx& mrgCtx, uint32_t*
   {
     mrgCtx.bcwIdx[uiMergeCand] = mrgCtxTmp.bcwIdx[rdCandList[uiMergeCand]];
     mrgCtx.interDirNeighbours[uiMergeCand] = mrgCtxTmp.interDirNeighbours[rdCandList[uiMergeCand]];
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    uint32_t uiMergeCandDoubleL0 = uiMergeCand << 1,               uiMergeCandDoubleL1 = uiMergeCandDoubleL0 + 1;
+    uint32_t rdCandDoubleL0      = (rdCandList[uiMergeCand] << 1), rdCandDoubleL1      = rdCandDoubleL0 + 1;
+    mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL0] = mrgCtxTmp.mvFieldNeighbours[rdCandDoubleL0];
+    mrgCtx.mvFieldNeighbours[uiMergeCandDoubleL1] = mrgCtxTmp.mvFieldNeighbours[rdCandDoubleL1];
+    mrgCtx.copyRefineTmvpCtxModellingParams(mrgCtxTmp, rdCandDoubleL0, rdCandDoubleL1, uiMergeCandDoubleL0, uiMergeCandDoubleL1);
+#else
     mrgCtx.mvFieldNeighbours[(uiMergeCand << 1)] = mrgCtxTmp.mvFieldNeighbours[(rdCandList[uiMergeCand] << 1)];
     mrgCtx.mvFieldNeighbours[(uiMergeCand << 1) + 1] = mrgCtxTmp.mvFieldNeighbours[(rdCandList[uiMergeCand] << 1) + 1];
+#endif
     mrgCtx.useAltHpelIf[uiMergeCand] = mrgCtxTmp.useAltHpelIf[rdCandList[uiMergeCand]];
 #if JVET_AG0276_NLIC
     mrgCtx.altLMFlag[uiMergeCand] = mrgCtxTmp.altLMFlag[rdCandList[uiMergeCand]];
@@ -35182,7 +35232,11 @@ void InterPrediction::getAmvpMergeModeMergeList(PredictionUnit& pu, MvField* mvF
 #endif
 #if JVET_AD0213_LIC_IMP
     MergeCtx bmMergeCtx;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+    PU::getInterMergeCandidates(this, pu, bmMergeCtx, 0, AMVP_MERGE_MODE_MERGE_LIST_MAX_CANDS - 1);
+#else
     PU::getInterMergeCandidates(pu, bmMergeCtx, 0, AMVP_MERGE_MODE_MERGE_LIST_MAX_CANDS - 1);
+#endif
     bool licOffIsNeeded = false, licOnIsNeeded = false;
     for (int mergeIdx = 0; mergeIdx < bmMergeCtx.numValidMergeCand; mergeIdx++)
     {
@@ -35278,6 +35332,10 @@ void InterPrediction::getAmvpMergeModeMergeList(PredictionUnit& pu, MvField* mvF
                 bmMergeCtx.useAltHpelIf[mergeIdx] = false;
                 bmMergeCtx.addHypNeighbours[mergeIdx].clear();
                 bmMergeCtx.candCost[mergeIdx] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+                bmMergeCtx.refineTmvpParams.refineTmvpRefList[(mergeIdx << 1)] = REF_PIC_LIST_X;
+                bmMergeCtx.refineTmvpParams.refineTmvpRefList[(mergeIdx << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
                 bmMergeCtx.setDefaultLICParamToCtx(mergeIdx);
 #endif
@@ -36292,7 +36350,11 @@ void InterPrediction::reorderRefCombList(PredictionUnit &pu, std::vector<RefList
 
 
       AffineAMVPInfo affineAMVPInfo;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      PU::fillAffineMvpCand(this, tmpPU, eRefList, tmpPU.refIdx[eRefList], affineAMVPInfo
+#else
       PU::fillAffineMvpCand(tmpPU, eRefList, tmpPU.refIdx[eRefList], affineAMVPInfo
+#endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
     , this
 #endif
@@ -37091,7 +37153,11 @@ void InterPrediction::reorderRefPairList(PredictionUnit &pu, std::vector<RefPicP
 
 
         RefPicList eRefList = (RefPicList)refList;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+        PU::fillAffineMvpCand(this, tmpPU, eRefList, tmpPU.refIdx[eRefList], affineAMVPInfo[eRefList][refIdx]
+#else
         PU::fillAffineMvpCand(tmpPU, eRefList, tmpPU.refIdx[eRefList], affineAMVPInfo[eRefList][refIdx]
+#endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
         , this
 #endif
@@ -45460,4 +45526,521 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
     subPu.intraDir[0] = origIntraDir[0];
     subPu.intraDir[1] = origIntraDir[1];
   }
+#endif
+
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+bool InterPrediction::refineTmvpCompareTwoMotionInfo(MotionInfo& srcMotionInfo, const MotionInfo& dstMotionInfo, RefPicList targetRefList, int scaleFactor)
+{
+  if( srcMotionInfo.isInter != dstMotionInfo.isInter  )
+  {
+    return true;
+  }
+  if (srcMotionInfo.isIBCmot != dstMotionInfo.isIBCmot)
+  {
+    return true;
+  }
+  if( srcMotionInfo.sliceIdx != dstMotionInfo.sliceIdx )
+  {
+    return true;
+  }
+  if (srcMotionInfo.refIdx[targetRefList] != dstMotionInfo.refIdx[targetRefList])
+  {
+    return true;
+  }
+  if (srcMotionInfo.usesLIC != dstMotionInfo.usesLIC)
+  {
+    return true;
+  }
+  Mv srcScaledMv = srcMotionInfo.mv[targetRefList];
+  Mv dstScaledMv = dstMotionInfo.mv[targetRefList];
+  if (scaleFactor != 4096)
+  {
+    srcScaledMv = srcMotionInfo.mv[targetRefList].scaleMv(scaleFactor);
+    dstScaledMv = dstMotionInfo.mv[targetRefList].scaleMv(scaleFactor);
+  }
+  Mv deltaMv = srcScaledMv - dstScaledMv;
+
+  if (deltaMv.getAbsHor() >= 8 || deltaMv.getAbsVer() >= 8)
+  {
+    return true;
+  }
+  return false;
+}
+
+void InterPrediction::refineTmvpCoverSearchForRefinedMv(bool refineTmvpIsSbTmvp, const PredictionUnit &pu, const RefPicList &eRefPicList, const Position &_pos, Mv& rcMv,
+    const int &refIdx, bool sbFlag, int col, int* targetRefIdx, int sbTmvpType, RefPicList refineTmvpColRefPicList, int colRefPOC, const MotionInfo& refineTmvpMiAddr)
+{
+  if (*targetRefIdx < 0)
+  {
+    *targetRefIdx = TMVP_REFINE_OFF_SET_TARGET_REF_IDX - *targetRefIdx;
+  }
+  const unsigned scale = 4 * std::max<int>(1, 4 * AMVP_DECIMATION_FACTOR / 4);
+  const unsigned mask  = ~( scale - 1 );
+  const Position pos = Position{ PosType( _pos.x & mask ), PosType( _pos.y & mask ) };
+  const Slice &slice = *pu.cs->slice;
+  int tmvpRefinedMvPosIdx = -1;
+  CodingStructure* refineTmvpCurPicCs = nullptr;
+  Mv refineTmvpBestScaledMv;
+  if (pu.cs->pcv->isEncoder)
+  {
+    tmvpRefinedMvPosIdx = (pos.x >> 2) + ((pos.y * pu.cs->picture->getPicWidthInLumaSamples()) >> 4);
+    refineTmvpCurPicCs = slice.getPic()->cs;
+    refineTmvpBestScaledMv = Mv(refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][0][tmvpRefinedMvPosIdx],
+                        refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][1][tmvpRefinedMvPosIdx]);
+    if (refineTmvpBestScaledMv != Mv(MAX_INT, MAX_INT))
+    {
+      rcMv = refineTmvpBestScaledMv;
+      return;
+    }
+  }
+  // use coldir.
+  const RefPicList colPicRefList = RefPicList(col == 0 ? 1 - slice.getColFromL0Flag() : 1 - slice.getColFromL0Flag2nd());
+  const int colPicRefIdx         = (col == 0) ? slice.getColRefIdx() : slice.getColRefIdx2nd();
+  int pocCur = slice.getPOC();
+  int pocCol = slice.getRefPOC(colPicRefList, colPicRefIdx);
+#if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
+  const Picture* const pColPic = slice.getRefPic(colPicRefList, colPicRefIdx);
+#else
+  const Picture* const pColPic = slice.getRefPic(RefPicList(slice.isInterB() ? 1 - slice.getColFromL0Flag() : 0), slice.getColRefIdx());
+#endif
+  // Scale the vector.
+  Mv cColMv = refineTmvpMiAddr.mv[refineTmvpColRefPicList];
+  cColMv.setHor(PU::getRoundMvComp(cColMv.getHor()));
+  cColMv.setVer(PU::getRoundMvComp(cColMv.getVer()));
+  if (refineTmvpIsSbTmvp == false && cColMv == Mv())
+  {
+    rcMv = cColMv;
+    if (pu.cs->pcv->isEncoder)
+    {
+      refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][0][tmvpRefinedMvPosIdx] = rcMv.hor;
+      refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][1][tmvpRefinedMvPosIdx] = rcMv.ver;
+    }
+    return;
+  }
+  const int currRefPOC = slice.getRefPOC(eRefPicList, *targetRefIdx);
+  if ((pocCol - currRefPOC) * (colRefPOC - currRefPOC) != 0)
+  {
+    const int distScaleFromColRefPocToCurRefPoc = PU::getDistScaleFactor(pocCol, currRefPOC, pocCol, colRefPOC);
+    Mv scaledColMv;
+    if (distScaleFromColRefPocToCurRefPoc == 4096)
+    {
+      scaledColMv = cColMv;
+    }
+    else
+    {
+      scaledColMv = cColMv.scaleMv(distScaleFromColRefPocToCurRefPoc);
+    }
+    int refineTmvpHorMin = 0, refineTmvpHorMax = cColMv.hor, refineTmvpVerMin = 0, refineTmvpVerMax = cColMv.ver;
+    if ((pocCol - currRefPOC) * (colRefPOC - currRefPOC) < 0)
+    {
+      if (cColMv.hor < 0)
+      {
+        refineTmvpHorMin = cColMv.hor;
+        refineTmvpHorMax = 0;
+      }
+      if (cColMv.ver < 0)
+      {
+        refineTmvpVerMin = cColMv.ver;
+        refineTmvpVerMax = 0;
+      }
+    }
+    else if ((pocCol - currRefPOC) * (colRefPOC - currRefPOC) > 0)
+    {
+      if (std::abs(pocCol - currRefPOC) < std::abs(colRefPOC - currRefPOC))
+      {
+        refineTmvpHorMin = scaledColMv.hor - std::abs(scaledColMv.hor);
+        refineTmvpHorMax = scaledColMv.hor + std::abs(scaledColMv.hor);
+        refineTmvpVerMin = scaledColMv.ver - std::abs(scaledColMv.ver);
+        refineTmvpVerMax = scaledColMv.ver + std::abs(scaledColMv.ver);
+      }
+      else if (std::abs(pocCol - currRefPOC) > std::abs(colRefPOC - currRefPOC))
+      {
+        refineTmvpHorMin = scaledColMv.hor - std::abs(scaledColMv.hor - cColMv.hor);
+        refineTmvpHorMax = scaledColMv.hor + std::abs(scaledColMv.hor - cColMv.hor);
+        refineTmvpVerMin = scaledColMv.ver - std::abs(scaledColMv.ver - cColMv.ver);
+        refineTmvpVerMax = scaledColMv.ver + std::abs(scaledColMv.ver - cColMv.ver);
+      }
+      else
+      {
+        CHECK(1, "this is not possible");
+      }
+    }
+    else
+    {
+      CHECK(1, "this is not possible");
+    }
+    Mv refineTmvpRangeMinClip(refineTmvpHorMin, refineTmvpVerMin), refineTmvpRangeMaxClip(refineTmvpHorMax, refineTmvpVerMax);
+    clipMv(refineTmvpRangeMinClip, pos, Size(4, 4), *pu.cu->cs->sps, *pu.cu->cs->pps);
+    clipMv(refineTmvpRangeMaxClip, pos, Size(4, 4), *pu.cu->cs->sps, *pu.cu->cs->pps);
+    refineTmvpHorMin = std::min(refineTmvpRangeMinClip.hor, scaledColMv.hor);
+    refineTmvpVerMin = std::min(refineTmvpRangeMinClip.ver, scaledColMv.ver);
+    refineTmvpHorMax = std::max(refineTmvpRangeMaxClip.hor, scaledColMv.hor);
+    refineTmvpVerMax = std::max(refineTmvpRangeMaxClip.ver, scaledColMv.ver);
+    if (refineTmvpIsSbTmvp == false && refineTmvpVerMax - refineTmvpVerMin < 16 && refineTmvpHorMax - refineTmvpHorMin < 16)
+    {
+      refineTmvpBestScaledMv = scaledColMv;
+    }
+    else
+    {
+      // do refinement
+      PredictionUnit colBlk = pu;
+      int refineTmvpPosX = pos.x, refineTmvpPosY = pos.y, refineTmvpWidth = 4, refineTmvpHeight = 4;
+      // get colBlk position and size
+      int refineTmvpPreWidth = 0, refineTmvpPreHeight = 0;
+      bool findLeftDiffMi = false, findRightDiffMi= false, finfAboveDiffMi = false, findBelowDiffMi = false;
+      int refineTmvpMaxDimensionSize = refineTmvpIsSbTmvp ? 8 : (slice.getSPS()->getRefineTmvpCfgIdx() == 2 ? 8 : 16);
+      while (refineTmvpPreWidth < refineTmvpWidth || refineTmvpPreHeight < refineTmvpHeight)
+      {
+        refineTmvpPreWidth = refineTmvpWidth;
+        refineTmvpPreHeight = refineTmvpHeight;
+        // adjust horizontal pos and width
+        Position refineTmvpCurXPos(refineTmvpPosX, refineTmvpPosY);
+        if (findLeftDiffMi == false)
+        {
+          findLeftDiffMi = refineTmvpWidth >= refineTmvpMaxDimensionSize || refineTmvpPosX < 4;
+          int refineTmvpY = 0;
+          while (findLeftDiffMi == false && refineTmvpY < refineTmvpHeight)
+          {
+            findLeftDiffMi = refineTmvpCompareTwoMotionInfo(pColPic->cs->getMotionInfo(refineTmvpCurXPos.offset(-1, refineTmvpY)), refineTmvpMiAddr, refineTmvpColRefPicList, distScaleFromColRefPocToCurRefPoc);
+            refineTmvpY += 4;
+          }
+          if (findLeftDiffMi == false)
+          {
+            refineTmvpPosX -= 4;
+            refineTmvpWidth += 4;
+          }
+        }
+        if (findRightDiffMi == false && refineTmvpPosX == refineTmvpCurXPos.x)
+        {
+          findRightDiffMi = refineTmvpWidth >= refineTmvpMaxDimensionSize || refineTmvpPosX + refineTmvpWidth >= pColPic->getPicWidthInLumaSamples();
+          int refineTmvpY = 0;
+          while (findRightDiffMi == false && refineTmvpY < refineTmvpHeight)
+          {
+            findRightDiffMi = refineTmvpCompareTwoMotionInfo(pColPic->cs->getMotionInfo(refineTmvpCurXPos.offset(refineTmvpWidth, refineTmvpY)), refineTmvpMiAddr, refineTmvpColRefPicList, distScaleFromColRefPocToCurRefPoc);
+            refineTmvpY += 4;
+          }
+          if (findRightDiffMi == false)
+          {
+            refineTmvpWidth += 4;
+          }
+        }
+        // adjust vertical pos and height
+        Position refineTmvpCurYPos(refineTmvpPosX, refineTmvpPosY);
+        if (finfAboveDiffMi == false)
+        {
+          finfAboveDiffMi = refineTmvpHeight >= refineTmvpMaxDimensionSize || refineTmvpPosY < 4;
+          int refineTmvpX = 0;
+          while (finfAboveDiffMi == false && refineTmvpX < refineTmvpWidth)
+          {
+            finfAboveDiffMi = refineTmvpCompareTwoMotionInfo(pColPic->cs->getMotionInfo(refineTmvpCurYPos.offset(refineTmvpX, -1)), refineTmvpMiAddr, refineTmvpColRefPicList, distScaleFromColRefPocToCurRefPoc);
+            refineTmvpX += 4;
+          }
+          if (finfAboveDiffMi == false)
+          {
+            refineTmvpPosY -= 4;
+            refineTmvpHeight += 4;
+          }
+        }
+        if (findBelowDiffMi == false && refineTmvpPosY == refineTmvpCurYPos.y)
+        {
+          findBelowDiffMi = refineTmvpHeight >= refineTmvpMaxDimensionSize || refineTmvpPosY + refineTmvpHeight >= pColPic->getPicHeightInLumaSamples();
+          int refineTmvpX = 0;
+          while (findBelowDiffMi == false && refineTmvpX < refineTmvpWidth)
+          {
+            findBelowDiffMi = refineTmvpCompareTwoMotionInfo(pColPic->cs->getMotionInfo(refineTmvpCurYPos.offset(refineTmvpX, refineTmvpHeight)), refineTmvpMiAddr, refineTmvpColRefPicList, distScaleFromColRefPocToCurRefPoc);
+            refineTmvpX += 4;
+          }
+          if (findBelowDiffMi == false)
+          {
+            refineTmvpHeight += 4;
+          }
+        }
+      }
+      colBlk.UnitArea::operator=(UnitArea(pu.chromaFormat, Area(refineTmvpPosX, refineTmvpPosY, refineTmvpWidth, refineTmvpHeight)));
+      // search start from here
+      refineTmvpBestScaledMv = scaledColMv;
+      refineTmvpSearchForRefinedMv(refineTmvpIsSbTmvp, colBlk, colPicRefList, colPicRefIdx, eRefPicList, *targetRefIdx, refineTmvpBestScaledMv, refineTmvpHorMin, refineTmvpHorMax, refineTmvpVerMin, refineTmvpVerMax);
+    }
+    // -----------------------scaling Mv--------------------------------------------------
+    Mv refineTmvpRcOrgMv = cColMv;
+    const int distscale = PU::getDistScaleFactor(pocCur, currRefPOC, pocCol, colRefPOC);
+    if (distscale == 4096)
+    {
+      refineTmvpRcOrgMv = cColMv;
+      refineTmvpRcOrgMv.clipToStorageBitDepth();
+    }
+    else
+    {
+      refineTmvpRcOrgMv = cColMv.scaleMv(distscale);
+    }
+    if (scaledColMv == refineTmvpBestScaledMv)
+    {
+      rcMv = refineTmvpRcOrgMv;
+    }
+    else
+    {
+      Mv refineTmvpRcUpdateMv = refineTmvpBestScaledMv;
+      const int distScaleFromCurPocToCurRefPoc = PU::getDistScaleFactor(pocCur, currRefPOC, pocCol, currRefPOC);
+      if (distScaleFromCurPocToCurRefPoc == 4096)
+      {
+        refineTmvpRcUpdateMv = refineTmvpBestScaledMv;
+        refineTmvpRcUpdateMv.clipToStorageBitDepth();
+      }
+      else
+      {
+        refineTmvpRcUpdateMv = refineTmvpBestScaledMv.scaleMv(distScaleFromCurPocToCurRefPoc);
+      }
+      if (scaledColMv.hor == refineTmvpBestScaledMv.hor)
+      {
+        refineTmvpRcUpdateMv.hor = refineTmvpRcOrgMv.hor;
+      }
+      if (scaledColMv.ver == refineTmvpBestScaledMv.ver)
+      {
+        refineTmvpRcUpdateMv.ver = refineTmvpRcOrgMv.ver;
+      }
+      rcMv = refineTmvpRcUpdateMv;
+    }
+    if (pu.cs->pcv->isEncoder)
+    {
+      refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][0][tmvpRefinedMvPosIdx] = rcMv.hor;
+      refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][1][tmvpRefinedMvPosIdx] = rcMv.ver;
+    }
+  }
+  else
+  {
+    const int distscale = PU::getDistScaleFactor(pocCur, currRefPOC, pocCol, colRefPOC);
+    if (distscale == 4096)
+    {
+      rcMv = cColMv;
+      rcMv.clipToStorageBitDepth();
+    }
+    else
+    {
+      rcMv = cColMv.scaleMv(distscale);
+    }
+    if (pu.cs->pcv->isEncoder)
+    {
+      refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][0][tmvpRefinedMvPosIdx] = rcMv.hor;
+      refineTmvpCurPicCs->tmvpRefinedMv[col][refineTmvpColRefPicList][eRefPicList][*targetRefIdx][refineTmvpIsSbTmvp][1][tmvpRefinedMvPosIdx] = rcMv.ver;
+    }
+  }
+}
+void InterPrediction::refineTmvpSearchForRefinedMv(bool refineTmvpIsSbTmvp, const PredictionUnit& pu,
+    const int srcRefList, const int srcRefIdx, const int dstRefList, const int dstRefIdx,
+    Mv& dstMv, int horMin, int horMax, int verMin, int verMax)
+{
+  // prepare
+  Mv scaledColMv = dstMv;
+  int puWidth = pu.lwidth(), puHeight = pu.lheight(), refineTmvpSearchNr = 8;
+  int refineTmvpHorMinStep = (horMax - horMin) / refineTmvpSearchNr, refineTmvpVerMinStep = (verMax - verMin) / refineTmvpSearchNr;
+  refineTmvpHorMinStep &= 65520; // BIN 1111 1111 1111 0000
+  refineTmvpHorMinStep = std::max(std::min((puWidth << 3), refineTmvpHorMinStep), 16);
+  refineTmvpVerMinStep &= 65520; // BIN 1111 1111 1111 0000
+  refineTmvpVerMinStep = std::max(std::min((puHeight << 3), refineTmvpVerMinStep), 16);
+  int refineTmvpHorSearchRange = refineTmvpHorMinStep * refineTmvpSearchNr, refineTmvpVerSearchRange = refineTmvpVerMinStep * refineTmvpSearchNr;
+  horMin = std::max(scaledColMv.hor - refineTmvpHorSearchRange, horMin);
+  horMin += (scaledColMv.hor - horMin) % refineTmvpHorMinStep;
+  horMax = std::min(scaledColMv.hor + refineTmvpHorSearchRange, horMax);
+  verMin = std::max(scaledColMv.ver - refineTmvpVerSearchRange, verMin);
+  verMin += (scaledColMv.ver - verMin) % refineTmvpVerMinStep;
+  verMax = std::min(scaledColMv.ver + refineTmvpVerSearchRange, verMax);
+
+  // Fill L0'a and L1's prediction blocks
+  Pel*     pelBuffer[2] = { m_filteredBlock[3][REF_PIC_LIST_0][0], m_filteredBlock[3][REF_PIC_LIST_1][0] };
+  int refineTmvpHorRangeIntPelOrg = horMax - horMin;
+  refineTmvpHorRangeIntPelOrg -= (refineTmvpHorRangeIntPelOrg % refineTmvpHorMinStep);
+  refineTmvpHorRangeIntPelOrg >>= 4;
+  int refineTmvpHorRangeIntPel = ((horMax - horMin) >> 4) + puWidth;
+  int refineTmvpHorRangeOffset = BDMVR_SIMD_IF_FACTOR - ( refineTmvpHorRangeIntPel & ( BDMVR_SIMD_IF_FACTOR - 1 ) );
+  refineTmvpHorRangeOffset     &= ( BDMVR_SIMD_IF_FACTOR - 1 );
+  refineTmvpHorRangeIntPel     += refineTmvpHorRangeOffset; // This ensures that iWidthExt is a factor-of-n number, assuming BDMVR_SIMD_IF_FACTOR is equal to n
+  int refineTmvpVerRangeIntPel = ((verMax - verMin) >> 4) + puHeight;
+  const int refineTmvpBufStride = (int)pu.cu->cs->sps->getMaxCUWidth()  + EXT_PICTURE_SIZE;
+  PelUnitBuf     predBuf[2]   = { PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_0], refineTmvpBufStride, puWidth, puHeight)),
+                                  PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_1], refineTmvpBufStride, puWidth, puHeight)) };
+  const Picture&   srcRefPic  = *pu.cu->slice->getRefPic((RefPicList)srcRefList, srcRefIdx)->unscaledPic;
+  xBDMVRFillBlkPredPelBuffer( pu, srcRefPic, Mv(), predBuf[0], pu.cs->slice->clpRng(COMPONENT_Y) );
+  const Picture&   dstRefPic  = *pu.cu->slice->getRefPic((RefPicList)dstRefList, dstRefIdx)->unscaledPic;
+  // Compute distortion between L0'a and L1's prediction blocks
+  int useMR = false, useHadmard = true;
+  DistParam cDistParam;
+  cDistParam.applyWeight = false;
+  cDistParam.useMR       = useMR;
+  m_pcRdCost->setDistParam(cDistParam, predBuf[0].Y(), predBuf[1].Y(), pu.cu->slice->clpRng(COMPONENT_Y).bd, COMPONENT_Y, useHadmard);
+  Mv extDstMv = Mv(horMin, verMin);
+  PelUnitBuf predExtBufDst = PelUnitBuf(pu.chromaFormat, PelBuf(pelBuffer[REF_PIC_LIST_1], refineTmvpBufStride, refineTmvpHorRangeIntPel, refineTmvpVerRangeIntPel));
+  xBDMVRFillBlkPredPelBuffer( pu, dstRefPic, extDstMv, predExtBufDst, pu.cs->slice->clpRng(COMPONENT_Y) );
+  cDistParam.cur.buf = pelBuffer[1] + ((scaledColMv.hor - horMin) >> 4) + ((scaledColMv.ver - verMin) >> 4) * refineTmvpBufStride;
+  Distortion refineTmvpBestDist = cDistParam.distFunc(cDistParam) >> 1;
+  refineTmvpBestDist -= (refineTmvpBestDist >> 3);
+  Distortion refineTmvpDistTH = (pu.lwidth() * pu.lheight());
+  // search start from here
+  Distortion refineTmvpTempDist = refineTmvpBestDist;
+  if (refineTmvpBestDist >= refineTmvpDistTH)
+  {
+    int refineTmvpBufOffset = 0, refineTmvpBufOffsetHorIncr = refineTmvpHorMinStep / 16, refineTmvpBufOffsetVerIncr = refineTmvpVerMinStep / 16 * refineTmvpBufStride - (refineTmvpHorRangeIntPelOrg + refineTmvpBufOffsetHorIncr);
+    for (int refineTmvpVerCand = verMin; refineTmvpVerCand <= verMax; refineTmvpVerCand += refineTmvpVerMinStep)
+    {
+      for (int refineTmvpHorCand = horMin; refineTmvpHorCand <= horMax; refineTmvpHorCand += refineTmvpHorMinStep)
+      {
+        if (refineTmvpBestDist < refineTmvpDistTH)
+        {
+          continue;
+        }
+        refineTmvpTempDist = std::abs(refineTmvpHorCand - scaledColMv.hor) + std::abs(refineTmvpVerCand - scaledColMv.ver);
+        if (refineTmvpTempDist > refineTmvpBestDist || refineTmvpTempDist == 0)
+        {
+          refineTmvpBufOffset += refineTmvpBufOffsetHorIncr;
+          continue;
+        }
+        cDistParam.cur.buf = pelBuffer[1] + refineTmvpBufOffset;
+        refineTmvpTempDist += (cDistParam.distFunc(cDistParam) >> 1);
+        if (refineTmvpTempDist < refineTmvpBestDist)
+        {
+          refineTmvpBestDist = refineTmvpTempDist;
+          dstMv.hor = refineTmvpHorCand;
+          dstMv.ver = refineTmvpVerCand;
+        }
+        refineTmvpBufOffset += refineTmvpBufOffsetHorIncr;
+      }
+      refineTmvpBufOffset += refineTmvpBufOffsetVerIncr;
+    }
+    if (refineTmvpIsSbTmvp || (pu.cu->slice->getCheckLDC() && pu.cu->slice->getSPS()->getRefineTmvpCfgIdx() < 2))
+    {
+      if (refineTmvpBestDist >= refineTmvpDistTH && (refineTmvpVerMinStep > 16 || refineTmvpHorMinStep > 16))
+      {
+        int refineTmvpBestIntHorMin = std::max(horMin, dstMv.hor - (refineTmvpHorMinStep - 16));
+        int refineTmvpBestIntHorMax = std::min(horMax, dstMv.hor + (refineTmvpHorMinStep - 16));
+        int refineTmvpBestIntVerMin = std::max(verMin, dstMv.ver - (refineTmvpVerMinStep - 16));
+        int refineTmvpBestIntVerMax = std::min(verMax, dstMv.ver + (refineTmvpVerMinStep - 16));
+        int refineTmvpBestIntHorRangeIntOrg = (refineTmvpBestIntHorMax - refineTmvpBestIntHorMin) / 16;
+        int refineTmvpBestIntBufOffset = (refineTmvpBestIntHorMin - horMin) / 16 + (refineTmvpBestIntVerMin - verMin) / 16 * refineTmvpBufStride;
+        int refineTmvpBestIntBufOffsetVerIncr = refineTmvpBufStride - (refineTmvpBestIntHorRangeIntOrg + 1);
+
+        for (int refineTmvpVerCand = refineTmvpBestIntVerMin; refineTmvpVerCand <= refineTmvpBestIntVerMax; refineTmvpVerCand += 16)
+        {
+          for (int refineTmvpHorCand = refineTmvpBestIntHorMin; refineTmvpHorCand <= refineTmvpBestIntHorMax; refineTmvpHorCand += 16)
+          {
+            if (refineTmvpBestDist < refineTmvpDistTH)
+            {
+              continue;
+            }
+            refineTmvpTempDist = std::abs(refineTmvpHorCand - scaledColMv.hor) + std::abs(refineTmvpVerCand - scaledColMv.ver);
+            if (refineTmvpTempDist > refineTmvpBestDist || refineTmvpTempDist == 0)
+            {
+              refineTmvpBestIntBufOffset += 1;
+              continue;
+            }
+            cDistParam.cur.buf = pelBuffer[1] + refineTmvpBestIntBufOffset;
+            refineTmvpTempDist += (cDistParam.distFunc(cDistParam) >> 1);
+            if (refineTmvpTempDist < refineTmvpBestDist)
+            {
+              refineTmvpBestDist = refineTmvpTempDist;
+              dstMv.hor = refineTmvpHorCand;
+              dstMv.ver = refineTmvpVerCand;
+            }
+            refineTmvpBestIntBufOffset += 1;
+          }
+          refineTmvpBestIntBufOffset += refineTmvpBestIntBufOffsetVerIncr;
+        }
+      }
+    }
+  }
+  if (refineTmvpIsSbTmvp == false)
+  {
+    return;
+  }
+  uint64_t sadbuffer[5];
+  // H-pel search
+  if (refineTmvpBestDist >= refineTmvpDistTH)
+  {
+    const Mv  refineTmvpCurBestScaledMv = dstMv;
+    const Mv  refineTmvpSquareSearchCandMvOffset[8] = { Mv(-8, -8), Mv(0, -8), Mv(8, -8), Mv(-8, 0), Mv(8, 0),   Mv(-8, 8),    Mv(0, 8),        Mv(8, 8) };
+    const int refineTmvpSquareSearchHpelPhase [8]   = {          1,         2,         1,         0,        0,           1,           2,               1 };
+    const int refineTmvpSquareSearchBufferOffset[8] = {          0,         0,         1,         0,        1, refineTmvpBufStride, refineTmvpBufStride, refineTmvpBufStride + 1 };
+    const int refineTmvpCostLogIndex[8]             = {          0,         2,         0,         1,        3,           0,           4,               0 };
+    const Mv  hPelPhaseOffset[3] = { Mv( -8 , 0 ), Mv( -8, -8 ), Mv( 0 , -8 ) };
+    for (int phaseIdx = 0 ; phaseIdx < 3 ; phaseIdx++)
+    {
+      int iWidthExt    = (int)puWidth  + 1 - (     phaseIdx  >> 1);
+      int iHeightExt   = (int)puHeight + 1 - ((2 - phaseIdx) >> 1);
+      int iWidthOffset = BDMVR_SIMD_IF_FACTOR - ( iWidthExt & ( BDMVR_SIMD_IF_FACTOR - 1 ) );
+      iWidthOffset    &= ( BDMVR_SIMD_IF_FACTOR - 1 );
+      iWidthExt       += iWidthOffset; // This ensures that iWidthExt is a factor-of-n number, assuming BDMVR_SIMD_IF_FACTOR is equal to n
+      PelUnitBuf hPelPredBuf = PelUnitBuf(pu.chromaFormat, PelBuf(m_filteredBlock[phaseIdx][REF_PIC_LIST_1][0], refineTmvpBufStride, iWidthExt, iHeightExt));
+      Mv mv = refineTmvpCurBestScaledMv + hPelPhaseOffset[phaseIdx];
+      xBDMVRFillBlkPredPelBuffer( pu, dstRefPic, mv, hPelPredBuf, pu.cs->slice->clpRng(COMPONENT_Y) );
+    }
+    for (int refineTmvpCount = 0; refineTmvpCount < 8; refineTmvpCount++)
+    {
+      Mv refineTmvpTmpCand = refineTmvpCurBestScaledMv + refineTmvpSquareSearchCandMvOffset[refineTmvpCount];
+      refineTmvpTempDist = (refineTmvpTmpCand - scaledColMv).getAbsHor() + (refineTmvpTmpCand - scaledColMv).getAbsVer();
+      if (refineTmvpTempDist > refineTmvpBestDist)
+      {
+        sadbuffer[refineTmvpCostLogIndex[refineTmvpCount]] = (refineTmvpTempDist << 1);
+        continue;
+      }
+      cDistParam.cur.buf = m_filteredBlock[refineTmvpSquareSearchHpelPhase[refineTmvpCount]][REF_PIC_LIST_1][0] + refineTmvpSquareSearchBufferOffset[refineTmvpCount];
+      sadbuffer[refineTmvpCostLogIndex[refineTmvpCount]] = (cDistParam.distFunc(cDistParam) >> 1);
+      refineTmvpTempDist += sadbuffer[refineTmvpCostLogIndex[refineTmvpCount]];
+      if (refineTmvpTempDist < refineTmvpBestDist)
+      {
+        refineTmvpBestDist = refineTmvpTempDist;
+        dstMv = refineTmvpTmpCand;
+      }
+    }
+    if (dstMv != scaledColMv && pu.cu->slice->getSPS()->getRefineTmvpCfgIdx() == 0)
+    {
+      sadbuffer[0] = refineTmvpBestDist - std::abs(dstMv.hor - scaledColMv.hor) - std::abs(dstMv.ver - scaledColMv.ver);
+      if (dstMv != refineTmvpCurBestScaledMv)
+      {
+        for (int phaseIdx = 0 ; phaseIdx < 3 ; phaseIdx += 2)
+        {
+          int iWidthExt    = (int)puWidth  + 1 - (     phaseIdx  >> 1);
+          int iHeightExt   = (int)puHeight + 1 - ((2 - phaseIdx) >> 1);
+          int iWidthOffset = BDMVR_SIMD_IF_FACTOR - ( iWidthExt & ( BDMVR_SIMD_IF_FACTOR - 1 ) );
+          iWidthOffset    &= ( BDMVR_SIMD_IF_FACTOR - 1 );
+          iWidthExt       += iWidthOffset; // This ensures that iWidthExt is a factor-of-n number, assuming BDMVR_SIMD_IF_FACTOR is equal to n
+          PelUnitBuf hPelPredBuf = PelUnitBuf(pu.chromaFormat, PelBuf(m_filteredBlock[phaseIdx][REF_PIC_LIST_1][0], refineTmvpBufStride, iWidthExt, iHeightExt));
+          Mv mv = dstMv + hPelPhaseOffset[phaseIdx];
+          xBDMVRFillBlkPredPelBuffer( pu, dstRefPic, mv, hPelPredBuf, pu.cs->slice->clpRng(COMPONENT_Y) );
+        }
+        cDistParam.cur.buf = m_filteredBlock[refineTmvpSquareSearchHpelPhase[3]][REF_PIC_LIST_1][0] + refineTmvpSquareSearchBufferOffset[3];
+        sadbuffer[1] = (uint64_t)(cDistParam.distFunc(cDistParam) >> 1); // left
+        cDistParam.cur.buf = m_filteredBlock[refineTmvpSquareSearchHpelPhase[1]][REF_PIC_LIST_1][0] + refineTmvpSquareSearchBufferOffset[1];
+        sadbuffer[2] = (uint64_t)(cDistParam.distFunc(cDistParam) >> 1); // above
+        cDistParam.cur.buf = m_filteredBlock[refineTmvpSquareSearchHpelPhase[4]][REF_PIC_LIST_1][0] + refineTmvpSquareSearchBufferOffset[4];
+        sadbuffer[3] = (uint64_t)(cDistParam.distFunc(cDistParam) >> 1); // right
+        cDistParam.cur.buf = m_filteredBlock[refineTmvpSquareSearchHpelPhase[6]][REF_PIC_LIST_1][0] + refineTmvpSquareSearchBufferOffset[6];
+        sadbuffer[4] = (uint64_t)(cDistParam.distFunc(cDistParam) >> 1); // bottom
+      }
+      int32_t tempDeltaMv[2] = {0, 0};
+      xSubPelErrorSrfc(sadbuffer, tempDeltaMv);
+      dstMv += Mv(tempDeltaMv[0], tempDeltaMv[1]);
+    }
+  }
+  // Q-pel search
+  if (refineTmvpBestDist >= refineTmvpDistTH && pu.cu->slice->getSPS()->getRefineTmvpCfgIdx() > 0)
+  {
+    Mv refineTmvpCurBestScaledMv = dstMv;
+    cDistParam.cur.buf = pelBuffer[1];
+    const Mv  refineTmvpSquareSearchCandMvOffset[8] = { Mv(-4, -4), Mv(0, -4), Mv(4, -4), Mv(-4, 0), Mv(4, 0), Mv(-4, 4), Mv(0, 4), Mv(4, 4) };
+    for (int refineTmvpCount = 0; refineTmvpCount < 8; refineTmvpCount++)
+    {
+      Mv refineTmvpTmpCand = refineTmvpCurBestScaledMv + refineTmvpSquareSearchCandMvOffset[refineTmvpCount];
+      refineTmvpTempDist = (refineTmvpTmpCand - scaledColMv).getAbsHor() + (refineTmvpTmpCand - scaledColMv).getAbsVer();
+      if (refineTmvpTempDist > refineTmvpBestDist)
+      {
+        continue;
+      }
+      xBDMVRFillBlkPredPelBuffer( pu, dstRefPic, refineTmvpTmpCand, predBuf[1], pu.cs->slice->clpRng(COMPONENT_Y) );
+      refineTmvpTempDist += (cDistParam.distFunc(cDistParam) >> 1);
+      if (refineTmvpTempDist < refineTmvpBestDist)
+      {
+        refineTmvpBestDist = refineTmvpTempDist;
+        dstMv = refineTmvpTmpCand;
+      }
+    }
+  }
+}
 #endif

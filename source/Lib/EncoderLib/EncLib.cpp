@@ -1932,8 +1932,21 @@ void EncLib::xInitSPS( SPS& sps )
     }
   }
 #endif
-
-
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+  if (m_sourceWidth * m_sourceHeight > 1920 * 1080)
+  {
+    m_refineTmvpCfgIdx = 2;
+  }
+  else if (m_sourceWidth * m_sourceHeight > 832 * 480)
+  {
+    m_refineTmvpCfgIdx = 1;
+  }
+  else
+  {
+    m_refineTmvpCfgIdx = 0;
+  }
+  sps.setRefineTmvpCfgIdx(m_refineTmvpCfgIdx);
+#endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   sps.setUseArmcRefinedMotion               ( m_armcRefinedMotion );
 #endif
