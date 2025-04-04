@@ -1956,9 +1956,17 @@ void TrQuant::xFwdNspt( const TransformUnit &tu, TCoeff* src, TCoeff* dst, const
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    , PU::getNSPTBucket(tu, secondBucket, compID)
+#else
     , PU::getNSPTBucket(tu, secondBucket)
+#endif
+#else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    , PU::getNSPTBucket(tu, compID)
 #else
     , PU::getNSPTBucket(tu)
+#endif
 #endif
 #endif
   );
@@ -2030,9 +2038,17 @@ void TrQuant::xInvNspt( const TransformUnit &tu, const TCoeff* src, TCoeff* dst,
 #endif
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    , PU::getNSPTBucket(tu, secondBucket, compID)
+#else
     , PU::getNSPTBucket(tu, secondBucket)
+#endif
+#else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    , PU::getNSPTBucket(tu, compID)
 #else
     , PU::getNSPTBucket(tu)
+#endif
 #endif
 #endif
   );
@@ -2097,19 +2113,19 @@ uint8_t TrQuant::getNsptKernelCluster(const uint32_t mode, const uint32_t width,
 #if JVET_AE0086_LARGE_NSPT
   else if (width == 4 && height == 32)
   {
-    return g_nsptIdx_4x32[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx4x32[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 32 && height == 4)
   {
-    return g_nsptIdx_32x4[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx32x4[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 8 && height == 32)
   {
-    return g_nsptIdx_8x32[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx8x32[ mode ][ bktIdx ][ nsptIdx ];
   }
   else if (width == 32 && height == 8)
   {
-    return g_nsptIdx_32x8[ mode ][ bktIdx ][ nsptIdx ];
+    return g_nsptIdx32x8[ mode ][ bktIdx ][ nsptIdx ];
   }
 #endif
   return false;
@@ -2929,9 +2945,17 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
                                 ( tu.cu->slice->getSliceType() != I_SLICE && tu.cu->cs->sps->getUseIntraLFNSTPBSlice() ) );
     bool allowNSPT = CU::isNSPTAllowed(tu, comp, width, height, spsIntraLfnstEnabled && CU::isIntra(*(tu.cu)));
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket, comp) : 0;
+#else
     int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket) : 0;
+#endif
+#else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, comp) : 0;
 #else
     int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu) : 0;
+#endif
 #endif
     g_resiBorderTemplateLFNST[nsptBucketIdx][log2Width - 2][log2Height - 2][lfnstIdx] = templateBuf.buf;
 #else
@@ -2971,9 +2995,17 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
     bool allowNSPT = CU::isNSPTAllowed(tu, compID, uiWidth, uiHeight, spsIntraLfnstEnabled && CU::isIntra(*(tu.cu)));
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket, compID) : 0;
+#else
     int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket) : 0;
+#endif
+#else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+    int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, compID) : 0;
 #else
     int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu) : 0;
+#endif
 #endif
     if (!g_resiBorderTemplateLFNST[nsptBucketIdx][log2Width - 2][log2Height - 2][actualLfnstIdx])
     {
@@ -3054,9 +3086,17 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
 #if JVET_AJ0175_NSPT_FOR_NONREG_MODES
   bool allowNSPT = CU::isNSPTAllowed( tu, compID, uiWidth, uiHeight, spsIntraLfnstEnabled && CU::isIntra( *( tu.cu ) ) );
 #if JVET_AK0217_INTRA_MTSS
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+  int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket, compID) : 0;
+#else
   int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, secondBucket) : 0;
+#endif
+#else
+#if JVET_AL0215_NSPT_SET_FOR_INTRANN
+  int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu, compID) : 0;
 #else
   int  nsptBucketIdx = allowNSPT ? PU::getNSPTBucket(tu) : 0;
+#endif
 #endif
 #if JVET_AJ0237_INTERNAL_12BIT
   AreaBuf<const int16_t> templateLfnstNormalizedBuf =

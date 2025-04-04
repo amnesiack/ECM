@@ -317,10 +317,10 @@ extern const     uint8_t  g_nsptIdx16x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
 extern const     uint8_t  g_nsptIdx8x16[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
 extern const     uint8_t  g_nsptIdx16x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
 #if JVET_AE0086_LARGE_NSPT
-extern const     uint8_t  g_nsptIdx_4x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_32x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_8x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
-extern const     uint8_t  g_nsptIdx_32x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx4x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx32x4[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx8x32[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
+extern const     uint8_t  g_nsptIdx32x8[ 35 ][ NUM_NSPT_BLOCK_TYPES ][ 3 ];
 #endif
 #else
 extern const     int8_t   g_nspt4x4[ 35 ][ 3 ][ 16 ][ 16 ];
