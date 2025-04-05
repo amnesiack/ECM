@@ -1231,15 +1231,13 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       {
         int fusionList2[MAX_CCP_CAND_LIST_INIT_SIZE * 2] = { MAX_CCP_CAND_LIST_INIT_SIZE };
         m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum, fusionList2);
-        candNum = std::min(candNum, MAX_CCP_CAND_LIST_SIZE);
-        int savedCcpMergeAdjustMinus1 = pu.ccpMergeAdjustFlag;
-        if (savedCcpMergeAdjustMinus1 == 2)
+        candNum = std::min(candNum, pu.cs->sps->getMaxNumCcpMergeAdjustCand());
+        if (pu.ccpMergeAdjustFlag == 2)
         {
           pu.ccpMergeAdjustFlag = 1;
           m_pcIntraPred->adjustCCPCandidates(pu, candList, candNum, candIdx);
-          pu.ccpMergeAdjustFlag = savedCcpMergeAdjustMinus1;
+          pu.ccpMergeAdjustFlag = 2;
           m_pcIntraPred->adjustCCPCandidates(pu, candList, candNum, candIdx);
-          pu.ccpMergeAdjustFlag = savedCcpMergeAdjustMinus1;
         }
         else
         {
@@ -1251,9 +1249,6 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum, fusionList);
 #else
       m_pcIntraPred->reorderCCPCandidates(pu, candList, candNum);
-#endif
-#if JVET_AL0126_CCP_MERGE_WITH_ADJUST
-      candNum = std::min(candNum, MAX_CCP_CAND_LIST_SIZE);
 #endif
       pu.curCand = candList[candIdx];
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
