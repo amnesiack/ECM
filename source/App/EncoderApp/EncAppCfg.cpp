@@ -1217,7 +1217,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ( "CCPMerge",                                       m_ccpMerge,                                       true, "Enable cross-componet prediction merge mode for chroma intra coding" )
 #endif
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
-  ( "CCPMerge",                                       m_maxNumCcpMergeAdjustCand,                          6, "Maximum number of CCP merge with adjust candidates" )
+  ( "maxNumCcpMergeAdjustCand",                       m_maxNumCcpMergeAdjustCand,                          6, "Maximum number of CCP merge with adjust candidates" )
 #endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   ("DDCCPFusion",                                     m_ddCcpFusion,                                    true, "Enable decoder derived CCP fusion mode for chroma intra coding")

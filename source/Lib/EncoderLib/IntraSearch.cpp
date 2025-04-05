@@ -9055,7 +9055,6 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
           satdCr = distParamSatd.distFunc(distParamSatd);
           sad += std::min(sadCr, satdCr);
 
-          m_CABACEstimator->resetBits();
           m_CABACEstimator->getCtx() = ctxStart;
           uint64_t estbits = xFracModeBitsIntra(pu, pu.intraDir[1], CHANNEL_TYPE_CHROMA);
           double curCost = (double) sad + sqrtLambdaForFirstPass * (double) estbits;
@@ -9105,6 +9104,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
         }
         pu.ccpMergeAdjustFlag = 0;
         pu.ccpMergeFusionFlag = 0;
+        pu.curCand = {};
 #endif
 
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
