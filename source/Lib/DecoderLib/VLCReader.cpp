@@ -2224,6 +2224,33 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
     pcSPS->derivedChromaQPMappingTables();
   }
 
+#if NN_COMMON_SPS
+  READ_FLAG(uiCode, "sps_nnlf_enabled_flag");                          pcSPS->setNnlfEnabledFlag ( uiCode ? true : false );
+  pcSPS->setNnlfId(NNLFUnifiedID::UNDEFINED);
+  pcSPS->setNnlfUnifiedEnabledFlag(false);
+  if (pcSPS->getNnlfEnabledFlag())
+  {
+    READ_UVLC(uiCode, "sps_nnlf_model_id");
+    assert(uiCode < (int)NNLFUnifiedID::UNDEFINED);
+    pcSPS->setNnlfId((NNLFUnifiedID)uiCode);
+    pcSPS->setNnlfUnifiedEnabledFlag(true);
+  }
+#endif
+
+#if NN_LF_UNIFIED
+#if !NN_COMMON_SPS
+  READ_FLAG( uiCode, "sps_nnlf_unified_enabled_flag" );                    pcSPS->setNnlfUnifiedEnabledFlag ( uiCode ? true : false );
+#endif
+  if (pcSPS->getNnlfUnifiedEnabledFlag())
+  {
+    READ_UVLC(uiCode, "sps_nnlf_unified_infer_size_base");
+    uint32_t nnlfInferSize[] = { uiCode >> 1, uiCode, uiCode << 1 };
+    pcSPS->setNnlfUnifiedInferSize(nnlfInferSize);
+    READ_UVLC( uiCode, "sps_nnlf_unified_inf_size_ext" );                  pcSPS->setNnlfUnifiedInfSizeExt ( uiCode );
+    READ_UVLC( uiCode, "sps_nnlf_unified_max_num_prms" );                  pcSPS->setNnlfUnifiedMaxNumPrms (uiCode );
+
+  }
+#endif
 
   READ_FLAG( uiCode, "sps_sao_enabled_flag" );                      pcSPS->setSAOEnabledFlag ( uiCode ? true : false );
 #if JVET_W0066_CCSAO
@@ -5919,6 +5946,114 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
     {
       pcSlice->setUseChromaQpAdj(false);
     }
+
+#if NN_LF_UNIFIED
+    if( sps->getNnlfUnifiedEnabledFlag() )
+    {
+      NNFilterUnified::SliceParameters prm;
+      READ_UVLC( uiCode, "slice_nnlf_unified_mode" );  prm.mode = uiCode - 1;
+      if( prm.mode != -1 )
+      {
+        READ_UVLC( uiCode, "slice_nnlf_unified_scale_flag" );  prm.scaleFlag = uiCode - 1;
+        if( prm.scaleFlag == 0 )
+        {
+          int numprms = sps->getNnlfUnifiedMaxNumPrms();
+          if( prm.mode < numprms )
+          {
+            READ_SCODE( NNFilterUnified::log2ResidueScale + 1, iCode, "y nnScale" ); prm.scale[COMPONENT_Y][prm.mode] = iCode + ( 1 << NNFilterUnified::log2ResidueScale );
+            READ_SCODE( NNFilterUnified::log2ResidueScale + 1, iCode, "cb nnScale" ); prm.scale[COMPONENT_Cb][prm.mode] = iCode + ( 1 << NNFilterUnified::log2ResidueScale );
+            READ_SCODE( NNFilterUnified::log2ResidueScale + 1, iCode, "cr nnScale" ); prm.scale[COMPONENT_Cr][prm.mode] = iCode + ( 1 << NNFilterUnified::log2ResidueScale );
+          }
+          else
+          {
+            for( int prmId = 0; prmId < numprms; prmId++ )
+            {
+              {
+                READ_SCODE( NNFilterUnified::log2ResidueScale + 1, iCode, "y nnScale" ); prm.scale[COMPONENT_Y][prmId] = iCode + ( 1 << NNFilterUnified::log2ResidueScale );
+                READ_SCODE( NNFilterUnified::log2ResidueScale + 1, iCode, "cb nnScale" ); prm.scale[COMPONENT_Cb][prmId] = iCode + ( 1 << NNFilterUnified::log2ResidueScale );
+                READ_SCODE( NNFilterUnified::log2ResidueScale + 1, iCode, "cr nnScale" ); prm.scale[COMPONENT_Cr][prmId] = iCode + ( 1 << NNFilterUnified::log2ResidueScale );
+              }
+            }
+          }
+        }
+
+#if JVET_AF0085_RESIDUAL_ADJ
+        int offset_i = ( prm.scaleFlag == -1 ) ? 3 : prm.scaleFlag;
+        if( prm.mode < sps->getNnlfUnifiedMaxNumPrms() )
+        {
+          READ_FLAG( uiCode, "y_roa_flag" );
+          if( uiCode == 0 )
+          {
+            prm.offset[COMPONENT_Y][prm.mode][offset_i] = 0;
+          }
+          else
+          { 
+            READ_FLAG( uiCode, "y_roa_offset" ); prm.offset[COMPONENT_Y][prm.mode][offset_i] = uiCode + 1;
+          }
+
+          READ_FLAG( uiCode, "u_roa_flag" );
+
+          if( uiCode == 0 )
+          {
+            prm.offset[COMPONENT_Cb][prm.mode][offset_i] = 0;
+          }
+          else
+          {
+            READ_FLAG( uiCode, "u_roa_offset" ); prm.offset[COMPONENT_Cb][prm.mode][offset_i] = uiCode + 1;
+          }
+
+          READ_FLAG( uiCode, "v_roa_flag" );
+          if( uiCode == 0 )
+          {
+            prm.offset[COMPONENT_Cr][prm.mode][offset_i] = 0;
+          }
+          else
+          {
+            READ_FLAG( uiCode, "v_roa_offset" ); prm.offset[COMPONENT_Cr][prm.mode][offset_i] = uiCode + 1;
+          }
+        }
+        else
+        {
+          for( int prmId = 0; prmId < sps->getNnlfUnifiedMaxNumPrms(); prmId++ )
+          {
+            READ_FLAG( uiCode, "y_roa_flag" );
+            if( uiCode == 0 )
+            {
+              prm.offset[COMPONENT_Y][prmId][offset_i] = 0;
+            }
+            else
+            {
+              READ_FLAG( uiCode, "y_roa_offset" ); prm.offset[COMPONENT_Y][prmId][offset_i] = uiCode + 1;
+            }
+
+            READ_FLAG( uiCode, "u_roa_flag" );
+            if( uiCode == 0 )
+            {
+              prm.offset[COMPONENT_Cb][prmId][offset_i] = 0;
+            }
+            else
+            {
+              READ_FLAG( uiCode, "u_roa_offset" ); prm.offset[COMPONENT_Cb][prmId][offset_i] = uiCode + 1;
+            }
+
+            READ_FLAG( uiCode, "v_roa_flag" );
+            if( uiCode == 0 )
+            {
+              prm.offset[COMPONENT_Cr][prmId][offset_i] = 0;
+            }
+            else
+            {
+              READ_FLAG( uiCode, "v_roa_offset" ); prm.offset[COMPONENT_Cr][prmId][offset_i] = uiCode + 1;
+            }
+          }
+        }
+#endif
+      }
+
+      pcSlice->setNnlfUnifiedParameters( prm );
+    }
+#endif
+
 
     if (sps->getSAOEnabledFlag() && !pps->getSaoInfoInPhFlag())
     {

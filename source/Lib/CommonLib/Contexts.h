@@ -848,6 +848,8 @@ public:
   static const CtxSet   CCPMergeFusionFlag;
   static const CtxSet   CCPMergeFusionType;
 #endif
+
+
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   static const CtxSet   InterCcpMergeZeroRootCbfIdc;
 #endif
@@ -860,6 +862,9 @@ public:
 #if JVET_AL0181_ASBT
   static const CtxSet   AsbtEnabledFlag;
   static const CtxSet   AsbtSecondDecim;
+#endif
+#if NN_LF_UNIFIED
+  static const CtxSet   nnlfUnifiedParams;
 #endif
   static const unsigned NumberOfContexts;
 

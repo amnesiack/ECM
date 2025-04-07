@@ -591,6 +591,45 @@
 #define JVET_AG0116                                       1 // JVET-AG0116: GOP-based RPR encoder control from VTM
 
 
+// NNLF interface
+#if JVET_AL0228_NNLF_INTERFACES
+#define NNLF_ALF_POS_INTERFACE                            0 // 0: NNVC interface (interface 1), 1: ALF interface (interface 2)
+
+#if NNLF_ALF_POS_INTERFACE
+#define NNLF_JVET_AK0183_RDO                              1
+#define NNLF_INPUT_Y_ONLY                                 1
+#endif
+
+#define NN_LF_FIX_DIR                                     1
+#define NN_LF_PRED_FIX                                    1
+#define NN_LF_CCCM_CCPMERGE_ALT_FIX                       1
+#define NN_LF_TRYMODE_FIX                                 1
+
+// legacy macro NNVC
+#define NN_LF_UNIFIED                                     1 // activate the NNLF
+#define NN_COMMON_SPS                                     1 // signalling only
+#define JVET_AJ0066                                       1 
+#define JVET_AJ0054_EARLY_CROPPING                        1
+
+#define NNVC_JVET_AG0196_CABAC_RETRAIN                    1 // fix to enable ag0196 use in NNVC
+#define JVET_AC0089_COMBINE_INTRA_INTER                   1 // use of IPB data
+#define JVET_AF0043_AF0205_PADDING                        1
+#define JVET_AJ0166_BlOCK_SIZE_INV                        1
+#define JVET_AJ0124_QP_BLOCK                              1
+#define JVET_AF0085_RESIDUAL_ADJ                          1 // JVET-AF0085: residual offset adjustment for LOP and HOP
+#define JVET_AH0080_TRANS_INPUT                           1 // JVET-AH0080: joint LOP model with inputs transformed
+#define JVET_AK0093_NON_NORMATIVE_TDO                     0 // JVET-AK0093: non-normative TDO
+
+#define NN_COMMON_API                                     1
+#define NNVC_USE_REC_BEFORE_DBF                           1 // reconstruction before DBF
+#define NNVC_USE_PRED                                     1 // prediction
+#define NNVC_USE_BS                                       1 // BS of DBF
+#define NNVC_USE_QP                                       1 // QP
+#define JVET_AC0089_NNVC_USE_BPM_INFO                     1 // JVET-AC0089: dump Block Prediction Mode
+
+using TypeSadlLFUnified = int16_t;
+#endif
+
 
 
 
@@ -1200,6 +1239,46 @@ enum ComponentID
   JOINT_CbCr          = MAX_NUM_COMPONENT,
   MAX_NUM_TBLOCKS     = MAX_NUM_COMPONENT
 };
+#if NN_COMMON_SPS
+enum NnlfUnifiedInferGranularity
+{
+  NNLF_UNIFIED_INFER_GRANULARITY_SMALL   = 0,   // half size
+  NNLF_UNIFIED_INFER_GRANULARITY_BASE    = 1,   // specified in SPS
+  NNLF_UNIFIED_INFER_GRANULARITY_LARGE   = 2,   // double size
+  MAX_NUM_NNLF_UNIFIED_INFER_GRANULARITY = 3
+};
+#endif
+
+#if NN_COMMON_API
+enum NNInputType
+{
+  NN_INPUT_REC = 0,
+  NN_INPUT_PRED = 1,
+  NN_INPUT_PARTITION = 2,
+  NN_INPUT_BS = 3,
+  NN_INPUT_GLOBAL_QP = 4,
+  NN_INPUT_LOCAL_QP = 5,
+  NN_INPUT_SLICE_TYPE = 6,
+  NN_INPUT_IPB = 7,
+  NN_INPUT_REF_LIST_0,
+  NN_INPUT_REF_LIST_1,
+#if JVET_AJ0124_QP_BLOCK
+  NN_INPUT_LOCAL_QP_BLOCK,
+#endif
+  MAX_NUM_NN_INPUT
+};
+
+enum class NNLFUnifiedID
+{
+  HOPLOP = 0,
+  HOP5 = 1,
+  HOP4 = 2,
+  LOP3 = 3,
+  LOP1 = 4,
+  EE248 = 5,
+  UNDEFINED = 6
+};
+#endif
 
 #define MAP_CHROMA(c) (ComponentID(c))
 

@@ -7,6 +7,10 @@ file( GLOB SRC_FILES "*.cpp" )
 # get include files
 file( GLOB INC_FILES "*.h" )
 
+if (EXTENSION_NNLF)
+  include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
+
 # add executable
 add_executable( ${EXE_NAME} ${SRC_FILES} ${INC_FILES} )
 

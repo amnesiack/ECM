@@ -204,6 +204,9 @@ void CodingStructure::destroy()
   parent    = nullptr;
 
   m_pred.destroy();
+#if NNVC_USE_PRED
+  m_predCustom.destroy();
+#endif
   m_resi.destroy();
 #if JVET_Z0118_GDR
   m_reco0.destroy();
@@ -2020,6 +2023,9 @@ void CodingStructure::create(const ChromaFormat &_chromaFormat, const Area& _are
 #endif
 
   m_pred.create( area );
+#if NNVC_USE_PRED
+  m_predCustom.create( area );
+#endif
   m_resi.create( area );
   m_orgr.create( area );
 }
@@ -2055,6 +2061,9 @@ void CodingStructure::create(const UnitArea& _unit, const bool isTopLayer, const
 #endif
 
   m_pred.create( area );
+#if NNVC_USE_PRED
+  m_predCustom.create( area );
+#endif
   m_resi.create( area );
   m_orgr.create( area );
 }
@@ -2397,6 +2406,16 @@ void CodingStructure::rebindPicBufs()
   {
     m_pred.destroy();
   }
+#if NNVC_USE_PRED
+  if( !picture->M_BUFS( 0, PIC_PREDICTION_CUSTOM ).bufs.empty() )
+  {
+    m_predCustom.createFromBuf( picture->M_BUFS( 0, PIC_PREDICTION_CUSTOM ) );
+  }
+  else
+  {
+    m_predCustom.destroy();
+  }
+#endif
   if (!picture->M_BUFS(0, PIC_RESIDUAL).bufs.empty())
   {
     m_resi.createFromBuf(picture->M_BUFS(0, PIC_RESIDUAL));
@@ -2650,6 +2669,10 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
   if( parent )
   {
     // copy data to picture
+#if NNVC_USE_PRED
+    getPredBufCustom              ( clippedArea ).copyFrom( subStruct.getPredBuf( clippedArea ) );
+    getPredBuf                    ( clippedArea ).copyFrom( subStruct.getPredBuf( clippedArea ) );
+#endif	
     if( cpyPred )
     {
       getPredBuf( clippedArea ).copyFrom( subPredBuf );
@@ -2676,6 +2699,10 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
       getOrgResiBuf( clippedArea ).copyFrom( subStruct.getOrgResiBuf( clippedArea ) );
     }
   }
+#if NNVC_USE_PRED
+  getPredBufCustom                 ( clippedArea ).copyFrom( subStruct.getPredBuf( clippedArea ) );
+  getPredBuf                       ( clippedArea ).copyFrom( subStruct.getPredBuf( clippedArea ) );
+#endif
 
   if( cpyPred )
   {
@@ -3672,6 +3699,13 @@ const CPelBuf     CodingStructure::getPredBuf(const CompArea &blk)     const { r
        PelUnitBuf CodingStructure::getPredBuf(const UnitArea &unit)          { return getBuf(unit, PIC_PREDICTION); }
 const CPelUnitBuf CodingStructure::getPredBuf(const UnitArea &unit)    const { return getBuf(unit, PIC_PREDICTION); }
 
+#if NNVC_USE_PRED
+       PelBuf     CodingStructure::getPredBufCustom(const CompArea &blk)           { return getBuf(blk,  PIC_PREDICTION_CUSTOM); }
+const CPelBuf     CodingStructure::getPredBufCustom(const CompArea &blk)     const { return getBuf(blk,  PIC_PREDICTION_CUSTOM); }
+       PelUnitBuf CodingStructure::getPredBufCustom(const UnitArea &unit)          { return getBuf(unit, PIC_PREDICTION_CUSTOM); }
+const CPelUnitBuf CodingStructure::getPredBufCustom(const UnitArea &unit)    const { return getBuf(unit, PIC_PREDICTION_CUSTOM); }
+#endif
+
        PelBuf     CodingStructure::getResiBuf(const CompArea &blk)           { return getBuf(blk,  PIC_RESIDUAL); }
 const CPelBuf     CodingStructure::getResiBuf(const CompArea &blk)     const { return getBuf(blk,  PIC_RESIDUAL); }
        PelUnitBuf CodingStructure::getResiBuf(const UnitArea &unit)          { return getBuf(unit, PIC_RESIDUAL); }
@@ -3726,6 +3760,12 @@ PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
 #else
   PelStorage* buf = type == PIC_PREDICTION ? &m_pred : ( type == PIC_RESIDUAL ? &m_resi : ( type == PIC_RECONSTRUCTION ? &m_reco : ( type == PIC_ORG_RESI ? &m_orgr : nullptr ) ) );
 #endif  
+#if NNVC_USE_PRED
+  if (type == PIC_PREDICTION_CUSTOM)
+  {
+    buf = &m_predCustom;
+  }
+#endif
 
   CHECK( !buf, "Unknown buffer requested" );
 
@@ -3766,6 +3806,12 @@ const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &t
   const PelStorage* buf = type == PIC_PREDICTION ? &m_pred : ( type == PIC_RESIDUAL ? &m_resi : (type == PIC_RECONSTRUCTION_0 ? &m_reco0 : (type == PIC_RECONSTRUCTION_1 ? &m_reco1 : (type == PIC_ORG_RESI ? &m_orgr : nullptr ))));
 #else
   const PelStorage* buf = type == PIC_PREDICTION ? &m_pred : ( type == PIC_RESIDUAL ? &m_resi : ( type == PIC_RECONSTRUCTION ? &m_reco : ( type == PIC_ORG_RESI ? &m_orgr : nullptr ) ) );
+#endif
+#if NNVC_USE_PRED
+  if (type == PIC_PREDICTION_CUSTOM)
+  {
+    buf = &m_predCustom;
+  }
 #endif
 
   CHECK( !buf, "Unknown buffer requested" );

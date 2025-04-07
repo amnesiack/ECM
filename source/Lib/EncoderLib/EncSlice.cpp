@@ -2537,6 +2537,12 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   pcPic->setResiBufPLT();
 #endif
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+  pcPic->dumpPicBpmInfo();
+#if JVET_AJ0124_QP_BLOCK
+  pcPic->dumpQpBlock();
+#endif
+#endif
 
   // this is wpp exclusive section
 

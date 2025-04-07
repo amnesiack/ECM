@@ -12,6 +12,11 @@ if( MSVC )
   file( GLOB NATVIS_FILES "../../VisualStudio/*.natvis" )
 endif()
 
+if (EXTENSION_NNLF)
+  include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
+
+
 # library
 add_library( ${LIB_NAME} STATIC ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} )
 target_compile_definitions( ${LIB_NAME} PUBLIC )

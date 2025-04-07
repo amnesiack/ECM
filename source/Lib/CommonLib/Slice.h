@@ -57,6 +57,10 @@
 //! \ingroup CommonLib
 //! \{
 #include "CommonLib/MotionInfo.h"
+#if NN_LF_UNIFIED
+#include "CommonLib/NNFilterUnified.h"
+#endif
+
 struct MotionInfo;
 
 
@@ -1805,6 +1809,16 @@ private:
   static const int  m_winUnitY[NUM_CHROMA_FORMAT];
   ProfileTierLevel  m_profileTierLevel;
 
+#if NN_COMMON_SPS
+  bool              m_nnlfEnabledFlag;
+  NNLFUnifiedID     m_nnlfid;
+  bool              m_nnlfUnifiedEnabledFlag;
+  uint32_t          m_nnlfUnifiedInferSize[MAX_NUM_NNLF_UNIFIED_INFER_GRANULARITY];
+  uint32_t          m_nnlfUnifiedInfSizeExt;
+  uint32_t          m_nnlfUnifiedMaxNumPrms;
+#endif
+  
+
   bool              m_alfEnabledFlag;
   bool              m_ccalfEnabledFlag;
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
@@ -2317,6 +2331,22 @@ public:
 
   void                    setSAOEnabledFlag(bool bVal)                                                    { m_saoEnabledFlag = bVal;                                                    }
   bool                    getSAOEnabledFlag() const                                                       { return m_saoEnabledFlag;                                                    }
+#if NN_COMMON_SPS
+  bool                    getNnlfEnabledFlag() const                                                      { return m_nnlfEnabledFlag; }
+  void                    setNnlfEnabledFlag(bool b)                                                      { m_nnlfEnabledFlag = b; }
+  NNLFUnifiedID           getNnlfId() const                                                               { return m_nnlfid; }
+  void                    setNnlfId(NNLFUnifiedID ui)                                                     { m_nnlfid = ui; }
+  bool                    getNnlfUnifiedEnabledFlag() const { return m_nnlfUnifiedEnabledFlag; }
+  void                    setNnlfUnifiedEnabledFlag(bool b) { m_nnlfUnifiedEnabledFlag = b; }
+  void                    setNnlfUnifiedInferSize(uint32_t* nnlfUnifiedInferSize) { m_nnlfUnifiedInferSize[0] = nnlfUnifiedInferSize[0]; m_nnlfUnifiedInferSize[1] = nnlfUnifiedInferSize[1]; m_nnlfUnifiedInferSize[2] = nnlfUnifiedInferSize[2]; }
+  uint32_t                getNnlfUnifiedInferSize(NnlfUnifiedInferGranularity nnlfUnifiedInferGranularity) const { return m_nnlfUnifiedInferSize[nnlfUnifiedInferGranularity]; }
+  uint32_t                getNnlfUnifiedInfSizeExt() const { return  m_nnlfUnifiedInfSizeExt; }
+  void                    setNnlfUnifiedInfSizeExt(uint32_t i) { m_nnlfUnifiedInfSizeExt = i; }
+  uint32_t                getNnlfUnifiedMaxNumPrms() const { return  m_nnlfUnifiedMaxNumPrms; }
+  void                    setNnlfUnifiedMaxNumPrms(uint32_t i) { m_nnlfUnifiedMaxNumPrms = i; }
+#endif
+
+
 #if JVET_W0066_CCSAO
   bool                    getCCSAOEnabledFlag() const                                                     { return m_ccSaoEnabledFlag; }
   void                    setCCSAOEnabledFlag( bool b )                                                   { m_ccSaoEnabledFlag = b;    }
@@ -3865,6 +3895,10 @@ class Slice
 private:
   //  Bitstream writing
   bool                       m_saoEnabledFlag[MAX_NUM_CHANNEL_TYPE];
+#if NN_LF_UNIFIED
+  NNFilterUnified::SliceParameters m_nnlfUnifiedParam;
+  NnlfUnifiedInferGranularity      m_nnlfUnifiedInferGranularity;
+#endif
 #if JVET_W0066_CCSAO
   bool                       m_ccSaoEnabledFlag[MAX_NUM_COMPONENT];
 #endif
@@ -4188,6 +4222,13 @@ public:
 
   void                        setSaoEnabledFlag(ChannelType chType, bool s)          {m_saoEnabledFlag[chType] =s;                                   }
   bool                        getSaoEnabledFlag(ChannelType chType) const            { return m_saoEnabledFlag[chType];                              }
+#if NN_LF_UNIFIED
+  void                        setNnlfUnifiedParameters(const NNFilterUnified::SliceParameters &prm) { m_nnlfUnifiedParam = prm; }
+  const NNFilterUnified::SliceParameters getNnlfUnifiedParameters() const                           { return m_nnlfUnifiedParam; }
+  void                        setNnlfUnifiedInferGranularity(NnlfUnifiedInferGranularity nnlfUnifiedInferGranularity){ m_nnlfUnifiedInferGranularity = nnlfUnifiedInferGranularity; }
+  NnlfUnifiedInferGranularity getNnlfUnifiedInferGranularity() const                                { return m_nnlfUnifiedInferGranularity; }
+#endif
+
 #if JVET_W0066_CCSAO
   void                        resetCcSaoEnabledFlag()                                { memset(m_ccSaoEnabledFlag, 0, sizeof(m_ccSaoEnabledFlag));    }
   void                        setCcSaoEnabledFlag(ComponentID compID, bool b)        { m_ccSaoEnabledFlag[compID] = b;                               }
@@ -4827,6 +4868,11 @@ public:
     , widthInCtus         ( (pps.getPicWidthInLumaSamples () + sps.getMaxCUWidth () - 1) / sps.getMaxCUWidth () )
     , heightInCtus        ( (pps.getPicHeightInLumaSamples() + sps.getMaxCUHeight() - 1) / sps.getMaxCUHeight() )
     , sizeInCtus          ( widthInCtus * heightInCtus )
+#if NN_LF_UNIFIED
+    , widthInNnlfunifiedInferSize {(pps.getPicWidthInLumaSamples () + sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_SMALL) - 1) / sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_SMALL), (pps.getPicWidthInLumaSamples () + sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_BASE) - 1) / sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_BASE), (pps.getPicWidthInLumaSamples () + sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_LARGE) - 1) / sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_LARGE)}
+    , heightInNnlfUnifiedInferSize {(pps.getPicHeightInLumaSamples () + sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_SMALL) - 1) / sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_SMALL), (pps.getPicHeightInLumaSamples () + sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_BASE) - 1) / sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_BASE), (pps.getPicHeightInLumaSamples () + sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_LARGE) - 1) / sps.getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_LARGE)}
+    , sizeInNnlfUnifiedInferSize {widthInNnlfunifiedInferSize[NNLF_UNIFIED_INFER_GRANULARITY_SMALL] * heightInNnlfUnifiedInferSize[NNLF_UNIFIED_INFER_GRANULARITY_SMALL], widthInNnlfunifiedInferSize[NNLF_UNIFIED_INFER_GRANULARITY_BASE] * heightInNnlfUnifiedInferSize[NNLF_UNIFIED_INFER_GRANULARITY_BASE], widthInNnlfunifiedInferSize[NNLF_UNIFIED_INFER_GRANULARITY_LARGE] * heightInNnlfUnifiedInferSize[NNLF_UNIFIED_INFER_GRANULARITY_LARGE]}
+#endif
     , lumaWidth           ( pps.getPicWidthInLumaSamples() )
     , lumaHeight          ( pps.getPicHeightInLumaSamples() )
     , fastDeltaQPCuMaxSize( Clip3(1u << sps.getLog2MinCodingBlockSize(), sps.getMaxCUHeight(), 32u) )
@@ -4860,6 +4906,11 @@ public:
   const unsigned     widthInCtus;
   const unsigned     heightInCtus;
   const unsigned     sizeInCtus;
+#if NN_LF_UNIFIED
+  const uint32_t     widthInNnlfunifiedInferSize[MAX_NUM_NNLF_UNIFIED_INFER_GRANULARITY];
+  const uint32_t     heightInNnlfUnifiedInferSize[MAX_NUM_NNLF_UNIFIED_INFER_GRANULARITY];
+  const uint32_t     sizeInNnlfUnifiedInferSize[MAX_NUM_NNLF_UNIFIED_INFER_GRANULARITY];
+#endif
   const unsigned     lumaWidth;
   const unsigned     lumaHeight;
   const unsigned     fastDeltaQPCuMaxSize;

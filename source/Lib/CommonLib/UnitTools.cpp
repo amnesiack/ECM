@@ -1200,8 +1200,7 @@ bool CU::interCcpMergeSearchAllowed(const CodingUnit& cu)
   if (!cu.cs->slice->getSPS()->getUseInterCcpMerge())
   {
     return false;
-  }
-
+  }  
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0
   if (!cu.cs->slice->getSPS()->getUseInterCcpMergeZeroLumaCbf())
   {

@@ -61,6 +61,10 @@
 
 #define ENCODE_SUB_SET 0
 
+#if NN_LF_UNIFIED
+#include <sadl/model.h>
+#endif
+
 using namespace std;
 
 //! \ingroup EncoderLib
@@ -205,6 +209,10 @@ void  EncGOP::destroy()
     delete m_picOrig;
     m_picOrig = NULL;
   }
+#if NN_LF_UNIFIED
+  m_nnfilterUnified.destroy();
+#endif
+ 
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
   m_cBilateralFilter.destroy();
 #endif
@@ -233,6 +241,14 @@ void EncGOP::init ( EncLib* pcEncLib )
   m_HRD                = pcEncLib->getHRD();
 
   m_AUWriterIf = pcEncLib->getAUWriterIf();
+#if NN_LF_UNIFIED
+  if (m_pcCfg->getUseNnlfUnified())
+  {
+    m_nnfilterUnified.nnlfTransInput(m_pcCfg->getUseNnlfId() == NNLFUnifiedID::LOP3);
+    m_nnfilterUnified.init(m_pcCfg->getNnlfUnifiedModelName(), m_pcCfg->getSourceWidth(), m_pcCfg->getSourceHeight(), m_pcCfg->getChromaFormatIdc(), m_pcCfg->getNnlfUnifiedMaxNumPrms());
+  }
+#endif
+
 
 #if WCG_EXT
   if (m_pcCfg->getLmcs())
@@ -3568,6 +3584,25 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       pcPic->resizeAlfCtuAlternative( numberOfCtusInFrame );
       pcPic->resizeAlfCtbFilterIndex(numberOfCtusInFrame);
     }
+    
+#if NN_LF_UNIFIED
+    if (pcSlice->getSPS()->getNnlfUnifiedEnabledFlag())
+    {
+#if JVET_AK0093_NON_NORMATIVE_TDO
+      m_nnfilterUnified.setNnlfTDO(m_pcEncLib->getUseNnlfTDO());
+      if (m_nnfilterUnified.getNnlfTDO())
+      {
+        m_nnfilterUnified.setNnlfTDOParam(m_pcEncLib->getTDOParam());
+      }
+#endif
+      m_nnfilterUnified.setNnlfInferGranularity(*pcPic, *pcSlice);
+#if JVET_AH0080_TRANS_INPUT
+      m_nnfilterUnified.nnlfTransInput(m_pcCfg->getUseNnlfTransInput() == 1 ? true : false);
+#endif
+      pcPic->initPicprms(*pcSlice);
+    }
+#endif
+
 
     bool decPic = false;
     bool encPic = false;
@@ -3854,6 +3889,29 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
             }
           }
         }
+        
+#if NNVC_USE_PRED
+        uint64_t culength = cs.cus.size();
+        if( cs.sps->getNnlfEnabledFlag() )
+        {
+          for( uint64_t n = 0; n < culength; n++ )
+          {
+            CodingUnit* cu = cs.cus.at( n );
+            if( cu->slice->getLmcsEnabledFlag() )
+            {
+#if JVET_Y0065_GPM_INTRA
+              if( ( ( cu->predMode == MODE_INTRA || cu->predMode == MODE_IBC || cu->predMode == MODE_PLT ) && cu->chType != CHANNEL_TYPE_CHROMA ) || ( cu->predMode == MODE_INTER && m_pcReshaper->getCTUFlag() && ( cu->firstPU->ciipFlag || cu->firstPU->gpmIntraFlag ) ) )
+#else
+              if( ( ( cu->predMode == MODE_INTRA || cu->predMode == MODE_IBC ) && cu->chType != CHANNEL_TYPE_CHROMA ) || ( cu->predMode == MODE_INTER && m_pcReshaper->getCTUFlag() && cu->firstPU->ciipFlag ) )
+#endif
+              {
+                pcPic->getPredBufCustom( cu->block( COMPONENT_Y ) ).rspSignal( m_pcReshaper->getInvLUT() );
+              }
+            }
+          }
+        }
+#endif
+        
         m_pcReshaper->setRecReshaped(false);
 
         if( m_pcCfg->getGopBasedTemporalFilterEnabled() )
@@ -3980,6 +4038,15 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
           }
         }
       }
+
+#if NNVC_USE_BS
+      pcPic->getBsMapBuf().fill(0);
+#endif
+
+#if NNVC_USE_REC_BEFORE_DBF
+      pcPic->getRecBeforeDbfBuf().copyFrom(pcPic->getRecoBuf());
+#endif
+
 #if JVET_AB0171_ASYMMETRIC_DB_FOR_GDR
       if (m_pcCfg->getAsymmetricILF() && (pcPic->cs->picHeader->getInGdrInterval() || pcPic->cs->picHeader->getIsGdrRecoveryPocPic()))
       {
@@ -3992,7 +4059,11 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #endif
 
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+#if NNVC_USE_BS
+      const bool storeCodingInfo = cs.sps->getALFEnabledFlag() || cs.sps->getNnlfEnabledFlag();
+#else
       const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
+#endif
       PelUnitBuf codingInfoBuf = storeCodingInfo ? m_pcALF->callCodingInfoBuf( cs ) : PelUnitBuf();
       m_pcLoopFilter->loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
 #else
@@ -4038,6 +4109,47 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 #if !MULTI_PASS_DMVR
       CS::setRefinedMotionField(cs);
 #endif
+
+#if NN_LF_UNIFIED
+      if (pcSlice->getSPS()->getNnlfUnifiedEnabledFlag())
+      {
+        m_nnfilterUnified.init(m_pcCfg->getNnlfUnifiedModelName(), m_pcCfg->getSourceWidth(), m_pcCfg->getSourceHeight(), m_pcCfg->getChromaFormatIdc(), m_pcCfg->getNnlfUnifiedMaxNumPrms());
+#if JVET_AF0043_AF0205_PADDING
+        pcPic->paddingBsMapBufBorder(8);
+        pcPic->paddingRecBeforeDbfBufBorder(8);
+        pcPic->paddingPredBufBorder(8);
+        pcPic->paddingBPMBufBorder(8);
+#if JVET_AJ0124_QP_BLOCK
+        int qp = cs.slice->getSliceQp();
+        pcPic->paddingBlockQPBufBorder(8, qp);
+#endif
+#endif  
+#if NNLF_ALF_POS_INTERFACE
+        if (cs.sps->getALFEnabledFlag())
+        {
+          m_pcALF->copyPreNNVCDataToTemp(cs);
+        }
+#endif
+        m_nnfilterUnified.initCabac( m_pcEncLib->getCABACEncoder(), m_pcEncLib->getCtxCache(), *pcSlice);
+        m_nnfilterUnified.setPicprms(&pcPic->m_picprm);
+        {
+          m_nnfilterUnified.chooseParameters(*pcPic);
+        }
+        pcSlice->setNnlfUnifiedParameters(m_nnfilterUnified.getSliceprms());
+#if NNLF_ALF_POS_INTERFACE
+        if ((cs.sps->getALFEnabledFlag()) && (cs.slice[0].getNnlfUnifiedParameters().mode != -1))
+        {
+          m_pcALF->copyAfterNNVCDataToTemp(cs);
+          m_pcALF->copyPreNNVCDataFromTemp(cs);
+        }
+        if (cs.slice[0].getNnlfUnifiedParameters().mode != -1)
+        {
+          cs.getRecoBuf().copyFrom(pcPic->getRecoBuf());
+        }
+#endif
+      }
+#endif
+
 
 #if JVET_AE0043_CCP_MERGE_TEMPORAL
       if ((pcPic->temporalId == 0) || (pcPic->temporalId < pcSlice->getSPS()->getMaxTLayers() - 1))

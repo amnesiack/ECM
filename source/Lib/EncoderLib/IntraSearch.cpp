@@ -12823,7 +12823,9 @@ void IntraSearch::PLTSearch(CodingStructure &cs, Partitioner& partitioner, Compo
     }
   }
 
+#if !NN_LF_UNIFIED
   cs.getPredBuf().fill(0);
+#endif
   cs.getResiBuf().fill(0);
   cs.getOrgResiBuf().fill(0);
 
@@ -12868,6 +12870,9 @@ void IntraSearch::PLTSearch(CodingStructure &cs, Partitioner& partitioner, Compo
   cs.updateReconMotIPM(area);
 #else
   cs.picture->getRecoBuf(area).copyFrom(cs.getRecoBuf(area));
+#endif
+#if NN_LF_UNIFIED
+  cs.getPredBuf().copyFrom(cs.getRecoBuf());
 #endif
 }
 void IntraSearch::calcPixelPredRD(CodingStructure& cs, Partitioner& partitioner, Pel* orgBuf, Pel* paPixelValue, Pel* paRecoValue, ComponentID compBegin, uint32_t numComp)
@@ -14571,10 +14576,10 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
 #if JVET_AJ0146_TIMDSAD 
     if ( pu.cu->timdSad && pu.cu->timd && chType == CHANNEL_TYPE_LUMA )
     {
-      CHECK(pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS || pu.multiRefIdx, "timd SAD and mrl, isp not allowed");
-      CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
-      PelBuf   predBuf(m_timdSadPredBuf, tmpArea);
-      piPred.copyFrom(predBuf);
+        CHECK(pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS || pu.multiRefIdx, "timd SAD and mrl, isp not allowed");
+        CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
+        PelBuf   predBuf(m_timdSadPredBuf, tmpArea);
+        piPred.copyFrom(predBuf);
     }
 #if !JVET_AJ0061_TIMD_MERGE
     else if ( !pu.cu->timdSad && pu.cu->timd && (pu.cu->ispMode == NOT_INTRA_SUBPARTITIONS ) && ( pu.multiRefIdx==0) && (chType == CHANNEL_TYPE_LUMA ))
@@ -15139,10 +15144,10 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
 #if JVET_AJ0146_TIMDSAD 
             if ( pu.cu->timdSad && pu.cu->timd && chType == CHANNEL_TYPE_LUMA )
             {
-              CHECK(pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS || pu.multiRefIdx, "timd SAD and mrl, isp not allowed");
-              CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
-              PelBuf   predBuf(m_timdSadPredBuf, tmpArea);
-              piPred.copyFrom(predBuf);
+                CHECK(pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS || pu.multiRefIdx, "timd SAD and mrl, isp not allowed");
+                CompArea tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
+                PelBuf   predBuf(m_timdSadPredBuf, tmpArea);
+                piPred.copyFrom(predBuf);
             }
 #if !JVET_AJ0061_TIMD_MERGE
             else if ( !pu.cu->timdSad && pu.cu->timd && (pu.cu->ispMode == NOT_INTRA_SUBPARTITIONS ) && ( pu.multiRefIdx==0) && (chType == CHANNEL_TYPE_LUMA ))

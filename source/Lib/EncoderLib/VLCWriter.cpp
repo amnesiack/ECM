@@ -1387,6 +1387,26 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
     }
   }
 
+#if NN_COMMON_SPS
+  WRITE_FLAG(pcSPS->getNnlfEnabledFlag(), "sps_nnlf_enabled_flag");
+  if (pcSPS->getNnlfEnabledFlag())
+  {
+    WRITE_UVLC((uint32_t)pcSPS->getNnlfId(), "sps_nnlf_model_id");
+  }
+#endif
+
+#if NN_LF_UNIFIED
+#if !NN_COMMON_SPS
+  WRITE_FLAG( pcSPS->getNnlfUnifiedEnabledFlag(),                                           "sps_nnlf_unified_enabled_flag" );
+#endif
+  if (pcSPS->getNnlfUnifiedEnabledFlag())
+  {
+    WRITE_UVLC( pcSPS->getNnlfUnifiedInferSize(NNLF_UNIFIED_INFER_GRANULARITY_BASE),            "sps_nnlf_unified_infer_size_base");
+    WRITE_UVLC( pcSPS->getNnlfUnifiedInfSizeExt(),                                          "sps_nnlf_unified_inf_size_ext" );
+    WRITE_UVLC( pcSPS->getNnlfUnifiedMaxNumPrms(),                                          "sps_nnlf_unified_max_num_prms" );
+  }
+#endif
+
   WRITE_FLAG( pcSPS->getSAOEnabledFlag(),                                            "sps_sao_enabled_flag");
 #if JVET_W0066_CCSAO
   WRITE_FLAG( pcSPS->getCCSAOEnabledFlag(),                                          "sps_ccsao_enabled_flag" );
@@ -3699,6 +3719,116 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
       WRITE_FLAG(pcSlice->getUseChromaQpAdj(), "cu_chroma_qp_offset_enabled_flag");
     }
 
+#if NN_LF_UNIFIED
+    if( pcSlice->getSPS()->getNnlfUnifiedEnabledFlag() )
+    {
+      const NNFilterUnified::SliceParameters prm = pcSlice->getNnlfUnifiedParameters();
+      WRITE_UVLC( prm.mode + 1, "slice_nnlf_unified_mode" );
+      if( prm.mode != -1 )
+      {
+        WRITE_UVLC( prm.scaleFlag + 1, "slice_nnlf_unified_scale_flag" );
+        if( prm.scaleFlag == 0 )
+        {
+          int numprms = pcSlice->getSPS()->getNnlfUnifiedMaxNumPrms();
+
+          if( prm.mode < numprms )
+          {
+            WRITE_SCODE( prm.scale[COMPONENT_Y][prm.mode] - ( 1 << NNFilterUnified::log2ResidueScale ),
+              NNFilterUnified::log2ResidueScale + 1, "y nnScale" );
+            WRITE_SCODE( prm.scale[COMPONENT_Cb][prm.mode] - ( 1 << NNFilterUnified::log2ResidueScale ),
+              NNFilterUnified::log2ResidueScale + 1, "cb nnScale" );
+            WRITE_SCODE( prm.scale[COMPONENT_Cr][prm.mode] - ( 1 << NNFilterUnified::log2ResidueScale ),
+              NNFilterUnified::log2ResidueScale + 1, "cr nnScale" );
+          }
+          else
+          {
+            for( int prmId = 0; prmId < numprms; prmId++ )
+            {
+              WRITE_SCODE( prm.scale[COMPONENT_Y][prmId] - ( 1 << NNFilterUnified::log2ResidueScale ),
+                NNFilterUnified::log2ResidueScale + 1, "y nnScale" );
+              WRITE_SCODE( prm.scale[COMPONENT_Cb][prmId] - ( 1 << NNFilterUnified::log2ResidueScale ),
+                NNFilterUnified::log2ResidueScale + 1, "cb nnScale" );
+              WRITE_SCODE( prm.scale[COMPONENT_Cr][prmId] - ( 1 << NNFilterUnified::log2ResidueScale ),
+                NNFilterUnified::log2ResidueScale + 1, "cr nnScale" );
+            }
+          }
+        }
+
+#if JVET_AF0085_RESIDUAL_ADJ
+        int offset = ( prm.scaleFlag == -1 ) ? 3 : prm.scaleFlag;
+
+        if( prm.mode < pcSlice->getSPS()->getNnlfUnifiedMaxNumPrms() )
+        {
+          if( prm.offset[COMPONENT_Y][prm.mode][offset] == 0 )
+          {
+            WRITE_FLAG( 0, "y_roa_flag" );
+          }
+          else
+          {
+            WRITE_FLAG( 1, "y_roa_flag" );
+            WRITE_FLAG( prm.offset[COMPONENT_Y][prm.mode][offset] - 1, "y_roa_offset" );
+          }
+
+          if( prm.offset[COMPONENT_Cb][prm.mode][offset] == 0 )
+          {
+            WRITE_FLAG( 0, "u_roa_flag" );
+          }
+          else
+          {
+            WRITE_FLAG( 1, "u_roa_flag" );
+            WRITE_FLAG( prm.offset[COMPONENT_Cb][prm.mode][offset] - 1, "u_roa_offset" );
+          }
+
+          if( prm.offset[COMPONENT_Cr][prm.mode][offset] == 0 )
+          {
+            WRITE_FLAG( 0, "v_roa_flag" );
+          }
+          else
+          {
+            WRITE_FLAG( 1, "v_roa_flag" );
+            WRITE_FLAG( prm.offset[COMPONENT_Cr][prm.mode][offset] - 1, "v_roa_offset" );
+          }
+        }
+        else
+        {
+          for( int prmId = 0; prmId < pcSlice->getSPS()->getNnlfUnifiedMaxNumPrms(); prmId++ )
+          {
+            if( prm.offset[COMPONENT_Y][prmId][offset] == 0 )
+            {
+              WRITE_FLAG( 0, "y_roa_flag" );
+            }
+            else
+            {
+              WRITE_FLAG( 1, "y_roa_flag" );
+              WRITE_FLAG( prm.offset[COMPONENT_Y][prmId][offset] - 1, "y_roa_offset" );
+            }
+
+            if( prm.offset[COMPONENT_Cb][prmId][offset] == 0 )
+            {
+              WRITE_FLAG( 0, "u_roa_flag" );
+            }
+            else
+            {
+              WRITE_FLAG( 1, "u_roa_flag" );
+              WRITE_FLAG( prm.offset[COMPONENT_Cb][prmId][offset] - 1, "u_roa_offset" );
+            }
+
+            if( prm.offset[COMPONENT_Cr][prmId][offset] == 0 )
+            {
+              WRITE_FLAG( 0, "v_roa_flag" );
+            }
+            else
+            {
+              WRITE_FLAG( 1, "v_roa_flag" );
+              WRITE_FLAG( prm.offset[COMPONENT_Cr][prmId][offset] - 1, "v_roa_offset" );
+            }
+          }
+        }
+#endif
+      }
+    }
+#endif
+
     if (pcSlice->getSPS()->getSAOEnabledFlag() && !pcSlice->getPPS()->getSaoInfoInPhFlag())
     {
       WRITE_FLAG( pcSlice->getSaoEnabledFlag( CHANNEL_TYPE_LUMA ), "slice_sao_luma_flag" );
@@ -3712,44 +3842,44 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
     codeCcSao(pcSlice, picHeader, pcSlice->getSPS(), pcSlice->m_ccSaoComParam);
 #endif
 
-    if (pcSlice->getPPS()->getDeblockingFilterControlPresentFlag())
+    if( pcSlice->getPPS()->getDeblockingFilterControlPresentFlag() )
     {
-    if( pcSlice->getPPS()->getDeblockingFilterOverrideEnabledFlag() && !pcSlice->getPPS()->getDbfInfoInPhFlag() )
-    {
-      WRITE_FLAG(pcSlice->getDeblockingFilterOverrideFlag(), "slice_deblocking_filter_override_flag");
+      if( pcSlice->getPPS()->getDeblockingFilterOverrideEnabledFlag() && !pcSlice->getPPS()->getDbfInfoInPhFlag() )
+      {
+        WRITE_FLAG( pcSlice->getDeblockingFilterOverrideFlag(), "slice_deblocking_filter_override_flag" );
       }
       else
       {
-        pcSlice->setDeblockingFilterOverrideFlag(0);
+        pcSlice->setDeblockingFilterOverrideFlag( 0 );
       }
-      if (pcSlice->getDeblockingFilterOverrideFlag())
+      if( pcSlice->getDeblockingFilterOverrideFlag() )
       {
-        if (!pcSlice->getPPS()->getPPSDeblockingFilterDisabledFlag())
+        if( !pcSlice->getPPS()->getPPSDeblockingFilterDisabledFlag() )
         {
-          WRITE_FLAG(pcSlice->getDeblockingFilterDisable(), "slice_deblocking_filter_disabled_flag");
+          WRITE_FLAG( pcSlice->getDeblockingFilterDisable(), "slice_deblocking_filter_disabled_flag" );
         }
-        if(!pcSlice->getDeblockingFilterDisable())
+        if( !pcSlice->getDeblockingFilterDisable() )
         {
-          WRITE_SVLC (pcSlice->getDeblockingFilterBetaOffsetDiv2(), "slice_beta_offset_div2");
-          WRITE_SVLC (pcSlice->getDeblockingFilterTcOffsetDiv2(),   "slice_tc_offset_div2");
+          WRITE_SVLC( pcSlice->getDeblockingFilterBetaOffsetDiv2(), "slice_beta_offset_div2" );
+          WRITE_SVLC( pcSlice->getDeblockingFilterTcOffsetDiv2(), "slice_tc_offset_div2" );
           if( pcSlice->getPPS()->getPPSChromaToolFlag() )
           {
-            WRITE_SVLC (pcSlice->getDeblockingFilterCbBetaOffsetDiv2(), "slice_cb_beta_offset_div2");
-            WRITE_SVLC (pcSlice->getDeblockingFilterCbTcOffsetDiv2(),   "slice_cb_tc_offset_div2");
-            WRITE_SVLC (pcSlice->getDeblockingFilterCrBetaOffsetDiv2(), "slice_cr_beta_offset_div2");
-            WRITE_SVLC (pcSlice->getDeblockingFilterCrTcOffsetDiv2(),   "slice_cr_tc_offset_div2");
+            WRITE_SVLC( pcSlice->getDeblockingFilterCbBetaOffsetDiv2(), "slice_cb_beta_offset_div2" );
+            WRITE_SVLC( pcSlice->getDeblockingFilterCbTcOffsetDiv2(), "slice_cb_tc_offset_div2" );
+            WRITE_SVLC( pcSlice->getDeblockingFilterCrBetaOffsetDiv2(), "slice_cr_beta_offset_div2" );
+            WRITE_SVLC( pcSlice->getDeblockingFilterCrTcOffsetDiv2(), "slice_cr_tc_offset_div2" );
           }
         }
       }
       else
       {
-        pcSlice->setDeblockingFilterDisable       ( picHeader->getDeblockingFilterDisable() );
+        pcSlice->setDeblockingFilterDisable( picHeader->getDeblockingFilterDisable() );
         pcSlice->setDeblockingFilterBetaOffsetDiv2( picHeader->getDeblockingFilterBetaOffsetDiv2() );
-        pcSlice->setDeblockingFilterTcOffsetDiv2  ( picHeader->getDeblockingFilterTcOffsetDiv2() );
+        pcSlice->setDeblockingFilterTcOffsetDiv2( picHeader->getDeblockingFilterTcOffsetDiv2() );
         pcSlice->setDeblockingFilterCbBetaOffsetDiv2( picHeader->getDeblockingFilterCbBetaOffsetDiv2() );
-        pcSlice->setDeblockingFilterCbTcOffsetDiv2  ( picHeader->getDeblockingFilterCbTcOffsetDiv2() );
+        pcSlice->setDeblockingFilterCbTcOffsetDiv2( picHeader->getDeblockingFilterCbTcOffsetDiv2() );
         pcSlice->setDeblockingFilterCrBetaOffsetDiv2( picHeader->getDeblockingFilterCrBetaOffsetDiv2() );
-        pcSlice->setDeblockingFilterCrTcOffsetDiv2  ( picHeader->getDeblockingFilterCrTcOffsetDiv2() );
+        pcSlice->setDeblockingFilterCrTcOffsetDiv2( picHeader->getDeblockingFilterCrTcOffsetDiv2() );
       }
     }
     else

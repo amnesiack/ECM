@@ -7,6 +7,11 @@ file( GLOB SRC_FILES "../DecoderLib/*.cpp" )
 # get include files
 file( GLOB INC_FILES "../DecoderLib/*.h" )
 
+if (EXTENSION_NNLF)
+  include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
+
+
 # NATVIS files for Visual Studio
 if( MSVC )
   file( GLOB NATVIS_FILES "../../VisualStudio/*.natvis" )

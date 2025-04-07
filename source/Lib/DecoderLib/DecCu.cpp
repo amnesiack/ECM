@@ -802,6 +802,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
 #endif
 
       DTRACE_BLOCK_REC(cs.picture->getRecoBuf(currCU), currCU, currCU.predMode );
+#if NNVC_USE_PRED && NN_LF_PRED_FIX
+      cs.getPredBufCustom(currCU).copyFrom(cs.getPredBuf(currCU));
+#endif
       if (CU::isInter(currCU))
       {
         DTRACE_MOT_FIELD(g_trace_ctx, *currCU.firstPU);
@@ -839,6 +842,10 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
   const ChannelType chType  = toChannelType( compID );
 
         PelBuf piPred       = cs.getPredBuf( area );
+
+#if NNVC_USE_PRED
+        PelBuf piPredCustom = cs.getPredBufCustom(area);
+#endif
 
 #if JVET_AB0061_ITMP_BV_FOR_IBC
   PredictionUnit &pu = *tu.cs->getPU(area.pos(), chType);
@@ -1848,18 +1855,27 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
       clpRng.max = cs.slice->getLumaPelMax();
     }
   }
-#if KEEP_PRED_AND_RESI_SIGNALS
+#if NNVC_USE_PRED
+  piPredCustom.copyFrom( piPred );
+#endif 
+#if KEEP_PRED_AND_RESI_SIGNALS || NNVC_USE_PRED
   pReco.reconstruct(piPred, piResi, clpRng);
 #else
   piPred.reconstruct(piPred, piResi, clpRng);
   pReco.copyFrom( piPred );
+#if NN_LF_UNIFIED
+  piPred.copyFrom(piPredCustom);
+#endif
 #endif
 #else
-#if KEEP_PRED_AND_RESI_SIGNALS
+#if KEEP_PRED_AND_RESI_SIGNALS || NNVC_USE_PRED
   pReco.reconstruct( piPred, piResi, tu.cu->cs->slice->clpRng( compID ) );
 #else
   piPred.reconstruct( piPred, piResi, tu.cu->cs->slice->clpRng( compID ) );
   pReco.copyFrom( piPred );
+#if NN_LF_UNIFIED
+  piPred.copyFrom(piPredCustom);
+#endif
 #endif
 #endif
 
@@ -1893,6 +1909,12 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #endif
 
     cs.picture->getPredBuf(area).copyFrom(piPred);
+#if NNVC_USE_PRED
+    if (cs.pcv->isEncoder)
+    {
+      piPredCustom.copyFrom(piPred);
+    }
+#endif 
   }
 #endif
 }
@@ -2018,6 +2040,9 @@ void DecCu::xIntraRecACTBlk(TransformUnit& tu)
     PelBuf piPred = cs.getPredBuf(area);
     PelBuf piResi = cs.getResiBuf(area);
     PelBuf piReco = cs.getRecoBuf(area);
+#if NNVC_USE_PRED
+    PelBuf piPredCustom = cs.getPredBufCustom(area);
+#endif
 
     PelBuf tmpPred;
     if (slice.getLmcsEnabledFlag() && (m_pcReshape->getCTUFlag() || slice.isIntra()) && compID == COMPONENT_Y)
@@ -2033,8 +2058,14 @@ void DecCu::xIntraRecACTBlk(TransformUnit& tu)
       piResi.scaleSignal(tu.getChromaAdj(), 0, tu.cu->cs->slice->clpRng(compID));
     }
 #endif
+#if NNVC_USE_PRED
+    piPredCustom.copyFrom(piPred);
+#endif 
     piPred.reconstruct(piPred, piResi, tu.cu->cs->slice->clpRng(compID));
     piReco.copyFrom(piPred);
+#if NN_LF_UNIFIED
+    piPred.copyFrom(piPredCustom);
+#endif
 
     if (slice.getLmcsEnabledFlag() && (m_pcReshape->getCTUFlag() || slice.isIntra()) && compID == COMPONENT_Y)
     {
@@ -2050,6 +2081,12 @@ void DecCu::xIntraRecACTBlk(TransformUnit& tu)
 #endif
 
       cs.picture->getPredBuf(area).copyFrom(piPred);
+#if NNVC_USE_PRED 
+      if (cs.pcv->isEncoder)
+      {
+        piPredCustom.copyFrom(piPred);
+      }
+#endif
     }
   }
 }
@@ -2238,10 +2275,16 @@ void DecCu::xReconPLT(CodingUnit &cu, ComponentID compBegin, uint32_t numComp)
 #else
     cu.cs->picture->getRecoBuf(area).copyFrom(picReco);
 #endif
+#if NNVC_USE_PRED
+    cu.cs->getPredBuf(cu).bufs[compID].copyFrom(picReco);
+#endif
     cu.cs->setDecomp(area);
   }
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   cu.cs->getResiBuf(cu).bufs[0].fill(0);
+#endif
+#if NNVC_USE_PRED
+  cu.cs->getPredBufCustom(cu).copyFrom(cu.cs->getPredBuf(cu));
 #endif
 }
 
@@ -2812,6 +2855,10 @@ void DecCu::xReconInter(CodingUnit &cu)
   // clip for only non-zero cbf case
   CodingStructure &cs = *cu.cs;
 
+#if NNVC_USE_PRED
+  cs.getPredBufCustom(cu).copyFrom(cs.getPredBuf(cu));
+#endif
+
 #if !SIGN_PREDICTION
   if (cu.rootCbf)
   {
@@ -2825,6 +2872,9 @@ void DecCu::xReconInter(CodingUnit &cu)
     const CompArea &area = cu.blocks[COMPONENT_Y];
     CompArea    tmpArea(COMPONENT_Y, area.chromaFormat, Position(0, 0), area.size());
     PelBuf tmpPred;
+#endif
+#if NNVC_USE_PRED
+    cs.getPredBufCustom(cu).copyFrom(cs.getPredBuf(cu));
 #endif
     if (cs.slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
     {
@@ -2860,6 +2910,9 @@ void DecCu::xReconInter(CodingUnit &cu)
   }
   else
   {
+#if NNVC_USE_PRED
+    cs.getPredBufCustom(cu).copyClip(cs.getPredBuf(cu), cs.slice->clpRngs());
+#endif
     cs.getRecoBuf(cu).copyClip(cs.getPredBuf(cu), cs.slice->clpRngs());
 #if JVET_Y0065_GPM_INTRA
     if (cs.slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag() && !cu.firstPU->ciipFlag && !cu.firstPU->gpmIntraFlag && !CU::isIBC(cu))
@@ -3190,6 +3243,9 @@ void DecCu::xDecodeInterTexture(CodingUnit &cu)
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
     cs.getResiBuf(cu).bufs[0].fill(0);
 #endif
+#if NNVC_USE_PRED
+    cs.getPredBufCustom(cu).copyClip(cs.getPredBuf(cu), cs.slice->clpRngs());
+#endif
     cs.getRecoBuf(cu).copyClip(cs.getPredBuf(cu), cs.slice->clpRngs());
 #if JVET_Y0065_GPM_INTRA
     if (cs.picHeader->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag() && !cu.firstPU->ciipFlag && !cu.firstPU->gpmIntraFlag && !CU::isIBC(cu))
@@ -3228,8 +3284,12 @@ void DecCu::xDecodeInterTexture(CodingUnit &cu)
       PelBuf bufCr = cs.getPredBuf( cu.blocks[COMPONENT_Cr] );
       const bool valid = m_pcInterPred->deriveInterCcpMergePrediction(cu.firstTU, cs.getRecoBuf(cu.blocks[COMPONENT_Y]), bufCb, bufCr, bufCb, bufCr, interCcpMergeList, validNum);
       CHECK( !valid, "invalid inter ccp merge for rootCbf = 0" );
-      cs.getRecoBuf(cu.blocks[COMPONENT_Cb]).copyClip(cs.getPredBuf(cu.blocks[COMPONENT_Cb]), cs.slice->clpRng(COMPONENT_Cb));
-      cs.getRecoBuf(cu.blocks[COMPONENT_Cr]).copyClip(cs.getPredBuf(cu.blocks[COMPONENT_Cr]), cs.slice->clpRng(COMPONENT_Cr));
+#if NNVC_USE_PRED
+      cs.getPredBufCustom(cu).Cb().copyFrom(bufCb);
+      cs.getPredBufCustom(cu).Cr().copyFrom(bufCr);
+#endif
+      cs.getRecoBuf(cu.blocks[COMPONENT_Cb]).copyClip(bufCb, cs.slice->clpRng(COMPONENT_Cb));
+      cs.getRecoBuf(cu.blocks[COMPONENT_Cr]).copyClip(bufCr, cs.slice->clpRng(COMPONENT_Cr));
       cu.firstPU->idxNonLocalCCP = 0;
       cu.firstTU->curCand ={};
       cu.firstTU->curCand.type = CCP_TYPE_NONE;

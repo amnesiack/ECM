@@ -39,6 +39,9 @@
 #include "SEI.h"
 #include "ChromaFormat.h"
 #include "CommonLib/InterpolationFilter.h"
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+#include "CommonLib/UnitTools.h"
+#endif
 
 #if JVET_AK0085_TM_BOUNDARY_PADDING
 #include "TMP.h"
@@ -219,6 +222,9 @@ void Picture::create(
 #if JVET_Z0118_GDR
   const bool gdrEnabled,
 #endif
+#if NN_LF_UNIFIED
+  const bool useNNLF,
+#endif
   const bool useWrapAround, const ChromaFormat &_chromaFormat, const Size &size, const unsigned _maxCUSize,
   const unsigned _margin,
   const bool _decoder, const int _layerId, const bool gopBasedTemporalFilterEnabled)
@@ -243,6 +249,23 @@ void Picture::create(
     M_BUFS( 0, PIC_RECON_WRAP ).create( _chromaFormat, a, _maxCUSize, margin, MEMORY_ALIGN_DEF_SIZE );
   }
 
+#if NN_LF_UNIFIED
+  if (useNNLF)
+  {
+#if NNVC_USE_BS
+    M_BUFS(0, PIC_BS_MAP).create(_chromaFormat, a, _maxCUSize, margin, MEMORY_ALIGN_DEF_SIZE);
+#endif
+#if NNVC_USE_REC_BEFORE_DBF
+    M_BUFS(0, PIC_REC_BEFORE_DBF).create(_chromaFormat, a, _maxCUSize, margin, MEMORY_ALIGN_DEF_SIZE);
+#endif
+#if JVET_AJ0124_QP_BLOCK
+    M_BUFS(0, PIC_BLOCK_QP).create(_chromaFormat, a, _maxCUSize, margin, MEMORY_ALIGN_DEF_SIZE);
+#endif
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+    M_BUFS(0, PIC_BLOCK_PRED_MODE).create(_chromaFormat, a, _maxCUSize, margin, MEMORY_ALIGN_DEF_SIZE);
+#endif
+  }
+#endif
   
   if( !_decoder )
   {
@@ -312,12 +335,34 @@ void Picture::createTempBuffers( const unsigned _maxCUSize, bool useFilterFrame,
   for( int jId = 0; jId < scheduler.getNumPicInstances(); jId++ )
 #endif
   {
-    M_BUFS( jId, PIC_PREDICTION                   ).create( chromaFormat, a,   _maxCUSize );
+    M_BUFS( jId, PIC_PREDICTION ).create( chromaFormat, a, _maxCUSize );
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT && !KEEP_PRED_AND_RESI_SIGNALS
-    M_BUFS( jId, PIC_RESIDUAL                     ).create(chromaFormat, aOld, _maxCUSize );
+    M_BUFS( jId, PIC_RESIDUAL ).create( chromaFormat, aOld, _maxCUSize );
 #else
-    M_BUFS( jId, PIC_RESIDUAL                     ).create( chromaFormat, a,   _maxCUSize );
+    M_BUFS( jId, PIC_RESIDUAL ).create( chromaFormat, a, _maxCUSize );
 #endif
+#if NNVC_USE_PRED
+    const Area aTemp( Position{ 0, 0 }, lumaSize() );
+    if( getPredBufCustom().bufs.empty() )
+    {
+#if JVET_AF0043_AF0205_PADDING
+      M_BUFS( jId, PIC_PREDICTION_CUSTOM ).create( chromaFormat, aTemp, _maxCUSize, 8, MEMORY_ALIGN_DEF_SIZE );
+#else
+      M_BUFS( jId, PIC_PREDICTION_CUSTOM ).create( chromaFormat, aTemp, _maxCUSize );
+#endif
+    }
+#endif
+#if JVET_AJ0124_QP_BLOCK
+    if( getBlockQpBuf().bufs.empty() )
+    {
+#if JVET_AF0043_AF0205_PADDING
+      M_BUFS( jId, PIC_BLOCK_QP ).create( chromaFormat, aOld, _maxCUSize, 8, MEMORY_ALIGN_DEF_SIZE );
+#else
+      M_BUFS( jId, PIC_BLOCK_QP ).create( chromaFormat, aOld, _maxCUSize );
+#endif
+     }
+#endif
+
     if (!decoder)
     {
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT && !KEEP_PRED_AND_RESI_SIGNALS
@@ -372,6 +417,12 @@ void Picture::destroyTempBuffers()
       {
         M_BUFS(jId, t).destroy();
       }
+#if NNVC_USE_PRED
+      if (t == PIC_PREDICTION_CUSTOM)
+      {
+        M_BUFS(jId, t).destroy();
+      }
+#endif
 #if ENABLE_SPLIT_PARALLELISM
       if (t == PIC_RECONSTRUCTION && jId > 0)
       {
@@ -441,6 +492,52 @@ void Picture::setResiBufPLT()
 const CPelBuf     Picture::getResiBuf(const CompArea &blk)  const { return getBuf(blk,  PIC_RESIDUAL); }
        PelUnitBuf Picture::getResiBuf(const UnitArea &unit)       { return getBuf(unit, PIC_RESIDUAL); }
 const CPelUnitBuf Picture::getResiBuf(const UnitArea &unit) const { return getBuf(unit, PIC_RESIDUAL); }
+
+#if NNVC_USE_BS
+       PelBuf     Picture::getBsMapBuf(const ComponentID compID, bool /*wrap*/)       { return getBuf(compID,               PIC_BS_MAP); }
+       PelUnitBuf Picture::getBsMapBuf(bool /*wrap*/)                                 { return M_BUFS(scheduler.getSplitPicId(), PIC_BS_MAP); }
+       PelUnitBuf Picture::getBsMapBuf(const UnitArea &unit)                      { return getBuf(unit, PIC_BS_MAP); }
+const CPelUnitBuf Picture::getBsMapBuf(const UnitArea &unit) const                { return getBuf(unit, PIC_BS_MAP); }
+       PelBuf     Picture::getBsMapBuf(const CompArea &blk)                       { return getBuf(blk, PIC_BS_MAP); }
+const CPelBuf     Picture::getBsMapBuf(const CompArea &blk) const                 { return getBuf(blk, PIC_BS_MAP); }
+#endif
+
+#if NNVC_USE_REC_BEFORE_DBF
+       PelBuf     Picture::getRecBeforeDbfBuf(const ComponentID compID, bool /*wrap*/)       { return getBuf(compID,               PIC_REC_BEFORE_DBF); }
+       PelUnitBuf Picture::getRecBeforeDbfBuf(bool /*wrap*/)                                 { return M_BUFS(scheduler.getSplitPicId(), PIC_REC_BEFORE_DBF); }
+       PelBuf     Picture::getRecBeforeDbfBuf(const CompArea &blk)        { return getBuf(blk,  PIC_REC_BEFORE_DBF); }
+const CPelBuf     Picture::getRecBeforeDbfBuf(const CompArea &blk)  const { return getBuf(blk,  PIC_REC_BEFORE_DBF); }
+       PelUnitBuf Picture::getRecBeforeDbfBuf(const UnitArea &unit)       { return getBuf(unit, PIC_REC_BEFORE_DBF); }
+const CPelUnitBuf Picture::getRecBeforeDbfBuf(const UnitArea &unit) const { return getBuf(unit, PIC_REC_BEFORE_DBF);}
+#endif
+
+#if JVET_AJ0124_QP_BLOCK
+PelBuf     Picture::getBlockQpBuf(const ComponentID compID, bool /*wrap*/)       { return getBuf(compID,               PIC_BLOCK_QP); }
+      PelUnitBuf Picture::getBlockQpBuf(bool /*wrap*/)                                 { return M_BUFS(scheduler.getSplitPicId(), PIC_BLOCK_QP); }
+      PelBuf     Picture::getBlockQpBuf(const CompArea &blk)        { return getBuf(blk,  PIC_BLOCK_QP); }
+      const CPelBuf     Picture::getBlockQpBuf(const CompArea &blk)  const { return getBuf(blk,  PIC_BLOCK_QP); }
+      PelUnitBuf Picture::getBlockQpBuf(const UnitArea &unit)       { return getBuf(unit, PIC_BLOCK_QP); }
+      const CPelUnitBuf Picture::getBlockQpBuf(const UnitArea &unit) const { return getBuf(unit, PIC_BLOCK_QP);}
+#endif
+
+#if NNVC_USE_PRED
+       PelBuf     Picture::getPredBufCustom(const ComponentID compID, bool /*wrap*/)       { return getBuf(compID,               PIC_PREDICTION_CUSTOM); }
+       PelUnitBuf Picture::getPredBufCustom(bool /*wrap*/)                                 { return M_BUFS(scheduler.getSplitPicId(), PIC_PREDICTION_CUSTOM); }
+       PelBuf     Picture::getPredBufCustom(const CompArea &blk)        { return getBuf(blk,  PIC_PREDICTION_CUSTOM); }
+const CPelBuf     Picture::getPredBufCustom(const CompArea &blk)  const { return getBuf(blk,  PIC_PREDICTION_CUSTOM); }
+       PelUnitBuf Picture::getPredBufCustom(const UnitArea &unit)       { return getBuf(unit, PIC_PREDICTION_CUSTOM); }
+const CPelUnitBuf Picture::getPredBufCustom(const UnitArea &unit) const { return getBuf(unit, PIC_PREDICTION_CUSTOM);}
+#endif
+
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+       PelUnitBuf Picture::getBlockPredModeBuf()                                 { return M_BUFS(0, PIC_BLOCK_PRED_MODE); }
+const CPelUnitBuf Picture::getBlockPredModeBuf()                           const { return M_BUFS(0, PIC_BLOCK_PRED_MODE); }
+       PelUnitBuf Picture::getBlockPredModeBuf(const UnitArea &unit)             { return getBuf(unit, PIC_BLOCK_PRED_MODE); }
+const CPelUnitBuf Picture::getBlockPredModeBuf(const UnitArea &unit)       const { return getBuf(unit, PIC_BLOCK_PRED_MODE); }
+       PelBuf     Picture::getBlockPredModeBuf(const CompArea &blk)              { return getBuf(blk, PIC_BLOCK_PRED_MODE); }
+const CPelBuf     Picture::getBlockPredModeBuf(const CompArea &blk)        const { return getBuf(blk, PIC_BLOCK_PRED_MODE); }
+#endif
+
 
 #if JVET_Z0118_GDR
        PelBuf     Picture::getRecoBuf(const ComponentID compID, bool wrap)       { return getBuf(compID, (PictureType) wrap ? PIC_RECON_WRAP : (m_cleanDirtyFlag ? PIC_RECONSTRUCTION_1 : PIC_RECONSTRUCTION_0)); }
@@ -545,6 +642,151 @@ void Picture::finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHead
     memset(m_spliceIdx, 0, m_ctuNums * sizeof(int));
   }
 }
+
+#if JVET_AJ0124_QP_BLOCK
+void Picture::dumpQpBlock()
+{
+  CodingStructure& cs = *(this->cs);
+  if (cs.sps->getNnlfEnabledFlag())
+  {
+    const PreCalcValues& pcv = *cs.pcv;
+    // Defining a scanning area that covers the picture
+  //  const UnitArea PICarea(cs.area.chromaFormat, Area(0, 0, pcv.lumaWidth, pcv.lumaHeight));
+    // Traversing the CUs in the picture and filling a buffer with extracted info
+    for (int y = 0; y < pcv.heightInCtus; y++)
+    {
+      for (int x = 0; x < pcv.widthInCtus; x++)
+      {
+        const UnitArea ctuArea(pcv.chrFormat,
+          Area(x << pcv.maxCUWidthLog2, y << pcv.maxCUHeightLog2, pcv.maxCUWidth, pcv.maxCUWidth));
+        for (auto& currCU : cs.traverseCUs(CS::getArea(cs, ctuArea, CH_L), CH_L))
+        {
+          if (currCU.Y().valid())
+          {
+            Pel toFill = currCU.qp;   // sould also use chroma
+            CompArea yArea(COMPONENT_Y, cs.area.chromaFormat, currCU.lx(), currCU.ly(), currCU.lwidth(), currCU.lheight(), true);
+            auto     targetBuff = currCU.slice->getPic()->getBlockQpBuf(yArea);
+            targetBuff.fill(toFill);
+          }
+
+          if (currCU.Cb().valid())
+          {
+            const bool  useJQP = (abs(TU::getICTMode(*currCU.firstTU)) == 2);
+            ComponentID ch[2] = { COMPONENT_Cb, COMPONENT_Cr };
+            for (auto compID : ch)
+            {
+              int chromaQpOffset = cs.pps->getQpOffset(useJQP ? JOINT_CbCr : compID);
+              chromaQpOffset += currCU.slice->getSliceChromaQpDelta(useJQP ? JOINT_CbCr : compID);
+              chromaQpOffset += cs.pps->getChromaQpOffsetListEntry(currCU.chromaQpAdj).u.offset[int(useJQP ? JOINT_CbCr : compID) - 1];
+              int      qp = currCU.qp;   // cs->getTU(currCU.lumaPos(),CHANNEL_TYPE_CHROMA).;
+              int      qpc = currCU.slice->getSPS()->getMappedChromaQpValue(compID, qp) + chromaQpOffset;
+              Pel      toFill = qpc;
+              CompArea area(compID, cs.area.chromaFormat, currCU.chromaPos().x, currCU.chromaPos().y, currCU.chromaSize().width, currCU.chromaSize().height, false);
+              auto     targetBuff = currCU.slice->getPic()->getBlockQpBuf(area);
+              targetBuff.fill(toFill);
+            }
+          }
+        }
+
+        if (!pcv.ISingleTree)
+        {
+          for (auto& currCU : cs.traverseCUs(CS::getArea(cs, ctuArea, CH_C), CH_C))
+          {
+            if (currCU.Cb().valid())
+            {
+              const bool  useJQP = (abs(TU::getICTMode(*currCU.firstTU)) == 2);
+              ComponentID ch[2] = { COMPONENT_Cb, COMPONENT_Cr };
+              for (auto compID : ch)
+              {
+                int chromaQpOffset = cs.pps->getQpOffset(useJQP ? JOINT_CbCr : compID);
+                chromaQpOffset += currCU.slice->getSliceChromaQpDelta(useJQP ? JOINT_CbCr : compID);
+                chromaQpOffset += cs.pps->getChromaQpOffsetListEntry(currCU.chromaQpAdj).u.offset[int(useJQP ? JOINT_CbCr : compID) - 1];
+                int      qp = currCU.qp;   // cs->getTU(currCU.lumaPos(),CHANNEL_TYPE_CHROMA).;
+                int      qpc = currCU.slice->getSPS()->getMappedChromaQpValue(compID, qp) + chromaQpOffset;
+                Pel      toFill = qpc;
+                CompArea area(compID, cs.area.chromaFormat, currCU.chromaPos().x, currCU.chromaPos().y, currCU.chromaSize().width, currCU.chromaSize().height, false);
+                auto     targetBuff = currCU.slice->getPic()->getBlockQpBuf(area);
+                targetBuff.fill(toFill);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+void Picture::dumpPicBpmInfo()
+{
+  CodingStructure& cs = *( this->cs );
+  const PreCalcValues& pcv = *cs.pcv;
+  const UnitArea PICarea( cs.area.chromaFormat, Area( 0, 0, pcv.lumaWidth, pcv.lumaHeight ) );
+
+  for( int y = 0; y < pcv.heightInCtus; y++ )
+  {
+    for( int x = 0; x < pcv.widthInCtus; x++ )
+    {
+      const UnitArea ctuArea( pcv.chrFormat, Area( x << pcv.maxCUWidthLog2, y << pcv.maxCUHeightLog2, pcv.maxCUWidth, pcv.maxCUWidth ) );
+
+      for( auto& currCU : cs.traverseCUs( CS::getArea( cs, ctuArea, CH_L ), CH_L ) )
+      {
+        bool isInter = ( currCU.predMode == MODE_INTER ) ? true : false;
+        bool isIntra = ( currCU.predMode == MODE_INTRA ) ? true : false;
+        bool isIBC = ( ( currCU.predMode == MODE_IBC ) || ( currCU.predMode == MODE_PLT ) ) ? true : false;
+
+        bool isUniPred = ( ( &currCU )->firstPU->interDir == 1 || ( &currCU )->firstPU->interDir == 2 ) ? true : false;
+        isUniPred = ( isUniPred || currCU.geoFlag );
+
+#if NN_LF_FIX_DIR
+        bool isBiPred = ( ( &currCU )->firstPU->interDir == 3 && ( &currCU )->firstPU->geoBlendIntraFlag == false ) ? true : false;
+#else
+        bool isBiPred = ( ( &currCU )->firstPU->interDir == 3 ) ? true : false;
+#endif
+
+        Pel toFill = 0;
+
+        if( isIntra == true )
+        {
+          toFill = 0;
+        }
+        if( isIBC == true && currCU.skip == false )
+        {
+          toFill = 2;
+        }
+        if( isIBC == true && currCU.skip == true )
+        {
+          toFill = 3;
+        }
+        if( ( isInter == true && currCU.skip == false ) && ( isUniPred == true ) )
+        {
+          toFill = 4;
+        }
+        if( ( isInter == true && currCU.skip == true ) && ( isUniPred == true ) )
+        {
+          toFill = 5;
+        }
+        if( ( isInter == true && currCU.skip == false ) && ( isBiPred == true ) )
+        {
+          toFill = 6;
+        }
+        if( ( isInter == true && currCU.skip == true ) && ( isBiPred == true ) )
+        {
+          toFill = 7;
+        }
+
+        if( currCU.Y().valid() )
+        {
+          CompArea yArea( COMPONENT_Y, cs.area.chromaFormat, currCU.lx(), currCU.ly(), currCU.lwidth(), currCU.lheight(), true );
+          auto targetBuff = currCU.slice->getPic()->getBlockPredModeBuf( yArea );
+          targetBuff.fill( toFill );
+        }
+      }
+    }
+  }
+}
+#endif
 
 void Picture::allocateNewSlice()
 {
@@ -1411,6 +1653,63 @@ void Picture::restoreSubPicBorder(int POC, int subPicX0, int subPicY0, int subPi
   m_bufWrapSubPicAbove.destroy();
   m_bufWrapSubPicBelow.destroy();
 }
+
+#if JVET_AF0043_AF0205_PADDING
+#if JVET_AJ0124_QP_BLOCK
+void Picture::paddingPicBufBorder(const PictureType& picType, const int& padSize, int value)
+{
+#else
+void Picture::paddingPicBufBorder(const PictureType & picType, const int& padSize)
+{
+  constexpr int value = 0;
+#endif
+  for( int comp = 0; comp < getNumberValidComponents( cs->area.chromaFormat ); comp++ )
+  {
+    ComponentID compID = ComponentID( comp );
+    PelBuf p = M_BUFS( 0, picType ).get( compID );
+    Pel* piTxt = p.bufAt( 0, 0 );
+    int xmargin = padSize >> getComponentScaleX( compID, cs->area.chromaFormat );
+    int ymargin = padSize >> getComponentScaleY( compID, cs->area.chromaFormat );
+
+    Pel* pi = piTxt;
+    // do left and right margins
+    for( int y = 0; y < p.height; y++ )
+    {
+      for( int x = 0; x < xmargin; x++ )
+      {
+        pi[-xmargin + x] = value;
+        pi[p.width + x] = value;
+      }
+      pi += p.stride;
+    }
+
+    // pi is now the (0,height) (bottom left of image within bigger picture
+    pi -= xmargin;
+    // pi is now the (-marginX, height), set zero all
+    for( int x = 0; x < ( p.width + ( xmargin << 1 ) ); x++ )
+    {
+      pi[x] = value;
+    }
+    for( int y = 0; y < ymargin - 1; y++ )
+    {
+      ::memcpy( pi + ( y + 1 ) * p.stride, pi, sizeof( Pel ) * ( p.width + ( xmargin << 1 ) ) );
+    }
+
+    // pi is still (-marginX, height)
+    pi -= ( ( p.height + 1 ) * p.stride );
+    // pi is now (-marginX, -1), set zero all
+    for( int x = 0; x < ( p.width + ( xmargin << 1 ) ); x++ )
+    {
+      pi[x] = value;
+    }
+    for( int y = 0; y < ymargin - 1; y++ )
+    {
+      ::memcpy( pi - ( y + 1 ) * p.stride, pi, sizeof( Pel ) * ( p.width + ( xmargin << 1 ) ) );
+    }
+  }
+}
+#endif
+
 
 void Picture::extendPicBorder( const PPS *pps )
 {

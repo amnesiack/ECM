@@ -9212,11 +9212,18 @@ void InterPrediction::motionCompensation( PredictionUnit &pu, PelUnitBuf &predBu
 
 void InterPrediction::motionCompensation( CodingUnit &cu, const RefPicList &eRefPicList
   , const bool luma, const bool chroma
+#if NN_LF_TRYMODE_FIX
+  , PelUnitBuf *pPredBuf
+#endif
 )
 {
   for( auto &pu : CU::traversePUs( cu ) )
   {
+#if NN_LF_TRYMODE_FIX
+    PelUnitBuf predBuf = pPredBuf ? *pPredBuf : cu.cs->getPredBuf( pu );
+#else
     PelUnitBuf predBuf = cu.cs->getPredBuf( pu );
+#endif
     pu.mvRefine = true;
     motionCompensation(pu, predBuf, eRefPicList, luma, chroma);
     pu.mvRefine = false;
@@ -11922,7 +11929,7 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
     CHECK( pu.affineGPM[0] || pu.affineGPM[1] , "AffineGPM disabled with geoBlend");
 #endif
 
-    pu.interDir = 3;
+    pu.interDir = pu.geoBlendIntraFlag ? pu.interDir : 3;
 
     cu.blendModel.copy( geoBI.blendModel );
 

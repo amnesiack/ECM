@@ -311,6 +311,10 @@ void Slice::initSlice()
 #if JVET_AL0153_ALF_CCCM
   setLfCccmEnabledFlag(false);
 #endif
+#if NN_LF_UNIFIED
+  m_nuhLayerId = 0;
+  m_nnlfUnifiedParam.reset();
+#endif
 }
 
 #if JVET_Y0128_NON_CTC
@@ -4547,6 +4551,14 @@ SPS::SPS()
     m_numReorderPics[i]       = 0;
   }
 
+#if NN_COMMON_SPS
+  for (int i = 0; i < MAX_NUM_NNLF_UNIFIED_INFER_GRANULARITY; i++) 
+  {
+    m_nnlfUnifiedInferSize[i] = 256;
+  }
+#endif
+
+
   ::memset(m_ltRefPicPocLsbSps, 0, sizeof(m_ltRefPicPocLsbSps));
   ::memset(m_usedByCurrPicLtSPSFlag, 0, sizeof(m_usedByCurrPicLtSPSFlag));
   ::memset(m_virtualBoundariesPosX, 0, sizeof(m_virtualBoundariesPosX));
@@ -6044,6 +6056,9 @@ void Slice::scaleRefPicList( Picture *scaledRefPic[ ], PicHeader *picHeader, APS
               sps->getRprEnabledFlag(),
 #if JVET_Z0118_GDR
               sps->getGDREnabledFlag(),
+#endif
+#if NN_LF_UNIFIED
+              sps->getNnlfEnabledFlag(),
 #endif
               sps->getWrapAroundEnabledFlag(), sps->getChromaFormatIdc(),
               Size(pps->getPicWidthInLumaSamples(), pps->getPicHeightInLumaSamples()), sps->getMaxCUWidth(),

@@ -826,6 +826,13 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
     }
   }
 
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+  pic->dumpPicBpmInfo();
+#if JVET_AJ0124_QP_BLOCK
+  pic->dumpQpBlock();
+#endif
+#endif
+
 #if JVET_Z0135_TEMP_CABAC_WIN_WEIGHT
   // store CABAC context to be used in next frames when the last CTU in a picture is processed
   if( slice->getPPS()->pcv->sizeInCtus - 1 == slice->getCtuAddrInSlice( slice->getNumCtuInSlice() - 1 ) )

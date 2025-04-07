@@ -505,6 +505,12 @@ public:
   );
   void codeCcAlfFilterControlIdc(uint8_t idcVal, CodingStructure &cs, const ComponentID compID, const int curIdx,
                                  const uint8_t *filterControlIdc, Position lumaPos, const int filterCount);
+  #if NN_LF_UNIFIED
+  void writeNnlfUnifiedParameters(const CodingStructure &cs);
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  void computeCostNnlfUnifiedParameters(const CodingStructure& cs, const std::vector<int>& bsFilteringBlocks);
+#endif
+  #endif
 #if JVET_AK0065_TALF
   void codeTAlfFilterControlIdc(TAlfCtbParam curControl, CodingStructure &cs, const ComponentID compID,
                                 const int curIdx, const TAlfCtbParam *filterControlIdc, Position lumaPos,

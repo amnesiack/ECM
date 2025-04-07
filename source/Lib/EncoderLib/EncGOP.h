@@ -77,6 +77,11 @@
 #if JVET_AL0153_ALF_CCCM
 #include "EncLoopFilterCccm.h"
 #endif
+
+#if NN_LF_UNIFIED
+#include "EncNNFilterUnified.h"
+#endif
+
 //! \ingroup EncoderLib
 //! \{
 
@@ -141,6 +146,9 @@ private:
   EncCfg*                 m_pcCfg;
   EncSlice*               m_pcSliceEncoder;
   PicList*                m_pcListPic;
+#if NN_LF_UNIFIED
+  EncNNFilterUnified      m_nnfilterUnified;
+#endif
 
   HLSWriter*              m_HLSWriter;
 #if !JVET_AJ0237_INTERNAL_12BIT

@@ -219,6 +219,13 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   cs.modeType = partitioner.modeType = MODE_TYPE_ALL;
 #endif
 
+#if NN_LF_UNIFIED
+  if (cs.sps->getNnlfUnifiedEnabledFlag() && ctuRsAddr == 0)
+  {
+    readNnlfUnifiedParameters(cs);
+  }
+#endif
+
   sao( cs, ctuRsAddr );
 #if JVET_W0066_CCSAO
   if (cs.sps->getCCSAOEnabledFlag())
@@ -406,6 +413,58 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   DTRACE     (                 g_trace_ctx, D_QP_PER_CTU, " %3d",           qps[CH_L] - cs.slice->getSliceQpBase() );
 
 }
+
+#if NN_LF_UNIFIED
+void CABACReader::readNnlfUnifiedParameters( CodingStructure& cs )
+{
+  // parse parameter id of each block
+  NNFilterUnified::FilterParameters& prm = cs.picture->m_picprm;
+  const NNFilterUnified::SliceParameters& sprm = cs.picture->slices[0]->getNnlfUnifiedParameters();
+  int cpt = 0;
+  int prmNum = prm.prmNum;
+  for( int y = 0; y < prm.numBlocksHeight; ++y )
+  {
+    for( int x = 0; x < prm.numBlocksWidth; ++x, ++cpt )
+    {
+      if( sprm.mode < prmNum )
+      {
+        prm.prmId[cpt] = sprm.mode;
+        continue;
+      }
+
+      bool useNnlf, useFirstParam = false;
+      useNnlf = m_BinDecoder.decodeBin( Ctx::nnlfUnifiedParams( 0 ) );
+
+      if( prmNum == 1 )
+      {
+        prm.prmId[cpt] = useNnlf ? 0 : -1;
+      }
+      else if( !useNnlf )
+      {
+        prm.prmId[cpt] = -1;
+      }
+      else
+      {
+        useFirstParam = m_BinDecoder.decodeBin( Ctx::nnlfUnifiedParams( 1 ) );
+        if( prmNum == 2 )
+        {
+          prm.prmId[cpt] = useFirstParam ? 0 : 1;
+        }
+        else if( useFirstParam )
+        {
+          prm.prmId[cpt] = 0;
+        }
+        else
+        {
+          uint32_t nnlfPrmIdMinus1 = 0;
+          xReadTruncBinCode( nnlfPrmIdMinus1, prmNum - 1 );
+          prm.prmId[cpt] = nnlfPrmIdMinus1 + 1;
+        }
+      }
+    }
+  }
+}
+#endif
 
 void CABACReader::readAlfCtuFilterIndex(CodingStructure& cs, unsigned ctuRsAddr)
 {

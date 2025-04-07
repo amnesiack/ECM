@@ -45,6 +45,9 @@ set( SRC_FILES ${BASE_SRC_FILES} ${X86_SRC_FILES} ${SSE41_SRC_FILES} ${SSE42_SRC
 # get all include files
 set( INC_FILES ${BASE_INC_FILES} ${X86_INC_FILES} ${MD5_INC_FILES} )
 
+if (EXTENSION_NNLF)
+  include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
 
 # library
 add_library( ${LIB_NAME} STATIC ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} )

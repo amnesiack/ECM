@@ -16,6 +16,12 @@ The CMake tool is used to create platform-specific build files.
 
 Although CMake may be able to generate 32-bit binaries, **it is generally suggested to build 64-bit binaries**. 32-bit binaries are not able to access more than 2GB of RAM, which will not be sufficient for coding larger image formats. Building in 32-bit environments is not tested and will not be supported.
 
+In order to use the NNLF interface, please activate the option using the cmake option EXTENSION_NNLF.
+If using SADL, please initialize the submodule:
+```bash
+git submodule init
+git submodule update
+```
 
 Build instructions for plain CMake (suggested)
 ----------------------------------------------

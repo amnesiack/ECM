@@ -106,6 +106,16 @@ public:
 #if JVET_AA0095_ALF_LONGER_FILTER
   void mirroredPaddingForAlf(CodingStructure& cs, const PelUnitBuf& src, int paddingSize, bool enableLuma, bool enableChroma);
 #endif
+#if NN_LF_UNIFIED
+  void copyPreNNVCDataToTemp(CodingStructure &cs) { m_tempBufPreNNVC.copyFrom(cs.getRecoBuf()); } // copy Reco buffer into alf.tempBuffPreNN
+  void copyAfterNNVCDataToTemp(CodingStructure &cs) { m_tempBufAfterNNVC.copyFrom(cs.getRecoBuf()); }// copy Reco buffer into alf.tempBuffAfterNN
+  void copyPreNNVCDataFromTemp(CodingStructure& cs) {cs.getRecoBuf().copyFrom(m_tempBufPreNNVC); } // copy alf.tempBuffPreNN to Reco
+  void copyNNVCData(Picture &pic)
+  { 
+    PelUnitBuf recBuf = pic.getRecoBuf();
+    m_tempBufBeforeDb.copyFrom(recBuf); 
+  }
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF || JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   void copyDbData( CodingStructure& cs ) { m_tempBufBeforeDb.copyFrom( cs.getRecoBuf() ); }
@@ -288,6 +298,10 @@ public:
   static void calcAlfLumaCodingInfoBlk( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
   void(  *m_calcAlfLumaCodingInfoBlk )( CodingStructure& cs, AlfClassifier** classifier, const Area &blkDst, const Area &blkSrc, const CPelBuf& srcLuma, int subBlkSize, int classifierIdx, int bitDepth, const CPelBuf& srcLumaResi, uint32_t **buffer, const CPelBuf& srcCodingInfo );
 #endif
+#if NNLF_ALF_POS_INTERFACE
+  static void bypassGaussFiltering(CodingStructure& cs, Pel*** gaussPic, const CPelBuf& srcLuma, const Area& blkDst, const Area& blk, const ClpRng& clpRng, const Pel clippingValues[4], int filterSetIdx, int storeIdx);
+#endif
+//#endif
 #if JVET_AK0121_LOOPFILTER_OFFSET_REFINEMENT
   void calcOffsetRefinement(CodingStructure& cs, PelUnitBuf& src0, PelUnitBuf& src1, PelUnitBuf& dst, int stageIdx, int refineIdx);
   void copyOffsetRefinement(CodingStructure& cs, PelUnitBuf& src, PelUnitBuf& dst );
@@ -1138,6 +1152,11 @@ protected:
   uint8_t*                     m_ctuAlternative[MAX_NUM_COMPONENT];
   PelStorage                   m_tempBuf;
   PelStorage                   m_tempBuf2;
+#if NN_LF_UNIFIED
+  PelStorage                   m_tempBufAfterNNVC;
+  PelStorage                   m_tempBufPreNNVC;
+#endif
+  
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   PelStorage                   m_tempBuf3;
 #endif

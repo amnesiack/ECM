@@ -721,6 +721,12 @@ void AdaptiveLoopFilter::ALFProcess(CodingStructure& cs)
   PelUnitBuf tmpYuvResi = m_tempBufResi.getBuf(cs.area);
   mirroredPaddingForAlf(cs, tmpYuvResi, MAX_FILTER_LENGTH_FIXED >> 1, true, false);
 #endif
+
+#if NNLF_ALF_POS_INTERFACE
+  PelUnitBuf tmpYuvNNVC = m_tempBufAfterNNVC.getBuf(cs.area);
+  mirroredPaddingForAlf(cs, tmpYuvNNVC, NUM_DB_PAD, true, true);
+#endif
+
 #if JVET_AI0166_CCALF_CHROMA_SAO_INPUT
   m_tempBufSAO.copyFrom(recYuv);
   PelUnitBuf tmpYuvSAO = m_tempBufSAO.getBuf(cs.area);
@@ -2132,6 +2138,12 @@ void AdaptiveLoopFilter::create(const int picWidth, const int picHeight, const C
 #else
   m_tempBuf.create(format, Area(0, 0, picWidth, picHeight), maxCUWidth, (MAX_ALF_FILTER_LENGTH + 1) >> 1, 0, false);
 #endif
+#if NN_LF_UNIFIED
+  m_tempBufPreNNVC.destroy();
+  m_tempBufPreNNVC.create(format, Area(0, 0, picWidth, picHeight), maxCUWidth, NUM_DB_PAD, 0, false);
+  m_tempBufAfterNNVC.destroy();
+  m_tempBufAfterNNVC.create(format, Area(0, 0, picWidth, picHeight), maxCUWidth, NUM_DB_PAD, 0, false);
+#endif
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF || JVET_AD0222_ADDITONAL_ALF_FIXFILTER
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   m_tempBufBeforeDb.destroy();
@@ -2862,6 +2874,11 @@ void AdaptiveLoopFilter::destroy()
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   m_tempBuf3.destroy();
 #endif
+#if NN_LF_UNIFIED
+  m_tempBufPreNNVC.destroy();
+  m_tempBufAfterNNVC.destroy();
+#endif
+
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF || JVET_AD0222_ADDITONAL_ALF_FIXFILTER
   m_tempBufBeforeDb.destroy();
   m_tempBufBeforeDb2.destroy();
@@ -8978,6 +8995,13 @@ void AdaptiveLoopFilter::deriveGaussResultsBlk(Pel ***gaussPic, const CPelBuf &s
   bool useSimd = blkDst.size().width % 8 == 0 ? true : false;
   if( useSimd )
   {
+#if NNLF_ALF_POS_INTERFACE
+    if( cs.slice[0].getNnlfUnifiedParameters().mode != -1 )
+    {
+      bypassGaussFiltering( cs, gaussPic, m_tempBufAfterNNVC.get( COMPONENT_Y ), blkDst, blk, clpRng, clippingValues, filterSetIdx, storeIdx );
+    }
+    else
+#endif
     m_gaussFiltering(cs, gaussPic, srcLuma, blkDst, blk, clpRng, clippingValues, filterSetIdx, storeIdx
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
     , true, m_classifierCodingInfo[0]
@@ -8986,6 +9010,13 @@ void AdaptiveLoopFilter::deriveGaussResultsBlk(Pel ***gaussPic, const CPelBuf &s
   }
   else
   {
+#if NNLF_ALF_POS_INTERFACE
+    if( cs.slice[0].getNnlfUnifiedParameters().mode != -1 )
+    {
+      bypassGaussFiltering( cs, gaussPic, m_tempBufAfterNNVC.get( COMPONENT_Y ), blkDst, blk, clpRng, clippingValues, filterSetIdx, storeIdx );
+    }
+    else
+#endif
     gaussFiltering(cs, gaussPic, srcLuma, blkDst, blk, clpRng, clippingValues, filterSetIdx, storeIdx
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION
     , true, m_classifierCodingInfo[0]
@@ -9133,6 +9164,33 @@ void AdaptiveLoopFilter::gaussFiltering(CodingStructure &cs, Pel ***gaussPic, co
       sum = curr + diff;
       gaussPic[storeIdx][dstPosY][dstPosX] = ClipPel(sum, clpRng);
 
+    }//width
+  }//height
+}
+#endif
+
+
+#if NNLF_ALF_POS_INTERFACE
+void AdaptiveLoopFilter::bypassGaussFiltering( CodingStructure& cs, Pel*** gaussPic, const CPelBuf& srcLuma, const Area& blkDst, const Area& blk, const ClpRng& clpRng, const Pel clippingValues[4], int filterSetIdx, int storeIdx )
+{
+  int strideSrc = srcLuma.stride;
+  int xPosSrc = blk.pos().x;
+  int yPosSrc = blk.pos().y;
+  int width = blk.size().width;
+  int height = blk.size().height;
+  int padSize = ALF_PADDING_SIZE_GAUSS_RESULTS;
+  const Pel* srcPtr = srcLuma.buf + yPosSrc * strideSrc + xPosSrc;
+  const Pel* pImg0;
+
+  for( int i = 0; i < height; i++ )
+  {
+    for( int j = 0; j < width; j++ )
+    {
+      int dstPosY = blkDst.y + i + padSize;
+      int dstPosX = blkDst.x + j + padSize;
+      pImg0 = srcPtr + i * strideSrc + j;
+      int curr = pImg0[0];
+      gaussPic[storeIdx][dstPosY][dstPosX] = ClipPel( curr, clpRng );
     }//width
   }//height
 }

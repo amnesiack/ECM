@@ -1558,6 +1558,29 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setNumSplitThreads                                   ( m_numSplitThreads );
   m_cEncLib.setForceSingleSplitThread                            ( m_forceSplitSequential );
 #endif
+
+#if NN_COMMON_SPS
+  m_cEncLib.setUseNnlf                                           (m_nnlf);
+  m_cEncLib.setUseNnlfId                                         (m_nnlfId);
+#endif
+  
+#if NN_LF_UNIFIED
+  m_cEncLib.setUseNnlfUnified                                        (m_nnlfUnified);
+  m_cEncLib.setNnlfUnifiedBlockSize                                     (m_nnlfBlockSize);
+  m_cEncLib.setNnlfUnifiedInfSizeExt                                    (m_nnlfInfSizeExt);
+  m_cEncLib.setNnlfUnifiedMaxNumPrms                                    (m_nnlfMaxNumPrms);
+  m_cEncLib.setNnlfUnifiedModelName(m_nnlfModelName);
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  m_cEncLib.setUseNnlfTDO(m_nnlfTDO);
+  if (m_nnlfTDO)
+  {
+    m_cEncLib.setTDOParam(m_nnlfTDOParam);
+  }
+#endif
+#endif
+#if JVET_AH0080_TRANS_INPUT
+  m_cEncLib.setUseNnlfTransInput(m_nnlfTransInput);
+#endif 
   m_cEncLib.setUseALF                                            ( m_alf );
 #if JVET_AL0153_ALF_CCCM
   m_cEncLib.setUseLfCccm                                         ( m_lfCccm );

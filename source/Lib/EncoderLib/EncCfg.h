@@ -144,7 +144,13 @@ struct RPLEntry
 };
 
 std::istringstream &operator>>(std::istringstream &in, GOPEntry &entry);     //input
-
+#if JVET_AK0093_NON_NORMATIVE_TDO
+struct NnlfTDOParam
+{
+  std::vector<int> lambdaTDO;
+};
+std::istringstream& operator>>(std::istringstream& in, NnlfTDOParam& tdoParam);
+#endif
 
 //! \ingroup EncoderLib
 //! \{
@@ -1119,6 +1125,25 @@ protected:
   bool        m_alf;                                          ///< Adaptive Loop Filter
 #if JVET_AL0153_ALF_CCCM
   bool        m_lfCccm;
+#endif
+
+#if NN_COMMON_SPS
+  bool        m_nnlf;
+  NNLFUnifiedID m_nnlfId;
+#endif
+#if NN_LF_UNIFIED
+  bool        m_nnlfUnified;
+  uint32_t    m_nnlfUnifiedBlockSize;
+  uint32_t    m_nnlfUnifiedInfSizeExt;
+  uint32_t    m_nnlfUnifiedMaxNumPrms;
+  std::string m_nnlfUnifiedModelName;
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  bool        m_nnlfTDO;
+  std::vector<int> m_nnlfTDOParam;
+#endif
+#if JVET_AH0080_TRANS_INPUT
+  bool        m_nnlfTransInput;
+#endif
 #endif
 #if FIXFILTER_CFG
   bool        m_alfFixedFilter;                               
@@ -3047,6 +3072,36 @@ public:
   bool         getUseCCALF()                                    const { return m_ccalf; }
   void         setCCALFQpThreshold( int b )                           { m_ccalfQpThreshold = b; }
   int          getCCALFQpThreshold()                            const { return m_ccalfQpThreshold; }
+
+#if NN_COMMON_SPS
+  void         setUseNnlf(bool b)                                     { m_nnlf = b; }
+  void         setUseNnlfId(NNLFUnifiedID ui)                         { m_nnlfId = ui; }
+  NNLFUnifiedID getUseNnlfId() const                                  { return m_nnlfId; }
+#endif
+
+#if NN_LF_UNIFIED
+  void         setUseNnlfUnified( bool b )                                { m_nnlfUnified = b;                }
+  bool         getUseNnlfUnified()                                  const { return m_nnlfUnified;             }
+  void         setNnlfUnifiedBlockSize(uint32_t ui)                       { m_nnlfUnifiedBlockSize = ui; }
+  uint32_t     getNnlfUnifiedBLockSize()                            const { return m_nnlfUnifiedBlockSize; }
+  void         setNnlfUnifiedInfSizeExt( uint32_t ui )                     { m_nnlfUnifiedInfSizeExt = ui;      }
+  uint32_t     getNnlfUnifiedInfSizeExt()                           const { return m_nnlfUnifiedInfSizeExt;   }
+  void         setNnlfUnifiedMaxNumPrms( uint32_t ui )                     { m_nnlfUnifiedMaxNumPrms = ui;      }
+  uint32_t     getNnlfUnifiedMaxNumPrms()                           const { return m_nnlfUnifiedMaxNumPrms;   }
+  void         setNnlfUnifiedModelName(std::string s)                     { m_nnlfUnifiedModelName = std::move(s); }
+  const std::string &getNnlfUnifiedModelName()                            { return m_nnlfUnifiedModelName;         }
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  bool        getUseNnlfTDO()                                   const { return m_nnlfTDO; };
+  void        setUseNnlfTDO(bool a) { m_nnlfTDO = a; };
+
+  const std::vector<int>& getTDOParam()                                  const { return m_nnlfTDOParam; };
+  void                    setTDOParam(const std::vector<int>& v) { m_nnlfTDOParam = v; };
+#endif
+#if JVET_AH0080_TRANS_INPUT
+  bool        getUseNnlfTransInput()                            const { return m_nnlfTransInput; };
+  void        setUseNnlfTransInput(bool b) { m_nnlfTransInput = b; };
+#endif
+#endif
 
 #if INTER_LIC
   void         setUseLIC( bool u )                                    { m_lic = u; }

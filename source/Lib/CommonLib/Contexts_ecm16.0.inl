@@ -7095,6 +7095,7 @@ const CtxSet ContextSetCfg::SeparateTree = ContextSetCfg::addCtxSet
  { 116, 116, 116, },
   });
 #endif
+
 #if JVET_AJ0274_REGRESSION_GPM_TM
 const CtxSet ContextSetCfg::GeoBlendTMFlag = ContextSetCfg::addCtxSet
 ({
@@ -7298,6 +7299,32 @@ const CtxSet ContextSetCfg::AsbtSecondDecim = ContextSetCfg::addCtxSet
  });
 
 #endif
+#if NN_LF_UNIFIED
+const CtxSet ContextSetCfg::nnlfUnifiedParams = ContextSetCfg::addCtxSet
+({
+  { CNU, CNU, },
+  { CNU, CNU, },
+  { CNU, CNU, },
+  { CNU, CNU, },
+  { DWS, DWS, },
+  { DWS, DWS, },
+  { DWS, DWS, },
+  { DWS, DWS, },
+  { DWE, DWE, },
+  { DWE, DWE, },
+  { DWE, DWE, },
+  { DWE, DWE, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+  { DWO, DWO, },
+    });
+#endif
+
 // CONTEXTS WSA STOP
 #endif
 // 1630 replaced
