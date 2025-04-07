@@ -39,12 +39,20 @@ file( GLOB MD5_SRC_FILES "../libmd5/*.cpp" )
 # get libmd5 include files
 file( GLOB MD5_INC_FILES "../libmd5/*.h" )
 
-
+if (EXTENSION_NNLF)
+ file( GLOB BASE_SADL_FILES "${PATH_TO_DIRECTORY_ROOT_SADL}/sadl/*.h" )
+ list( APPEND BASE_INC_FILES ${BASE_SADL_FILES})
+ include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
 # get all source files
 set( SRC_FILES ${BASE_SRC_FILES} ${X86_SRC_FILES} ${SSE41_SRC_FILES} ${SSE42_SRC_FILES} ${AVX_SRC_FILES} ${AVX2_SRC_FILES} ${MD5_SRC_FILES} )
 
 # get all include files
 set( INC_FILES ${BASE_INC_FILES} ${BASE_INL_FILES} ${X86_INC_FILES} ${MD5_INC_FILES} )
+
+
+list( APPEND AVX2_SRC_FILES NNInference.cpp)
+list( APPEND AVX2_SRC_FILES NNFilterUnified.cpp)
 
 
 # library

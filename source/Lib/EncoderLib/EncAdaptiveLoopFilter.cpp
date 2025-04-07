@@ -1756,6 +1756,13 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
   m_tempBufBeforeDb.getBuf( UnitArea( CHROMA_400, cs.area.blocks[COMPONENT_Y] ) ).extendBorderPel( NUM_DB_PAD );
 #endif
 #endif
+#if NNLF_ALF_POS_INTERFACE
+  if (cs.slice[0].getNnlfUnifiedParameters().mode != -1)
+  {
+    PelUnitBuf recYuvNNVC = m_tempBufAfterNNVC.getBuf(cs.area);
+    mirroredPaddingForAlf(cs, recYuvNNVC, NUM_DB_PAD, true, true);
+  }
+#endif
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
 #if JVET_AF0197_LUMA_RESIDUAL_TAP_IN_CCALF
   PelUnitBuf resiYuv = m_tempBufResi.getBuf( UnitArea( CHROMA_400, cs.area.blocks[COMPONENT_Y] ) );

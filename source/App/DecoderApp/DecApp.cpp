@@ -591,6 +591,10 @@ void DecApp::xCreateDecLib()
   );
   m_cDecLib.setDecodedPictureHashSEIEnabled(m_decodedPictureHashSEIEnabled);
 
+#if NN_COMMON_SPS
+  m_cDecLib.setNnlfModelName(m_nnlfModelName);
+#endif  
+
 
   if (!m_outputDecodedSEIMessagesFilename.empty())
   {

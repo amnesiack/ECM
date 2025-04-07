@@ -284,6 +284,13 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
 
   partitioner.initCtu(area, CH_L, *cs.slice);
 
+#if NN_LF_UNIFIED
+  if (cs.sps->getNnlfUnifiedEnabledFlag() && !skipSao && ctuRsAddr == 0)
+  {
+    writeNnlfUnifiedParameters(cs);
+  }
+#endif
+
   if( !skipSao )
   {
     sao( *cs.slice, ctuRsAddr );
@@ -11344,6 +11351,69 @@ void CABACWriter::codeAlfCtuAlternative( CodingStructure& cs, uint32_t ctuRsAddr
   }
 #endif
 }
+
+#if NN_LF_UNIFIED
+void CABACWriter::writeNnlfUnifiedParameters(const CodingStructure& cs)
+{
+  // signal parameter id of each block
+  NNFilterUnified::FilterParameters &prm = cs.picture->m_picprm;
+  
+  int cpt = 0;
+  int prmNum = prm.prmNum;
+  
+  if( prm.sprm.mode < prmNum ) // no block level signalling
+  {
+    return;
+  }
+    
+  for (int y = 0; y < prm.numBlocksHeight; ++y)
+  {
+    for (int x = 0; x < prm.numBlocksWidth; ++x, ++cpt)
+    {
+      int code = prm.prmId[cpt];
+
+      m_BinEncoder.encodeBin( code != -1, Ctx::nnlfUnifiedParams( 0 ) );
+      
+      if (prmNum > 1 && code != -1)
+      {
+        m_BinEncoder.encodeBin( code == 0, Ctx::nnlfUnifiedParams( 1 ) );
+      }
+      if (prmNum > 2 && code > 0)
+      {
+        xWriteTruncBinCode(code - 1, prmNum - 1);
+      }
+    }
+  }
+  
+}
+#if JVET_AK0093_NON_NORMATIVE_TDO
+void CABACWriter::computeCostNnlfUnifiedParameters(const CodingStructure& cs, const std::vector<int>& bsFilteringBlocks)
+{
+  NNFilterUnified::FilterParameters& prm = cs.picture->m_picprm;
+
+  int cpt = 0;
+  int prmNum = prm.prmNum;
+  for (int y = 0; y < prm.numBlocksHeight; ++y)
+  {
+    for (int x = 0; x < prm.numBlocksWidth; ++x, ++cpt)
+    {
+      int code = bsFilteringBlocks[cpt];
+
+      m_BinEncoder.encodeBin(code != -1, Ctx::nnlfUnifiedParams(0));
+
+      if (prmNum > 1 && code != -1)
+      {
+        m_BinEncoder.encodeBin(code == 0, Ctx::nnlfUnifiedParams(1));
+      }
+      if (prmNum > 2 && code > 0)
+      {
+        xWriteTruncBinCode(code - 1, prmNum - 1);
+      }
+    }
+  }
+}
+#endif
+#endif
 
 #if INTER_LIC
 void CABACWriter::cu_lic_flag(const CodingUnit& cu)

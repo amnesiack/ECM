@@ -50,6 +50,10 @@
 #include "MCTS.h"
 #include <deque>
 
+#if NN_LF_UNIFIED
+#include "CommonLib/NNFilterUnified.h"
+#endif
+
 #if ENABLE_SPLIT_PARALLELISM
 
 #define CURR_THREAD_ID -1
@@ -104,6 +108,9 @@ void create(
 #if JVET_Z0118_GDR
     const bool gdrEnabled,
 #endif
+#if NN_LF_UNIFIED
+  const bool useNNLF,
+#endif
     const bool useWrapAround, const ChromaFormat &_chromaFormat, const Size &size, const unsigned _maxCUSize,
     const unsigned _margin,
     const bool _decoder, const int _layerId, const bool gopBasedTemporalFilterEnabled = false);
@@ -143,6 +150,49 @@ void create(
   const CPelBuf     getResiBuf(const CompArea &blk) const;
          PelUnitBuf getResiBuf(const UnitArea &unit);
   const CPelUnitBuf getResiBuf(const UnitArea &unit) const;
+#if NNVC_USE_BS
+         PelBuf     getBsMapBuf(const ComponentID compID, bool wrap=false);
+         PelUnitBuf getBsMapBuf(bool wrap=false);
+         PelUnitBuf getBsMapBuf(const UnitArea &unit);
+const   CPelUnitBuf getBsMapBuf(const UnitArea &unit) const;
+         PelBuf     getBsMapBuf(const CompArea &blk);
+const   CPelBuf     getBsMapBuf(const CompArea &blk) const;
+#endif
+#if NNVC_USE_PRED
+         PelBuf     getPredBufCustom(const ComponentID compID, bool wrap=false);
+         PelUnitBuf getPredBufCustom(bool wrap=false);
+         PelBuf     getPredBufCustom(const CompArea &blk);
+  const CPelBuf     getPredBufCustom(const CompArea &blk)  const;
+         PelUnitBuf getPredBufCustom(const UnitArea &unit);
+  const CPelUnitBuf getPredBufCustom(const UnitArea &unit) const;
+#endif
+#if NNVC_USE_REC_BEFORE_DBF
+  PelBuf            getRecBeforeDbfBuf(const ComponentID compID, bool wrap=false);
+  PelUnitBuf        getRecBeforeDbfBuf(bool wrap=false);
+  PelBuf            getRecBeforeDbfBuf(const CompArea &blk);
+  const CPelBuf     getRecBeforeDbfBuf(const CompArea &blk)  const;
+  PelUnitBuf        getRecBeforeDbfBuf(const UnitArea &unit);
+  const CPelUnitBuf getRecBeforeDbfBuf(const UnitArea &unit) const;
+#endif
+
+#if JVET_AJ0124_QP_BLOCK
+  PelBuf            getBlockQpBuf(const ComponentID compID, bool wrap = false);
+  PelUnitBuf        getBlockQpBuf(bool wrap = false);
+  PelBuf            getBlockQpBuf(const CompArea& blk);
+  const CPelBuf     getBlockQpBuf(const CompArea& blk)  const;
+  PelUnitBuf        getBlockQpBuf(const UnitArea& unit);
+  const CPelUnitBuf getBlockQpBuf(const UnitArea& unit) const;
+  void              dumpQpBlock();
+#endif
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+  PelUnitBuf        getBlockPredModeBuf();
+  const CPelUnitBuf getBlockPredModeBuf() const;
+  PelUnitBuf        getBlockPredModeBuf(const UnitArea &unit);
+  const CPelUnitBuf getBlockPredModeBuf(const UnitArea &unit) const;
+  PelBuf            getBlockPredModeBuf(const CompArea &blk);
+  const CPelBuf     getBlockPredModeBuf(const CompArea &blk) const;
+  void              dumpPicBpmInfo();
+#endif
   
 #if JVET_AC0162_ALF_RESIDUAL_SAMPLES_INPUT
   void setResiBufPLT();
@@ -163,6 +213,23 @@ void create(
   const CPelBuf     getBuf(const CompArea &blk,      const PictureType &type) const;
          PelUnitBuf getBuf(const UnitArea &unit,     const PictureType &type);
   const CPelUnitBuf getBuf(const UnitArea &unit,     const PictureType &type) const;
+
+#if JVET_AF0043_AF0205_PADDING
+#if JVET_AJ0124_QP_BLOCK
+  void paddingPicBufBorder(const PictureType& type, const int& padSize, int value);
+  void paddingBsMapBufBorder(const int& padSize) { paddingPicBufBorder(PIC_BS_MAP, padSize, 0); };
+  void paddingRecBeforeDbfBufBorder(const int& padSize) { paddingPicBufBorder(PIC_REC_BEFORE_DBF, padSize, 0); };
+  void paddingPredBufBorder(const int& padSize) { paddingPicBufBorder(PIC_PREDICTION_CUSTOM, padSize, 0); };
+  void paddingBPMBufBorder(const int& padSize) { paddingPicBufBorder(PIC_BLOCK_PRED_MODE, padSize, 0); };
+  void paddingBlockQPBufBorder(const int padSize, int value) { paddingPicBufBorder(PIC_BLOCK_QP, padSize, value); }
+#else
+  void paddingPicBufBorder(const PictureType& type, const int& padSize);
+  void paddingBsMapBufBorder(const int& padSize) { paddingPicBufBorder(PIC_BS_MAP, padSize); };
+  void paddingRecBeforeDbfBufBorder(const int& padSize) { paddingPicBufBorder(PIC_REC_BEFORE_DBF, padSize); };
+  void paddingPredBufBorder(const int& padSize) { paddingPicBufBorder(PIC_PREDICTION_CUSTOM, padSize); };
+  void paddingBPMBufBorder(const int& padSize) { paddingPicBufBorder(PIC_BLOCK_PRED_MODE, padSize); };
+#endif
+#endif
 
   void extendPicBorder( const PPS *pps );
   void extendWrapBorder( const PPS *pps );
@@ -387,6 +454,24 @@ public:
 #endif
 
   std::vector<SAOBlkParam> m_sao[2];
+#if NN_LF_UNIFIED
+  NNFilterUnified::FilterParameters m_picprm;
+  void initPicprms( const Slice& slice)
+  {
+    const SPS& sps = *slice.getSPS();
+    NnlfUnifiedInferGranularity inferGranularity = slice.getNnlfUnifiedInferGranularity();
+    m_picprm.blockSize = sps.getNnlfUnifiedInferSize(inferGranularity);
+    m_picprm.extension  = sps.getNnlfUnifiedInfSizeExt();
+    m_picprm.prmNum = sps.getNnlfUnifiedMaxNumPrms();
+#if JVET_AJ0166_BlOCK_SIZE_INV
+    m_picprm.filterMode = (int)sps.getNnlfId();
+#endif
+    m_picprm.numBlocksHeight = (sps.getMaxPicHeightInLumaSamples() + m_picprm.blockSize - 1) / m_picprm.blockSize;
+    m_picprm.numBlocksWidth  = (sps.getMaxPicWidthInLumaSamples() + m_picprm.blockSize - 1) / m_picprm.blockSize;
+    m_picprm.prmId.resize(m_picprm.numBlocksHeight * m_picprm.numBlocksWidth);
+    fill(m_picprm.prmId.begin(), m_picprm.prmId.end(), -1);
+  }
+#endif
 #if JVET_V0094_BILATERAL_FILTER
 #if JVET_X0071_CHROMA_BILATERAL_FILTER
   BifParams        m_bifParams[MAX_NUM_COMPONENT];

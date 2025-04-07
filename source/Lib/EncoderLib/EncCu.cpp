@@ -17911,7 +17911,7 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
       mergeCtx[GEO_TM_OFF].setMergeInfo(pu, 0);
 #endif
 
-      pu.interDir = 3;
+      pu.interDir = 3;   
       pu.mergeIdx = MAX_UCHAR;
       pu.geoMergeIdx0 = geoBI.mergeCand[0];
       pu.geoMergeIdx1 = geoBI.mergeCand[1];
@@ -18947,7 +18947,6 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
 #else
         mergeCtx[GEO_TM_OFF].setMergeInfo(pu, 0);
 #endif
-
         pu.interDir = 3;
         pu.mergeIdx = MAX_UCHAR;
         pu.geoMergeIdx0 = geoBI.mergeCand[0];
@@ -27400,6 +27399,9 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
 
     m_pPredBufWoOBMC[wIdx][hIdx].copyFrom(tempWoOBMCBuf);
     m_pTempCUWoOBMC[wIdx][hIdx]->getPredBuf(cu).copyFrom(prevCS->getPredBuf(cu));
+#if NNVC_USE_PRED
+    m_pTempCUWoOBMC[wIdx][hIdx]->getPredBufCustom(cu).copyFrom(prevCS->getPredBufCustom(cu));
+#endif
 
     bestOBMCCost = tempCost;
 #if JVET_AA0129_INTERHASH_OBMCOFF_RD
@@ -27461,6 +27463,17 @@ void EncCu::xCalDebCost( CodingStructure &cs, Partitioner &partitioner, bool cal
   {
     cs.costDbOffset = 0;
   }
+
+#if NN_LF_CCCM_CCPMERGE_ALT_FIX
+  for (auto& currTU : CU::traverseTUs(*cs.cus[0]))
+  {
+    if (currTU.interCccm || currTU.interCcpMerge || cs.cus[0]->interCcpMergeZeroRootCbfIdc)
+    {
+      cs.getPredBuf(currTU.blocks[COMPONENT_Cb]).copyFrom(cs.getPredBufCustom(currTU.blocks[COMPONENT_Cb]));
+      cs.getPredBuf(currTU.blocks[COMPONENT_Cr]).copyFrom(cs.getPredBufCustom(currTU.blocks[COMPONENT_Cr]));
+    }
+  }
+#endif
 
   if ( cs.slice->getDeblockingFilterDisable() || ( !m_pcEncCfg->getUseEncDbOpt() && !calDist ) )
   {

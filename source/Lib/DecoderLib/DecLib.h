@@ -57,6 +57,9 @@
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
 #include "BilateralFilter.h"
 #endif
+#if NN_LF_UNIFIED
+#include "CommonLib/NNFilterUnified.h"
+#endif
 
 #if JVET_AL0153_ALF_CCCM
 #include "CommonLib/LoopFilterCccm.h"
@@ -126,6 +129,13 @@ private:
   LoopFilter              m_cLoopFilter;
   SampleAdaptiveOffset    m_cSAO;
   AdaptiveLoopFilter      m_cALF;
+#if NN_COMMON_SPS
+  std::string             m_nnlfModelName;
+#endif  
+#if NN_LF_UNIFIED
+  NNFilterUnified         m_nnfilterUnified;
+#endif
+
   Reshape                 m_cReshaper;                        ///< reshaper class
   HRD                     m_HRD;
 #if JVET_AL0153_ALF_CCCM
@@ -234,6 +244,10 @@ public:
 
   void  create  ();
   void  destroy ();
+#if NN_COMMON_SPS
+  const std::string &getNnlfModelName()                        { return m_nnlfModelName;             }
+  void               setNnlfModelName(std::string s)           { m_nnlfModelName = std::move(s);     }  
+#endif  
 
   void  setDecodedPictureHashSEIEnabled(int enabled) { m_decodedPictureHashSEIEnabled=enabled; }
 

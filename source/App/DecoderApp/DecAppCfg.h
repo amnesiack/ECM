@@ -58,6 +58,10 @@ class DecAppCfg
 protected:
   std::string   m_bitstreamFileName;                    ///< input bitstream file name
   std::string   m_reconFileName;                        ///< output reconstruction file name
+#if NN_COMMON_SPS
+  std::string   m_nnlfModelName;                        ///< nnlf model
+#endif  
+
 
   std::string   m_oplFilename;                        ///< filename to output conformance log.
 

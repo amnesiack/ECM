@@ -67,6 +67,21 @@ enum PictureType
   PIC_ORIGINAL_INPUT,
   PIC_TRUE_ORIGINAL_INPUT,
   PIC_FILTERED_ORIGINAL_INPUT,
+#if NNVC_USE_BS
+  PIC_BS_MAP,
+#endif
+#if NNVC_USE_PRED
+  PIC_PREDICTION_CUSTOM,
+#endif
+#if NNVC_USE_REC_BEFORE_DBF
+  PIC_REC_BEFORE_DBF,
+#endif
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+  PIC_BLOCK_PRED_MODE,
+#endif
+#if JVET_AJ0124_QP_BLOCK
+  PIC_BLOCK_QP,
+#endif
   NUM_PIC_TYPES
 };
 extern XUCache g_globalUnitCache;
@@ -331,6 +346,12 @@ private:
   std::vector<SAOBlkParam> m_sao;
 
   PelStorage m_pred;
+#if NNVC_USE_PRED
+  PelStorage m_predCustom;
+#endif  
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+  PelStorage m_block_pred_mode;
+#endif
   PelStorage m_resi;
 #if JVET_AC0060_IBC_BVP_CLUSTER_RRIBC_BVD_SIGN_DERIV
 public:
@@ -548,6 +569,13 @@ public:
          PelUnitBuf   getPredBuf(const UnitArea &unit);
   const CPelUnitBuf   getPredBuf(const UnitArea &unit) const;
 
+#if NNVC_USE_PRED
+         PelBuf       getPredBufCustom(const CompArea &blk);
+  const CPelBuf       getPredBufCustom(const CompArea &blk) const;
+         PelUnitBuf   getPredBufCustom(const UnitArea &unit);
+  const CPelUnitBuf   getPredBufCustom(const UnitArea &unit) const;
+#endif
+
          PelBuf       getResiBuf(const CompArea &blk);
   const CPelBuf       getResiBuf(const CompArea &blk) const;
          PelUnitBuf   getResiBuf(const UnitArea &unit);
@@ -611,6 +639,14 @@ public:
   const CPelBuf       getRecoBuf(const ComponentID compID)   const { return m_reco.get(compID); }
          PelUnitBuf   getRecoBuf()                                 { return m_reco; }
   const CPelUnitBuf   getRecoBuf()                           const { return m_reco; }
+#endif
+
+#if JVET_AC0089_NNVC_USE_BPM_INFO
+  // block prediction mode buffer
+  PelBuf            getBlockPredModeBuf(const ComponentID compID) { return m_block_pred_mode.get(compID); }
+  const CPelBuf     getBlockPredModeBuf(const ComponentID compID) const { return m_block_pred_mode.get(compID); }
+  PelUnitBuf        getBlockPredModeBuf() { return m_block_pred_mode; }
+  const CPelUnitBuf getBlockPredModeBuf() const { return m_block_pred_mode; }
 #endif
 
 #if JVET_Z0118_GDR // setReconBuf

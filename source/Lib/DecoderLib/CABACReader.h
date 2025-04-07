@@ -83,6 +83,10 @@ public:
   // coding tree unit (clause 7.3.8.2)
   void        coding_tree_unit          ( CodingStructure&              cs,     const UnitArea& area,     int (&qps)[2],   unsigned  ctuRsAddr );
 
+#if NN_LF_UNIFIED
+  void readNnlfUnifiedParameters(CodingStructure& cs);
+#endif
+
   // sao (clause 7.3.8.3)
   void        sao                       ( CodingStructure&              cs,     unsigned        ctuRsAddr );
 

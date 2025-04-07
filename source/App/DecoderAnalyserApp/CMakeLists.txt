@@ -7,6 +7,10 @@ file( GLOB SRC_FILES "../DecoderApp/*.cpp" )
 # get include files
 file( GLOB INC_FILES "../DecoderApp/*.h" )
 
+if (EXTENSION_NNLF)
+  include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
+
 # get additional libs for gcc on Ubuntu systems
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
   if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )

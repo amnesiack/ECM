@@ -3820,8 +3820,22 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
               }
               else
               {
+#if NN_LF_TRYMODE_FIX
+                m_pcInterSearch->motionCompensation(*cuECtx.bestCU, REF_PIC_LIST_X, true, true, &predBeforeMCAdjBuffer);
+#else
                 m_pcInterSearch->motionCompensation(*cuECtx.bestCU);
                 predBeforeMCAdjBuffer.copyFrom(cuECtx.bestCU->cs->getPredBuf(*cuECtx.bestCU->firstPU));
+#endif
+#if NN_LF_CCCM_CCPMERGE_ALT_FIX
+                for (auto& currTU : CU::traverseTUs(*cuECtx.bestCU))
+                {
+                  if (currTU.interCccm || currTU.interCcpMerge || cuECtx.bestCU->interCcpMergeZeroRootCbfIdc)
+                  {
+                    cuECtx.bestCU->cs->getPredBuf(currTU.blocks[COMPONENT_Cb]).copyFrom(cuECtx.bestCU->cs->getPredBufCustom(currTU.blocks[COMPONENT_Cb]));
+                    cuECtx.bestCU->cs->getPredBuf(currTU.blocks[COMPONENT_Cr]).copyFrom(cuECtx.bestCU->cs->getPredBufCustom(currTU.blocks[COMPONENT_Cr]));
+                  }
+                }
+#endif
               }
             }
             else

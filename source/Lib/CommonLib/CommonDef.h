@@ -701,6 +701,9 @@ static const int MAX_NUM_APS =                                     32;  //Curren
 static const int NUM_APS_TYPE_LEN =                                 3;  //Currently APS Type has 3 bits
 static const int MAX_NUM_APS_TYPE =                                 8;  //Currently APS Type has 3 bits so the max type is 8
 
+#if JVET_AK0093_NON_NORMATIVE_TDO
+static constexpr int MAX_TDO_LAMBDA                               = 6;
+#endif
 static const int MAX_TILE_COLS =                                   20;  ///< Maximum number of tile columns
 #if JVET_S0156_LEVEL_DEFINITION
 static const int MAX_TILES =                                      440;  ///< Maximum number of tiles
@@ -2669,4 +2672,10 @@ static const int BVG_DIMD_BV_LIST_SIZE    = 5;
 static const int MAX_BVG_ROUGH_NUM        = 1;
 static const double BVG_DIMD_BV_LIST_THRD = 1.2;       
 #endif
+
+// NNIF interface
+#if JVET_AF0085_RESIDUAL_ADJ
+static const int MAX_PRM_NUM              = 2;
+#endif
+
 #endif // end of #ifndef  __COMMONDEF__

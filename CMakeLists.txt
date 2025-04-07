@@ -26,6 +26,7 @@ if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
     set( USE_ADDRESS_SANITIZER OFF CACHE BOOL "Compiles with -sanitize=address and links to libasan" )
   endif()
 endif()
+set( EXTENSION_NNLF OFF CACHE BOOL "If EXTENSION_NNLF is on, NNLF interfaces are added. Please use git submodule init/update to get SADL library." )
 
 set( EXTENSION_360_VIDEO OFF CACHE BOOL "If EXTENSION_360_VIDEO is on, 360Lib will be added" )
 set( EXTENSION_HDRTOOLS OFF CACHE BOOL "If EXTENSION_HDRTOOLS is on, HDRLib will be added" )
@@ -89,6 +90,13 @@ if( (UNIX OR MINGW) AND NOT (CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64") )
   add_compile_options( "-msse4.1" )
 endif()
 
+if (EXTENSION_NNLF)
+    add_compile_definitions(JVET_AL0228_NNLF_INTERFACES=1)
+    if(NOT EXISTS ${CMAKE_SOURCE_DIR}/sadl)
+        message(FATAL_ERROR "SADL library needed for build. Execute command:\ngit submodule init; git submodule update\nin order to retrieve, or unzip the archive in the sadl directory.")
+    endif()
+    set(PATH_TO_DIRECTORY_ROOT_SADL "${CMAKE_SOURCE_DIR}/sadl")
+endif()
 # enable parallel build for Visual Studio
 if( MSVC )
   add_compile_options( "/MP" )
@@ -109,6 +117,7 @@ if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
     add_compile_options( "-fabi-version=6" )
   endif()
 endif()
+
 
 # modify .lldbinit for lldb custom data formatters
 if( XCODE )
@@ -145,3 +154,4 @@ add_subdirectory( "source/App/CabacTraining" )
 if( EXTENSION_360_VIDEO )
   add_subdirectory( "source/App/utils/360ConvertApp" )
 endif()
+

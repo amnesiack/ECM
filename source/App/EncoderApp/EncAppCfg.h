@@ -1127,6 +1127,28 @@ protected:
   bool        m_bs2ModPOCAndType;
   bool        m_forceDecodeBitstream1;
 
+#if NN_COMMON_SPS
+  int         m_nnlfOption;
+  bool        m_nnlf;
+#endif
+  
+ #if NN_LF_UNIFIED
+  NNLFUnifiedID    m_nnlfId;
+  bool        m_nnlfUnified;
+  uint32_t    m_nnlfBlockSize;
+  uint32_t    m_nnlfInfSizeExt;
+  uint32_t    m_nnlfMaxNumPrms;
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  bool        m_nnlfTDO;
+  std::vector<int> m_nnlfTDOParam;
+#endif
+#if JVET_AH0080_TRANS_INPUT
+  bool        m_nnlfTransInput;
+#endif
+ #endif
+#if NN_COMMON_SPS
+  std::string m_nnlfModelName;                                ///<nnlf model
+#endif  
   bool        m_alf;                                          ///< Adaptive Loop Filter
 #if JVET_AL0153_ALF_CCCM
   bool        m_lfCccm;

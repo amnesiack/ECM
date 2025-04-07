@@ -83,6 +83,10 @@ bool DecAppCfg::parseCfg( int argc, char* argv[] )
   ("BitstreamFile,b",           m_bitstreamFileName,                   string(""), "bitstream input file name")
   ("ReconFile,o",               m_reconFileName,                       string(""), "reconstructed YUV output file name\n")
 
+#if NN_COMMON_SPS
+  ("NnlfModelName", m_nnlfModelName, string("models/model_name.sadl"), "loop filter model name\n")
+#endif
+
   ("OplFile,-opl",              m_oplFilename ,                        string(""), "opl-file name without extension for conformance testing\n")
 #if ENABLE_SIMD_OPT && defined(TARGET_SIMD_X86)
   ("SIMD",                      ignore,                                string(""), "SIMD extension to use (SCALAR, SSE41, SSE42, AVX, AVX2, AVX512), default: the highest supported extension\n")

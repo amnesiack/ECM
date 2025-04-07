@@ -811,6 +811,9 @@ void EncLib::init( bool isFieldCoding, AUWriterIf* auWriterIf )
 #if JVET_Z0118_GDR
       sps0.getGDREnabledFlag(),
 #endif
+#if NN_LF_UNIFIED
+      sps0.getNnlfEnabledFlag(),
+#endif
       sps0.getWrapAroundEnabledFlag(), sps0.getChromaFormatIdc(),
       Size(pps0.getPicWidthInLumaSamples(), pps0.getPicHeightInLumaSamples()), sps0.getMaxCUWidth(),
       sps0.getMaxCUWidth() + EXT_PICTURE_SIZE, false, m_layerId, getGopBasedTemporalFilterEnabled());
@@ -833,6 +836,9 @@ void EncLib::init( bool isFieldCoding, AUWriterIf* auWriterIf )
       sps0.getRprEnabledFlag(),
 #if JVET_Z0118_GDR
       sps0.getGDREnabledFlag(),
+#endif
+#if NN_LF_UNIFIED
+      sps0.getNnlfEnabledFlag(),
 #endif
       sps0.getWrapAroundEnabledFlag(), sps0.getChromaFormatIdc(),
       Size(pps0.getPicWidthInLumaSamples(), pps0.getPicHeightInLumaSamples()), sps0.getMaxCUWidth(),
@@ -1481,6 +1487,9 @@ void EncLib::xGetNewPicBuffer ( std::list<PelUnitBuf*>& rcListPicYuvRecOut, Pict
       isRprEnabled(),
 #if JVET_Z0118_GDR
       getGdrEnabled(),
+#endif
+#if NN_LF_UNIFIED
+      getUseNnlfUnified(),
 #endif
       sps.getWrapAroundEnabledFlag(), sps.getChromaFormatIdc(),
       Size(pps.getPicWidthInLumaSamples(), pps.getPicHeightInLumaSamples()), sps.getMaxCUWidth(),
@@ -2415,6 +2424,23 @@ void EncLib::xInitSPS( SPS& sps )
 #endif
   sps.setALFEnabledFlag( m_alf );
   sps.setCCALFEnabledFlag( m_ccalf );
+
+#if NN_COMMON_SPS
+  sps.setNnlfEnabledFlag(m_nnlf);
+  sps.setNnlfId(m_nnlfId);
+#endif
+  
+#if NN_LF_UNIFIED
+  sps.setNnlfUnifiedEnabledFlag(m_nnlfUnified);
+  if (sps.getNnlfUnifiedEnabledFlag())
+  {
+    uint32_t nnlfInferSize[] = { m_nnlfUnifiedBlockSize >> 1, m_nnlfUnifiedBlockSize, m_nnlfUnifiedBlockSize << 1 };
+    sps.setNnlfUnifiedInferSize(nnlfInferSize);
+    sps.setNnlfUnifiedInfSizeExt(m_nnlfUnifiedInfSizeExt);
+    sps.setNnlfUnifiedMaxNumPrms(m_nnlfUnifiedMaxNumPrms); // only on/off for all-intra
+  }
+#endif
+
   sps.setFieldSeqFlag(false);
   sps.setVuiParametersPresentFlag(getVuiParametersPresentFlag());
 

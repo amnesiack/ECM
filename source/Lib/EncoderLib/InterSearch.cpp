@@ -15984,6 +15984,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
           distortion = distortionChromaTmp + distortionLuma;
           cs.getRecoBuf(cu.blocks[COMPONENT_Cb]).copyClip(interCcpMergePredBuf[0], cs.slice->clpRng(COMPONENT_Cb));
           cs.getRecoBuf(cu.blocks[COMPONENT_Cr]).copyClip(interCcpMergePredBuf[1], cs.slice->clpRng(COMPONENT_Cr));
+#if NNVC_USE_PRED
+          cs.getPredBufCustom(cu.blocks[COMPONENT_Cb]).copyFrom(cs.getRecoBuf(cu.blocks[COMPONENT_Cb]));
+          cs.getPredBufCustom(cu.blocks[COMPONENT_Cr]).copyFrom(cs.getRecoBuf(cu.blocks[COMPONENT_Cr]));
+#endif
         }
       }
       cu.interCcpMergeZeroRootCbfIdc = bestWIdx;
@@ -16542,6 +16546,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
         bestWIdx = wIdx;
         cs.getRecoBuf(cu.blocks[COMPONENT_Cb]).copyClip(interCcpMergePredBuf[0], cs.slice->clpRng(COMPONENT_Cb));
         cs.getRecoBuf(cu.blocks[COMPONENT_Cr]).copyClip(interCcpMergePredBuf[1], cs.slice->clpRng(COMPONENT_Cr));
+#if NNVC_USE_PRED
+        cs.getPredBufCustom(cu.blocks[COMPONENT_Cb]).copyFrom(cs.getRecoBuf(cu.blocks[COMPONENT_Cb]));
+        cs.getPredBufCustom(cu.blocks[COMPONENT_Cr]).copyFrom(cs.getRecoBuf(cu.blocks[COMPONENT_Cr]));
+#endif
       }
     }
     cu.interCcpMergeZeroRootCbfIdc = bestWIdx;
@@ -16584,6 +16592,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
         CHECK( !valid, "invalid inter cccm" );
 
+#if NNVC_USE_PRED
+        cs.getPredBufCustom(tuTmp->blocks[COMPONENT_Cb]).copyFrom(interCccmPredBuf[COMPONENT_Cb]);
+        cs.getPredBufCustom(tuTmp->blocks[COMPONENT_Cr]).copyFrom(interCccmPredBuf[COMPONENT_Cr]);
+#endif
         cs.getRecoBuf( tuTmp->blocks[COMPONENT_Cb] ).reconstruct( interCccmPredBuf[COMPONENT_Cb], cs.getResiBuf( tuTmp->blocks[COMPONENT_Cb] ), cs.slice->clpRngs().comp[COMPONENT_Cb] );
         cs.getRecoBuf( tuTmp->blocks[COMPONENT_Cr] ).reconstruct( interCccmPredBuf[COMPONENT_Cr], cs.getResiBuf( tuTmp->blocks[COMPONENT_Cr] ), cs.slice->clpRngs().comp[COMPONENT_Cr] );
       }
@@ -16604,6 +16616,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
         CHECK( !valid, "invalid inter ccp merge" );
 
+#if NNVC_USE_PRED
+        cs.getPredBufCustom(tuTmp->blocks[COMPONENT_Cb]).copyFrom(interCcpMergePredBuf[0]);
+        cs.getPredBufCustom(tuTmp->blocks[COMPONENT_Cr]).copyFrom(interCcpMergePredBuf[1]);
+#endif
         cs.getRecoBuf( tuTmp->blocks[COMPONENT_Cb] ).reconstruct( interCcpMergePredBuf[0], cs.getResiBuf( tuTmp->blocks[COMPONENT_Cb] ), cs.slice->clpRngs().comp[COMPONENT_Cb] );
         cs.getRecoBuf( tuTmp->blocks[COMPONENT_Cr] ).reconstruct( interCcpMergePredBuf[1], cs.getResiBuf( tuTmp->blocks[COMPONENT_Cr] ), cs.slice->clpRngs().comp[COMPONENT_Cr] );
       }

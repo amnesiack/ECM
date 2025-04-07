@@ -162,7 +162,16 @@ std::istringstream &operator>>(std::istringstream &in, GOPEntry &entry)     //in
   return in;
 }
 
-
+#if JVET_AK0093_NON_NORMATIVE_TDO
+std::istringstream& operator>>(std::istringstream& in, NnlfTDOParam& tdoParam)
+{
+  for (int i = 0; i < MAX_TDO_LAMBDA; i++)
+  {
+    in >> tdoParam.lambdaTDO[i];
+  }
+  return in;
+}
+#endif
 
 bool confirmPara(bool bflag, const char* message);
 
@@ -729,6 +738,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 
 #if JVET_AD0105_ASPECT1_NUM_SIGN_PRED_BY_QP
   std::string sNumSignPredOverrideByQP;
+#endif
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  NnlfTDOParam paramTDO = { {2000, 2300, 7800, 17000, 38000, 55000} };
 #endif
 
   int warnUnknowParameter = 0;
@@ -1609,6 +1621,15 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("SingleSignificanceMapContext",                    m_transformSkipContextEnabledFlag,                false, "Enable, for transform-skipped and transquant-bypassed TUs, the selection of a single significance map context variable for all coefficients (not valid in V1 profiles)")
   ("GolombRiceParameterAdaptation",                   m_persistentRiceAdaptationEnabledFlag,            false, "Enable the adaptation of the Golomb-Rice parameter over the course of each slice")
   ("AlignCABACBeforeBypass",                          m_cabacBypassAlignmentEnabledFlag,                false, "Align the CABAC engine to a defined fraction of a bit prior to coding bypass data. Must be 1 in high bit rate profile, 0 otherwise")
+#if NN_COMMON_SPS
+  ("NnlfOption",                                      m_nnlfOption, 0, "NN-based in-loop filter option (0:disable nnlf, 1: enable unified nnlf legacy hop/lop/vlop, 3: lop5/vlop3, 5: hop5")
+  ("NnlfModelName",                                   m_nnlfModelName, string("models/model_name.sadl"), "unified nnlf model name.")
+#endif
+#if NN_LF_UNIFIED
+      ("NnlfBlockSize", m_nnlfBlockSize, 128u, "Base inference size of NN-based in-loop filter")
+      ("NnlfInfSizeExt", m_nnlfInfSizeExt, 8u, "Extension of inference size of loop filter")
+      ("NnlfMaxNumPrms", m_nnlfMaxNumPrms, 2u, "Number of conditional parameters of loop filter")
+#endif
   ("SAO",                                             m_bUseSAO,                                         true, "Enable Sample Adaptive Offset")
 #if JVET_W0066_CCSAO
   ("CCSAO",                                           m_CCSAO,                                           true, "Cross-component Sample Adaptive Offset" )
@@ -2063,6 +2084,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
     opts.addOptions()(cOSS2.str(), m_olsPtlIdx[i], 0);
   }
 
+#if JVET_AK0093_NON_NORMATIVE_TDO
+  opts.addOptions()
+    ("NnlfTdo", m_nnlfTDO, false, "Non-normative TDO for NNVC in-loop filter")
+    ("NnlfTdoLambda", paramTDO, paramTDO, "TDO lambda");
+#endif
   po::setDefaults(opts);
   po::ErrorReporter err;
   const list<const char*>& argv_unhandled = po::scanArgv(opts, argc, (const char**) argv, err);
@@ -3341,6 +3367,56 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
       }
     }
   }
+
+#if NN_COMMON_SPS
+    m_nnlf = false;
+#if NN_LF_UNIFIED
+    m_nnlfUnified = false;
+    m_nnlfTransInput = false;
+   switch(m_nnlfOption)
+   {
+   case 0:
+     m_nnlfId = NNLFUnifiedID::UNDEFINED;
+     break;
+    case 1:
+    m_nnlf = true;
+     m_nnlfId = NNLFUnifiedID::HOPLOP;
+     m_nnlfUnified = true;
+     break;
+    case 3:
+      m_nnlf = true;
+      m_nnlfId = NNLFUnifiedID::LOP3;
+      m_nnlfUnified = true;
+      m_nnlfTransInput = true;
+      break;
+    case 4:
+      m_nnlf = true;
+      m_nnlfId = NNLFUnifiedID::HOP4;
+      m_nnlfUnified = true;
+      break;
+    case 5:
+      m_nnlf = true;
+      m_nnlfId = NNLFUnifiedID::HOP5;
+      m_nnlfUnified = true;
+      break;
+    default:
+      THROW( "Unknown NNLF type" );
+      exit(-1);
+    break;
+  }
+#endif
+#if JVET_AK0093_NON_NORMATIVE_TDO
+   m_nnlfTDO = m_nnlfUnified ? m_nnlfTDO : false;
+   if (m_nnlfTDO)
+   {
+     m_nnlfTDOParam.resize(MAX_TDO_LAMBDA);
+     for (int i = 0; i < MAX_TDO_LAMBDA; i++)
+     {
+       m_nnlfTDOParam[i] = paramTDO.lambdaTDO[i];
+     }
+   }
+#endif
+#endif
 
   if ( m_alf )
   {
@@ -5725,6 +5801,12 @@ void EncAppCfg::xPrintParameter()
   msg( VERBOSE, "Tiles: %dx%d ", m_numTileCols, m_numTileRows );
   msg( VERBOSE, "Slices: %d ", m_numSlicesInPic);
   msg( VERBOSE, "MCTS:%d ", m_MCTSEncConstraint );
+#if NN_COMMON_SPS
+  msg(VERBOSE, "NnlfOption:%d ", m_nnlfOption);
+#endif
+#if NN_LF_UNIFIED
+  msg(VERBOSE, "NnlfUnified:%d ",    m_nnlfUnified ? 1 : 0);
+#endif
   msg( VERBOSE, "SAO:%d ", (m_bUseSAO)?(1):(0));
   msg( VERBOSE, "ALF:%d ", m_alf ? 1 : 0 );
   msg( VERBOSE, "CCALF:%d ", m_ccalf ? 1 : 0 );
@@ -6269,6 +6351,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_Y0240_BIM
   msg(VERBOSE, "BIM:%d ", m_bimEnabled);
+#endif
+#if JVET_AH0080_TRANS_INPUT
+  msg(VERBOSE, "NnlfTransInput:%d ", m_nnlfTransInput ? 1 : 0);
 #endif
 
 #if EXTENSION_360_VIDEO

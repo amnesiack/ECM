@@ -460,6 +460,50 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
   }
 
   const unsigned uiPelsInPart = pcv.minCUWidth;
+
+#if NNVC_USE_BS
+  auto storeBS = [this, cu, uiPelsInPart, edgeDir]( char bs, Position pos, ComponentID comp) -> void
+  {
+    Size sz;
+    Position posPQ;
+
+    int edgeLongSide = uiPelsInPart;
+    int edgeShortSide = 2;
+
+    const int scaleX = getComponentScaleX( comp, cu.chromaFormat );
+    const int scaleY = getComponentScaleY( comp, cu.chromaFormat );
+
+    if(edgeDir == EDGE_HOR)
+    {
+      sz.width  = edgeLongSide;
+      sz.height = edgeShortSide << scaleY;
+      posPQ = Position( pos.x, pos.y - ( 1<< scaleY) );
+    }
+    else
+    {
+      sz.height = edgeLongSide;
+      sz.width  = edgeShortSide << scaleX;
+      posPQ = Position( pos.x - ( 1<< scaleX) , pos.y);
+    }
+
+    CompArea edgeArea(comp, cu.chromaFormat, posPQ, sz, true);
+    auto bsComp = BsGet(bs, comp);
+    auto targetBuff = cu.slice->getPic()->getBsMapBuf(edgeArea);
+
+    Pel toFill = bsComp == 2 ? 1023 : ( bsComp == 1 ? 512 : 0);
+
+    for( auto i = 0; i < targetBuff.height; ++i)
+    {
+      for( auto j = 0; j < targetBuff.width; ++j)
+      {
+        targetBuff.at( j, i ) = std::max(targetBuff.at( j, i ), toFill );
+      }
+    }
+  };
+#endif
+  
+  
+//#if JVET_AJ0188_CODING_INFO_CLASSIFICATION
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
   auto storeBoundaryInfo = [this, cu, uiPelsInPart, edgeDir]( char bs, Position pos, ComponentID comp, PelUnitBuf& bsBuf) -> void
   {
@@ -500,6 +544,9 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
     }
   };
 #endif
+#if NNVC_USE_BS
+  const bool storeForNNlf = cu.cs->sps->getNnlfEnabledFlag();
+#endif
 
   for( int y = 0; y < area.height; y += uiPelsInPart )
   {
@@ -517,6 +564,12 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
 #endif
         {
           bS |= xGetBoundaryStrengthSingle( cu, edgeDir, localPos, CHANNEL_TYPE_LUMA );
+#if NNVC_USE_BS
+          if( cu.blocks[COMPONENT_Y].valid() && storeForNNlf )
+          {
+            storeBS( bS, Position( area.x + x, area.y + y ), COMPONENT_Y );
+          }
+#endif		  
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
           if( cu.blocks[COMPONENT_Y].valid() && storeInfo )
           {
@@ -531,6 +584,13 @@ void LoopFilter::xDeblockCU( CodingUnit& cu, const DeblockEdgeDir edgeDir )
 #endif
         {
           bS |= xGetBoundaryStrengthSingle( cu, edgeDir, localPos, CHANNEL_TYPE_CHROMA );
+#if NNVC_USE_BS
+          if (storeForNNlf)
+          {
+            storeBS(bS, Position(area.x + x, area.y + y), COMPONENT_Cb);
+            storeBS(bS, Position(area.x + x, area.y + y), COMPONENT_Cr);
+          }
+#endif
         }
         m_aapucBS[edgeDir][rasterIdx] = bS;
       }

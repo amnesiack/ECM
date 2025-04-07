@@ -58,6 +58,10 @@
 #include "CommonLib/CodingStatistics.h"
 #endif
 
+#if NN_LF_UNIFIED
+#include <sadl/model.h>
+#endif
+
 #if JVET_AG0196_CABAC_RETRAIN
 namespace CabacRetrain
 {
@@ -639,6 +643,10 @@ void DecLib::destroy()
     m_dci = NULL;
   }
 
+#if NN_LF_UNIFIED
+  m_nnfilterUnified.destroy();
+#endif
+
   m_cSliceDecoder.destroy();
 #if JVET_V0094_BILATERAL_FILTER || JVET_X0071_CHROMA_BILATERAL_FILTER
   m_cBilateralFilter.destroy();
@@ -698,6 +706,9 @@ Picture* DecLib::xGetNewPicBuffer( const SPS &sps, const PPS &pps, const uint32_
 #if JVET_Z0118_GDR
       sps.getGDREnabledFlag(),
 #endif
+#if NN_LF_UNIFIED
+      sps.getNnlfEnabledFlag(),
+#endif
       sps.getWrapAroundEnabledFlag(), sps.getChromaFormatIdc(),
       Size(pps.getPicWidthInLumaSamples(), pps.getPicHeightInLumaSamples()), sps.getMaxCUWidth(),
       sps.getMaxCUWidth() + EXT_PICTURE_SIZE, true, layerId);
@@ -742,6 +753,9 @@ Picture* DecLib::xGetNewPicBuffer( const SPS &sps, const PPS &pps, const uint32_
 #if JVET_Z0118_GDR
       sps.getGDREnabledFlag(),
 #endif
+#if NN_LF_UNIFIED
+      sps.getNnlfEnabledFlag(),
+#endif
       sps.getWrapAroundEnabledFlag(), sps.getChromaFormatIdc(),
       Size(pps.getPicWidthInLumaSamples(), pps.getPicHeightInLumaSamples()), sps.getMaxCUWidth(),
       sps.getMaxCUWidth() + EXT_PICTURE_SIZE, true, layerId);
@@ -756,6 +770,9 @@ Picture* DecLib::xGetNewPicBuffer( const SPS &sps, const PPS &pps, const uint32_
         sps.getRprEnabledFlag(),
 #if JVET_Z0118_GDR        
         sps.getGDREnabledFlag(),
+#endif
+#if NN_LF_UNIFIED
+        sps.getNnlfEnabledFlag(),
 #endif
         sps.getWrapAroundEnabledFlag(), sps.getChromaFormatIdc(),
         Size(pps.getPicWidthInLumaSamples(), pps.getPicHeightInLumaSamples()), sps.getMaxCUWidth(),
@@ -814,9 +831,38 @@ void DecLib::executeLoopFilters()
           }
         }
       }
+#if NNVC_USE_PRED
+      uint64_t culength = cs.cus.size();
+      if( cs.sps->getNnlfEnabledFlag() )
+      {
+        for( uint64_t n = 0; n < culength; n++ )
+        {
+          CodingUnit* cu = cs.cus.at( n );
+          if( cu->slice->getLmcsEnabledFlag() )
+          {
+#if JVET_Y0065_GPM_INTRA
+            if( ( ( cu->predMode == MODE_INTRA || cu->predMode == MODE_IBC || cu->predMode == MODE_PLT ) && cu->chType != CHANNEL_TYPE_CHROMA ) || ( cu->predMode == MODE_INTER && m_cReshaper.getCTUFlag() && ( cu->firstPU->ciipFlag || cu->firstPU->gpmIntraFlag ) ) )
+#else
+            if( ( ( cu->predMode == MODE_INTRA || cu->predMode == MODE_IBC ) && cu->chType != CHANNEL_TYPE_CHROMA ) || ( cu->predMode == MODE_INTER && m_cReshaper.getCTUFlag() && cu->firstPU->ciipFlag ) )
+#endif
+            {
+              m_pcPic->getPredBufCustom( cu->block( COMPONENT_Y ) ).rspSignal( m_cReshaper.getInvLUT() );
+            }
+          }
+        }
+      }
+#endif
+
       m_cReshaper.setRecReshaped(false);
       m_cSAO.setReshaper(&m_cReshaper);
   }
+
+#if NNVC_USE_BS
+  m_pcPic->getBsMapBuf().fill(0);
+#endif
+#if NNVC_USE_REC_BEFORE_DBF
+  m_pcPic->getRecBeforeDbfBuf().copyFrom(m_pcPic->getRecoBuf());
+#endif
 
 #if JVET_AA0095_ALF_WITH_SAMPLES_BEFORE_DBF
   if (cs.sps->getALFEnabledFlag())
@@ -861,7 +907,11 @@ void DecLib::executeLoopFilters()
 #endif
 
 #if JVET_AJ0188_CODING_INFO_CLASSIFICATION || JVET_AK0091_LAPLACIAN_INFO_IN_ALF
+#if NNVC_USE_BS
+  const bool storeCodingInfo = cs.sps->getALFEnabledFlag() || cs.sps->getNnlfEnabledFlag();
+#else
   const bool storeCodingInfo = cs.sps->getALFEnabledFlag();
+#endif
   PelUnitBuf codingInfoBuf = storeCodingInfo ? m_cALF.callCodingInfoBuf( cs ) : PelUnitBuf();
   m_cLoopFilter.loopFilterPic( cs, codingInfoBuf, storeCodingInfo );
 #else
@@ -903,6 +953,46 @@ void DecLib::executeLoopFilters()
     CS::saveTemporalEipModel(cs);
   }
 #endif
+
+#if NN_LF_UNIFIED
+#if NNLF_ALF_POS_INTERFACE
+  if (cs.sps->getNnlfUnifiedEnabledFlag() && (cs.slice[0].getNnlfUnifiedParameters().mode != -1))
+#else
+  if (cs.sps->getNnlfUnifiedEnabledFlag())
+#endif
+
+  {
+#if JVET_AF0043_AF0205_PADDING
+    m_pcPic->paddingBsMapBufBorder( 8 );
+    m_pcPic->paddingRecBeforeDbfBufBorder( 8 );
+    m_pcPic->paddingPredBufBorder( 8 );
+    m_pcPic->paddingBPMBufBorder( 8 );
+#if JVET_AJ0124_QP_BLOCK
+    int qp = cs.slice->getSliceQp();
+    m_pcPic->paddingBlockQPBufBorder( 8, qp );
+#endif
+#endif  
+#if NNLF_ALF_POS_INTERFACE
+    if( cs.sps->getALFEnabledFlag() )
+    {
+      m_cALF.copyPreNNVCDataToTemp( cs );
+    }
+#endif
+    m_nnfilterUnified.setPicprms( &m_pcPic->m_picprm );
+    m_nnfilterUnified.setSliceprms( m_pcPic->cs->slice->getNnlfUnifiedParameters() );
+    m_nnfilterUnified.nnlfTransInput( cs.sps->getNnlfId() == NNLFUnifiedID::LOP3 );
+    m_nnfilterUnified.filter( *m_pcPic );
+#if NNLF_ALF_POS_INTERFACE
+    if( cs.sps->getALFEnabledFlag() )
+    {
+      m_cALF.copyAfterNNVCDataToTemp( cs );
+      m_cALF.copyPreNNVCDataFromTemp( cs );
+    }
+    cs.getRecoBuf().copyFrom( m_pcPic->getRecoBuf() );
+#endif
+  }
+#endif
+
 #if JVET_W0066_CCSAO
   if (cs.sps->getCCSAOEnabledFlag())
   {
@@ -2238,6 +2328,38 @@ void DecLib::xActivateParameterSets( const InputNALUnit nalu )
     }
     pSlice->m_ccAlfFilterControl[0] = m_cALF.getCcAlfControlIdc(COMPONENT_Cb);
     pSlice->m_ccAlfFilterControl[1] = m_cALF.getCcAlfControlIdc(COMPONENT_Cr);
+#if NN_LF_UNIFIED
+    if (sps->getNnlfUnifiedEnabledFlag())
+    {
+      m_nnfilterUnified.nnlfTransInput(sps->getNnlfId() == NNLFUnifiedID::LOP3);
+      m_nnfilterUnified.init(m_nnlfModelName, pps->getPicWidthInLumaSamples(), pps->getPicHeightInLumaSamples(), sps->getChromaFormatIdc(), sps->getNnlfUnifiedMaxNumPrms());
+
+      NnlfUnifiedInferGranularity unifiedInferGranularity = NNLF_UNIFIED_INFER_GRANULARITY_BASE;
+      if (pSlice->getSliceType() == I_SLICE)
+      {
+        unifiedInferGranularity = NNLF_UNIFIED_INFER_GRANULARITY_LARGE;
+      }
+      else if (pSlice->getSliceQp() < 23)
+      {
+        unifiedInferGranularity = NNLF_UNIFIED_INFER_GRANULARITY_BASE;
+      }
+      else if (pSlice->getSliceQp() < 29)
+      {
+        unifiedInferGranularity = NNLF_UNIFIED_INFER_GRANULARITY_BASE;
+      }
+      else
+      {
+        unifiedInferGranularity = pps->getPicWidthInLumaSamples() <= 832 ? NNLF_UNIFIED_INFER_GRANULARITY_BASE : NNLF_UNIFIED_INFER_GRANULARITY_LARGE;
+      }
+#if NNLF_ALF_POS_INTERFACE
+      unifiedInferGranularity = NNLF_UNIFIED_INFER_GRANULARITY_LARGE;
+#endif      
+      pSlice->setNnlfUnifiedInferGranularity(unifiedInferGranularity);
+
+      m_pcPic->initPicprms(*pSlice);
+    }
+    m_nnfilterUnified.nnlfTransInput(sps->getNnlfId() == NNLFUnifiedID::LOP3);
+ #endif   
 #if JVET_AK0065_TALF
     pSlice->m_tAlfCtbControl = m_cALF.getTAlfControl();
 #endif

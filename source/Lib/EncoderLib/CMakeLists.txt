@@ -12,6 +12,10 @@ if( MSVC )
   file( GLOB NATVIS_FILES "../../VisualStudio/*.natvis" )
 endif()
 
+if (EXTENSION_NNLF)
+  include_directories(${PATH_TO_DIRECTORY_ROOT_SADL})
+endif()
+
 # library
 add_library( ${LIB_NAME} STATIC ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} )
 target_compile_definitions( ${LIB_NAME} PUBLIC )
@@ -47,6 +51,19 @@ if( CMAKE_COMPILER_IS_GNUCC )
   # this is quite certainly a compiler problem
   set_property( SOURCE "EncCu.cpp" APPEND PROPERTY COMPILE_FLAGS "-Wno-array-bounds" )
 endif()
+
+if( MSVC )
+  set_property( SOURCE EncNNFilter.cpp APPEND PROPERTY COMPILE_FLAGS "/arch:AVX2 -DNDEBUG=1 ")
+  set_property( SOURCE EncNNFilterUnified.cpp.cpp APPEND PROPERTY COMPILE_FLAGS "/arch:AVX2 -DNDEBUG=1 ")
+elseif( UNIX OR MINGW )
+  if( NNLF_BUILD_WITH_AVX512 STREQUAL "1" )
+    set_property( SOURCE EncNNFilter.cpp APPEND PROPERTY COMPILE_FLAGS "-DNDEBUG=1 -mavx512f -mavx512bw -ffast-math")
+    set_property( SOURCE EncNNFilterUnified.cpp APPEND PROPERTY COMPILE_FLAGS "-DNDEBUG=1 -mavx512f -mavx512bw -ffast-math")
+  else()
+    set_property( SOURCE EncNNFilterUnified.cpp APPEND PROPERTY COMPILE_FLAGS "-DNDEBUG=1 -mavx2 -ffast-math")
+  endif()
+endif()
+
 # example: place header files in different folders
 source_group( "Natvis Files" FILES ${NATVIS_FILES} )
 
