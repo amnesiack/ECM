@@ -447,6 +447,9 @@ protected:
 #endif
 #if JVET_AC0158_PIXEL_AFFINE_MC
   Mv                   m_pixelAffineMotionBuf[MAX_CU_SIZE][MAX_CU_SIZE];
+#if JVET_AL0079_AFFINE_MC
+  Mv                   m_pixelAffineMotion64Buf[MAX_CU_SIZE][MAX_CU_SIZE];
+#endif
 #endif
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
   std::vector <int16_t> m_bcwBlendBuf;
@@ -789,6 +792,9 @@ public:
 #endif
 
   // inter
+#if JVET_AL0079_AFFINE_MC
+  void    setEncOnly(bool b) { m_encOnly = b; }
+#endif
 #if JVET_AE0046_BI_GPM
   void    setLumaBdofReady    (bool isReady) { m_lumaBdofReady = isReady; }
   void    convert2HighPrec    (PredictionUnit& pu, PelUnitBuf& predBuf, bool lumaOnly, bool chromaOnly, PelUnitBuf* yuvPredTmp = nullptr);
