@@ -9493,6 +9493,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if AFFINE_MMVD
       if (affineMmvdAvail)
       {
+#if JVET_AL0079_AFFINE_MC
+        m_pcInterSearch->setEncOnly(true);
+#endif
 #if JVET_W0090_ARMC_TM
         xCheckSATDCostAffineMmvdMerge(tempCS, cu, pu, affineMergeCtxTmp, mrgCtx, acMergeTempBuffer, singleMergeTempBuffer, uiNumMrgSATDCand, rdModeList, candCostList, distParam, ctxStart
 #if JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED
@@ -9508,6 +9511,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
                                           , affMmvdLUT
 #endif
                                       );
+#endif
+#if JVET_AL0079_AFFINE_MC
+        m_pcInterSearch->setEncOnly(false);
 #endif
       }
 #endif
@@ -26696,7 +26702,10 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
     {
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
       PelUnitBuf tempWoOBMCBuf;
+#if JVET_AL0079_AFFINE_MC
+#else
       if (PU::checkDoAffineBdofRefine(*(cu.firstPU), m_pcInterSearch))
+#endif
       {
         tempWoOBMCBuf = m_tempWoOBMCBuffer.subBuf(UnitAreaRelative(cu, cu));
         tempWoOBMCBuf.copyFrom(tempCS->getPredBuf(cu));
@@ -26723,6 +26732,9 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
       {
         cu.obmcFlag = false;
         PelUnitBuf predBuf = tempCS->getPredBuf(cu);
+#if JVET_AL0079_AFFINE_MC
+        predBuf.copyFrom(tempWoOBMCBuf);
+#else
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         if (PU::checkDoAffineBdofRefine(*(cu.firstPU), m_pcInterSearch))
         {
@@ -26753,6 +26765,7 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         }
 #endif
+#endif
         xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
                               , 0
                               , &equBcwCost
@@ -26766,6 +26779,9 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
         CodingUnit * cuBest = tempCS->getCU(partitioner.chType);
         cuBest->obmcFlag = false;
         PelUnitBuf predBuf = tempCS->getPredBuf(*cuBest);
+#if JVET_AL0079_AFFINE_MC
+        predBuf.copyFrom(tempWoOBMCBuf);
+#else
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         if (PU::checkDoAffineBdofRefine(*(cuBest->firstPU), m_pcInterSearch))
         {
@@ -26795,6 +26811,7 @@ void EncCu::xCheckRDCostInter( CodingStructure *&tempCS, CodingStructure *&bestC
 #endif
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         }
+#endif
 #endif
         xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
                               , 0
@@ -27243,7 +27260,10 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
     {
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
       PelUnitBuf tempWoOBMCBuf;
+#if JVET_AL0079_AFFINE_MC
+#else
       if (PU::checkDoAffineBdofRefine(*cu.firstPU, m_pcInterSearch))
+#endif
       {
         tempWoOBMCBuf = m_tempWoOBMCBuffer.subBuf(UnitAreaRelative(cu, cu));
         tempWoOBMCBuf.copyFrom(tempCS->getPredBuf(cu));
@@ -27265,6 +27285,9 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
       {
         cu.obmcFlag = false;
         PelUnitBuf predBuf = tempCS->getPredBuf(cu);
+#if JVET_AL0079_AFFINE_MC
+        predBuf.copyFrom(tempWoOBMCBuf);
+#else
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         if (PU::checkDoAffineBdofRefine(*cu.firstPU, m_pcInterSearch))
         {
@@ -27295,6 +27318,7 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         }
 #endif
+#endif
         xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
                               , 0
                               , &equBcwCost
@@ -27308,6 +27332,9 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
         CodingUnit * cuBest = tempCS->getCU(partitioner.chType);
         cuBest->obmcFlag = false;
         PelUnitBuf predBuf = tempCS->getPredBuf(*cuBest);
+#if JVET_AL0079_AFFINE_MC
+        predBuf.copyFrom(tempWoOBMCBuf);
+#else
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         if (PU::checkDoAffineBdofRefine(*(cuBest->firstPU), m_pcInterSearch))
         {
@@ -27337,6 +27364,7 @@ bool EncCu::xCheckRDCostInterIMV(CodingStructure *&tempCS, CodingStructure *&bes
 #endif
 #if JVET_AF0159_AFFINE_SUBPU_BDOF_REFINEMENT
         }
+#endif
 #endif
         xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, 0
                               , 0

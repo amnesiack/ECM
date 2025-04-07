@@ -5498,6 +5498,7 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
   if (enable1x1)
   {
 #endif
+#if !JVET_AL0079_AFFINE_MC
 #if JVET_AD0213_LIC_IMP
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
     if (compID == COMPONENT_Y && pu.cu->cs->sps->getUseOBMC() == true && pu.cu->obmcFlag == true && (!pu.cu->geoFlag || (pu.cu->geoFlag && !pu.cu->slice->getCheckUseSepOBMC())))
@@ -5510,6 +5511,7 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
     {
       enable1x1 = false;
     }
+#endif
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
     enable1x1 &= !isRefScaled;
   }
@@ -5915,6 +5917,9 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
     int deltaMvHorXBlk = iDMvHorX * blockWidth;
     int deltaMvHorYBlk = iDMvHorY * blockWidth;
     int iMvScaleTmpHor, iMvScaleTmpVer, mvScaleHorBlk, mvScaleVerBlk;
+#if JVET_AL0079_AFFINE_MC
+    int iMvScaleTmpHor64, iMvScaleTmpVer64;
+#endif
     // prepare pixel base MV
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
     if (!isWrapAround)
@@ -5931,6 +5936,12 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
             iMvScaleTmpHor = mvScaleHorBlk;
             iMvScaleTmpVer = mvScaleVerBlk;
             roundAffineMv(iMvScaleTmpHor, iMvScaleTmpVer, shift);
+#if JVET_AL0079_AFFINE_MC
+            iMvScaleTmpHor64 = mvScaleHorBlk;
+            iMvScaleTmpVer64 = mvScaleVerBlk;
+            roundAffineMv(iMvScaleTmpHor64, iMvScaleTmpVer64, shift-2);
+            m_pixelAffineMotion64Buf[w][h] = Mv(iMvScaleTmpHor64, iMvScaleTmpVer64);
+#endif
             Mv tmpMv(iMvScaleTmpHor, iMvScaleTmpVer);
             tmpMv.clipToStorageBitDepth();
 #if !JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
@@ -5988,6 +5999,12 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
             iMvScaleTmpHor = mvScaleHorBlk;
             iMvScaleTmpVer = mvScaleVerBlk;
             roundAffineMv(iMvScaleTmpHor, iMvScaleTmpVer, shift);
+#if JVET_AL0079_AFFINE_MC
+            iMvScaleTmpHor64 = mvScaleHorBlk;
+            iMvScaleTmpVer64 = mvScaleVerBlk;
+            roundAffineMv(iMvScaleTmpHor64, iMvScaleTmpVer64, shift - 2);
+            m_pixelAffineMotion64Buf[w][h] = Mv(iMvScaleTmpHor64, iMvScaleTmpVer64);
+#endif
             Mv tmpMv(iMvScaleTmpHor, iMvScaleTmpVer);
             tmpMv.clipToStorageBitDepth();
             // clip and scale
@@ -6186,6 +6203,66 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
     iMvScaleVer = mvLT.getVer() << iBit;
     mvScaleHorLine = iMvScaleHor + ((iDMvHorX * blockWidth + iDMvVerX * blockHeight) >> 1);
     mvScaleVerLine = iMvScaleVer + ((iDMvHorY * blockWidth + iDMvVerY * blockHeight) >> 1);
+#endif
+#if JVET_AL0079_AFFINE_MC
+    if (compID == COMPONENT_Y)
+    {
+      const CPelBuf refBuf = refPic->getRecoBuf(CompArea(compID, chFmt, pu.blocks[compID], pu.blocks[compID]), wrapRef);
+      Pel* refOrig = (Pel*)refBuf.buf;
+      Pel* ref;
+      int refStride = refBuf.stride;
+      //int refblkStride = refStride * blockHeight;
+
+      int refIfOfst = ((vFilterSize >> 1) - 1) * refStride;
+      int tmpBufIfOfst = ((vFilterSize >> 1) - 1) * tmpBuf.stride;
+      int blkH4HorInterP = bh + vFilterSize - 1;
+      int xInt, yInt, xFrac, yFrac;
+      for (int h = 0; h < cxHeight; h += blockHeight)
+      {
+        for (int w = 0; w < cxWidth; w += blockWidth)
+        {
+          // get the MV in high precision
+          xInt = m_pixelAffineMotionBuf[w][h].hor >> horIntShift;
+          yInt = m_pixelAffineMotionBuf[w][h].ver >> verIntShift;
+
+          ref = refOrig + w + xInt + (yInt + h) * refStride;
+ 
+          if ((m_pixelAffineMotion64Buf[w][h].hor >> 6) == xInt && (m_pixelAffineMotion64Buf[w][h].ver >> 6) == yInt)
+          {
+            xFrac = (m_pixelAffineMotion64Buf[w][h].hor & 63);
+            yFrac = (m_pixelAffineMotion64Buf[w][h].ver & 63);
+          }
+          else
+          {
+            xFrac = (m_pixelAffineMotionBuf[w][h].hor & horFracMask) << 2;
+            yFrac = (m_pixelAffineMotionBuf[w][h].ver & verFracMask) << 2;
+          }
+          if (xFrac == 0 && yFrac == 0)
+          {
+            m_if.m_filterCopy[1][isLast](clpRng, ref, refStride, dst, dstStride, bw, bh, false);
+          }
+          else if (yFrac == 0)
+          {
+            m_if.m_filterHor[0][1][isLast](clpRng, ref, refStride, dst, dstStride, bw, bh, InterpolationFilter::m_lumaFilter64[xFrac], false);
+          }
+          else if (xFrac == 0)
+          {
+            m_if.m_filterVer[0][1][isLast](clpRng, ref, refStride, dst, dstStride, bw, bh, InterpolationFilter::m_lumaFilter64[yFrac], false);
+          }
+          else
+          {
+            m_if.m_filterHor[0][1][false](clpRng, ref - refIfOfst, refStride, tmpBuf.buf, tmpBuf.stride, bw, blkH4HorInterP, InterpolationFilter::m_lumaFilter64[xFrac], false);
+            JVET_J0090_SET_CACHE_ENABLE(false);
+            m_if.m_filterVer[0][0][isLast](clpRng, tmpBuf.buf + tmpBufIfOfst, tmpBuf.stride, dst, dstStride, bw, bh, InterpolationFilter::m_lumaFilter64[yFrac], false);
+            JVET_J0090_SET_CACHE_ENABLE(true);
+          }
+
+          dst += blockWidth;
+        }
+        dst += dstIncrement;
+      }
+    }
+    else
 #endif
     for (int h = 0; h < cxHeight; h += blockHeight)
     {
@@ -9180,6 +9257,13 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst, IntraP
 void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #endif
 {
+#if JVET_AL0079_AFFINE_MC
+  if (pu.cs->sps->getUseOBMC() && !pu.cs->slice->getUseIBC() && pu.mergeFlag && PU::checkDoAffineBdofRefine(pu, this))
+  {
+    pu.cu->obmcFlag = true;
+  }
+#endif
+
   if (
     pu.cs->sps->getUseOBMC() == false
     || pu.cu->obmcFlag == false
@@ -9271,7 +9355,11 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
   const int compStart = chromaOnly ? 1 : 0;
+#if JVET_AL0079_AFFINE_MC
+        int compEnd = lumaOnly ? 1 : MAX_NUM_COMPONENT;
+#else
   const int compEnd   = lumaOnly ? 1 : MAX_NUM_COMPONENT;
+#endif
   bool isInter = (CU::isIBC(*pu.cu) || PU::isTmp(pu)) ? false : true;
   bool skipTM = false;
 
@@ -9295,6 +9383,21 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
     {
       bSubMotion = false;
     }
+  }
+#endif
+
+#if JVET_AL0079_AFFINE_MC
+  bool innerObmcSkipChroma = pu.cu->affine && pu.mergeType == MRG_TYPE_DEFAULT_N;
+
+  if (pu.cu->affine && pu.mergeType == MRG_TYPE_DEFAULT_N 
+    && !PU::checkDoAffineBdofRefine(pu, this)
+    )
+  {
+    bSubMotion = false;
+  }
+  if (chromaOnly && innerObmcSkipChroma)
+  {
+    bSubMotion = false;
   }
 #endif
 
@@ -9978,6 +10081,13 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
   PelUnitBuf cTmp4 = pcYuvTmpPred.subBuf(UnitArea(pu.chromaFormat, Area(12, 0, uiMinCUW, uiMinCUW)));
   PelUnitBuf zero  = pcYuvTmpPred.subBuf(UnitArea(pu.chromaFormat, Area(16, 0, uiMinCUW, uiMinCUW)));
 
+#if JVET_AL0079_AFFINE_MC
+  if (innerObmcSkipChroma && !chromaOnly)
+  {
+    lumaOnly = true;
+    compEnd = 1;
+  }
+#endif
   for (int iSubX = 0; iSubX < uiWidthInBlock; iSubX += 1)
   {
     for (int iSubY = 0; iSubY < uiHeightInBlock; iSubY += 1)
