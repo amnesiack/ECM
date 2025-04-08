@@ -750,7 +750,11 @@ public:
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
   std::vector<Mv> m_bvBasedMergeCandidates;
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  std::vector<BvInfo> m_sgpmMvBasedMergeCandidates;
+#else
   std::vector<Mv> m_sgpmMvBasedMergeCandidates;
+#endif
 #endif
 #endif
 #if LMS_LINEAR_MODEL && MMLM

@@ -269,6 +269,9 @@
 #define JVET_AE0169_IBC_MBVD_LIST_DERIVATION              1 // JVET-AE0169: IBC MBVD list derivation
 #endif
 #define JVET_AA0070_RRIBC                                 1 // JVET-AA0070: Reconstruction-Reordered IBC
+#if JVET_AG0152_SGPM_ITMP_IBC && JVET_AA0070_RRIBC 
+#define JVET_AL0188_SGPM_FLIPAWARE_BV                     1 // JVET-AL0188: Flip-aware BV prediction in SGPM
+#endif
 #define JVET_AC0112_IBC_CIIP                              1 // JVET-AC0112: Combined IBC and intra prediction (IBC-CIIP)
 #define JVET_AC0112_IBC_GPM                               1 // JVET-AC0112: IBC with geometry partitioning mode (IBC-GPM)
 #define JVET_AC0112_IBC_LIC                               1 // JVET-AC0112: IBC with local illumination compensation (IBC-LIC)

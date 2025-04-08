@@ -48,6 +48,18 @@
 // ====================================================================================================================
 // Type definition
 // ====================================================================================================================
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+struct BvInfo
+{
+  Mv   mv;
+  int  flipType;
+  BvInfo() :mv(0, 0), flipType(0) {}
+  BvInfo(Mv bv, int flip) :mv(bv), flipType(flip) {}
+  bool operator!=(const BvInfo& other)      const { return (mv != other.mv) || (flipType != other.flipType); }
+  bool operator==(const BvInfo& other)      const { return (mv == other.mv) && (flipType == other.flipType); }
+};
+#endif
+
 #if MULTI_HYP_PRED 
 struct MultiHypPredictionData
 {

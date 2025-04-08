@@ -1525,11 +1525,22 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
   if (pu.cu->sgpm && pu.cu->sgpmMode0 >= SGPM_BV_START_IDX &&  isLuma( compId ) )
   {
     isBvPredicted = 1;
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    Mv bv = pu.cu->sgpmBv0.mv;
+#else
     Mv bv = pu.cu->sgpmBv0;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
     predUsingBv(piPred.buf, piPred.stride, bv, *pu.cu, false);
 #else
     predUsingBv(piPred.buf, piPred.stride, bv, *pu.cu);
+#endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    int flipType = pu.cu->sgpmBv0.flipType;
+    if (flipType)
+    {
+      piPred.flipSignal(flipType == 1);
+    }
 #endif
   }
 #endif
@@ -3559,11 +3570,22 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     if (pu.cu->sgpmMode1 >= SGPM_BV_START_IDX && pu.cu->ispMode == 0)
     {
       isBvPredicted = 1;
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv bv = pu.cu->sgpmBv1.mv;
+#else
       Mv bv = pu.cu->sgpmBv1;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
       predUsingBv(predFusion.buf, predFusion.stride, bv, *pu.cu, false);
 #else
       predUsingBv(predFusion.buf, predFusion.stride, bv, *pu.cu);
+#endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      int flipType = pu.cu->sgpmBv1.flipType;
+      if (flipType)
+      {
+        predFusion.flipSignal(flipType == 1);
+      }
 #endif
     }
     if (!isBvPredicted)
@@ -10390,7 +10412,11 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 #endif
   int numItmpIbc = std::min(numBVs, SGPM_NUM_BVS);
   
-  std::vector<std::pair<Mv, Distortion>> BVCostVec(numBVs);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  std::vector<std::pair<BvInfo, Distortion>> bVCostVec(numBVs);
+#else 
+  std::vector<std::pair<Mv, Distortion>> bVCostVec(numBVs);
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
   PelUnitBuf tempPUTopBuf(pu.chromaFormat, PelBuf(m_sgpmBuffer[0].getBuf(localUnitArea.Y()).buf+iTempWidth, uiPredStride, uiRealW-iTempWidth, iTempHeight));
   PelUnitBuf tempPULeftBuf(pu.chromaFormat, PelBuf(m_sgpmBuffer[0].getBuf(localUnitArea.Y()).buf+iTempHeight*uiPredStride, uiPredStride, iTempWidth, uiRealH-iTempHeight));
@@ -10398,7 +10424,11 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
   for (int i = 0; i < numBVs; i++)
   {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    BvInfo curBv = m_sgpmMvBasedMergeCandidates[i];
+#else
     Mv curBv = m_sgpmMvBasedMergeCandidates[i];
+#endif
 #else
     Mv curBv = m_bvBasedMergeCandidates[i];
 
@@ -10412,23 +10442,45 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
     PelBuf adBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
 
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    Mv tempMv = curBv.mv;
+    int flipType = curBv.flipType;
+#else
     Mv tempMv(curBv);
+#endif
     Mv mvTop(0, -iTempHeight);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    mvTop.ver = flipType == 2 ? area.height : mvTop.ver;
+#endif
     mvTop.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
     mvTop += tempMv;
     m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvTop, tempPUTopBuf, true, true);
 
     Mv mvLeft(-iTempWidth, 0);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    mvLeft.hor = flipType == 1 ? area.width : mvLeft.hor;
+#endif
     mvLeft.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
     mvLeft += tempMv;
     m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvLeft, tempPULeftBuf, true,true);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    if (flipType > 0)
+    {
+      tempPUTopBuf.bufs[0].flip(flipType);
+      tempPULeftBuf.bufs[0].flip(flipType);
+    }
+#endif
 #else
     predTimdIbcItmp(COMPONENT_Y, pu, curBv, tempPred, uiPredStride, uiRealW, uiRealH, eTempType, iTempWidth, iTempHeight, piOrg, iOrgStride);
 #endif
     Distortion uiCurCost = m_if.m_sadTM(pu, uiWidth, uiHeight, iTempWidth, iTempHeight, COMPONENT_Y, predBuf, recBuf, adBuf);
-    BVCostVec[i] = { curBv, uiCurCost };
+    bVCostVec[i] = { curBv, uiCurCost };
   }
-  std::stable_sort(BVCostVec.begin(), BVCostVec.end(), [](const std::pair<Mv, Distortion>& l, const std::pair<Mv, Distortion>& r) {return l.second < r.second; });
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  std::stable_sort(bVCostVec.begin(), bVCostVec.end(), [](const std::pair<BvInfo, Distortion>& l, const std::pair<BvInfo, Distortion>& r) {return l.second < r.second; });
+#else
+  std::stable_sort(bVCostVec.begin(), bVCostVec.end(), [](const std::pair<Mv, Distortion>& l, const std::pair<Mv, Distortion>& r) {return l.second < r.second; });
+#endif
 #else
   Distortion sadWholeTM[NUM_LUMA_MODE];
   Distortion sadPartsTM[NUM_LUMA_MODE][GEO_NUM_PARTITION_MODE];
@@ -10623,8 +10675,16 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
       PelUnitBuf tempPUTopBufWithIdx(pu.chromaFormat, PelBuf(m_sgpmBuffer[NUM_PRIMARY_MOST_PROBABLE_MODES + 1 + i].getBuf(localUnitArea.Y()).buf + iTempWidth, uiPredStride, uiRealW - iTempWidth, iTempHeight));
       PelUnitBuf tempPULeftBufWithIdx(pu.chromaFormat, PelBuf(m_sgpmBuffer[NUM_PRIMARY_MOST_PROBABLE_MODES + 1 + i].getBuf(localUnitArea.Y()).buf + iTempHeight * uiPredStride, uiPredStride, iTempWidth, uiRealH - iTempHeight));
 #endif
-      Mv tempMv(BVCostVec[i].first);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv tempMv(bVCostVec[i].first.mv);
+      int flipType = bVCostVec[i].first.flipType;
+#else
+      Mv tempMv(bVCostVec[i].first);
+#endif
       Mv mvTop(0, -iTempHeight);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      mvTop.ver = flipType == 2 ? area.height : mvTop.ver;
+#endif
       mvTop.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
       mvTop += tempMv;
 #if JVET_AJ0112_REGRESSION_SGPM
@@ -10634,12 +10694,30 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 #endif
 
       Mv mvLeft(-iTempWidth, 0);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      mvLeft.hor = flipType == 1 ? area.width : mvLeft.hor;
+#endif
       mvLeft.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
       mvLeft += tempMv;
 #if JVET_AJ0112_REGRESSION_SGPM
       m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvLeft, tempPULeftBufWithIdx, true, true);
 #else
       m_pcInterPred->getPredIBCBlk(pu, COMPONENT_Y, pu.cs->picture, mvLeft, tempPULeftBuf, true,true);
+#endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+#if JVET_AJ0112_REGRESSION_SGPM
+      if (flipType > 0)
+      {
+        tempPUTopBufWithIdx.bufs[0].flip(flipType);
+        tempPULeftBufWithIdx.bufs[0].flip(flipType);
+      }
+#else
+      if (flipType > 0)
+      {
+        tempPUTopBuf.bufs[0].flip(flipType);
+        tempPULeftBuf.bufs[0].flip(flipType);
+      }
+#endif
 #endif
 #else
 #if JVET_AJ0112_REGRESSION_SGPM
@@ -10650,7 +10728,7 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
       Pel* piOrg = cs.picture->getRecoBuf(area).buf;
       int  iOrgStride = cs.picture->getRecoBuf(area).stride;
       piOrg += (iRefY - iCurY) * iOrgStride + (iRefX - iCurX);
-      predTimdIbcItmp(COMPONENT_Y, pu, BVCostVec[i].first, tempPred, uiPredStride, uiRealW, uiRealH, eTempType, iTempWidth, iTempHeight, piOrg, iOrgStride);
+      predTimdIbcItmp(COMPONENT_Y, pu, bVCostVec[i].first, tempPred, uiPredStride, uiRealW, uiRealH, eTempType, iTempWidth, iTempHeight, piOrg, iOrgStride);
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
       if (!ipmNeeded[ipmIdx])
@@ -10714,8 +10792,13 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
 
         int ipm0Idx = 0;
         int ipm1Idx = 0;
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+        BvInfo sgpmBv0 = BvInfo(Mv(0, 0), 0);
+        BvInfo sgpmBv1 = BvInfo(Mv(0, 0), 0);
+#else
         Mv sgpmBv0 = Mv(0, 0);
         Mv sgpmBv1 = Mv(0, 0);
+#endif
         PelBuf tempPred0;
         PelBuf tempPred1;
 
@@ -10727,7 +10810,7 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
         else
         {
           ipm0Idx = SGPM_BV_START_IDX + mode0Idx - numRegularMode;
-          sgpmBv0 = BVCostVec[ipm0Idx - SGPM_BV_START_IDX].first;
+          sgpmBv0 = bVCostVec[ipm0Idx - SGPM_BV_START_IDX].first;
           tempPred0 = m_sgpmBuffer[mode0Idx + 1].getBuf(localUnitArea.Y());
         }
         if (mode1Idx < numRegularMode)
@@ -10738,7 +10821,7 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
         else
         {
           ipm1Idx = SGPM_BV_START_IDX + mode1Idx - numRegularMode;
-          sgpmBv1 = BVCostVec[ipm1Idx - SGPM_BV_START_IDX].first;
+          sgpmBv1 = bVCostVec[ipm1Idx - SGPM_BV_START_IDX].first;
           tempPred1 = m_sgpmBuffer[mode1Idx + 1].getBuf(localUnitArea.Y());
         }
 
@@ -10797,15 +10880,20 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
         }
 
 #if JVET_AG0152_SGPM_ITMP_IBC 
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+        BvInfo sgpmBv0 = BvInfo(Mv(0, 0), 0);
+        BvInfo sgpmBv1 = BvInfo(Mv(0, 0), 0);
+#else
         Mv sgpmBv0 = Mv(0, 0);
         Mv sgpmBv1 = Mv(0, 0);
+#endif
         if (ipm0Idx >= SGPM_BV_START_IDX)
         {
-          sgpmBv0 = BVCostVec[ipm0Idx - SGPM_BV_START_IDX].first;
+          sgpmBv0 = bVCostVec[ipm0Idx - SGPM_BV_START_IDX].first;
         }
         if (ipm1Idx >= SGPM_BV_START_IDX)
         {
-          sgpmBv1 = BVCostVec[ipm1Idx - SGPM_BV_START_IDX].first;
+          sgpmBv1 = bVCostVec[ipm1Idx - SGPM_BV_START_IDX].first;
         }
 #endif
         double cost = static_cast<double>(sadPartsTM[ipm0Idx][splitDir]) + static_cast<double>(sadWholeTM[ipm1Idx])

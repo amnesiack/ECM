@@ -895,8 +895,13 @@ void CodingUnit::initData()
   sgpmMode0    = -1;
   sgpmMode1    = -1;
 #if JVET_AG0152_SGPM_ITMP_IBC
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  sgpmBv0 = BvInfo(Mv(0, 0), 0);
+  sgpmBv1 = BvInfo(Mv(0, 0), 0);
+#else
   sgpmBv0      = Mv(0,0);
   sgpmBv1      = Mv(0,0);
+#endif
 #endif
 #endif
 #if JVET_AG0058_EIP
