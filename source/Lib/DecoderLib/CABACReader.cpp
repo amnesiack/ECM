@@ -1151,6 +1151,9 @@ void CABACReader::coding_tree( CodingStructure& cs, Partitioner& partitioner, CU
 
     if ( separateTree )
     {
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+      cs.chromaTreePred(cs, partitioner);
+#endif
       CUCtx cuCtxChroma( qps[CH_C] );
       cs.slice->setProcessingChannelType ( CH_C );
       partitionerSST->chType = CH_C;

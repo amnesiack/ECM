@@ -1035,7 +1035,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("MaxBTChromaISlice",                               m_uiMaxBT[2],                                       64u, "MaxBTChromaISlice")
   ("MaxBTNonISlice",                                  m_uiMaxBT[1],                                      128u, "MaxBTNonISlice")
   ("MaxTTLumaISlice",                                 m_uiMaxTT[0],                                       32u, "MaxTTLumaISlice")
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  ("MaxTTChromaISlice",                               m_uiMaxTT[2],                                       64u, "MaxTTChromaISlice")
+#else
   ("MaxTTChromaISlice",                               m_uiMaxTT[2],                                       32u, "MaxTTChromaISlice")
+#endif
   ("MaxTTNonISlice",                                  m_uiMaxTT[1],                                       64u, "MaxTTNonISlice")
 #if JVET_Y0152_TT_ENC_SPEEDUP
   ("TTFastSkip",                                      m_ttFastSkip,                                        31, "fast skip method for TT split partition")

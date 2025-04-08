@@ -116,7 +116,11 @@ public:
 #endif
   // coding (quad)tree (clause 7.3.8.4)
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  void        coding_tree               (CodingStructure&        cs, Partitioner&      pm, CUCtx& cuCtx, int(&qps)[2], Partitioner* pPartitionerChroma = nullptr, CUCtx* pCuCtxChroma = nullptr);
+#else
   void        coding_tree               ( const CodingStructure&        cs,       Partitioner&      pm,         CUCtx& cuCtx, int (&qps)[2], Partitioner* pPartitionerChroma = nullptr, CUCtx* pCuCtxChroma = nullptr);
+#endif
   void        split_cu_mode             ( const PartSplit               split,    const CodingStructure& cs,     Partitioner& pm, const CodingUnit* cu
 #if JVET_AI0087_BTCUS_RESTRICTION
     , bool btUpdateInfo

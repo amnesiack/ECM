@@ -578,6 +578,42 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
   canNo = canQt = canBh = canTh = canBv = canTv = true;
   bool canBtt = currMtDepth < maxBTD;
 #endif
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  if (cs.slice->getSliceType() == I_SLICE && chType == CHANNEL_TYPE_CHROMA && cs.pcv->getMaxTtSize(*cs.slice, CHANNEL_TYPE_CHROMA) < 128)
+  {
+    int lumaMaxBT = cs.pcv->getMaxBtSize(*cs.slice, CHANNEL_TYPE_LUMA);
+    int chMaxBT = cs.pcv->getMaxBtSize(*cs.slice, CHANNEL_TYPE_CHROMA);
+    int BTdiff = ceilLog2(chMaxBT) - ceilLog2(lumaMaxBT);
+
+    if (cs.splitPredLuma.btDetphCol + BTdiff - 1 < currBtDepth)
+    {
+      canTh = canTv = false;
+    }
+
+    if ((int)(currMtDepth + BTdiff) < (int)(cs.splitPredLuma.mttDetphCol))
+    {
+      if (currMtDepth == 0)
+      {
+        canTh = canTv = false;
+      }
+    }
+
+    if ((int)(currMtDepth + BTdiff) < (int)(cs.splitPredLuma.mttDetphCol))
+    {
+      if (currMtDepth == 0)
+      {
+        if (cs.splitPredLuma.horblkCol >= 9) 
+        {
+          canBv = false;
+        }
+        if (cs.splitPredLuma.verblkCol >= 9)
+        {
+          canBh = false;
+        }
+      }
+    }
+  }
+#endif
 
   // the minimal and maximal sizes are given in luma samples
   const CompArea&  area  = currArea().Y();
