@@ -627,6 +627,9 @@ void calcBIOParamSum5Core(Pel* absGX, Pel* absGY, Pel* dIX, Pel* dIY, Pel* signG
 void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx ,Pel* dI
 #if JVET_AG0067_DMVR_EXTENSIONS
   , Pel* gX, Pel* gY
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  , bool noMeanRemove
+#endif
 #endif
 )
 {
@@ -679,7 +682,11 @@ void calcBIOParamSum5NOSIMCore(int32_t* absGX, int32_t* absGY, int32_t* dIX, int
       }
 
 #if JVET_AG0067_DMVR_EXTENSIONS
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+      meanDiff = noMeanRemove ? 0 : ((absmeanDiff > 2 * abs(meanDiff)) ? 0 : (meanDiff + 32) >> 6);
+#else
       meanDiff = (absmeanDiff > 2 * abs(meanDiff))  ? 0 : (meanDiff + 32) >> 6;
+#endif
       sumDIX[sampleIdx] += sX0*meanDiff;
       sumDIY[sampleIdx] += sX1*meanDiff;
 #endif

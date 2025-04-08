@@ -2535,9 +2535,15 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   if (pcSPS->getBDOFEnabledFlag())
   {
     READ_FLAG(uiCode, "sps_bdof_pic_present_flag");                 pcSPS->setBdofControlPresentFlag( uiCode != 0 );
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+    READ_FLAG(uiCode, "sps_bdof_ldb_mv_refine_switch_flag");        pcSPS->setMvLdbRefineSwitch( uiCode != 0 );
+#endif
   }
   else {
     pcSPS->setBdofControlPresentFlag( false );
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+    pcSPS->setMvLdbRefineSwitch( false );
+#endif
   }
   READ_FLAG(uiCode, "sps_smvd_enabled_flag");                       pcSPS->setUseSMVD( uiCode != 0 );
   READ_FLAG(uiCode, "sps_dmvr_enabled_flag");                        pcSPS->setUseDMVR(uiCode != 0);

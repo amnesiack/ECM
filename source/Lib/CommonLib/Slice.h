@@ -2008,6 +2008,9 @@ private:
   bool              m_useTemporalAffineOpt;
   bool              m_useSyntheticAffine;
 #endif
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  bool              m_mvLdbRefineSwitch;
+#endif
 #if JVET_AA0093_REFINED_MOTION_FOR_ARMC
   bool              m_armcRefinedMotion;
 #endif
@@ -2884,6 +2887,10 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getUseTemporalAffineOpt()                                     const     { return m_useTemporalAffineOpt; }
   void      setUseSyntheticAffine  ( bool b )                                       { m_useSyntheticAffine = b; }
   bool      getUseSyntheticAffine  ()                                     const     { return m_useSyntheticAffine; }
+#endif
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  void      setMvLdbRefineSwitch( bool b )                                          { m_mvLdbRefineSwitch = b; }
+  bool      getMvLdbRefineSwitch()                                        const     { return m_mvLdbRefineSwitch; }
 #endif
 #if JVET_AJ0126_INTER_AMVP_ENHANCEMENT
   void      setUseExtAmvp         ( bool b )                                        { m_useExtAmvp = b; }

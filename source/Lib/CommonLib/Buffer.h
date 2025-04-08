@@ -113,11 +113,17 @@ struct PelBufferOps
   void(*calcBIOParamSum5NOSIM4)   (int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx ,Pel* dI
 #if JVET_AG0067_DMVR_EXTENSIONS
     , Pel* gX, Pel* gY
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+    , bool noMeanRemove
+#endif
 #endif
     );
   void(*calcBIOParamSum5NOSIM8)   (int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx, Pel* dI
 #if JVET_AG0067_DMVR_EXTENSIONS
     , Pel* gX, Pel* gY
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+    , bool noMeanRemove
+#endif
 #endif
     );
 #endif

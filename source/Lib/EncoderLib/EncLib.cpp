@@ -1884,6 +1884,9 @@ void EncLib::xInitSPS( SPS& sps )
   sps.setSbTMVPEnabledFlag(m_sbTmvpEnableFlag);
   sps.setAMVREnabledFlag                ( m_ImvMode != IMV_OFF );
   sps.setBDOFEnabledFlag                    ( m_BIO );
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  sps.setMvLdbRefineSwitch                  ( m_BIO ? m_sourceWidth >= 1280 && m_sourceHeight >= 720 : false );
+#endif
 #if JVET_W0090_ARMC_TM
   sps.setUseAML                             ( m_AML );
 #if JVET_AG0276_NLIC

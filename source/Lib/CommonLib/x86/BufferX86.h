@@ -920,6 +920,9 @@ template< X86_VEXT vext , int ww>
 void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX, int32_t* dIY, int32_t* signGyGx, const int widthG, const int width, const int height, int* sumAbsGX, int* sumAbsGY, int* sumDIX, int* sumDIY, int* sumSignGyGx, Pel* dI
 #if JVET_AG0067_DMVR_EXTENSIONS
   , Pel* gX, Pel* gY
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  , bool noMeanRemove
+#endif
 #endif
 )
 {
@@ -945,8 +948,13 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
   __m128i dummy2 = vzero2;
   __m128i fOne[4] = {_mm_setr_epi16(1, 1, 1, 1, 1, 0, 0, 0), _mm_setr_epi16(0, 1, 1, 1, 1, 1, 0, 0), _mm_setr_epi16(0, 0, 1, 1, 1, 1, 1, 0), _mm_setr_epi16(0, 0, 0, 1, 1, 1, 1, 1)};
 
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  int mean4[4] = { 0 };
+  int absMean4[4] = { 0 };
+#else
   int mean4[4];
   int absMean4[4];
+#endif
   int sX0[4], sX1[4];
 #endif
   
@@ -1115,6 +1123,10 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       dummy2 = _mm_add_epi32(dummy2, _mm_shuffle_epi32(dummy2, 0xb1));   // 10110001
       sX1[3] = _mm_cvtsi128_si32(dummy2);
       
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+      if (!noMeanRemove)
+      {
+#endif
       sumMean = _mm_add_epi16(_mm_loadu_si128((const __m128i*)(dI)), (_mm_loadu_si128((const __m128i*)(dI+ widthG))));
       sumMean = _mm_add_epi16(sumMean, (_mm_loadu_si128((const __m128i*)(dI+ widthG_2))));
       sumMean = _mm_add_epi16(sumMean, (_mm_loadu_si128((const __m128i*)(dI+ widthG_3))));
@@ -1171,6 +1183,9 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       mean4[3] = (absMean4[3] > 2 * abs(mean4[3])) ? 0 :  (mean4[3] + 32) >> 6;
       sumDIX[sampleIdx + 3] -= sX0[3]*mean4[3];
       sumDIY[sampleIdx + 3] -= sX1[3]*mean4[3];
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+      }
+#endif
 #endif
       
       sumDIX[sampleIdx]     += (sumDIX[sampleIdx] + 2) >> 2;
@@ -1365,6 +1380,10 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
         dummy2 = _mm_add_epi32(dummy2, _mm_shuffle_epi32(dummy2, 0xb1));   // 10110001
         sX1[3] = _mm_cvtsi128_si32(dummy2);
         
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+        if (!noMeanRemove)
+        {
+#endif
         sumMean = _mm_add_epi16(_mm_loadu_si128((const __m128i*)(dI)), (_mm_loadu_si128((const __m128i*)(dI+ widthG))));
         sumMean = _mm_add_epi16(sumMean, (_mm_loadu_si128((const __m128i*)(dI+ widthG_2))));
         sumMean = _mm_add_epi16(sumMean, (_mm_loadu_si128((const __m128i*)(dI+ widthG_3))));
@@ -1421,6 +1440,9 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
         mean4[3] = (absMean4[3] > 2 * abs(mean4[3])) ? 0 :  (mean4[3] + 32) >> 6;
         sumDIX[sampleIdx + 3] -= sX0[3]*mean4[3];
         sumDIY[sampleIdx + 3] -= sX1[3]*mean4[3];
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+        }
+#endif
 #endif
         
         sumDIX[sampleIdx]     += (sumDIX[sampleIdx] + 2) >> 2;
@@ -1515,7 +1537,11 @@ void calcBIOParamSum5NOSIMCore_SSE(int32_t* absGX, int32_t* absGY, int32_t* dIX,
       }
 
 #if JVET_AG0067_DMVR_EXTENSIONS
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+      meanDiff = noMeanRemove ? 0 : (absmeanDiff > 2 * abs(meanDiff)) ? 0 : (meanDiff + 32) >> 6;
+#else
       meanDiff = (absmeanDiff > 2 * abs(meanDiff))  ? 0 : (meanDiff + 32) >> 6;
+#endif
       sumDIX[sampleIdx] += X0*meanDiff;
       sumDIY[sampleIdx] += X1*meanDiff;
 #endif

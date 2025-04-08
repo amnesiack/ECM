@@ -19788,7 +19788,11 @@ bool PU::checkBDMVRCondition(const PredictionUnit& pu)
     bool meetBdmvrCondition = ((pu.mergeFlag && pu.mergeType == MRG_TYPE_DEFAULT_N) || (pu.amvpMergeModeFlag[0] || pu.amvpMergeModeFlag[1])) && !pu.ciipFlag && !pu.mmvdMergeFlag
       && !pu.cu->mmvdSkip
 #if JVET_AG0067_DMVR_EXTENSIONS
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+      && (PU::isBiPredFromDifferentDirEqDistPoc(pu) || (PU::isBiPredFromDifferentDirGenDistPoc(pu) && !pu.cu->geoFlag) || (PU::isBiPredFromSameDirUnEqDistPoc(pu) && !pu.cu->geoFlag && (PU::getLdbMvRefineMode(pu) != 0) ))
+#else
       && (PU::isBiPredFromDifferentDirEqDistPoc( pu ) || (PU::isBiPredFromDifferentDirGenDistPoc( pu ) && !pu.cu->geoFlag))
+#endif
 #else
       && PU::isBiPredFromDifferentDirEqDistPoc(pu)
 #endif
@@ -32836,6 +32840,25 @@ bool PU::isBiPredFromDifferentDirGenDistPoc(const PredictionUnit& pu)
 #endif
 
 #if JVET_AJ0097_BDOF_LDB
+
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+uint8_t PU::getLdbMvRefineMode(const PredictionUnit& pu)
+{
+  if (pu.lwidth() * pu.lheight() <= 32)
+  {
+    return 0;
+  }
+
+  if (pu.cu->slice->getSPS()->getMvLdbRefineSwitch())
+  {
+    return 2;
+  }
+
+  return 1;
+}
+#endif
+
+
 bool PU::isMergeIndexBDOFCondition(const PredictionUnit& pu)
 {
   if (pu.cu->cs->sps->getUseAltCost() == false)
@@ -36489,7 +36512,11 @@ bool PU::identicalMvOBMC(MotionInfo curMI, MotionInfo neighMI, bool bLD)
 }
 
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+bool PU::getNeighborMotion(PredictionUnit& pu, MotionInfo& currMotion, MotionInfo& mi, Position posNeighborMotion, const int mvTH)
+#else
 bool PU::getNeighborMotion(PredictionUnit& pu, MotionInfo& currMotion, MotionInfo& mi, Position posNeighborMotion)
+#endif
 #else
 bool PU::getNeighborMotion(PredictionUnit &pu, MotionInfo& mi, Position off, Size unitSize, int iDir)
 #endif
@@ -36546,7 +36573,11 @@ bool PU::getNeighborMotion(PredictionUnit &pu, MotionInfo& mi, Position off, Siz
         {
           Mv mvd = currMotion.mv[iRefList] - mi.mv[iRefList];
 
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+          if (!(mvd.getAbsHor() < mvTH && mvd.getAbsVer() < mvTH && currMotion.refIdx[iRefList] == mi.refIdx[iRefList]))
+#else
           if (!(mvd.getAbsHor() < 1 && mvd.getAbsVer() < 1 && currMotion.refIdx[iRefList] == mi.refIdx[iRefList]))
+#endif
           {
             return true;
           }

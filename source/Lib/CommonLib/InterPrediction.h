@@ -501,7 +501,11 @@ protected:
 #if JVET_Z0136_OOB
   void            subBlockBiOptFlow        ( Pel* dstY, const int dstStride, const Pel* src0, const int src0Stride, const Pel* src1,
                                              const int src1Stride, int bioParamOffset, const int bioParamStride, int width, int height,
-                                             const ClpRng& clpRng, const int shiftNum, const int offset, const int limit, bool *mcMask[2], int mcStride, bool *isOOB = NULL);
+                                             const ClpRng& clpRng, const int shiftNum, const int offset, const int limit, bool *mcMask[2], int mcStride, bool *isOOB = NULL
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+                                            ,bool noMeanRemove = false
+#endif
+                                           );
 #else
   void            subBlockBiOptFlow        ( Pel* dstY, const int dstStride, const Pel* src0, const int src0Stride, const Pel* src1,
                                              const int src1Stride, int bioParamOffset, const int bioParamStride, int width, int height,

@@ -1006,6 +1006,9 @@ namespace PU
   bool isBiPredFromSameDirUnEqDistPoc(const PredictionUnit& pu);
   bool isBiPredFromSameDirUnEqDistPoc(const PredictionUnit& pu, int refIdx0, int refIdx1);
   bool isMergeIndexBDOFCondition(const PredictionUnit& pu);
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  uint8_t getLdbMvRefineMode(const PredictionUnit& pu);
+#endif
 #endif
 
   void restrictBiPredMergeCandsOne    (PredictionUnit &pu);
@@ -1018,7 +1021,11 @@ namespace PU
 #endif
   bool identicalMvOBMC(MotionInfo curMI, MotionInfo neighMI, bool bLD);
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+  bool getNeighborMotion(PredictionUnit& pu, MotionInfo& currMi, MotionInfo& mi, Position nbPos, const int mvTH = 1);
+#else
   bool getNeighborMotion(PredictionUnit& pu, MotionInfo& currMi, MotionInfo& mi, Position nbPos);
+#endif
 #else
   bool getNeighborMotion(PredictionUnit &pu, MotionInfo& mi, Position off, Size unitSize, int iDir);
 #endif
