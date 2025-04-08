@@ -1631,6 +1631,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   if (pcSPS->getBDOFEnabledFlag())
   {
     WRITE_FLAG(pcSPS->getBdofControlPresentFlag() ? 1 : 0,                           "sps_bdof_pic_present_flag");
+#if JVET_AL0081_BDOF_LDB_MV_REFINE
+    WRITE_FLAG(pcSPS->getMvLdbRefineSwitch() ? 1 : 0,                                "sps_bdof_ldb_mv_refine_switch_flag");
+#endif
   }
   WRITE_FLAG( pcSPS->getUseSMVD() ? 1 : 0,                                            "sps_smvd_enabled_flag" );
   WRITE_FLAG( pcSPS->getUseDMVR() ? 1 : 0,                                            "sps_dmvr_enabled_flag" );
