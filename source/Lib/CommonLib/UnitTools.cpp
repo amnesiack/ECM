@@ -1430,10 +1430,26 @@ bool CheckBvAvailable(std::vector<Mv>& pBv, Mv curBv)
   }
   return 0;
 }
-
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+bool PU::CheckBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv)
+{
+  for (int i = 0; i < pBv.size(); i++)
+  {
+    if (pBv[i] == curBv)
+    {
+      return 1;
+    }
+  }
+  return 0;
+}
+#endif
 void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vector<Mv>& pBv
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  , std::vector<BvInfo>& pSgpmMvs
+#else
     , std::vector<Mv>& pSgpmMvs
+#endif
 #endif
 )
 {
@@ -1465,6 +1481,19 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       }
     }
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    Mv sgpmMv = pu->mv[0];
+    int flipType = pu->cu->rribcFlipType;
+    CompArea lumaArea = puOrg.Y();
+    sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+    if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+    {
+      if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+      {
+        pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+      }
+    }
+#else
     if (PU::validIBCItmpMv(puOrg, pu->mv[0], SGPM_TEMPLATE_SIZE))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
@@ -1477,7 +1506,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       }
     }
 #endif
-
+#endif
     if (pu->interDir == 3)
     {
       Mv bv(pu->mv[REF_PIC_LIST_1]);
@@ -1494,6 +1523,19 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
         }
       }
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV  
+      Mv sgpmMv = pu->mv[1];
+      int flipType = pu->cu->rribcFlipType;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
       if (PU::validIBCItmpMv(puOrg, pu->mv[1], SGPM_TEMPLATE_SIZE))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
@@ -1505,6 +1547,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
           pSgpmMvs.push_back(pu->mv[1]);
         }
       }
+#endif
 #endif
     }
 
@@ -1534,6 +1577,19 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       }
     }
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    Mv sgpmMv = pu->mv[0];
+    int flipType = pu->cu->rribcFlipType;
+    CompArea lumaArea = puOrg.Y();
+    sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+    if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+    {
+      if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+      {
+        pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+      }
+    }
+#else
     if (PU::validIBCItmpMv(puOrg, pu->mv[0], SGPM_TEMPLATE_SIZE))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
@@ -1545,6 +1601,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
         pSgpmMvs.push_back(pu->mv[0]);
       }
     }
+#endif
 #endif
 
     if (pu->cu->tmpIdx > 0
@@ -1573,6 +1630,20 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
         }
       }
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = bv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
       bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
       if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
       {
@@ -1585,6 +1656,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
           pSgpmMvs.push_back(bv);
         }
       }
+#endif
 #endif
     }
     return;
@@ -1612,6 +1684,20 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       }
 
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = bv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
       bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
       if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
       {
@@ -1624,6 +1710,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
           pSgpmMvs.push_back(bv);
         }
       }
+#endif
 #endif
     }
     return;
@@ -1733,7 +1820,11 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
 
 int PU::getItmpMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  , std::vector<BvInfo>& pSgpmMvs
+#else
     , std::vector<Mv>& pSgpmMvs
+#endif
 #endif
 )
 {
@@ -1820,7 +1911,11 @@ bool PU::validItmpBv(const PredictionUnit& pu, int tmpXdisp, int tmpYdisp
 }
 
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
-bool PU::validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize)
+bool PU::validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  , int flipType
+#endif
+)
 {
   const int x = pu.lx();
   const int y = pu.ly();
@@ -1829,7 +1924,51 @@ bool PU::validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize)
 
   int xLumaBv = (curMv.hor >> MV_FRACTIONAL_BITS_INTERNAL);
   int yLumaBv = (curMv.ver >> MV_FRACTIONAL_BITS_INTERNAL);
-
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  if (flipType == 0)
+  {
+    const Position p1(x + xLumaBv + w - 1, y + yLumaBv + h - 1);
+    if (!pu.cs->isDecomp(p1, CHANNEL_TYPE_LUMA))
+    {
+      return 0;
+    }
+    const Position p2(x + xLumaBv - templateSize, y + yLumaBv - templateSize);
+    if (!pu.cs->isDecomp(p2, CHANNEL_TYPE_LUMA))
+    {
+      return 0;
+    }
+  }
+  else if (flipType == 1)
+  {
+    const Position p1(x + xLumaBv + w - 1 + templateSize, y + yLumaBv + h - 1);
+    if (!pu.cs->isDecomp(p1, CHANNEL_TYPE_LUMA))
+    {
+      return 0;
+    }
+    const Position p2(x + xLumaBv, y + yLumaBv - templateSize);
+    if (!pu.cs->isDecomp(p2, CHANNEL_TYPE_LUMA))
+    {
+      return 0;
+    }
+  }
+  else if (flipType == 2)
+  {
+    const Position p1(x + xLumaBv + w - 1, y + yLumaBv + h - 1 + templateSize);
+    if (!pu.cs->isDecomp(p1, CHANNEL_TYPE_LUMA))
+    {
+      return 0;
+    }
+    const Position p2(x + xLumaBv - templateSize, y + yLumaBv);
+    if (!pu.cs->isDecomp(p2, CHANNEL_TYPE_LUMA))
+    {
+      return 0;
+    }
+  }
+  else
+  {
+    THROW("Invalid FlipType");
+  }
+#else
   const Position p1(x + xLumaBv + w - 1, y + yLumaBv + h - 1);
   if (!pu.cs->isDecomp(p1, CHANNEL_TYPE_LUMA))
   {
@@ -1840,6 +1979,7 @@ bool PU::validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize)
   {
     return 0;
   }
+#endif
 
   return 1;
 }
@@ -6679,6 +6819,40 @@ Mv PU::adjustChromaBv(const PredictionUnit &parentPU, const CompArea &lumaArea)
   Mv lumaBv = parentPU.bv;
 #endif
 #endif
+  int flipType = parentPU.cu->rribcFlipType;
+  Position parentCPos = parentPU.Y().center();
+  Position curCPos = lumaArea.center();
+  if (flipType)
+  {
+    if (flipType == 1)
+    {
+      int shift = (parentCPos.x - curCPos.x) << 1;
+      if (shift)
+      {
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+        shift <<= MV_FRACTIONAL_BITS_INTERNAL;
+#endif
+        lumaBv.setHor(lumaBv.hor + shift);
+      }
+    }
+    else if (flipType == 2)
+    {
+      int shift = (parentCPos.y - curCPos.y) << 1;
+      if (shift)
+      {
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+        shift <<= MV_FRACTIONAL_BITS_INTERNAL;
+#endif
+        lumaBv.setVer(lumaBv.ver + shift);
+      }
+    }
+  }
+  return lumaBv;
+}
+#endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+Mv PU::adjustLumaBv(const PredictionUnit& parentPU, const CompArea& lumaArea, Mv lumaBv)
+{
   int flipType = parentPU.cu->rribcFlipType;
   Position parentCPos = parentPU.Y().center();
   Position curCPos = lumaArea.center();

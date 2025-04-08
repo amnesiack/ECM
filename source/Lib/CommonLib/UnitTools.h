@@ -248,7 +248,11 @@ namespace PU
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
   int  getItmpMergeCandidate      (const PredictionUnit& pu, std::vector<Mv>& pBvs
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    , std::vector<BvInfo>& pSgpmMvs
+#else
     , std::vector<Mv>& pSgpmMvs
+#endif
 #endif
   );
   bool validItmpBv                (const PredictionUnit& pu, int tmpXdisp, int tmpYdisp
@@ -260,8 +264,15 @@ namespace PU
 #if JVET_AH0055_INTRA_TMP_ARBVP
   bool CheckBvAvailable(std::vector<Mv> &pBv, Mv curBv);
 #endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  bool CheckBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv);
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
-  bool validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize);
+  bool validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    , int flipType = 0
+#endif
+  );
 #endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
   void  getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs, static_vector<TempLibFast, MTMP_NUM_SPARSE>& sparseMtmpCandList);
@@ -397,6 +408,9 @@ namespace PU
   Mv adjustChromaBv(const PredictionUnit &lumaPU, const CompArea &lumaArea, RefPicList list = REF_PIC_LIST_0);
 #else
   Mv adjustChromaBv(const PredictionUnit &lumaPU, const CompArea &lumaArea);
+#endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  Mv adjustLumaBv(const PredictionUnit& parentPU, const CompArea& lumaArea, Mv lumaMv);
 #endif
 #endif
   bool xCheckSimilarChromaBv(std::vector<Mv> &chromaBvList, const Mv chromaBv);

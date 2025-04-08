@@ -471,8 +471,13 @@ struct CodingUnit : public UnitArea
   int            timdHor;
   int            timdVer;
 #if JVET_AG0152_SGPM_ITMP_IBC
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  BvInfo         sgpmBv0;
+  BvInfo         sgpmBv1;
+#else
   Mv             sgpmBv0;
   Mv             sgpmBv1;
+#endif
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
   AffineBlendingModel sgpmBlendModel;
@@ -1255,16 +1260,31 @@ struct SgpmInfo
   int sgpmSplitDir;
   int sgpmMode0;
   int sgpmMode1;
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  BvInfo   sgpmBv0;
+  BvInfo   sgpmBv1;
+#else
   Mv   sgpmBv0;
   Mv   sgpmBv1;
+#endif
 #if JVET_AJ0112_REGRESSION_SGPM
   bool isRegression;
   AffineBlendingModel blendModel;
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(Mv(0, 0), 0), sgpmBv1(Mv(0, 0), 0), isRegression(false), blendModel(AffineBlendingModel(5, 1, 31)) {}
+  SgpmInfo(const int sd, const int sm0, const int sm1, const BvInfo sbv0, const BvInfo sbv1, bool isR, AffineBlendingModel bM) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1), isRegression(isR), blendModel(bM) {}
+#else
   SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(0, 0), sgpmBv1(0, 0), isRegression(false), blendModel(AffineBlendingModel(5, 1, 31)) {}
   SgpmInfo(const int sd, const int sm0, const int sm1, const Mv sbv0, const Mv sbv1, bool isR, AffineBlendingModel bM) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1), isRegression(isR), blendModel(bM){}
+#endif
+#else
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(Mv(0, 0), 0), sgpmBv1(Mv(0, 0), 0) {}
+  SgpmInfo(const int sd, const int sm0, const int sm1, const BvInfo sbv0, const BvInfo sbv1) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1) {}
 #else
   SgpmInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), sgpmBv0(0, 0), sgpmBv1(0, 0) {}
   SgpmInfo(const int sd, const int sm0, const int sm1, const Mv sbv0, const Mv sbv1) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), sgpmBv0(sbv0), sgpmBv1(sbv1) {}
+#endif
 #endif
 
   SgpmInfo& operator=(const SgpmInfo& other)

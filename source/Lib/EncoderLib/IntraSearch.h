@@ -253,8 +253,13 @@ private:
     int      sgpmMode1;
     int      sgpmIdx;
 #if JVET_AG0152_SGPM_ITMP_IBC
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    BvInfo   sgpmBv0;
+    BvInfo   sgpmBv1;
+#else
     Mv       sgpmBv0;
     Mv       sgpmBv1;
+#endif
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
     bool sgpmIsRegression;
@@ -276,7 +281,11 @@ private:
 #endif
 	, sgpmFlag( 0 ), sgpmSplitDir( 0 ), sgpmMode0( 0 ), sgpmMode1( 0 ), sgpmIdx( 0 ) 
 #if JVET_AG0152_SGPM_ITMP_IBC
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      , sgpmBv0(Mv(0, 0), 0), sgpmBv1(Mv(0, 0), 0)
+#else
   , sgpmBv0(0, 0), sgpmBv1(0, 0)
+#endif
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
   , sgpmIsRegression(false)
@@ -297,7 +306,11 @@ private:
 #endif
 	  , const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0, const int si = 0 
 #if JVET_AG0152_SGPM_ITMP_IBC
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      , const BvInfo sbv0 = BvInfo(Mv(0, 0), 0), const BvInfo sbv1 = BvInfo(Mv(0, 0), 0)
+#else
     , const Mv sbv0 = Mv(0, 0), const Mv sbv1 = Mv(0, 0)
+#endif
 #endif
 #if JVET_AJ0112_REGRESSION_SGPM
       , const bool sir = false

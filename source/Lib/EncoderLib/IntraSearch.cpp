@@ -3734,8 +3734,16 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   sgpmMode[1] = sgpmInfoList[sgpmIdx].sgpmMode1;
 #if JVET_AG0152_SGPM_ITMP_IBC
                   Mv      sgpmBV[2];
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+                  sgpmBV[0] = sgpmInfoList[sgpmIdx].sgpmBv0.mv;
+                  sgpmBV[1] = sgpmInfoList[sgpmIdx].sgpmBv1.mv;
+                  int bvFlip[2];
+                  bvFlip[0] = sgpmInfoList[sgpmIdx].sgpmBv0.flipType;
+                  bvFlip[1] = sgpmInfoList[sgpmIdx].sgpmBv1.flipType;
+#else
                   sgpmBV[0] = sgpmInfoList[sgpmIdx].sgpmBv0;
                   sgpmBV[1] = sgpmInfoList[sgpmIdx].sgpmBv1;
+#endif
 #endif
                   for (int idxIn2 = 0; idxIn2 < 2; idxIn2++)
                   {
@@ -3750,6 +3758,13 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                         predUsingBv(piPred.buf, piPred.stride, timdBv, cu, false);
 #else
                         predUsingBv(piPred.buf, piPred.stride, timdBv, cu);
+#endif
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+                        int timdBvFlip = bvFlip[idxIn2];
+                        if (timdBvFlip)
+                        {
+                          piPred.flipSignal(timdBvFlip == 1);
+                        }
 #endif
                       }
                       else
