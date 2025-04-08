@@ -630,7 +630,11 @@ void CABACWriter::codeCcSaoControlIdc(uint8_t idcVal, CodingStructure &cs, const
 
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
 //void CABACWriter::coding_tree( const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, int (&qps)[2] )
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+void CABACWriter::coding_tree(CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, int(&qps)[2], Partitioner* pPartitionerChroma, CUCtx* pCuCtxChroma)
+#else
 void CABACWriter::coding_tree(const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, int (&qps)[2], Partitioner* pPartitionerChroma, CUCtx* pCuCtxChroma)
+#endif
 #else
 void CABACWriter::coding_tree(const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, Partitioner* pPartitionerChroma, CUCtx* pCuCtxChroma)
 #endif
@@ -858,6 +862,12 @@ void CABACWriter::coding_tree(const CodingStructure& cs, Partitioner& partitione
     qps[CH_L] = cuCtx.qp;
     if ( cu.separateTree )
     {
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+      if (isEncoding())
+      {
+        cs.chromaTreePred(cs, partitioner);
+      }
+#endif
       CUCtx cuCtxChroma( qps[CH_C] );
       cs.slice->setProcessingChannelType ( CH_C );
       partitionerSST->copyState          ( partitioner );

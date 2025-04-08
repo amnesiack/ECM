@@ -167,16 +167,31 @@ struct SplitPred
   uint8_t  qtDetphCol;
   uint8_t  maxBtDetphCol;
   uint8_t  mttDetphCol;
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  uint8_t  btDetphCol;
+  uint8_t  horblkCol;
+  uint8_t  verblkCol;
+#endif
 
   SplitPred() : minqtDetphCol(0),
                 qtDetphCol(0),
                 maxBtDetphCol(0),
                 mttDetphCol(0)
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+              , btDetphCol(0)
+              , horblkCol(0)
+              , verblkCol(0)
+#endif
   { }
   SplitPred(int i) : minqtDetphCol((uint8_t)i),
                      qtDetphCol((uint8_t)i),
                      maxBtDetphCol((uint8_t)i),
                      mttDetphCol((uint8_t)i)
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+                   , btDetphCol((uint8_t)i)
+                   , horblkCol((uint8_t)i)
+                   , verblkCol((uint8_t)i)
+#endif
   { }
   bool operator==(const SplitPred& sp) const
   {
@@ -184,6 +199,11 @@ struct SplitPred
     if (qtDetphCol != sp.qtDetphCol) return false;
     if (maxBtDetphCol != sp.maxBtDetphCol) return false;
     if (mttDetphCol != sp.mttDetphCol) return false;
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+    if (btDetphCol != sp.btDetphCol) return false;
+    if (horblkCol != sp.horblkCol) return false;
+    if (verblkCol != sp.verblkCol) return false;
+#endif
     return true;
   }
 

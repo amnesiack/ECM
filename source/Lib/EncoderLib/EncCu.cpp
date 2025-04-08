@@ -1930,7 +1930,11 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
         xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode, false);
       }
 #if JVET_AJ0226_MTT_SKIP
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+      if (partitioner.currBtDepth == 0
+#else
       if ((partitioner.chType == CHANNEL_TYPE_LUMA) && partitioner.currBtDepth == 0
+#endif
         && (partitioner.currArea().lwidth() == partitioner.currArea().lheight())
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
         && (!(bestCS->slice->getProcessingIntraRegion() && bestCS->slice->getProcessingSeparateTrees()) || bestCS->slice->isIntra())
@@ -2112,7 +2116,11 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 #endif
 #else
 #if JVET_AJ0226_MTT_SKIP      
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+      if (partitioner.currBtDepth == 0 && (currTestMode.type == ETM_SPLIT_QT) && (partitioner.currArea().lwidth() == partitioner.currArea().lheight())
+#else
       if (partitioner.currBtDepth == 0 && (currTestMode.type == ETM_SPLIT_QT) && (partitioner.currArea().lwidth() == partitioner.currArea().lheight()) && partitioner.chType == CHANNEL_TYPE_LUMA
+#endif
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
         && (!(bestCS->slice->getProcessingIntraRegion() && bestCS->slice->getProcessingSeparateTrees()) || bestCS->slice->isIntra())
 #endif
@@ -2864,7 +2872,11 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
       CodingStructure *bestSubCS = m_pBestCS[wIdx][hIdx];
 
 #if JVET_AJ0226_MTT_SKIP
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+      if (partitioner.currBtDepth == 0
+#else
       if ((partitioner.chType == CHANNEL_TYPE_LUMA) && partitioner.currBtDepth == 0
+#endif
         && (partitioner.currArea().lwidth() == partitioner.currArea().lheight())
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
         && (!(bestCS->slice->getProcessingIntraRegion() && bestCS->slice->getProcessingSeparateTrees()) || bestCS->slice->isIntra())
@@ -3396,6 +3408,14 @@ void EncCu::xCheckRDCostSeparateTreeIntra( CodingStructure *&tempCS, CodingStruc
         partitionerSST->chType = CH_C;
 
         m_CABACEstimator->getCtx() = m_CurrCtx->start;
+
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+        if (tempCS->slice->getSliceType() == I_SLICE)
+        {
+          tempCS->chromaTreePred(*tempCS, partitioner);
+          tempCS->parent->splitPredLuma = tempCS->splitPredLuma;
+        }
+#endif
 
         tempCS->parent->initSubStructure( *tempSSTCS, partitionerSST->chType, tempCS->area, false );
         tempCS->parent->initSubStructure( *bestSSTCS, partitionerSST->chType, tempCS->area, false );

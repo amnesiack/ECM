@@ -240,6 +240,7 @@
 #define JVET_AH0086_EIP_BIAS_AND_CLIP                     1 // JVET-AH0086: EIP with bias and clipping
 #define JVET_AH0136_CHROMA_REORDERING                     1 // JVET-AH0136: Non-CCP intra chroma mode reordering
 #define JVET_AH0135_TEMPORAL_PARTITIONING                 1 // JVET_AH0135: Temporal partitioning prediction
+#define JVET_AL0143_CHROMA_PARTITION_PREDICTION           1 // JVET_AL0143: Chroma partition prediction in separate tree condition
 #define JVET_AH0209_PDP                                   1 // JVET_AH0209: Matrix based position dependent intra prediction replacing conventional intra modes
 #if JVET_AH0209_PDP
 #define JVET_AI0208_PDP_MIP                               1 // JVET_AI0208: Modifications to Matrix-based intra prediction

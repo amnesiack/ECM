@@ -2551,7 +2551,11 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
       && (partitioner.currArea().Y().y + partitioner.currArea().lwidth()-1  < cs.picture->lheight()))
       && (encTestmode.type == ETM_SPLIT_BT_H || encTestmode.type == ETM_SPLIT_BT_V
         || encTestmode.type == ETM_SPLIT_TT_H || encTestmode.type == ETM_SPLIT_TT_V)
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+      && (partitioner.chType == CHANNEL_TYPE_LUMA || (partitioner.chType == CHANNEL_TYPE_CHROMA && cs.slice->getSliceType() == I_SLICE && cs.pcv->getMaxTtSize(*cs.slice, CHANNEL_TYPE_CHROMA) < 128))
+#else
       && partitioner.chType == CHANNEL_TYPE_LUMA 
+#endif
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
       && (!(cs.slice->getProcessingIntraRegion() && cs.slice->getProcessingSeparateTrees()) || cs.slice->isIntra())
 #endif

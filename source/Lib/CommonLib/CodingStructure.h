@@ -247,6 +247,9 @@ public:
   TreeType    treeType; //because partitioner can not go deep to tu and cu coding (e.g., addCU()), need another variable for indicating treeType
   ModeType    modeType;
 #endif
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  SplitPred   splitPredLuma;
+#endif
   void initStructData  (const int &QP = MAX_INT, const bool &skipMotBuf = false);
   void initSubStructure(      CodingStructure& cs, const ChannelType chType, const UnitArea &subArea, const bool &isTuEnc);
 
@@ -443,6 +446,9 @@ public:
   QTDepthBuf getQTDepthBuf()                      { return getQtDepthBuf(area.Y()); }
 
   SplitPred& getQtDepthInfo(const Position& pos);
+#endif
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  void chromaTreePred(CodingStructure& cs, Partitioner& partitioner);
 #endif
 #if JVET_AE0043_CCP_MERGE_TEMPORAL
   CCPModelIdxBuf getCcpmIdxBuf( const     Area& bufArea);

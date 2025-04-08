@@ -2600,6 +2600,9 @@ void CodingStructure::initSubStructure( CodingStructure& subStruct, const Channe
   subStruct.treeType  = treeType;
   subStruct.modeType  = modeType;
 #endif
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  subStruct.splitPredLuma = splitPredLuma;
+#endif
   subStruct.initStructData( currQP[_chType] );
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   if ( slice->shouldCopyLumaCUs() )
@@ -2912,6 +2915,9 @@ void CodingStructure::copyStructure( const CodingStructure& other, const Channel
     motionLut = other.motionLut;
   }
 
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+  splitPredLuma = other.splitPredLuma;
+#endif
 #if JVET_AD0188_CCP_MERGE
   ccpLut = other.ccpLut;
 #endif
@@ -4180,5 +4186,57 @@ void CodingStructure::determineIfSeparateTreeFlagInferred(bool &inferredSeparate
   {
     inferredSeparateTreeFlag = true;
   }
+}
+#endif
+#if JVET_AL0143_CHROMA_PARTITION_PREDICTION
+void CodingStructure::chromaTreePred(CodingStructure& cs, Partitioner& partitioner)
+{
+  UnitArea curArea = partitioner.currArea();
+  uint32_t nbSamplesMTT = 0;
+  uint32_t sumMttdetphColArea = 0;
+  uint32_t sumBtdetphColArea = 0;
+  uint32_t horBlkColArea = 0;
+  uint32_t verBlkColArea = 0;
+
+  for (auto &currCU : cs.traverseCUs(curArea, CHANNEL_TYPE_LUMA))
+  {
+    if (!currCU.Y().valid())
+    {
+      continue;
+    }
+
+    int sizeBlock = currCU.lwidth() * currCU.lheight();
+
+    if (currCU.mtImplicitDepth == 0)
+    {
+      sumMttdetphColArea += (currCU.mtDepth - currCU.mtImplicitDepth) * sizeBlock;
+      sumBtdetphColArea += (currCU.btDepth - currCU.mtImplicitDepth) * sizeBlock;
+
+      if (currCU.lwidth() > currCU.lheight())
+      {
+        int ratio = 1;
+        horBlkColArea += 16 * ratio * sizeBlock;
+      }
+      if (currCU.lheight() > currCU.lwidth())
+      {
+        int ratio = 1;
+        verBlkColArea += 16 * ratio * sizeBlock;
+      }
+
+      nbSamplesMTT += sizeBlock;
+    }
+  }
+
+  if (nbSamplesMTT > 0)
+  {
+    sumMttdetphColArea = (sumMttdetphColArea + (nbSamplesMTT >> 1)) / nbSamplesMTT;
+    sumBtdetphColArea = (sumBtdetphColArea + (nbSamplesMTT >> 1)) / nbSamplesMTT;
+    horBlkColArea = (horBlkColArea + (nbSamplesMTT >> 1)) / nbSamplesMTT;
+    verBlkColArea = (verBlkColArea + (nbSamplesMTT >> 1)) / nbSamplesMTT;
+  }
+  splitPredLuma.mttDetphCol = (uint8_t)sumMttdetphColArea;
+  splitPredLuma.btDetphCol = (uint8_t)sumBtdetphColArea;
+  splitPredLuma.horblkCol = (uint8_t)horBlkColArea;
+  splitPredLuma.verblkCol = (uint8_t)verBlkColArea;
 }
 #endif
