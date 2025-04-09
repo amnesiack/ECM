@@ -850,6 +850,12 @@ namespace PU
   int  getNonAdjAffParaDivFun(int num1, int num2);
 #endif
 
+#if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
+  void getChainedNonAdjCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &affMrgCtx, int list, const int mrgCandIdx = -1, bool isInitialized = false);
+  void getChainedCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &affMrgCtx, int list, const int mrgCandIdx = -1, bool isInitialized = false);
+  void deriveChainedMVForAff(const PredictionUnit &pu, int list, MvField mvField, const MotionInfo miCascaded, int& interDir, int8_t* chainedRefIdx, Mv* chainedMv);
+#endif
+
 #if JVET_AL0160_SBSMVP
   int  getNeiAffNum(const PredictionUnit& pu);
   bool isInsertSubSmvp(const PredictionUnit& pu, AffineMergeCtx &affMrg, int affThres = 1);

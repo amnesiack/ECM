@@ -419,6 +419,7 @@
 #define JVET_AL0157_MERGE_CANDIDATE_EXTENSION             1 // JVET-AL0157 test e: Additional merge candidates
 #define JVET_AL0214_MV_REFINEMENT_FOR_TMVP                1 // JVET-AL0214 : MV refinement for TMVP
 #define JVET_AL0079_AFFINE_MC                             1 // JVET-AL0079: Per-pixel based Affine MC regardless of OBMC flag
+#define JVET_AL0162_CONSTRUCTED_AFFINE_CMVP               1 // JVET-AL0162: CMVP extension for constructed affine merge candidates
 
 // Inter template matching tools
 #define JVET_AJ0096_SATD_REORDER_INTER                    1 // JVET-AJ0096: SATD-based reordering for inter coding
