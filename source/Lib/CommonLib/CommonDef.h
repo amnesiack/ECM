@@ -1045,6 +1045,10 @@ static const int MAX_SGPM_VIPM_SIZE =                             256;
 static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE); ///< maximum number of RD comparison in fast-UDI estimation loop
 #endif
 
+#if JVET_AL0134_SGPM_INTER
+static const int SGPM_INTER_NUM =                                  32;
+#endif
+
 static const int MAX_LFNST_COEF_NUM =                              16;
 
 static const int LFNST_LAST_SIG_LUMA =                              1;

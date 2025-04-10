@@ -768,6 +768,55 @@ const CtxSet ContextSetCfg::GeoSubModeIdx = ContextSetCfg::addCtxSet({
  { 122, 117, 105, 101, 90, },
 });
 
+#if JVET_AL0134_SGPM_INTER
+const CtxSet ContextSetCfg::SgpmInterFlag     = ContextSetCfg::addCtxSet({
+  // ctx 56 56
+  { 58 },  
+  { 59 }, 
+  { CNU }, 
+  { 50 },  
+  { 1 },   
+  { 1 },   
+  { DWS }, 
+  { 1 },   
+  { 11 },  
+  { 4 },
+  { DWE }, 
+  { 4 },  
+  { 243 }, 
+  { 117 }, 
+  { 117 }, 
+  { DWO }, 
+  { DWO }, 
+  { DWO }, 
+  { 132 }, 
+  { 117 },
+});
+const CtxSet ContextSetCfg::SgpmInterTmFlag   = ContextSetCfg::addCtxSet({
+  // ctx 132 132
+  { 27, },
+  { 19, },
+  { CNU, },
+  { 34, },
+  { 5, },
+  { 6, },
+  { DWS, },
+  { 5, },
+  { 4, },
+  { 4, },
+  { DWE, },
+  { 4, },
+  { 123, },
+  { 117, },
+  { 122, },
+  { 118, },
+  { DWO, },
+  { DWO, },
+  { 172, },
+  { 102, },
+});
+#endif
+
 const CtxSet ContextSetCfg::AfMmvdFlag = ContextSetCfg::addCtxSet({
 // ctx 118
  { 18, },

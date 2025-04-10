@@ -1622,6 +1622,9 @@ private:
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   bool              m_altGPMSplitModeCode;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  bool              m_useSgpmInter;
+#endif
 #if JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED || JVET_AD0140_MVD_PREDICTION
   bool              m_mvdPred;
 #endif
@@ -2496,6 +2499,10 @@ void                    setCCALFEnabledFlag( bool b )                           
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void                    setUseAltGPMSplitModeCode(bool b)                                               { m_altGPMSplitModeCode = b; }
   bool                    getUseAltGPMSplitModeCode() const                                               { return m_altGPMSplitModeCode; }
+#endif
+#if JVET_AL0134_SGPM_INTER
+  void                    setUseSgpmInter(bool b)                                                         { m_useSgpmInter = b; }
+  bool                    getUseSgpmInter() const                                                         { return m_useSgpmInter; }
 #endif
 #if JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED || JVET_AD0140_MVD_PREDICTION
   void                    setUseMvdPred(bool b)                                                           { m_mvdPred = b; }

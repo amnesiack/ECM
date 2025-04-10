@@ -497,6 +497,9 @@ protected:
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   bool      m_altGPMSplitModeCode;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  bool      m_useSgpmInter;
+#endif
   bool      m_PROF;
   bool      m_BIO;
 #if JVET_W0090_ARMC_TM
@@ -1844,6 +1847,10 @@ public:
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void      setUseAltGPMSplitModeCode       (bool b)         { m_altGPMSplitModeCode = b; }
   bool      getUseAltGPMSplitModeCode       ()         const { return m_altGPMSplitModeCode; }
+#endif
+#if JVET_AL0134_SGPM_INTER
+  void      setUseSgpmInter                 (bool b)         { m_useSgpmInter = b; }
+  bool      getUseSgpmInter                 ()         const { return m_useSgpmInter; }
 #endif
   void      setPROF                         (bool b)         { m_PROF = b; }
   bool      getPROF                         ()         const { return m_PROF; }

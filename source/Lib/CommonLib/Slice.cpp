@@ -4237,6 +4237,9 @@ SPS::SPS()
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
 , m_altGPMSplitModeCode       ( false )
 #endif
+#if JVET_AL0134_SGPM_INTER
+, m_useSgpmInter              ( false )
+#endif
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
 #if JVET_Y0067_ENHANCED_MMVD_MVD_SIGN_PRED || JVET_AD0140_MVD_PREDICTION
   , m_mvdPred(false)

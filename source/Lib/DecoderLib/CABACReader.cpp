@@ -6691,6 +6691,11 @@ void CABACReader::merge_idx( PredictionUnit& pu )
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
       geoAdaptiveBlendingIdx(pu);
 #endif
+#if JVET_AL0134_SGPM_INTER
+      sgpmInterFlag(pu);
+      if (!pu.sgpmInter)
+      {
+#endif
 #if JVET_AG0164_AFFINE_GPM
       bool isAffGPMValid = PU::isAffineGPMValid(pu);
       int  affGPMFlagCtxOffset = 0;
@@ -6908,6 +6913,9 @@ void CABACReader::merge_idx( PredictionUnit& pu )
 #endif
       DTRACE(g_trace_ctx, D_SYNTAX, "merge_idx() geo_idx0=%d\n", mergeCand0);
       DTRACE(g_trace_ctx, D_SYNTAX, "merge_idx() geo_idx1=%d\n", mergeCand1);
+#endif
+#if JVET_AL0134_SGPM_INTER
+      }
 #endif
       return;
     }
@@ -7473,6 +7481,37 @@ void CABACReader::geoAdaptiveBlendingIdx( PredictionUnit& pu )
   }
 #endif
   DTRACE(g_trace_ctx, D_SYNTAX, "geo_adaptive_blending_idx() geo_bld_idx=%d\n", pu.geoBldIdx);
+}
+#endif
+
+#if JVET_AL0134_SGPM_INTER
+void CABACReader::sgpmInterFlag(PredictionUnit &pu)
+{
+  if (!(pu.cs->slice->getSPS()->getUseSgpmInter() && pu.lx() && pu.ly()))
+  {
+    pu.sgpmInter = false;
+    return;
+  }
+
+  pu.sgpmInter = m_BinDecoder.decodeBin(Ctx::SgpmInterFlag());
+  DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInter);
+  if (pu.sgpmInter)
+  {
+    if (!pu.cs->slice->getCheckLDB())
+    {
+      pu.sgpmInterTm = m_BinDecoder.decodeBin(Ctx::SgpmInterTmFlag());
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_tm_flag() pos=(%d,%d) sgpm_inter_tm_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterTm);
+    }
+    else
+    {
+      pu.sgpmInterTm        = false;
+    }
+
+    uint32_t sgpmInterIdx = 0;
+    xReadTruncBinCode(sgpmInterIdx, SGPM_INTER_NUM);
+    pu.sgpmInterIdx = sgpmInterIdx;
+    DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+  }
 }
 #endif
 

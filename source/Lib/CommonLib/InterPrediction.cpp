@@ -12224,6 +12224,10 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
     setFillCurTplLeftARMC(false);
   }
 #endif
+#if JVET_AL0134_SGPM_INTER
+  if (!cu.firstPU->sgpmInter)
+  {
+#endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   deriveGpmSplitMode(*cu.firstPU, geoMrgCtx
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
@@ -12243,6 +12247,9 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
                    , geoBvList
 #endif
   );
+#if JVET_AL0134_SGPM_INTER
+  }
+#endif
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
   int whIdx = !cu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(cu.firstPU->lwidth()) - floorLog2(cu.firstPU->lheight()) + GEO_SQUARE_IDX);

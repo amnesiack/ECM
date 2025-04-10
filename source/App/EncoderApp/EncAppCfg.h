@@ -476,6 +476,9 @@ protected:
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   bool      m_altGPMSplitModeCode;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  bool      m_useSgpmInter;
+#endif
   bool      m_PROF;
   bool      m_BIO;
 #if JVET_W0090_ARMC_TM

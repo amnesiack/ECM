@@ -204,6 +204,15 @@ IntraPrediction::IntraPrediction()
     m_cflmBuf[i] = nullptr;
   }
 #endif
+#if JVET_AL0134_SGPM_INTER
+  for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
+  {
+    for (uint32_t tmplt = 0; tmplt < 2; tmplt++)
+    {
+      m_acSgpmInterYuvRefTemplate[tmplt][ch] = nullptr;
+    }
+  }
+#endif
 #if JVET_AK0118_BF_FOR_INTRA_PRED
   m_pcReshape = nullptr;
   m_pcBilateralFilter = nullptr;
@@ -254,6 +263,16 @@ void IntraPrediction::destroy()
     buffer.destroy();
   }
   m_sgpmBuffer.clear();
+#endif
+#if JVET_AL0134_SGPM_INTER
+  for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
+  {
+    for (uint32_t tmplt = 0; tmplt < 2; tmplt++)
+    {
+      xFree(m_acSgpmInterYuvRefTemplate[tmplt][ch]);
+      m_acSgpmInterYuvRefTemplate[tmplt][ch] = nullptr;
+    }
+  }
 #endif
   for (auto &buffer: m_intraPredBuffer)
   {
@@ -496,6 +515,18 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
   for (auto &buffer: m_sgpmBuffer)
   {
     buffer.create(CHROMA_400, Area(0, 0, MAX_CU_SIZE + DIMD_MAX_TEMP_SIZE, MAX_CU_SIZE + DIMD_MAX_TEMP_SIZE));
+  }
+#endif
+#if JVET_AL0134_SGPM_INTER
+  for (uint32_t ch = 0; ch < MAX_NUM_COMPONENT; ch++)
+  {
+    for (uint32_t tmplt = 0; tmplt < 2; tmplt++)
+    {
+      if (m_acSgpmInterYuvRefTemplate[tmplt][ch] == nullptr)
+      {
+        m_acSgpmInterYuvRefTemplate[tmplt][ch] = (Pel *) xMalloc(Pel, MAX_CU_SIZE * MAX_CU_SIZE);
+      }
+    }
   }
 #endif
   for (auto &buffer: m_intraPredBuffer)
@@ -11214,6 +11245,355 @@ void IntraPrediction::xFillPDPTempReferenceSamples2(const CPelBuf& recoBuf, cons
   xFillReferenceSamplesL(refBuf, m_leftRefShort, numMRLTop, area.width, area.height, 0, 0);
   
 
+}
+#endif
+
+#if JVET_AL0134_SGPM_INTER
+void IntraPrediction::deriveSgpmInterModeOrdered(MergeCtx &mergeCtx, const CPelBuf &recoBuf, const CompArea &area,
+                                                 CodingUnit                                   &cu,
+                                                 static_vector<SgpmInterInfo, SGPM_INTER_NUM> &candModeList,
+                                                 static_vector<double, SGPM_INTER_NUM>        &candCostList,
+                                                 InterPrediction                              *pcInterPred)
+{
+  SizeType uiWidth  = cu.lwidth();
+  SizeType uiHeight = cu.lheight();
+
+  int      iCurX = cu.lx();
+  int      iCurY = cu.ly();
+  int      iRefX = -1, iRefY = -1;
+  uint32_t uiRefWidth = 0, uiRefHeight = 0;
+
+  const int iTempWidth = SGPM_TEMPLATE_SIZE, iTempHeight = SGPM_TEMPLATE_SIZE;
+
+  TemplateType eTempType = CU::deriveTimdRefType(iCurX, iCurY, uiWidth, uiHeight, iTempWidth, iTempHeight, iRefX, iRefY,
+                                                 uiRefWidth, uiRefHeight);
+  auto        &pu        = *cu.firstPU;
+  uint32_t     uiRealW   = uiRefWidth + (eTempType == LEFT_NEIGHBOR ? iTempWidth : 0);
+  uint32_t     uiRealH   = uiRefHeight + (eTempType == ABOVE_NEIGHBOR ? iTempHeight : 0);
+
+  const UnitArea localUnitArea(pu.chromaFormat, Area(0, 0, uiRealW, uiRealH));
+  uint32_t       uiPredStride = m_sgpmBuffer[0].getBuf(localUnitArea.Y()).stride;
+  CHECK(eTempType != LEFT_ABOVE_NEIGHBOR, "left and above both should exist");
+
+  const CodingStructure &cs = *cu.cs;
+
+  Distortion sadWholeTM[GEO_MAX_NUM_UNI_CANDS];
+  Distortion sadPartsTM[GEO_MAX_NUM_UNI_CANDS][GEO_NUM_PARTITION_MODE];
+  bool       sadPartsNeeded[GEO_MAX_NUM_UNI_CANDS][GEO_NUM_PARTITION_MODE] = {};
+  bool       ipmNeeded[GEO_MAX_NUM_UNI_CANDS]                              = {};
+
+  int numInter = std::min(mergeCtx.numValidMergeCand, GEO_MAX_NUM_UNI_CANDS);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES - 1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
+  int  pocMrg[GEO_MAX_NUM_UNI_CANDS];
+  Mv   mrgMv[GEO_MAX_NUM_UNI_CANDS];
+  bool mrgDuplicated[GEO_MAX_NUM_UNI_CANDS];
+
+  for (int mergeCand = 0; mergeCand < numInter; mergeCand++)
+  {
+    int mrgList   = mergeCtx.mvFieldNeighbours[(mergeCand << 1) + 0].refIdx == -1 ? 1 : 0;
+    int mrgRefIdx = mergeCtx.mvFieldNeighbours[(mergeCand << 1) + mrgList].refIdx;
+
+    pocMrg[mergeCand]        = cs.slice->getRefPic((RefPicList) mrgList, mrgRefIdx)->getPOC();
+    mrgMv[mergeCand]         = mergeCtx.mvFieldNeighbours[(mergeCand << 1) + mrgList].mv;
+    mrgDuplicated[mergeCand] = false;
+    if (mergeCand)
+    {
+      for (int i = 0; i < mergeCand; i++)
+      {
+        if (pocMrg[mergeCand] == pocMrg[i] && mrgMv[mergeCand] == mrgMv[i])
+        {
+          mrgDuplicated[mergeCand] = true;
+          break;
+        }
+      }
+    }
+  }
+
+  for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+  {
+    for (int partIdx = 0; partIdx < 2; partIdx++)
+    {
+      for (int modeIdx = 0; modeIdx < numInter; modeIdx++)
+      {
+        int ipmIdx = modeIdx;
+
+        if (mrgDuplicated[modeIdx])
+        {
+          ipmNeeded[ipmIdx]                = false;
+          sadPartsNeeded[ipmIdx][splitDir] = false;
+        }
+        else
+        {
+          ipmNeeded[ipmIdx]                = true;
+          sadPartsNeeded[ipmIdx][splitDir] = true;
+        }
+      }
+    }
+  }
+  for (int mergeCand = 0; mergeCand < numInter; mergeCand++)
+  {
+    int ipmIdx = mergeCand;
+    if (ipmNeeded[ipmIdx])
+    {
+      mergeCtx.setMergeInfo(pu, mergeCand);
+
+      Pel *tempPred = m_sgpmBuffer[0].getBuf(localUnitArea.Y()).buf;
+
+      PelUnitBuf pcBufPredRefTop = (PelUnitBuf(pu.chromaFormat, PelBuf(m_acSgpmInterYuvRefTemplate[0][0], uiWidth, AML_MERGE_TEMPLATE_SIZE)));
+      PelUnitBuf pcBufPredRefLeft = (PelUnitBuf(pu.chromaFormat, PelBuf(m_acSgpmInterYuvRefTemplate[1][0], AML_MERGE_TEMPLATE_SIZE, uiHeight)));
+      bool tplAvail = pcInterPred->xAMLGetCurBlkTemplate(pu, uiWidth, uiHeight);
+      if (tplAvail)
+      {
+        pcInterPred->getBlkAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft);
+      }
+
+      Pel *RefTop = tempPred + 1;
+      memcpy(RefTop, pcBufPredRefTop.Y().buf, sizeof(Pel) * uiWidth);
+      Pel *RefLeft = tempPred + uiPredStride;
+      for (int i = 0; i < uiHeight; i++)
+      {
+        RefLeft[i * uiPredStride] = pcBufPredRefLeft.Y().buf[i];
+      }
+
+      PelBuf predBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+      PelBuf recBuf  = cs.picture->getRecoBuf(area);
+      PelBuf adBuf   = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+
+      sadWholeTM[ipmIdx] = m_if.m_sadTM(pu, uiWidth, uiHeight, iTempWidth, iTempHeight, COMPONENT_Y, predBuf, recBuf, adBuf);
+
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+      for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; splitDirIdx++)
+      {
+        int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+#else
+      for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+      {
+#endif
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        if (sadPartsNeeded[ipmIdx][splitDirIdx])
+        {
+          sadPartsTM[ipmIdx][splitDirIdx] =
+#else
+        if (sadPartsNeeded[ipmIdx][splitDir])
+        {
+          sadPartsTM[ipmIdx][splitDir] =
+#endif
+            m_if.m_sgpmSadTM(pu, uiWidth, uiHeight, iTempWidth, iTempHeight, COMPONENT_Y, splitDir, adBuf);
+        }
+      }
+    }
+  }
+  // check every possible combination
+  uint32_t cntComb = 0;
+  for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+  {
+    for (int mode0Idx = 0; mode0Idx < numInter; mode0Idx++)
+    {
+      for (int mode1Idx = 0; mode1Idx < numInter; mode1Idx++)
+      {
+        int ipm0Idx = mode0Idx;
+        int ipm1Idx = mode1Idx;
+        if (ipm0Idx == ipm1Idx)
+        {
+          continue;
+        }
+        if ((!ipmNeeded[ipm0Idx]) || (!ipmNeeded[ipm1Idx]))
+        {
+          continue;
+        }
+
+        double cost = static_cast<double>(sadPartsTM[ipm0Idx][splitDir]) + static_cast<double>(sadWholeTM[ipm1Idx]) - static_cast<double>(sadPartsTM[ipm1Idx][splitDir]);
+
+        cntComb++;
+
+        if ((cntComb > SGPM_INTER_NUM && cost < candCostList[SGPM_INTER_NUM - 1]) || cntComb <= SGPM_INTER_NUM)
+        {
+          int mergeCand0 = mode0Idx;
+          int mergeCand1 = mode1Idx;
+          updateCandList(SgpmInterInfo(splitDir, mergeCand0, mergeCand1), cost, candModeList, candCostList, SGPM_INTER_NUM);
+        }
+      }
+    }
+  }
+}
+
+void IntraPrediction::deriveSgpmTmInterModeOrdered(MergeCtx &mergeCtxTmOff, MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND],
+                                                   const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
+                                                   static_vector<SgpmInterInfo, SGPM_INTER_NUM> &candModeList,
+                                                   static_vector<double, SGPM_INTER_NUM>        &candCostList,
+                                                   InterPrediction                              *pcInterPred)
+{
+  SizeType uiWidth  = cu.lwidth();
+  SizeType uiHeight = cu.lheight();
+
+  int      iCurX = cu.lx();
+  int      iCurY = cu.ly();
+  int      iRefX = -1, iRefY = -1;
+  uint32_t uiRefWidth = 0, uiRefHeight = 0;
+
+  const int iTempWidth = SGPM_TEMPLATE_SIZE, iTempHeight = SGPM_TEMPLATE_SIZE;
+
+  TemplateType eTempType = CU::deriveTimdRefType(iCurX, iCurY, uiWidth, uiHeight, iTempWidth, iTempHeight, iRefX, iRefY, uiRefWidth, uiRefHeight);
+  auto        &pu        = *cu.firstPU;
+  uint32_t     uiRealW   = uiRefWidth + (eTempType == LEFT_NEIGHBOR ? iTempWidth : 0);
+  uint32_t     uiRealH   = uiRefHeight + (eTempType == ABOVE_NEIGHBOR ? iTempHeight : 0);
+
+  const UnitArea localUnitArea(pu.chromaFormat, Area(0, 0, uiRealW, uiRealH));
+  uint32_t       uiPredStride = m_sgpmBuffer[0].getBuf(localUnitArea.Y()).stride;
+  CHECK(eTempType != LEFT_ABOVE_NEIGHBOR, "left and above both should exist");
+
+  const CodingStructure &cs = *cu.cs;
+
+  Distortion sadWholeTM[GEO_TM_MAX_NUM_CANDS];
+  Distortion sadPartsTM[GEO_TM_MAX_NUM_CANDS][GEO_NUM_PARTITION_MODE];
+  bool       sadPartsNeeded[GEO_MAX_NUM_UNI_CANDS][GEO_NUM_PARTITION_MODE] = {};
+  bool       ipmNeeded[GEO_MAX_NUM_UNI_CANDS]                              = {};
+
+  int numInter = std::min(mergeCtxTmOff.numValidMergeCand, GEO_MAX_NUM_UNI_CANDS);
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+  int whIdx = !pu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES - 1, floorLog2(pu.lwidth()) - floorLog2(pu.lheight()) + GEO_SQUARE_IDX);
+#endif
+  int  pocMrg[GEO_MAX_NUM_UNI_CANDS];
+  Mv   mrgMv[GEO_MAX_NUM_UNI_CANDS];
+  bool mrgDuplicated[GEO_MAX_NUM_UNI_CANDS];
+
+  for (int mergeCand = 0; mergeCand < numInter; mergeCand++)
+  {
+    int mrgList   = mergeCtxTmOff.mvFieldNeighbours[(mergeCand << 1) + 0].refIdx == -1 ? 1 : 0;
+    int mrgRefIdx = mergeCtxTmOff.mvFieldNeighbours[(mergeCand << 1) + mrgList].refIdx;
+
+    pocMrg[mergeCand]        = cs.slice->getRefPic((RefPicList) mrgList, mrgRefIdx)->getPOC();
+    mrgMv[mergeCand]         = mergeCtxTmOff.mvFieldNeighbours[(mergeCand << 1) + mrgList].mv;
+    mrgDuplicated[mergeCand] = false;
+    if (mergeCand)
+    {
+      for (int i = 0; i < mergeCand; i++)
+      {
+        if (pocMrg[mergeCand] == pocMrg[i] && mrgMv[mergeCand] == mrgMv[i])
+        {
+          mrgDuplicated[mergeCand] = true;
+          break;
+        }
+      }
+    }
+  }
+
+  for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+  {
+    for (int partIdx = 0; partIdx < 2; partIdx++)
+    {
+      for (int modeIdx = 0; modeIdx < numInter; modeIdx++)
+      {
+        int ipmIdx = modeIdx;
+        if (mrgDuplicated[modeIdx])
+        {
+          ipmNeeded[ipmIdx]                = false;
+          sadPartsNeeded[ipmIdx][splitDir] = false;
+        }
+        else
+        {
+          ipmNeeded[ipmIdx]                = true;
+          sadPartsNeeded[ipmIdx][splitDir] = true;
+        }
+      }
+    }
+  }
+  for (uint8_t tmType = GEO_TM_SHAPE_AL; tmType < GEO_NUM_TM_MV_CAND; tmType++)
+  {
+    for (int mergeCand = 0; mergeCand < numInter; mergeCand++)
+    {
+      int ipmIdx = mergeCand;
+      if (ipmNeeded[ipmIdx])
+      {
+        mergeCtx[tmType].setMergeInfo(pu, mergeCand);
+
+        Pel *tempPred = m_sgpmBuffer[0].getBuf(localUnitArea.Y()).buf;
+
+        PelUnitBuf pcBufPredRefTop = (PelUnitBuf(pu.chromaFormat, PelBuf(m_acSgpmInterYuvRefTemplate[0][0], uiWidth, AML_MERGE_TEMPLATE_SIZE)));
+        PelUnitBuf pcBufPredRefLeft = (PelUnitBuf(pu.chromaFormat, PelBuf(m_acSgpmInterYuvRefTemplate[1][0], AML_MERGE_TEMPLATE_SIZE, uiHeight)));
+        bool tplAvail = pcInterPred->xAMLGetCurBlkTemplate(pu, uiWidth, uiHeight);
+        if (tplAvail)
+        {
+          pcInterPred->getBlkAMLRefTemplate(pu, pcBufPredRefTop, pcBufPredRefLeft);
+        }
+
+        Pel *RefTop = tempPred + 1;
+        memcpy(RefTop, pcBufPredRefTop.Y().buf, sizeof(Pel) * uiWidth);
+        Pel *RefLeft = tempPred + uiPredStride;
+        for (int i = 0; i < uiHeight; i++)
+        {
+          RefLeft[i * uiPredStride] = pcBufPredRefLeft.Y().buf[i];
+        }
+
+        PelBuf predBuf = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+        PelBuf recBuf  = cs.picture->getRecoBuf(area);
+        PelBuf adBuf   = m_sgpmBuffer[0].getBuf(localUnitArea.Y());
+
+        int ipmIdxTm = ipmIdx + (tmType - 1) * GEO_MAX_NUM_UNI_CANDS;
+        sadWholeTM[ipmIdxTm] = m_if.m_sadTM(pu, uiWidth, uiHeight, iTempWidth, iTempHeight, COMPONENT_Y, predBuf, recBuf, adBuf);
+
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        for (int splitDirIdx = 0; splitDirIdx < GEO_NUM_PARTITION_MODE; splitDirIdx++)
+        {
+          int splitDir = g_gpmSplitDir[whIdx][splitDirIdx];
+          if (sadPartsNeeded[ipmIdx][splitDirIdx])
+          {
+            int ipmIdxTm = ipmIdx + (tmType - 1) * GEO_MAX_NUM_UNI_CANDS;
+            sadPartsTM[ipmIdxTm][splitDirIdx] = m_if.m_sgpmSadTM(pu, uiWidth, uiHeight, iTempWidth, iTempHeight, COMPONENT_Y, splitDir, adBuf);
+#else
+        for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+        {
+          if (sadPartsNeeded[ipmIdx][splitDir])
+          {
+            int ipmIdxTm = ipmIdx + (tmType - 1) * GEO_MAX_NUM_UNI_CANDS;
+            sadPartsTM[ipmIdxTm][splitDir] = m_if.m_sgpmSadTM(pu, uiWidth, uiHeight, iTempWidth, iTempHeight, COMPONENT_Y, splitDir, adBuf);
+#endif
+          }
+        }
+      }
+    }
+  }
+  // check every possible combination
+  uint32_t cntComb = 0;
+  for (int splitDir = 0; splitDir < GEO_NUM_PARTITION_MODE; splitDir++)
+  {
+    for (int mode0Idx = 0; mode0Idx < numInter; mode0Idx++)
+    {
+      for (int mode1Idx = 0; mode1Idx < numInter; mode1Idx++)
+      {
+        int ipm0Idx = mode0Idx;
+        int ipm1Idx = mode1Idx;
+        if (ipm0Idx == ipm1Idx)
+        {
+          continue;
+        }
+        if ((!ipmNeeded[ipm0Idx]) || (!ipmNeeded[ipm1Idx]))
+        {
+          continue;
+        }
+
+#if JVET_AJ0107_GPM_SHAPE_ADAPT
+        int ipm0IdxTm = ipm0Idx + (g_geoTmShape[0][g_geoParams[g_gpmSplitDir[whIdx][splitDir]][0]] - 1) * GEO_MAX_NUM_UNI_CANDS;
+        int ipm1IdxTm = ipm1Idx + (g_geoTmShape[1][g_geoParams[g_gpmSplitDir[whIdx][splitDir]][0]] - 1) * GEO_MAX_NUM_UNI_CANDS;
+#else
+        int ipm0IdxTm = ipm0Idx + (g_geoTmShape[0][g_geoParams[splitDir][0]] - 1) * GEO_MAX_NUM_UNI_CANDS;
+        int ipm1IdxTm = ipm1Idx + (g_geoTmShape[1][g_geoParams[splitDir][0]] - 1) * GEO_MAX_NUM_UNI_CANDS;
+#endif
+        double cost = static_cast<double>(sadPartsTM[ipm0IdxTm][splitDir]) + static_cast<double>(sadWholeTM[ipm1IdxTm]) - static_cast<double>(sadPartsTM[ipm1IdxTm][splitDir]);
+
+        cntComb++;
+
+        if ((cntComb > SGPM_INTER_NUM && cost < candCostList[SGPM_INTER_NUM - 1]) || cntComb <= SGPM_INTER_NUM)
+        {
+          int mergeCand0 = mode0Idx;
+          int mergeCand1 = mode1Idx;
+          updateCandList(SgpmInterInfo(splitDir, mergeCand0, mergeCand1), cost, candModeList, candCostList, SGPM_INTER_NUM);
+        }
+      }
+    }
+  }
 }
 #endif
 

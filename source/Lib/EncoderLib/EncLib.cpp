@@ -2082,6 +2082,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   sps.setUseAltGPMSplitModeCode( m_altGPMSplitModeCode );
 #endif
+#if JVET_AL0134_SGPM_INTER
+  sps.setUseSgpmInter(m_useSgpmInter);
+#endif
   sps.setUsePROF               ( m_PROF );
   sps.setUseLMChroma           ( m_LMChroma ? true : false );
   sps.setHorCollocatedChromaFlag( m_horCollocatedChromaFlag );

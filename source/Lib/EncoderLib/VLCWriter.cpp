@@ -1693,6 +1693,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   WRITE_FLAG( pcSPS->getUseAltGPMSplitModeCode() ? 1 : 0,                                      "sps_alt_gpm_code_enabled_flag" );
 #endif
+#if JVET_AL0134_SGPM_INTER
+  WRITE_FLAG(pcSPS->getUseSgpmInter() ? 1 : 0,                                                 "sps_sgpm_inter_enabled_flag");
+#endif
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS
   }
 #endif

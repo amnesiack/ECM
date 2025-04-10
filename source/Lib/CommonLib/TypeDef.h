@@ -429,6 +429,7 @@
 #define TM_MRG                                            1 // Add template matching to non-subblock inter to refine regular merge candidates
 #define JVET_W0090_ARMC_TM                                1 // JVET-W0090: Adaptive reordering of merge candidates with template matching
 #define JVET_Z0056_GPM_SPLIT_MODE_REORDERING              1 // JVET-Z0056: Template matching based reordering for GPM split modes
+#define JVET_AL0134_SGPM_INTER                            1 // JVET-AL0134: Joint reordering of GPM split modes and partition indices
 #if ENABLE_OBMC
 #define JVET_Z0061_TM_OBMC                                1 // JVET-Z0061: Template matching based OBMC
 #endif
@@ -2133,6 +2134,25 @@ struct EIPInfo
 
   EIPInfo() : recoType(0), filterShape(0) {}
   EIPInfo(int _recoType, int _filterShape) : recoType(_recoType), filterShape(_filterShape) {}
+};
+#endif
+
+#if JVET_AL0134_SGPM_INTER
+struct SgpmInterInfo
+{
+  int sgpmSplitDir;
+  int sgpmMode0;
+  int sgpmMode1;
+
+  SgpmInterInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0) {}
+  SgpmInterInfo(const int sd, const int sm0, const int sm1) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1) {}
+  SgpmInterInfo &operator=(const SgpmInterInfo &other)
+  {
+    sgpmSplitDir = other.sgpmSplitDir;
+    sgpmMode0    = other.sgpmMode0;
+    sgpmMode1    = other.sgpmMode1;
+    return *this;
+  }
 };
 #endif
 
