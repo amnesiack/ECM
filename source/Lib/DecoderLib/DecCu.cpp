@@ -339,6 +339,32 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           }
         }
 #endif
+#if JVET_AL0134_SGPM_INTER
+        if (currCU.firstPU->sgpmInter)
+        {
+          const CompArea                              &area = currCU.Y();
+          static_vector<SgpmInterInfo, SGPM_INTER_NUM> sgpmInterInfoList;
+          static_vector<double, SGPM_INTER_NUM>        sgpmInterCostList;
+          int                                          sgpmInterIdx = currCU.firstPU->sgpmInterIdx;
+          if (currCU.firstPU->sgpmInterTm)
+          {
+            currCU.firstPU->geoTmFlag0   = true;
+            currCU.firstPU->geoTmFlag1   = true;
+            m_pcIntraPred->deriveSgpmTmInterModeOrdered(m_geoMrgCtx, m_geoTmMrgCtx, currCU.cs->picture->getRecoBuf(area), area, currCU, sgpmInterInfoList, sgpmInterCostList, m_pcInterPred);
+          }
+          else
+          {
+            currCU.firstPU->geoTmFlag0   = false;
+            currCU.firstPU->geoTmFlag1   = false;
+            m_pcIntraPred->deriveSgpmInterModeOrdered(m_geoMrgCtx, currCU.cs->picture->getRecoBuf(area), area, currCU,
+                                                      sgpmInterInfoList, sgpmInterCostList, m_pcInterPred);
+          }
+          currCU.firstPU->geoSplitDir  = sgpmInterInfoList[sgpmInterIdx].sgpmSplitDir;
+          currCU.firstPU->geoMergeIdx0 = sgpmInterInfoList[sgpmInterIdx].sgpmMode0;
+          currCU.firstPU->geoMergeIdx1 = sgpmInterInfoList[sgpmInterIdx].sgpmMode1;
+          currCU.firstPU->gpmIntraFlag = ((currCU.firstPU->geoMergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) || (currCU.firstPU->geoMergeIdx1 >= GEO_MAX_NUM_UNI_CANDS));
+        }
+#endif
         xReconInter( currCU );
 #if JVET_AF0073_INTER_CCP_MERGE
         CU::saveModelsInHCCP(currCU);
@@ -3647,6 +3673,103 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
 #if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
           if (pu.cu->geoBlendFlag)
           {
+            return;
+          }
+#endif
+#if JVET_AL0134_SGPM_INTER
+          if (pu.sgpmInterTm)
+          {
+            int numInter = std::min(m_geoMrgCtx.numValidMergeCand, GEO_MAX_NUM_UNI_CANDS);
+
+            int  pocMrg[GEO_MAX_NUM_UNI_CANDS];
+            Mv   mrgMv[GEO_MAX_NUM_UNI_CANDS];
+            bool mrgDuplicated[GEO_MAX_NUM_UNI_CANDS];
+
+            for (int mergeCand = 0; mergeCand < numInter; mergeCand++)
+            {
+              int mrgList   = m_geoMrgCtx.mvFieldNeighbours[(mergeCand << 1) + 0].refIdx == -1 ? 1 : 0;
+              int mrgRefIdx = m_geoMrgCtx.mvFieldNeighbours[(mergeCand << 1) + mrgList].refIdx;
+
+              pocMrg[mergeCand]        = pu.cs->slice->getRefPic((RefPicList) mrgList, mrgRefIdx)->getPOC();
+              mrgMv[mergeCand]         = m_geoMrgCtx.mvFieldNeighbours[(mergeCand << 1) + mrgList].mv;
+              mrgDuplicated[mergeCand] = false;
+              if (mergeCand)
+              {
+                for (int i = 0; i < mergeCand; i++)
+                {
+                  if (pocMrg[mergeCand] == pocMrg[i] && mrgMv[mergeCand] == mrgMv[i])
+                  {
+                    mrgDuplicated[mergeCand] = true;
+                    break;
+                  }
+                }
+              }
+            }
+            for (int i = GEO_TM_SHAPE_AL; i < GEO_NUM_TM_MV_CAND; i++)
+            {
+              m_geoTmMrgCtx[i].numValidMergeCand = m_geoMrgCtx.numValidMergeCand;
+              for (int idx = 0; idx < m_geoTmMrgCtx[i].numValidMergeCand; idx++)
+              {
+                if (mrgDuplicated[idx])
+                {
+                  continue;
+                }
+                m_geoTmMrgCtx[i].bcwIdx[idx]       = BCW_DEFAULT;
+                m_geoTmMrgCtx[i].useAltHpelIf[idx] = false;
+#if JVET_AG0276_NLIC
+                m_geoTmMrgCtx[i].altLMFlag[idx] = false;
+                m_geoTmMrgCtx[i].altLMParaNeighbours[idx].resetAltLinearModel();
+#endif
+#if INTER_LIC
+                m_geoTmMrgCtx[i].licFlags[idx] = false;
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+                m_geoTmMrgCtx[i].copyLICParamFromCtx(idx, m_geoMrgCtx, idx);
+                m_geoTmMrgCtx[i].licFlags[idx] = m_geoTmMrgCtx[i].licInheritPara[idx];
+#else
+                m_geoTmMrgCtx[i].setDefaultLICParamToCtx(idx);
+#endif
+#endif
+#endif
+                m_geoTmMrgCtx[i].interDirNeighbours[idx]          = m_geoMrgCtx.interDirNeighbours[idx];
+                m_geoTmMrgCtx[i].mvFieldNeighbours[(idx << 1)].mv = m_geoMrgCtx.mvFieldNeighbours[(idx << 1)].mv;
+                m_geoTmMrgCtx[i].mvFieldNeighbours[(idx << 1) + 1].mv = m_geoMrgCtx.mvFieldNeighbours[(idx << 1) + 1].mv;
+                m_geoTmMrgCtx[i].mvFieldNeighbours[(idx << 1)].refIdx = m_geoMrgCtx.mvFieldNeighbours[(idx << 1)].refIdx;
+                m_geoTmMrgCtx[i].mvFieldNeighbours[(idx << 1) + 1].refIdx = m_geoMrgCtx.mvFieldNeighbours[(idx << 1) + 1].refIdx;
+              }
+            }
+
+            bool origTmMrgFlag = pu.tmMergeFlag;
+            pu.tmMergeFlag     = true;
+
+            for (uint8_t tmType = GEO_TM_SHAPE_AL; tmType < GEO_NUM_TM_MV_CAND; tmType++)
+            {
+              pu.geoTmType = tmType;
+              for (uint8_t mrgIdx = 0; mrgIdx < m_geoMrgCtx.numValidMergeCand; mrgIdx++)
+              {
+                if (mrgDuplicated[mrgIdx])
+                {
+                  continue;
+                }
+
+                m_geoTmMrgCtx[tmType].setMergeInfo(pu, mrgIdx);
+#if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
+                m_pcInterPred->deriveTMMv(pu, NULL, mrgIdx);
+#else
+                m_pcInterPred->deriveTMMv(pu);
+#endif
+#if JVET_AE0046_BI_GPM
+                m_geoTmMrgCtx[tmType].interDirNeighbours[mrgIdx] = pu.interDir;
+                m_geoTmMrgCtx[tmType].bcwIdx[mrgIdx] = (pu.interDir != 3) ? BCW_DEFAULT : m_geoTmMrgCtx[tmType].bcwIdx[mrgIdx];
+                m_geoTmMrgCtx[tmType].mvFieldNeighbours[(mrgIdx << 1)].refIdx     = pu.refIdx[0];
+                m_geoTmMrgCtx[tmType].mvFieldNeighbours[(mrgIdx << 1) + 1].refIdx = pu.refIdx[1];
+#endif
+                m_geoTmMrgCtx[tmType].mvFieldNeighbours[(mrgIdx << 1)].mv     = pu.mv[0];
+                m_geoTmMrgCtx[tmType].mvFieldNeighbours[(mrgIdx << 1) + 1].mv = pu.mv[1];
+              }
+            }
+            pu.tmMergeFlag = origTmMrgFlag;
+
             return;
           }
 #endif

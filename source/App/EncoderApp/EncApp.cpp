@@ -895,6 +895,9 @@ void EncApp::xInitLibCfg()
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   m_cEncLib.setUseAltGPMSplitModeCode                            ( m_altGPMSplitModeCode );
 #endif
+#if JVET_AL0134_SGPM_INTER
+  m_cEncLib.setUseSgpmInter                                      ( m_useSgpmInter );
+#endif
   m_cEncLib.setPROF                                              ( m_PROF );
   m_cEncLib.setBIO                                               (m_BIO);
 #if JVET_W0090_ARMC_TM

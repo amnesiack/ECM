@@ -1405,6 +1405,11 @@ void PredictionUnit::initData()
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = MAX_UCHAR;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  sgpmInter          = false;
+  sgpmInterTm        = false;
+  sgpmInterIdx       = MAX_UCHAR;
+#endif
   mmvdMergeFlag = false;
   mmvdMergeIdx = MAX_UCHAR;
 #if JVET_AE0169_BIPREDICTIVE_IBC
@@ -1644,6 +1649,11 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = predData.geoBldIdx;
+#endif
+#if JVET_AL0134_SGPM_INTER
+  sgpmInter          = predData.sgpmInter;
+  sgpmInterTm        = predData.sgpmInterTm;
+  sgpmInterIdx       = predData.sgpmInterIdx;
 #endif
   mmvdMergeFlag = predData.mmvdMergeFlag;
   mmvdMergeIdx = predData.mmvdMergeIdx;
@@ -1893,6 +1903,11 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
 #endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   geoBldIdx = other.geoBldIdx;
+#endif
+#if JVET_AL0134_SGPM_INTER
+  sgpmInter          = other.sgpmInter;
+  sgpmInterTm        = other.sgpmInterTm;
+  sgpmInterIdx       = other.sgpmInterIdx;
 #endif
   mmvdMergeFlag = other.mmvdMergeFlag;
   mmvdMergeIdx = other.mmvdMergeIdx;

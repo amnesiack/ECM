@@ -778,6 +778,11 @@ struct InterPredictionData
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   uint8_t     geoBldIdx;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  bool        sgpmInter;
+  bool        sgpmInterTm;
+  uint8_t     sgpmInterIdx;
+#endif
   bool           mmvdMergeFlag;
 #if JVET_AA0093_ENHANCED_MMVD_EXTENSION
   uint16_t      mmvdMergeIdx;

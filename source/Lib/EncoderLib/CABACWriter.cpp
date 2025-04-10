@@ -6345,6 +6345,11 @@ void CABACWriter::merge_idx( const PredictionUnit& pu )
 #endif
 #endif
 
+#if JVET_AL0134_SGPM_INTER
+      sgpmInterFlag(pu);
+      if (!pu.sgpmInter)
+      {
+#endif
 #if JVET_W0097_GPM_MMVD_TM
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AG0164_AFFINE_GPM
@@ -6549,6 +6554,9 @@ void CABACWriter::merge_idx( const PredictionUnit& pu )
         {
           unary_max_eqprob(candIdx1 - 1, numCandminus2 - 1);
         }
+      }
+#endif
+#if JVET_AL0134_SGPM_INTER
       }
 #endif
       return;
@@ -7477,6 +7485,59 @@ void CABACWriter::geoAdaptiveBlendingIdx(const int idx)
   }
 #endif
   DTRACE(g_trace_ctx, D_SYNTAX, "geo_adaptive_blending_idx() geo_bld_idx=%d\n", idx);
+}
+#endif
+
+#if JVET_AL0134_SGPM_INTER
+uint64_t CABACWriter::sgpmInterFlagEst(const TempCtx &ctxStart, const int flag)
+{
+  getCtx() = SubCtx(Ctx::SgpmInterFlag, ctxStart);
+  resetBits();
+
+  m_BinEncoder.encodeBin(flag, Ctx::SgpmInterFlag());
+
+  return getEstFracBits();
+}
+
+uint64_t CABACWriter::sgpmInterTmFlagEst(const TempCtx &ctxStart, const int flag)
+{
+  getCtx() = SubCtx(Ctx::SgpmInterTmFlag, ctxStart);
+  resetBits();
+
+  m_BinEncoder.encodeBin(flag, Ctx::SgpmInterTmFlag());
+
+  return getEstFracBits();
+}
+
+uint64_t CABACWriter::sgpmInterIdxEst(const TempCtx &ctxStart, const int idx)
+{
+  resetBits();
+
+  xWriteTruncBinCode(idx, SGPM_INTER_NUM);
+
+  return getEstFracBits();
+}
+
+void CABACWriter::sgpmInterFlag(const PredictionUnit &pu)
+{
+  if (!(pu.cs->slice->getSPS()->getUseSgpmInter() && pu.lx() && pu.ly()))
+  {
+    return;
+  }
+
+  m_BinEncoder.encodeBin(pu.sgpmInter, Ctx::SgpmInterFlag());
+  DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInter);
+
+  if (pu.sgpmInter)
+  {
+    if (!pu.cs->slice->getCheckLDB())
+    {
+      m_BinEncoder.encodeBin(pu.sgpmInterTm, Ctx::SgpmInterTmFlag());
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_tm_flag() pos=(%d,%d) sgpm_inter_tm_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterTm);
+    }
+    xWriteTruncBinCode(pu.sgpmInterIdx, SGPM_INTER_NUM);
+    DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+  }
 }
 #endif
 

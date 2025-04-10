@@ -1125,6 +1125,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   ("AltGPMSplitModeCode",                             m_altGPMSplitModeCode,                             true, "Enable alternative GPM split mode coding (0:off, 1:on)  [default: on]" )
 #endif
+#if JVET_AL0134_SGPM_INTER
+  ("SgpmInter",                                       m_useSgpmInter,                                    true, "Enable joint reordering of GPM split modes and partition indices (0:off, 1:on)  [default: on]" )
+#endif
   ("PROF",                                            m_PROF,                                           false, "Enable Prediction refinement with optical flow for affine mode (0:off, 1:on)  [default: off]")
   ("BIO",                                             m_BIO,                                            false, "Enable bi-directional optical flow")
 #if JVET_W0090_ARMC_TM
@@ -4456,6 +4459,13 @@ bool EncAppCfg::xCheckParameter()
       m_altGPMSplitModeCode = false;
     }
 #endif
+#if JVET_AL0134_SGPM_INTER
+    if (m_useSgpmInter)
+    {
+      msg(WARNING, "Joint reordering of GPM split modes and partition indices is forcefully disabled since the enable flag of TM tools is set off. \n");
+      m_useSgpmInter = false;
+    }
+#endif
 #if JVET_W0090_ARMC_TM
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
     if (m_AML && !m_tmNoninterToolsEnableFlag)
@@ -6288,6 +6298,9 @@ void EncAppCfg::xPrintParameter()
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   msg( VERBOSE, "AltGPMSplitModeCode:%d ", m_altGPMSplitModeCode );
+#endif
+#if JVET_AL0134_SGPM_INTER
+  msg(VERBOSE, "SgpmInter:%d ", m_useSgpmInter);
 #endif
 #if JVET_AA0132_CONFIGURABLE_TM_TOOLS
   msg( VERBOSE, ") " );

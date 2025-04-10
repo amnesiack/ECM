@@ -255,6 +255,9 @@ public:
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   void        geoAdaptiveBlendingIdx  ( PredictionUnit&          pu );
 #endif
+#if JVET_AL0134_SGPM_INTER
+  void        sgpmInterFlag         ( PredictionUnit&          pu );
+#endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void        geoModeIdx              ( PredictionUnit&          pu );
 #endif

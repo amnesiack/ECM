@@ -2656,6 +2656,18 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
   }
 #endif
 #endif
+#if JVET_AL0134_SGPM_INTER
+#if JVET_AA0132_CONFIGURABLE_TM_TOOLS
+  pcSPS->setUseSgpmInter(false);
+  if (pcSPS->getTMToolsEnableFlag())
+  {
+#endif
+  READ_FLAG(uiCode, "sps_sgpm_inter_enabled_flag");
+  pcSPS->setUseSgpmInter(uiCode != 0);
+#if JVET_AA0132_CONFIGURABLE_TM_TOOLS
+  }
+#endif
+#endif
 #if JVET_X0049_ADAPT_DMVR
   READ_UVLC(uiCode, "six_minus_max_num_bm_merge_cand");
   CHECK(BM_MRG_MAX_NUM_CANDS < uiCode, "Incorrrect max number of BM merge candidates!");

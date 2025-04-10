@@ -316,6 +316,12 @@ public:
   void        geoAdaptiveBlendingIdx    (const int idx);
 #endif
 #endif
+#if JVET_AL0134_SGPM_INTER
+  void        sgpmInterFlag             (const PredictionUnit &pu);
+  uint64_t    sgpmInterFlagEst          (const TempCtx &ctxStart, const int flag);
+  uint64_t    sgpmInterTmFlagEst        (const TempCtx &ctxStart, const int flag);
+  uint64_t    sgpmInterIdxEst           (const TempCtx &ctxStart, const int idx);
+#endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void        geoModeIdx                ( const PredictionUnit&         pu);
   void        geoModeIdx                ( const uint8_t geoMode, const uint8_t altCodeIdx = 0);

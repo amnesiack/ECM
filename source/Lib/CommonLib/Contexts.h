@@ -597,6 +597,10 @@ public:
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
   static const CtxSet   GeoBldFlag;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  static const CtxSet   SgpmInterFlag;
+  static const CtxSet   SgpmInterTmFlag;
+#endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   static const CtxSet   GeoSubModeIdx;
 #endif

@@ -351,7 +351,11 @@ private:
 
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
+#if JVET_AL0134_SGPM_INTER
+  PelStorage            m_acGeoWeightedBuffer[(GEO_MAX_TRY_WEIGHTED_SAD + SGPM_INTER_NUM) * GEO_BLENDING_NUM + 1 + 1];   // to store weighted prediction pixels
+#else
   PelStorage            m_acGeoWeightedBuffer[GEO_MAX_TRY_WEIGHTED_SAD*GEO_BLENDING_NUM+1]; // to store weighted prediction pixels
+#endif
 #else
   PelStorage            m_acGeoWeightedBuffer[GEO_MAX_TRY_WEIGHTED_SAD+1]; // to store weighted prediction pixles
 #endif

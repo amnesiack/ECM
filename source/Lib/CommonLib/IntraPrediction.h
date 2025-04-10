@@ -582,6 +582,9 @@ protected:
 #if JVET_AB0155_SGPM
   std::vector<PelStorage>   m_sgpmBuffer;
 #endif
+#if JVET_AL0134_SGPM_INTER
+  Pel*                      m_acSgpmInterYuvRefTemplate[2][MAX_NUM_COMPONENT];   // 0: top, 1: left
+#endif
   // used in timd tmrl sortedMPM
   std::vector<PelStorage>   m_intraPredBuffer;
   Pel                       m_tempRefAbove[(MAX_CU_SIZE << 3) + 5 + 33 * MAX_REF_LINE_IDX];
@@ -1126,6 +1129,15 @@ public:
 #if JVET_AJ0112_REGRESSION_SGPM
   int deriveSgpmBlending          (PredictionUnit& pu, PelBuf &predBuf0, PelBuf &predBuf1, PelBuf &recBuf, PelBuf &adBuf, AffineBlendingModel &blendModel);
 #endif
+#endif
+#if JVET_AL0134_SGPM_INTER
+  void deriveSgpmInterModeOrdered(MergeCtx &mergeCtx, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
+                                  static_vector<SgpmInterInfo, SGPM_INTER_NUM> &candModeList,
+                                  static_vector<double, SGPM_INTER_NUM> &candCostList, InterPrediction *pcInterPred);
+  void deriveSgpmTmInterModeOrdered(MergeCtx      &mergeCtxTmOff, MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND],
+                                    const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
+                                    static_vector<SgpmInterInfo, SGPM_INTER_NUM> &candModeList,
+                                    static_vector<double, SGPM_INTER_NUM> &candCostList, InterPrediction *pcInterPred);
 #endif
 #if JVET_AD0085_MPM_SORTING
   void deriveMPMSorted            (
