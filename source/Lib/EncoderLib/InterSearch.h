@@ -831,8 +831,6 @@ private:
 #endif
 #if JVET_AL0181_ASBT
   Pel             **m_interasbt;
-  bool            *m_asbtLineColumn;
-  int32_t         *m_enerBuffer;
 #endif
 #if JVET_AE0169_BIPREDICTIVE_IBC
   Distortion      m_bestBvpSADHADCost;
