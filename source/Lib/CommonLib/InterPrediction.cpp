@@ -17823,6 +17823,10 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
               pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[cand1]];
               pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[cand1]];
               pairMergeCand.candCost[cnt] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+              pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1)] = REF_PIC_LIST_X;
+              pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #if MULTI_HYP_PRED
               pairMergeCand.addHypNeighbours[cnt].clear();
 #endif
@@ -18519,6 +18523,10 @@ void InterPrediction::adjustMergeCandidates(PredictionUnit& pu, MergeCtx& mvpMer
               pairMergeCand.bcwIdx[cnt] = mvpMergeCandCtx.bcwIdx[rdCandList[cand1]];
               pairMergeCand.useAltHpelIf[cnt] = mvpMergeCandCtx.useAltHpelIf[rdCandList[cand1]];
               pairMergeCand.candCost[cnt] = MAX_UINT64;
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+              pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1)] = REF_PIC_LIST_X;
+              pairMergeCand.refineTmvpParams.refineTmvpRefList[(cnt << 1) + 1] = REF_PIC_LIST_X;
+#endif
 #if MULTI_HYP_PRED
               pairMergeCand.addHypNeighbours[cnt].clear();
 #endif
@@ -19075,8 +19083,16 @@ void  InterPrediction::updateCandInTwoCandidateGroups(MergeCtx& mrgCtx, uint32_t
     {
       mrgCtx.bcwIdx[uiMergeCand] = mrgCtx2.bcwIdx[rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand];
       mrgCtx.interDirNeighbours[uiMergeCand] = mrgCtx2.interDirNeighbours[rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand];
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      uint32_t uiList1L0 = uiMergeCand << 1,                                            uiList1L1 = uiList1L0 + 1;
+      uint32_t uiList2L0 = ((rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand) << 1), uiList2L1 = uiList2L0 + 1;
+      mrgCtx.mvFieldNeighbours[uiList1L0]    = mrgCtx2.mvFieldNeighbours[uiList2L0];
+      mrgCtx.mvFieldNeighbours[uiList1L1]    = mrgCtx2.mvFieldNeighbours[uiList2L1];
+      mrgCtx.copyRefineTmvpCtxModellingParams(mrgCtx2, uiList2L0, uiList2L1, uiList1L0, uiList1L1);
+#else
       mrgCtx.mvFieldNeighbours[(uiMergeCand << 1)] = mrgCtx2.mvFieldNeighbours[((rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand) << 1)];
       mrgCtx.mvFieldNeighbours[(uiMergeCand << 1) + 1] = mrgCtx2.mvFieldNeighbours[((rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand) << 1) + 1];
+#endif
       mrgCtx.useAltHpelIf[uiMergeCand] = mrgCtx2.useAltHpelIf[rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand];
 #if JVET_AG0276_NLIC
       mrgCtx.altLMFlag[uiMergeCand] = mrgCtx2.altLMFlag[rdCandList[uiMergeCand] - mrgCtx.numValidMergeCand];

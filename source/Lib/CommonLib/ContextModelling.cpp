@@ -2546,6 +2546,10 @@ void MergeCtx::copyRefineTmvpCtxModellingParams(MergeCtx &orgMergeCtx, uint32_t 
     refineTmvpParams.refineTmvpColRefPOC    [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPOC    [srcMrgIdxL0];
     refineTmvpParams.refineTmvpMiPtr        [dstMrgIdxL0]    = orgMergeCtx.refineTmvpParams.refineTmvpMiPtr        [srcMrgIdxL0];
   }
+  else
+  {
+    CHECK(orgMergeCtx.refineTmvpParams.refineTmvpRefList[srcMrgIdxL0] != REF_PIC_LIST_X, "this is not possible");
+  }
   if (orgMergeCtx.refineTmvpParams.refineTmvpRefList[srcMrgIdxL1] == REF_PIC_LIST_1)
   {
     refineTmvpParams.refineTmvpCol          [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpCol          [srcMrgIdxL1];
@@ -2557,6 +2561,10 @@ void MergeCtx::copyRefineTmvpCtxModellingParams(MergeCtx &orgMergeCtx, uint32_t 
     refineTmvpParams.refineTmvpColRefPicList[dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPicList[srcMrgIdxL1];
     refineTmvpParams.refineTmvpColRefPOC    [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpColRefPOC    [srcMrgIdxL1];
     refineTmvpParams.refineTmvpMiPtr        [dstMrgIdxL1]    = orgMergeCtx.refineTmvpParams.refineTmvpMiPtr        [srcMrgIdxL1];
+  }
+  else
+  {
+    CHECK(orgMergeCtx.refineTmvpParams.refineTmvpRefList[srcMrgIdxL1] != REF_PIC_LIST_X, "this is not possible");
   }
 }
 #endif
