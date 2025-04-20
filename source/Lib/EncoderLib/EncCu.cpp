@@ -7448,22 +7448,22 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           affineMergeCtx.maxNumMergeCand = pu.cu->slice->getPicHeader()->getMaxNumAffineMergeCand();
         }
 #endif
-#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
-        for (int refineTmvpIdx = 0; refineTmvpIdx < affineMergeCtx.numValidMergeCand; refineTmvpIdx++)
-        {
-          if (affineMergeCtx.mergeType[refineTmvpIdx] == MRG_TYPE_SUBPU_ATMVP && affineMergeCtx.colIdx[refineTmvpIdx] >= 0
-              && (pu.cu->slice->getCheckLDC() == true || pu.cu->slice->getSPS()->getRefineTmvpCfgIdx() < 2))
-          {
-            PU::refineTmvpGetInterMergeSubPuMvpCand(m_pcInterSearch, pu, *affineMergeCtx.mrgCtx, encSbTmvpParams, encSbTmvpSubParams, affineMergeCtx.colIdx[refineTmvpIdx]);
-          }
-        }
-#endif
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
         if (checkaffBmMrg)
         {
           m_pcInterSearch->adjustAffineMergeCandidates(pu, affineBMMergeCtx);
         }
 #endif
+      }
+#endif
+#if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
+      for (int refineTmvpIdx = 0; refineTmvpIdx < affineMergeCtx.numValidMergeCand; refineTmvpIdx++)
+      {
+        if (affineMergeCtx.mergeType[refineTmvpIdx] == MRG_TYPE_SUBPU_ATMVP && affineMergeCtx.colIdx[refineTmvpIdx] >= 0
+            && (pu.cu->slice->getCheckLDC() == true || pu.cu->slice->getSPS()->getRefineTmvpCfgIdx() < 2))
+        {
+          PU::refineTmvpGetInterMergeSubPuMvpCand(m_pcInterSearch, pu, *affineMergeCtx.mrgCtx, encSbTmvpParams, encSbTmvpSubParams, affineMergeCtx.colIdx[refineTmvpIdx]);
+        }
       }
 #endif
 #if JVET_AG0276_LIC_FLAG_SIGNALING
