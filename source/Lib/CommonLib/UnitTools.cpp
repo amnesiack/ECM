@@ -23807,9 +23807,9 @@ bool PU::addSpatialAffineMergeHMVPCand(const PredictionUnit& pu, AffineMergeCtx&
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
 #if JVET_AL0160_SBSMVP
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #else
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #endif
 #else
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
@@ -25830,9 +25830,9 @@ void PU::getChainedNonAdjCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
 #if JVET_AL0160_SBSMVP
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #else
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #endif
 #else
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
@@ -26141,9 +26141,9 @@ void PU::getNonAdjCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &affMrgC
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
 #if JVET_AL0160_SBSMVP
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #else
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #endif
 #else
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
@@ -26334,7 +26334,7 @@ void PU::getChainedCstMergeCand(const PredictionUnit &pu, AffineMergeCtx &affMrg
   bool addConsAffCMVP = pu.lwidth() > 8 && pu.lheight() > 8;
 
 #if JVET_AL0160_SBSMVP
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #else
   const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0);
 #endif
@@ -27702,9 +27702,9 @@ void PU::getAffineMergeCand( const PredictionUnit &pu, AffineMergeCtx& affMrgCtx
 #if JVET_AJ0158_SUBBLOCK_INTER_EXTENSION
 #if JVET_AL0160_SBSMVP
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (addConsAffCMVP ? ADDITIONAL_AFFINE_CONS_CMVP_CAND_NUM : 0) + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #else
-  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2))) : 0) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0);
+  const uint32_t maxNumAffineMergeCand = slice.getPicHeader()->getMaxNumAffineMergeCand() + ((pu.cs->sps->getUseAML() && pu.cs->sps->getTMToolsEnableFlag()) ? (ADDITIONAL_AFFINE_CAND_NUM + (slice.getCheckLDC() ? 0 : (pu.cs->sps->getConfigSbTmvpMvExt() ? ADAPT_SBTMVP_CAND_NUM : 2)) + (pu.cs->sps->getSpatialMVPEnabledFlag() ? NUM_SUB_SMVP : 0)) : 0);
 #endif
 #else
 #if JVET_AL0162_CONSTRUCTED_AFFINE_CMVP
