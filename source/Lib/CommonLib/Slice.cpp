@@ -4311,14 +4311,14 @@ SPS::SPS()
 , m_bLongTermRefsPresent      (false)
 // Tool list
 #if JVET_AL0160_SBSMVP
-, m_spatialMVPEnabledFlag  (false)
+, m_spatialMVPEnabledFlag     (false)
 #endif
 , m_transformSkipEnabledFlag  (false)
 , m_log2MaxTransformSkipBlockSize (2)
 , m_BDPCMEnabledFlag          (false)
 , m_JointCbCrEnabledFlag      (false)
 , m_entropyCodingSyncEnabledFlag(false)
-, m_entryPointPresentFlag(false)
+, m_entryPointPresentFlag     (false)
 , m_internalMinusInputBitDepth{ 0, 0 }
 , m_sbtmvpEnabledFlag         (false)
 , m_bdofEnabledFlag           (false)

@@ -391,9 +391,9 @@ void InterSearch::destroy()
 #if JVET_AL0181_ASBT
   for (int i = 0; i < 10; i++)
   {
-    delete[] m_interasbt[i];
+    delete[] m_interAsbt[i];
   }
-  delete[] m_interasbt;
+  delete[] m_interAsbt;
 #endif
 #if JVET_AG0098_AMVP_WITH_SBTMVP
   if (m_amvpSbTmvpBufValid)
@@ -574,10 +574,10 @@ void InterSearch::init( EncCfg*        pcEncCfg,
   }
 #endif
 #if JVET_AL0181_ASBT
-  m_interasbt = new Pel * [10];
+  m_interAsbt = new Pel * [10];
   for (int i = 0; i < 10; i++)
   {
-    m_interasbt[i] = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
+    m_interAsbt[i] = new Pel[MAX_CU_SIZE * MAX_CU_SIZE];
   }
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
@@ -13389,15 +13389,15 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
     saveCS.clearTUs();
     TransformUnit & bestTU = saveCS.addTU(CS::getArea(cs, currArea, partitioner.chType), partitioner.chType);
 #if JVET_AL0181_ASBT
-    PelBuf  lumaResi = PelBuf(m_interasbt[0], tu.blocks[COMPONENT_Y]);
-    PelBuf  lumaPred = PelBuf(m_interasbt[1], tu.blocks[COMPONENT_Y]);
-    PelBuf  dwnSplResi = PelBuf(m_interasbt[2], tu.blocks[COMPONENT_Y]);
-    PelBuf  chromaPred[2] = { PelBuf(m_interasbt[4], tu.blocks[COMPONENT_Cb]), \
-                              PelBuf(m_interasbt[5], tu.blocks[COMPONENT_Cr])};
-    PelBuf  chromaResi[2] = { PelBuf(m_interasbt[6], tu.blocks[COMPONENT_Cb]), \
-                              PelBuf(m_interasbt[7], tu.blocks[COMPONENT_Cr])};
+    PelBuf  lumaResi = PelBuf(m_interAsbt[0], tu.blocks[COMPONENT_Y]);
+    PelBuf  lumaPred = PelBuf(m_interAsbt[1], tu.blocks[COMPONENT_Y]);
+    PelBuf  dwnSplResi = PelBuf(m_interAsbt[2], tu.blocks[COMPONENT_Y]);
+    PelBuf  chromaPred[2] = { PelBuf(m_interAsbt[4], tu.blocks[COMPONENT_Cb]), \
+                              PelBuf(m_interAsbt[5], tu.blocks[COMPONENT_Cr])};
+    PelBuf  chromaResi[2] = { PelBuf(m_interAsbt[6], tu.blocks[COMPONENT_Cb]), \
+                              PelBuf(m_interAsbt[7], tu.blocks[COMPONENT_Cr])};
 
-    PelBuf  chromaDwnSplResi = PelBuf(m_interasbt[8], tu.blocks[COMPONENT_Cr]);
+    PelBuf  chromaDwnSplResi = PelBuf(m_interAsbt[8], tu.blocks[COMPONENT_Cr]);
     tu.initBlockRes(tu.blocksResidual, MAX_NUM_COMPONENT);
     bestTU.initBlockRes(bestTU.blocksResidual, MAX_NUM_COMPONENT);
     tu.initBlockRes(tu.blocksResForDbf, MAX_NUM_COMPONENT);

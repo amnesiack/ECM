@@ -830,7 +830,7 @@ private:
   Pel             **m_interCcpMergeStorage;
 #endif
 #if JVET_AL0181_ASBT
-  Pel             **m_interasbt;
+  Pel             **m_interAsbt;
 #endif
 #if JVET_AE0169_BIPREDICTIVE_IBC
   Distortion      m_bestBvpSADHADCost;

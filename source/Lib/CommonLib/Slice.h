@@ -2312,8 +2312,8 @@ public:
   bool                    getSPSTemporalMVPEnabledFlag() const                                            { return m_SPSTemporalMVPEnabledFlag;                                  }
   void                    setSPSTemporalMVPEnabledFlag(bool b)                                            { m_SPSTemporalMVPEnabledFlag=b;                                       }
 #if JVET_AL0160_SBSMVP
-  bool                    getSpatialMVPEnabledFlag() const                                            { return m_spatialMVPEnabledFlag;                                  }
-  void                    setSpatialMVPEnabledFlag(bool b)                                            { m_spatialMVPEnabledFlag=b;                                       }
+  bool                    getSpatialMVPEnabledFlag() const                                                { return m_spatialMVPEnabledFlag;                                      }
+  void                    setSpatialMVPEnabledFlag(bool b)                                                { m_spatialMVPEnabledFlag=b;                                           }
 #endif
   void                    setLog2MaxTbSize( uint32_t u )                                                  { m_log2MaxTbSize = u;                                                 }
   uint32_t                getLog2MaxTbSize() const                                                        { return  m_log2MaxTbSize;                                             }
@@ -2342,14 +2342,14 @@ public:
   void                    setNnlfEnabledFlag(bool b)                                                      { m_nnlfEnabledFlag = b; }
   NNLFUnifiedID           getNnlfId() const                                                               { return m_nnlfid; }
   void                    setNnlfId(NNLFUnifiedID ui)                                                     { m_nnlfid = ui; }
-  bool                    getNnlfUnifiedEnabledFlag() const { return m_nnlfUnifiedEnabledFlag; }
-  void                    setNnlfUnifiedEnabledFlag(bool b) { m_nnlfUnifiedEnabledFlag = b; }
-  void                    setNnlfUnifiedInferSize(uint32_t* nnlfUnifiedInferSize) { m_nnlfUnifiedInferSize[0] = nnlfUnifiedInferSize[0]; m_nnlfUnifiedInferSize[1] = nnlfUnifiedInferSize[1]; m_nnlfUnifiedInferSize[2] = nnlfUnifiedInferSize[2]; }
+  bool                    getNnlfUnifiedEnabledFlag() const                                               { return m_nnlfUnifiedEnabledFlag; }
+  void                    setNnlfUnifiedEnabledFlag(bool b)                                               { m_nnlfUnifiedEnabledFlag = b; }
+  void                    setNnlfUnifiedInferSize(uint32_t* nnlfUnifiedInferSize)                         { m_nnlfUnifiedInferSize[0] = nnlfUnifiedInferSize[0]; m_nnlfUnifiedInferSize[1] = nnlfUnifiedInferSize[1]; m_nnlfUnifiedInferSize[2] = nnlfUnifiedInferSize[2]; }
   uint32_t                getNnlfUnifiedInferSize(NnlfUnifiedInferGranularity nnlfUnifiedInferGranularity) const { return m_nnlfUnifiedInferSize[nnlfUnifiedInferGranularity]; }
-  uint32_t                getNnlfUnifiedInfSizeExt() const { return  m_nnlfUnifiedInfSizeExt; }
-  void                    setNnlfUnifiedInfSizeExt(uint32_t i) { m_nnlfUnifiedInfSizeExt = i; }
-  uint32_t                getNnlfUnifiedMaxNumPrms() const { return  m_nnlfUnifiedMaxNumPrms; }
-  void                    setNnlfUnifiedMaxNumPrms(uint32_t i) { m_nnlfUnifiedMaxNumPrms = i; }
+  uint32_t                getNnlfUnifiedInfSizeExt() const                                                { return  m_nnlfUnifiedInfSizeExt; }
+  void                    setNnlfUnifiedInfSizeExt(uint32_t i)                                            { m_nnlfUnifiedInfSizeExt = i; }
+  uint32_t                getNnlfUnifiedMaxNumPrms() const                                                { return  m_nnlfUnifiedMaxNumPrms; }
+  void                    setNnlfUnifiedMaxNumPrms(uint32_t i)                                            { m_nnlfUnifiedMaxNumPrms = i; }
 #endif
 
 

@@ -739,8 +739,8 @@ struct InterPredictionData
   uint8_t     colIdx;
 #endif
 #endif
-  bool      mergeFlag;
-  bool      regularMergeFlag;
+  bool        mergeFlag;
+  bool        regularMergeFlag;
 #if JVET_AA0093_ENHANCED_MMVD_EXTENSION
   uint16_t    mergeIdx;
 #else
@@ -783,18 +783,18 @@ struct InterPredictionData
   bool        sgpmInterTm;
   uint8_t     sgpmInterIdx;
 #endif
-  bool           mmvdMergeFlag;
+  bool        mmvdMergeFlag;
 #if JVET_AA0093_ENHANCED_MMVD_EXTENSION
-  uint16_t      mmvdMergeIdx;
+  uint16_t    mmvdMergeIdx;
 #else
-  uint8_t       mmvdMergeIdx;
+  uint8_t     mmvdMergeIdx;
 #endif
 #if JVET_AE0169_BIPREDICTIVE_IBC
   int         ibcMergeIdx1;
 #endif
 #if JVET_AA0061_IBC_MBVD
-  bool          ibcMbvdMergeFlag;
-  int           ibcMbvdMergeIdx;
+  bool        ibcMbvdMergeFlag;
+  int         ibcMbvdMergeIdx;
 #endif
 #if JVET_AC0112_IBC_CIIP
   bool        ibcCiipFlag;
@@ -1086,7 +1086,7 @@ struct TransformUnit : public UnitArea
 #if JVET_Y0141_SIGN_PRED_IMPROVE
   void init(TCoeff **coeffs, SIGN_PRED_TYPE **signs, unsigned **signsScanIdx, Pel **pltIdx, bool **runType);
 #else
-  void        init(TCoeff **coeffs, SIGN_PRED_TYPE **signs, Pel **pltIdx, bool **runType);
+  void init(TCoeff **coeffs, SIGN_PRED_TYPE **signs, Pel **pltIdx, bool **runType);
 #endif
 #else
   void init(TCoeff **coeffs, Pel **pltIdx, bool **runType);
@@ -1094,7 +1094,7 @@ struct TransformUnit : public UnitArea
 #else
 #if SIGN_PREDICTION
 #if JVET_Y0141_SIGN_PRED_IMPROVE
-  void    init(TCoeff **coeffs, SIGN_PRED_TYPE **signs, unsigned **signsScanIdx, Pel **pcmbuf, bool **runType);
+  void init(TCoeff **coeffs, SIGN_PRED_TYPE **signs, unsigned **signsScanIdx, Pel **pcmbuf, bool **runType);
 #else
   void init(TCoeff **coeffs, SIGN_PRED_TYPE **signs, Pel **pcmbuf, bool **runType);
 #endif

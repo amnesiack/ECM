@@ -81,7 +81,7 @@
 #define JVET_X0049_BDMVR_SW_OPT                           1 // JVET-X0049: software optimization for BDMVR (lossless)
 #define INTRA_TRANS_ENC_OPT                               1 // JVET-Y0141: Software optimization, including TIMD/DIMD/MTS/LFNS encoder fast algorithm, SIMD implementation and CM initial value retraining 
 #define JVET_AA0129_INTERHASH_OBMCOFF_RD                  1 // JVET-AA0129: improved encoder RDO of inter-hash based ME considering OBMC off
-#define JVET_AL0114_ODD_MODE                              1 // JVET_AL0114: try odd modes instead of even modes in the first round of non-RD intra mode selection
+#define JVET_AL0114_ODD_MODE                              1 // JVET-AL0114: try odd modes instead of even modes in the first round of non-RD intra mode selection
 
 // SIMD optimizations
 #define MCIF_SIMD_NEW                                     1 // SIMD for interpolation
@@ -156,7 +156,7 @@
 #define JVET_AH0055_INTRA_TMP_ARBVP                       1 // JVET-AH0055: AR-BVP for intra TMP merge candidates
 #define JVET_AH0200_INTRA_TMP_BV_REORDER                  1 // JVET-AH0200: Intra TMP BV reordering
 #define JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT      1 // JVET-AI0129: Intra TMP candidates with overlapping refinement window enhanced.
-#define JVET_AL0108_BVG_DIMD                              1 // JVET_AL0108: Block vector guided DIMD
+#define JVET_AL0108_BVG_DIMD                              1 // JVET-AL0108: Block vector guided DIMD
 #endif
 
 #define JVET_W0123_TIMD_FUSION                            1 // JVET-W0123: Template based intra mode derivation and fusion
@@ -170,8 +170,8 @@
 
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
-#define JVET_AH0076_OBIC                                  1 // JVET_AH0076: OBIC
-#define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET_AK0056: Weighted OBIC
+#define JVET_AH0076_OBIC                                  1 // JVET-AH0076: OBIC
+#define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET-AK0056: Weighted OBIC
 #endif
 
 #endif
@@ -223,7 +223,7 @@
 #define JVET_AD0188_CCP_MERGE                             1 // JVET-AD0188: Non-local cross-component prediction and cross-component merge mode
 #if JVET_AD0188_CCP_MERGE
 #define JVET_AE0097_RM_OFFSET_UPDATE_IN_CCP_MERGE         1 // JVET-AE0097: Remove offset update process in CCP merge
-#define JVET_AL0126_CCP_MERGE_WITH_ADJUST                 1 // JVET_AL0126: CCP merge mode with adjustment
+#define JVET_AL0126_CCP_MERGE_WITH_ADJUST                 1 // JVET-AL0126: CCP merge mode with adjustment
 #endif
 #define JVET_AD0120_LBCCP                                 1 // JVET-AD0120: Local-Boosting Cross-Component Prediction, wherein the template part is controlled by CCCM SPS
 #define JVET_AE0043_CCP_MERGE_TEMPORAL                    1 // JVET-AE0043: Cross-component merge mode with temporal candidates
@@ -239,11 +239,11 @@
 #define JVET_AH0065_RELAX_LINE_BUFFER                     1 // JVET-AH0065: Relaxing line buffer restriction
 #define JVET_AH0086_EIP_BIAS_AND_CLIP                     1 // JVET-AH0086: EIP with bias and clipping
 #define JVET_AH0136_CHROMA_REORDERING                     1 // JVET-AH0136: Non-CCP intra chroma mode reordering
-#define JVET_AH0135_TEMPORAL_PARTITIONING                 1 // JVET_AH0135: Temporal partitioning prediction
-#define JVET_AL0143_CHROMA_PARTITION_PREDICTION           1 // JVET_AL0143: Chroma partition prediction in separate tree condition
-#define JVET_AH0209_PDP                                   1 // JVET_AH0209: Matrix based position dependent intra prediction replacing conventional intra modes
+#define JVET_AH0135_TEMPORAL_PARTITIONING                 1 // JVET-AH0135: Temporal partitioning prediction
+#define JVET_AL0143_CHROMA_PARTITION_PREDICTION           1 // JVET-AL0143: Chroma partition prediction in separate tree condition
+#define JVET_AH0209_PDP                                   1 // JVET-AH0209: Matrix based position dependent intra prediction replacing conventional intra modes
 #if JVET_AH0209_PDP
-#define JVET_AI0208_PDP_MIP                               1 // JVET_AI0208: Modifications to Matrix-based intra prediction
+#define JVET_AI0208_PDP_MIP                               1 // JVET-AI0208: Modifications to Matrix-based intra prediction
 #endif
 #define JVET_AL0125_IMPROVEMENT_ON_MPM                    1 // JVET-AL0125: improvement on MPM 
 #define JVET_AK0061_PDP_MPM                               1 // JVET-AK0061: On MPM with matrix-based position dependent intra prediction
@@ -401,23 +401,23 @@
 #define JVET_AH0068_RM_TEMP_BUFF_CONSTRAINT               1 // JVET-AH0068 test a: Removing the one-CTU-row temporal buffer constraint for all relevant tools
 #define JVET_AI0046_HIGH_PRECISION_BDOF_SAMPLE            1 // JVET-AI0046: High Precision Sample Based BDOF
 #define JVET_AI0197_AFFINE_TMVP                           1 // JVET-AI0197: Affine candidates derived from temporal collocated pictures
-#define JVET_AH0119_SUBBLOCK_TM                           1 // JVET-AH0119 extend affine TM and apply sbtmvp TM
+#define JVET_AH0119_SUBBLOCK_TM                           1 // JVET-AH0119: extend affine TM and apply sbtmvp TM
 #define JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED            1 // JVET-AI0094: Sharp motion compensation filter for bi-prediction
-#define JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE           1 // JVET-AI0185 adaptive cost function selection in merge mode
-#define JVET_AI0183_MVP_EXTENSION                         1 // JVET-AI0183 MVP extension
-#define JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION         1 // JVET-AJ0085 subblock merge mode extension
-#define JVET_AJ0097_BDOF_LDB                              1 // JVET-AJ0097 BDOF for low-delay pictures
+#define JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE           1 // JVET-AI0185: adaptive cost function selection in merge mode
+#define JVET_AI0183_MVP_EXTENSION                         1 // JVET-AI0183: MVP extension
+#define JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION         1 // JVET-AJ0085: subblock merge mode extension
+#define JVET_AJ0097_BDOF_LDB                              1 // JVET-AJ0097: BDOF for low-delay pictures
 #if JVET_AJ0097_BDOF_LDB
 #define JVET_AL0081_BDOF_LDB_MV_REFINE                    1 // JVET-AL0081: Extended BDOF usage for MV refinement
 #endif
-#define JVET_AJ0158_SUBBLOCK_INTER_EXTENSION              1 // JVET-AJ0158 Sub-block Inter mode improvement
+#define JVET_AJ0158_SUBBLOCK_INTER_EXTENSION              1 // JVET-AJ0158: Sub-block Inter mode improvement
 #define JVET_AJ0126_INTER_AMVP_ENHANCEMENT                1 // JVET-AJ0126: Enhanced inter AMVP (inter TM part is controlled by EnableTMTools)
 #define JVET_AJ0107_GPM_SHAPE_ADAPT                       1 // JVET-AJ0107: Test 3.4d, GPM with shape adaptation only applied to regular GPM.
 #define JVET_AK0095_ENHANCED_AFFINE_CANDIDATE             1 // JVET-AK0095: Additional temporal affine candidates and synthetic affine candidates
-#define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185 : TMVP selection for Merge and AMVP
+#define JVET_AK0185_TMVP_SELECTION                        1 // JVET-AK0185: TMVP selection for Merge and AMVP
 #define JVET_AL0160_SBSMVP                                1 // JVET-AL0160: subblock based spatial motion vector prediction
 #define JVET_AL0157_MERGE_CANDIDATE_EXTENSION             1 // JVET-AL0157 test e: Additional merge candidates
-#define JVET_AL0214_MV_REFINEMENT_FOR_TMVP                1 // JVET-AL0214 : MV refinement for TMVP
+#define JVET_AL0214_MV_REFINEMENT_FOR_TMVP                1 // JVET-AL0214: MV refinement for TMVP
 #define JVET_AL0079_AFFINE_MC                             1 // JVET-AL0079: Per-pixel based Affine MC regardless of OBMC flag
 #define JVET_AL0162_CONSTRUCTED_AFFINE_CMVP               1 // JVET-AL0162: CMVP extension for constructed affine merge candidates
 
@@ -518,7 +518,7 @@
 #define JVET_AH0176_LOW_DELAY_B_CTX                       1 // JVET-AH0176 6.1: context initialization for B-slice
 #define JVET_AI0281_CABAC_RETRAIN                         1 // JVET-AI0281: context initialization training
 #define JVET_AK0135_CABAC_RETRAIN                         1 // JVET-AK0135: context initialization training
-							    //
+
 // Loop filters
 #define ALF_IMPROVEMENT                                   1 // ALF improvement
 #define EMBEDDED_APS                                      1 // Embed APS into picture header

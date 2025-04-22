@@ -22117,11 +22117,11 @@ void InterPrediction::getAffAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
         {
 #if JVET_AL0160_SBSMVP
           MotionBuf mb = pu.colIdx >= 0 ? affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx] : affMrgCtx.mrgCtx->subSpatialPuMvpMiBuf[-1 - pu.colIdx];
-          int mbPos = (h >> ATMVP_SUB_BLOCK_SIZE) * mb.stride + (w >> ATMVP_SUB_BLOCK_SIZE);
 #else
           MotionBuf mb = affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx];
-          int mbPos = (h >> ATMVP_SUB_BLOCK_SIZE) * affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride + (w >> ATMVP_SUB_BLOCK_SIZE);
 #endif
+          const int mbPos = (h >> ATMVP_SUB_BLOCK_SIZE) * mb.stride + (w >> ATMVP_SUB_BLOCK_SIZE);
+
           bool isIdenticalMotion = false;
           if (!bLoadSave)
           {
@@ -22149,13 +22149,9 @@ void InterPrediction::getAffAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
               continue;
             }
             int iMvScaleTmpHor, iMvScaleTmpVer;
-#if JVET_AL0160_SBSMVP
+
             iMvScaleTmpHor = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (mb.stride)].mv[eRefPicList].hor;
             iMvScaleTmpVer = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (mb.stride)].mv[eRefPicList].ver;
-#else
-            iMvScaleTmpHor = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride)].mv[eRefPicList].hor;
-            iMvScaleTmpVer = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride)].mv[eRefPicList].ver;
-#endif
 
             Mv tmpMv(iMvScaleTmpHor, iMvScaleTmpVer);
             // clip and scale
@@ -22679,21 +22675,18 @@ void InterPrediction::getAffAndSbtmvpRefTemplate(PredictionUnit& pu, PelUnitBuf&
         {
 #if JVET_AL0160_SBSMVP
           MotionBuf mb = pu.colIdx >= 0 ? affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx]: affMrgCtx.mrgCtx->subSpatialPuMvpMiBuf[-1 - pu.colIdx];
-          int mbPos = (h >> ATMVP_SUB_BLOCK_SIZE) * mb.stride + (w >> ATMVP_SUB_BLOCK_SIZE);
 #else
           MotionBuf mb = affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx];
-          int mbPos = (h >> ATMVP_SUB_BLOCK_SIZE) * affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride + (w >> ATMVP_SUB_BLOCK_SIZE);
 #endif
+          const int mbPos = (h >> ATMVP_SUB_BLOCK_SIZE) * mb.stride + (w >> ATMVP_SUB_BLOCK_SIZE);
+
           int mbPosNext;
           if (h == 0)
           {
             while (w + puWidth < puSize.width)
             {
-#if JVET_AL0160_SBSMVP
               mbPosNext = (h >> ATMVP_SUB_BLOCK_SIZE) * mb.stride + ((w + puWidth) >> ATMVP_SUB_BLOCK_SIZE);
-#else
-              mbPosNext = (h >> ATMVP_SUB_BLOCK_SIZE) * affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride + ((w + puWidth) >> ATMVP_SUB_BLOCK_SIZE);
-#endif
+
               if (((mb.buf[mbPos].refIdx[0] < 0 && mb.buf[mbPosNext].refIdx[0] < 0) || (mb.buf[mbPos].refIdx[0] == mb.buf[mbPosNext].refIdx[0] && mb.buf[mbPos].mv[0] == mb.buf[mbPosNext].mv[0]))
                 && ((mb.buf[mbPos].refIdx[1] < 0 && mb.buf[mbPosNext].refIdx[1] < 0) || (mb.buf[mbPos].refIdx[1] == mb.buf[mbPosNext].refIdx[1] && mb.buf[mbPos].mv[1] == mb.buf[mbPosNext].mv[1])))
               {
@@ -22709,11 +22702,8 @@ void InterPrediction::getAffAndSbtmvpRefTemplate(PredictionUnit& pu, PelUnitBuf&
           {
             while (h + puHeight < puSize.height)
             {
-#if JVET_AL0160_SBSMVP
               mbPosNext = ((h + puHeight) >> ATMVP_SUB_BLOCK_SIZE) * mb.stride + (w >> ATMVP_SUB_BLOCK_SIZE);
-#else
-              mbPosNext = ((h + puHeight) >> ATMVP_SUB_BLOCK_SIZE) * affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride + (w >> ATMVP_SUB_BLOCK_SIZE);
-#endif
+
               if (((mb.buf[mbPos].refIdx[0] < 0 && mb.buf[mbPosNext].refIdx[0] < 0) || (mb.buf[mbPos].refIdx[0] == mb.buf[mbPosNext].refIdx[0] && mb.buf[mbPos].mv[0] == mb.buf[mbPosNext].mv[0]))
                 && ((mb.buf[mbPos].refIdx[1] < 0 && mb.buf[mbPosNext].refIdx[1] < 0) || (mb.buf[mbPos].refIdx[1] == mb.buf[mbPosNext].refIdx[1] && mb.buf[mbPos].mv[1] == mb.buf[mbPosNext].mv[1])))
               {
@@ -22753,13 +22743,10 @@ void InterPrediction::getAffAndSbtmvpRefTemplate(PredictionUnit& pu, PelUnitBuf&
               || (refList == 1 && (interpolationIdx == 1 || interpolationIdx == 2)))
             {
               int iMvScaleTmpHor, iMvScaleTmpVer;
-#if JVET_AL0160_SBSMVP
+
               iMvScaleTmpHor = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (mb.stride)].mv[eRefPicList].hor;
               iMvScaleTmpVer = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (mb.stride)].mv[eRefPicList].ver;
-#else
-              iMvScaleTmpHor = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride)].mv[eRefPicList].hor;
-              iMvScaleTmpVer = mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (affMrgCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].stride)].mv[eRefPicList].ver;
-#endif
+
               if (refList == targetList)
               {
                 iMvScaleTmpHor += mvOffset.hor;
@@ -31468,17 +31455,13 @@ bool InterPrediction::processTM4SbTmvpBaseMV(PredictionUnit& pu, AffineMergeCtx 
         {
 #if JVET_AL0160_SBSMVP
           MotionBuf mb = pu.colIdx >= 0? affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx] : affineMergeCtx.mrgCtx->subSpatialPuMvpMiBuf[-1- pu.colIdx];
+#else
+          MotionBuf mb = affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx];          
+#endif
           if (mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (mb.stride)].refIdx[targetList] >= 0)
           {
             mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (mb.stride)].mv[targetList] += mvOffsetBest;
           }
-#else
-          MotionBuf mb = affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx];
-          if (mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (affineMergeCtx.mrgCtx->subPuMvpMiBuf[0].stride)].refIdx[targetList] >= 0)
-          {
-            mb.buf[(w >> ATMVP_SUB_BLOCK_SIZE) + (h >> ATMVP_SUB_BLOCK_SIZE) * (affineMergeCtx.mrgCtx->subPuMvpMiBuf[0].stride)].mv[targetList] += mvOffsetBest;
-          }
-#endif
         }
       }
     }
@@ -31580,12 +31563,11 @@ bool InterPrediction::processTM4SbTmvp(PredictionUnit& pu, AffineMergeCtx &affin
   uint32_t targetList = pu.refIdx[REF_PIC_LIST_0] >= 0 ? 0 : 1;
 #if JVET_AL0160_SBSMVP
   MotionBuf& mb = pu.colIdx >= 0 ? affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx] : affineMergeCtx.mrgCtx->subSpatialPuMvpMiBuf[-1 - pu.colIdx];
+#else
+  MotionBuf& mb = affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx];
+#endif
   MotionBuf sbTmvpOriBuf(m_sbMiBuf[0], mb);
   sbTmvpOriBuf.copyFrom(mb);
-#else
-  MotionBuf sbTmvpOriBuf(m_sbMiBuf[0], affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx]);
-  sbTmvpOriBuf.copyFrom(affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx]);
-#endif
 
   for (int iRefList = 0; iRefList < (pu.cu->slice->isInterB() ? NUM_REF_PIC_LIST_01 : 1); ++iRefList)
   {
@@ -31604,11 +31586,7 @@ bool InterPrediction::processTM4SbTmvp(PredictionUnit& pu, AffineMergeCtx &affin
   }
   else
   {
-#if JVET_AL0160_SBSMVP
     mb.copyFrom(sbTmvpOriBuf);
-#else
-    affineMergeCtx.mrgCtx->subPuMvpMiBuf[pu.colIdx].copyFrom(sbTmvpOriBuf);
-#endif
     return false;
   }
   return true;
