@@ -606,7 +606,7 @@
 
 #if NNLF_ALF_POS_INTERFACE
 #define NNLF_JVET_AK0183_RDO                              1
-#define NNLF_INPUT_Y_ONLY                                 1
+#define NNLF_INPUT_Y_ONLY                                 0
 #endif
 
 #define NN_LF_FIX_DIR                                     1
