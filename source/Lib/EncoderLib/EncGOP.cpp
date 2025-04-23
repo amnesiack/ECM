@@ -2758,61 +2758,6 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
         pcSlice->setCostForARMC((uint32_t) LAMBDA_DEC_SIDE[min(max(pcSlice->getSliceQp(), 0), MAX_QP)]);
 #endif
       }
-#if JVET_AL0181_ASBT
-      if ( picHeader->getPicInterSliceAllowedFlag() )
-      {
-        if ( pcSlice->getSPS()->getUseASBT() )
-        {
-          if ( !pcSlice->isIntra() )
-          {
-            if ( pcSlice->getSPS()->getUseASBTphSignaling() )
-            {
-              if ( pcSlice->getCheckLDC() && (pcSlice->getPic()->temporalId == 0) )
-              {
-                if ( m_pcCfg->getBaseQP() <= 22 )
-                {
-                  if ( pcSlice->getDepth() < 2 )
-                  {
-                    picHeader->setUseASBT(true);
-                  }
-                  else
-                  {
-                    picHeader->setUseASBT(false);
-                  }
-                }
-                else if ( m_pcCfg->getBaseQP() <= 27 )
-                {
-                  picHeader->setUseASBT(true);
-                }
-                else
-                {
-                  if ( pcSlice->getDepth() > 0 )
-                  {
-                    picHeader->setUseASBT(true);
-                  }
-                  else
-                  {
-                    picHeader->setUseASBT(false);
-                  }
-                }
-              }
-              else
-              {
-                picHeader->setUseASBT(true);
-              }
-            }
-            else
-            {
-              picHeader->setUseASBT(true);
-            }
-          }
-        }
-        else
-        {
-          picHeader->setUseASBT(false);
-        }
-      }
-#endif
 
       if (pcSlice->getCheckLDC())
       {
@@ -2855,7 +2800,61 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       }
     }
 #endif
-
+#if JVET_AL0181_ASBT
+    if (picHeader->getPicInterSliceAllowedFlag())
+    {
+      if (pcSlice->getSPS()->getUseASBT())
+      {
+        if (!pcSlice->isIntra())
+        {
+          if (pcSlice->getSPS()->getUseASBTphSignaling())
+          {
+            if (pcSlice->getCheckLDC() && (pcSlice->getPic()->temporalId == 0))
+            {
+              if (m_pcCfg->getBaseQP() <= 22)
+              {
+                if (pcSlice->getDepth() < 2)
+                {
+                  picHeader->setUseASBT(true);
+                }
+                else
+                {
+                  picHeader->setUseASBT(false);
+                }
+              }
+              else if (m_pcCfg->getBaseQP() <= 27)
+              {
+                picHeader->setUseASBT(true);
+              }
+              else
+              {
+                if (pcSlice->getDepth() > 0)
+                {
+                  picHeader->setUseASBT(true);
+                }
+                else
+                {
+                  picHeader->setUseASBT(false);
+                }
+              }
+            }
+            else
+            {
+              picHeader->setUseASBT(true);
+            }
+          }
+          else
+          {
+            picHeader->setUseASBT(true);
+          }
+        }
+      }
+      else
+      {
+        picHeader->setUseASBT(false);
+      }
+    }
+#endif
 
     //-------------------------------------------------------------
 #if MULTI_HYP_PRED  
