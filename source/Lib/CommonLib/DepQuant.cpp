@@ -1991,7 +1991,6 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
           if (nbOut->num[lfnstidx] > 2)
           {
             UPDATE(2);
-#if 5 == 5
             if (nbOut->num[lfnstidx] > 3)
             {
               UPDATE(3);
@@ -2000,7 +1999,6 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
                 UPDATE(4);
               }
             }
-#endif
           }
         }
 #else
