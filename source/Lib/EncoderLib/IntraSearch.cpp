@@ -9866,6 +9866,9 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
               ccpModelBest    = pu.curCand;
               ccpModelBest.glmIdc = pu.glmIdc.cb0;
 #endif
+#if JVET_Z0050_DIMD_CHROMA_FUSION
+              isChromaFusion = pu.isChromaFusion;
+#endif
             }
 #if !JVET_AB0092_GLM_WITH_LUMA
             if ( chromaIntraMode == LM_CHROMA_IDX && !bestGlmIdc.isActive() )
@@ -10361,6 +10364,9 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 #if JVET_AD0188_CCP_MERGE
               ccpModelBest    = pu.curCand;
               ccpModelBest.glmIdc = pu.glmIdc.cb0;
+#endif
+#if JVET_Z0050_DIMD_CHROMA_FUSION
+              isChromaFusion = pu.isChromaFusion;
 #endif
             }
 #if !JVET_AB0092_GLM_WITH_LUMA
