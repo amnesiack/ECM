@@ -5287,7 +5287,7 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
 
     pcPic->destroyTempBuffers();
 #if JVET_AH0135_TEMPORAL_PARTITIONING
-    pcPic->cs->SetSplitPred();
+    pcPic->cs->setSplitPred();
 #endif
     pcPic->cs->destroyTemporaryCsData();
 #if JVET_AA0096_MC_BOUNDARY_PADDING

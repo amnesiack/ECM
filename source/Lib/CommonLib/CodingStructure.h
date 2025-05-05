@@ -461,7 +461,7 @@ public:
   const MotionInfo& getMotionInfo( const Position& pos ) const;
 
 #if JVET_AH0135_TEMPORAL_PARTITIONING
-  void SetSplitPred();
+  void setSplitPred();
 
   QTDepthBuf getQtDepthBuf(const Area& _area);
   QTDepthBuf getQTDepthBuf()                      { return getQtDepthBuf(area.Y()); }

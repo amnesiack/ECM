@@ -1285,7 +1285,7 @@ void DecLib::finishPicture(int& poc, PicList*& rpcListPic, MsgLevel msgl )
   m_pcPic->cs->destroyCoeffs();
   if (!(!pcSlice->isIntra() && !((m_pcPic->temporalId == 0) || (pcSlice->getSPS()->getNumReorderPics(m_pcPic->temporalId) != m_pcPic->temporalId))))
   {
-    m_pcPic->cs->SetSplitPred();
+    m_pcPic->cs->setSplitPred();
   }
 #endif
   m_pcPic->cs->destroyTemporaryCsData();

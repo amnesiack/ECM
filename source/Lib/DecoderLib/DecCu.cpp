@@ -1088,12 +1088,7 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
     }
 #endif
   }
-#if PRINT_DEBUG_INFO
-  if(!pu.cs->pcv->isEncoder && compID == COMPONENT_Cb)
-  {
-    print_debug_info(*tu.cu, compID);
-  }
-#endif
+
   //===== get prediction signal =====
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION	  
   if (compID != COMPONENT_Y && pu.decoderDerivedCcpMode)
