@@ -583,14 +583,14 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
   {
     int lumaMaxBT = cs.pcv->getMaxBtSize(*cs.slice, CHANNEL_TYPE_LUMA);
     int chMaxBT = cs.pcv->getMaxBtSize(*cs.slice, CHANNEL_TYPE_CHROMA);
-    int BTdiff = ceilLog2(chMaxBT) - ceilLog2(lumaMaxBT);
+    int diffBT = ceilLog2(chMaxBT) - ceilLog2(lumaMaxBT);
 
-    if (cs.splitPredLuma.btDetphCol + BTdiff - 1 < currBtDepth)
+    if (cs.splitPredLuma.btDetphCol + diffBT - 1 < currBtDepth)
     {
       canTh = canTv = false;
     }
 
-    if ((int)(currMtDepth + BTdiff) < (int)(cs.splitPredLuma.mttDetphCol))
+    if ((int)(currMtDepth + diffBT) < (int)(cs.splitPredLuma.mttDetphCol))
     {
       if (currMtDepth == 0)
       {
@@ -598,7 +598,7 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
       }
     }
 
-    if ((int)(currMtDepth + BTdiff) < (int)(cs.splitPredLuma.mttDetphCol))
+    if ((int)(currMtDepth + diffBT) < (int)(cs.splitPredLuma.mttDetphCol))
     {
       if (currMtDepth == 0)
       {

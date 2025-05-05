@@ -19452,7 +19452,7 @@ void IntraPrediction::deriveBvgDimdMode(const CPelBuf &recoBuf, const CompArea &
   std::vector<Mv> bvList;
   for(auto& bv: m_bvListSorted)
   {
-    if(!PU::CheckBvAvailable(bvList, bv))
+    if(!PU::checkBvAvailable(bvList, bv))
     {
       bvList.push_back(bv);
     }
@@ -23165,7 +23165,7 @@ void IntraPrediction::searchCandidateFromOnePicIntra( CodingUnit* pcCU, Pel** ta
         Mv arbv = cMv + puCascaded->bv;
         if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
         {
-          if (!PU::CheckBvAvailable(bvBasedMergeCandidatesITMP, arbv))
+          if (!PU::checkBvAvailable(bvBasedMergeCandidatesITMP, arbv))
           {
             bvBasedMergeCandidatesITMP.push_back(arbv);
 
@@ -23177,7 +23177,7 @@ void IntraPrediction::searchCandidateFromOnePicIntra( CodingUnit* pcCU, Pel** ta
         }
         if(PU::validItmpBv(pu, puCascaded->bv.hor, puCascaded->bv.ver))
         {
-          if (!PU::CheckBvAvailable(bvBasedMergeCandidatesITMP, puCascaded->bv))
+          if (!PU::checkBvAvailable(bvBasedMergeCandidatesITMP, puCascaded->bv))
           {
             bvBasedMergeCandidatesITMP.push_back(puCascaded->bv);
 
@@ -23206,7 +23206,7 @@ void IntraPrediction::searchCandidateFromOnePicIntra( CodingUnit* pcCU, Pel** ta
           Mv arbv2 = cMv + bv;
           if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
           {
-            if (!PU::CheckBvAvailable(bvBasedMergeCandidatesITMP, arbv2))
+            if (!PU::checkBvAvailable(bvBasedMergeCandidatesITMP, arbv2))
             {
               bvBasedMergeCandidatesITMP.push_back(arbv2);
 
@@ -23218,7 +23218,7 @@ void IntraPrediction::searchCandidateFromOnePicIntra( CodingUnit* pcCU, Pel** ta
           }
           if(PU::validItmpBv(pu, bv.hor, bv.ver))
           {
-            if (!PU::CheckBvAvailable(bvBasedMergeCandidatesITMP, bv))
+            if (!PU::checkBvAvailable(bvBasedMergeCandidatesITMP, bv))
             {
               bvBasedMergeCandidatesITMP.push_back(bv);
 

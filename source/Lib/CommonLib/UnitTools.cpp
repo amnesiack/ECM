@@ -1416,7 +1416,7 @@ bool CU::isIdxModeValid(const bool &areAboveRightUnavail, const bool &areBelowLe
 // PU tools
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
 #if JVET_AH0055_INTRA_TMP_ARBVP
-bool PU::CheckBvAvailable(std::vector<Mv>& pBv, Mv curBv)
+bool PU::checkBvAvailable(std::vector<Mv>& pBv, Mv curBv)
 #else
 bool CheckBvAvailable(std::vector<Mv>& pBv, Mv curBv)
 #endif
@@ -1431,7 +1431,7 @@ bool CheckBvAvailable(std::vector<Mv>& pBv, Mv curBv)
   return 0;
 }
 #if JVET_AL0188_SGPM_FLIPAWARE_BV
-bool PU::CheckBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv)
+bool PU::checkBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv)
 {
   for (int i = 0; i < pBv.size(); i++)
   {
@@ -1472,7 +1472,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-      if (!PU::CheckBvAvailable(pBv, pu->bv))
+      if (!PU::checkBvAvailable(pBv, pu->bv))
 #else
       if (!CheckBvAvailable(pBv, pu->bv))
 #endif
@@ -1488,7 +1488,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
     if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
     {
-      if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+      if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
       {
         pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
       }
@@ -1514,7 +1514,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-        if (!PU::CheckBvAvailable(pBv, bv))
+        if (!PU::checkBvAvailable(pBv, bv))
 #else
         if (!CheckBvAvailable(pBv, bv))
 #endif
@@ -1530,7 +1530,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
       if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
       {
-        if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
         {
           pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
         }
@@ -1567,7 +1567,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-      if (!PU::CheckBvAvailable(pBv, pu->bv))
+      if (!PU::checkBvAvailable(pBv, pu->bv))
 #else
       if (!CheckBvAvailable(pBv, pu->bv))
 #endif  
@@ -1584,7 +1584,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
     if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
     {
-      if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+      if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
       {
         pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
       }
@@ -1621,7 +1621,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-        if (!PU::CheckBvAvailable(pBv, bv))
+        if (!PU::checkBvAvailable(pBv, bv))
 #else
         if (!CheckBvAvailable(pBv, bv))
 #endif
@@ -1638,7 +1638,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
       if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
       {
-        if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
         {
           pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
         }
@@ -1674,7 +1674,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-        if (!PU::CheckBvAvailable(pBv, bv))
+        if (!PU::checkBvAvailable(pBv, bv))
 #else
         if (!CheckBvAvailable(pBv, bv))
 #endif
@@ -1692,7 +1692,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
       if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
       {
-        if (!PU::CheckBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
         {
           pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
         }
@@ -1752,7 +1752,7 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
       arbv = cMv + puCascaded->bv;
       if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
       {
-        if (!PU::CheckBvAvailable(pBvs, arbv))
+        if (!PU::checkBvAvailable(pBvs, arbv))
         {
           pBvs.push_back(arbv);
           if (pBvs.size() >= totalNum)
@@ -1763,7 +1763,7 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
       }
       if (PU::validItmpBv(pu, puCascaded->bv.hor, puCascaded->bv.ver))
       {
-        if (!PU::CheckBvAvailable(pBvs, puCascaded->bv))
+        if (!PU::checkBvAvailable(pBvs, puCascaded->bv))
         {
           pBvs.push_back(puCascaded->bv);
           if (pBvs.size() >= totalNum)
@@ -1790,7 +1790,7 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
         arbv2 = cMv + bv;
         if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
         {
-          if (!PU::CheckBvAvailable(pBvs, arbv2))
+          if (!PU::checkBvAvailable(pBvs, arbv2))
           {
             pBvs.push_back(arbv2);
             if (pBvs.size() >= totalNum)
@@ -1801,7 +1801,7 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
         }
         if (PU::validItmpBv(pu, bv.hor, bv.ver))
         {
-          if (!PU::CheckBvAvailable(pBvs, bv))
+          if (!PU::checkBvAvailable(pBvs, bv))
           {
             pBvs.push_back(bv);
 

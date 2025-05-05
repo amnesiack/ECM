@@ -1127,7 +1127,7 @@ void CABACReader::coding_tree( CodingStructure& cs, Partitioner& partitioner, CU
   if ( cu.slice->getSeparateTreeEnabled() && CU::isIntra( cu ) && !cu.slice->getProcessingIntraRegion() && cu.separateTree )
   {
     CHECK( !cu.isSST, "Separate tree root not found" );
-    bool separateTree = cu.separateTree;
+    const bool separateTree = cu.separateTree;
     const PartSplit implicitSplit = partitioner.getImplicitSplit( cs ); // FLL to check
     cs.popLastCU( implicitSplit );
     cs.slice->setProcessingIntraRegion   ( true );

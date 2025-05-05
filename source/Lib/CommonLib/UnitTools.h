@@ -262,10 +262,10 @@ namespace PU
   );
   bool checkValidIntraTmpMergeCand(const PredictionUnit& pu, Mv Bv);
 #if JVET_AH0055_INTRA_TMP_ARBVP
-  bool CheckBvAvailable(std::vector<Mv> &pBv, Mv curBv);
+  bool checkBvAvailable(std::vector<Mv> &pBv, Mv curBv);
 #endif
 #if JVET_AL0188_SGPM_FLIPAWARE_BV
-  bool CheckBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv);
+  bool checkBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv);
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
   bool validIBCItmpMv(const PredictionUnit& pu, Mv curMv, int templateSize

@@ -10709,7 +10709,6 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 #if JVET_AD0188_CCP_MERGE
               ccpModelBest    = pu.curCand;
 #endif
-              isChromaFusion = pu.isChromaFusion;
 #if JVET_AA0126_GLM
               bestGlmIdc = pu.glmIdc;
 #endif

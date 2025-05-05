@@ -3190,7 +3190,7 @@ const CMotionBuf CodingStructure::getMotionBuf( const Area& _area ) const
 }
 
 #if JVET_AH0135_TEMPORAL_PARTITIONING
-void CodingStructure::SetSplitPred()
+void CodingStructure::setSplitPred()
 {
   const Picture* pic = picture->unscaledPic;
   const int width = pic->getPicWidthInLumaSamples();
@@ -3227,8 +3227,8 @@ void CodingStructure::SetSplitPred()
 
       int topLeftWindowx = pos.x - offset;
       int topLeftWindowy = pos.y - offset;
-      int BottomRightWindowx = pos.x + offset;
-      int BottomRightWindowy = pos.y + offset;
+      int bottomRightWindowx = pos.x + offset;
+      int bottomRightWindowy = pos.y + offset;
       for (int i = 0; i < nbPos; i++)
       {
         for (int j = 0; j < nbPos; j++)
@@ -3239,8 +3239,8 @@ void CodingStructure::SetSplitPred()
 
       if ((topLeftWindowx < 0)
         || (topLeftWindowy < 0)
-        || (BottomRightWindowx >= width)
-        || (BottomRightWindowy >= height)
+        || (bottomRightWindowx >= width)
+        || (bottomRightWindowy >= height)
         )
       {
         for (int i = 0; i < nbPos; i++)
@@ -4255,18 +4255,16 @@ void CodingStructure::chromaTreePred(CodingStructure& cs, Partitioner& partition
 
     if (currCU.mtImplicitDepth == 0)
     {
-      sumMttdetphColArea += (currCU.mtDepth - currCU.mtImplicitDepth) * sizeBlock;
-      sumBtdetphColArea += (currCU.btDepth - currCU.mtImplicitDepth) * sizeBlock;
+      sumMttdetphColArea += currCU.mtDepth * sizeBlock;
+      sumBtdetphColArea += currCU.btDepth * sizeBlock;
 
       if (currCU.lwidth() > currCU.lheight())
       {
-        int ratio = 1;
-        horBlkColArea += 16 * ratio * sizeBlock;
+        horBlkColArea += 16 * sizeBlock;
       }
       if (currCU.lheight() > currCU.lwidth())
       {
-        int ratio = 1;
-        verBlkColArea += 16 * ratio * sizeBlock;
+        verBlkColArea += 16 * sizeBlock;
       }
 
       nbSamplesMTT += sizeBlock;
