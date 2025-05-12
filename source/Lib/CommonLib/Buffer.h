@@ -216,7 +216,7 @@ struct AreaBuf : public Size
 
   operator AreaBuf<const T>() const { return AreaBuf<const T>( buf, stride, width, height ); }
 
-  void fill                 ( const T &val );
+  void fill                 ( const T &val, const int padSize = 0);
   void memset               ( const int val );
 
   void copyFrom             ( const AreaBuf<const T> &other );
@@ -409,7 +409,7 @@ else                                                        \
 }
 
 template<typename T>
-void AreaBuf<T>::fill(const T &val)
+void AreaBuf<T>::fill(const T & val, const int padSize )
 {
   if( width == stride )
   {
@@ -417,13 +417,27 @@ void AreaBuf<T>::fill(const T &val)
   }
   else
   {
-    T* dest = buf;
-
-    for( unsigned y = 0; y < height; y++ )
+    if(padSize == 0)
     {
-      std::fill_n( dest, width, val );
+      T* dest = buf;
 
-      dest += stride;
+      for( unsigned y = 0; y < height; y++ )
+      {
+        std::fill_n( dest, width, val );
+
+        dest += stride;
+      }
+    }
+    else
+    {
+      T* dest = buf;
+      dest -= padSize * stride + padSize;
+      for (int y = -padSize; y < (int)(height)+padSize; y++)
+      {
+        std::fill_n(dest, (int)(width)+2 * padSize, val);
+
+        dest += stride;
+      }
     }
   }
 }

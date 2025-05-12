@@ -100,6 +100,13 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
   clearAmvpSbTmvpStatArea(slice);
 #endif
 
+  if ( slice->getSliceID() == 0 )
+  {
+    pic->getRecoBuf().bufs[COMPONENT_Y].fill( 0, MAX_ALF_PADDING_SIZE );
+    pic->getRecoBuf().bufs[COMPONENT_Cb].fill( 0, MAX_ALF_PADDING_SIZE );
+    pic->getRecoBuf().bufs[COMPONENT_Cr].fill( 0, MAX_ALF_PADDING_SIZE );
+  }
+
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
   if ( slice->isIntra() )
   {
