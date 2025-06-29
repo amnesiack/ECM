@@ -70,7 +70,9 @@ public:
 
 public:
   virtual unsigned  decodeBin           ( unsigned ctxId    ) = 0;
-
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+  virtual uint16_t  getProb             ( unsigned ctxId    ) = 0;
+#endif
 public:
   unsigned          decodeBinEP         ();
   unsigned          decodeBinsEP        ( unsigned numBins  );
@@ -99,6 +101,9 @@ public:
   TBinDecoder ();
   ~TBinDecoder() {}
   unsigned decodeBin ( unsigned ctxId );
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+  uint16_t getProb   ( unsigned ctxId );
+#endif
 #if JVET_AG0117_CABAC_SPATIAL_TUNING
   void updateCtxs    ( BinStoreVector *bb ) { m_ctx.updateCtxs(bb); };
 #endif

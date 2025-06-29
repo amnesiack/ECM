@@ -395,6 +395,14 @@ void TBinEncoder<BinProbModel>::encodeBin( unsigned bin, unsigned ctxId )
 
 }
 
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+template <class BinProbModel>
+uint16_t TBinEncoder<BinProbModel>::getProb( unsigned ctxId )
+{
+  return m_ctx[ctxId].state();
+}
+#endif
+
 template <class BinProbModel>
 BinEncIf* TBinEncoder<BinProbModel>::getTestBinEncoder() const
 {

@@ -117,7 +117,9 @@ public:
   virtual unsigned  getNumBins        ( unsigned    ctxId )           const = 0;
 public:
   virtual void      encodeBin         ( unsigned bin,   unsigned ctxId    ) = 0;
-
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+  virtual uint16_t  getProb           ( unsigned ctxId                    ) = 0;
+#endif
   virtual void      encodeBinEP       ( unsigned bin                      ) = 0;
   virtual void      encodeBinsEP      ( unsigned bins,  unsigned numBins  ) = 0;
   virtual void      encodeRemAbsEP    ( unsigned bins,
@@ -215,6 +217,9 @@ public:
   TBinEncoder ();
   ~TBinEncoder() {}
   void  encodeBin   ( unsigned bin, unsigned ctxId );
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+  uint16_t getProb  ( unsigned ctxId               );
+#endif
 public:
   void            setBinStorage     ( bool b )          { m_BinStore.setUse(b); }
   const BinStore* getBinStore       ()          const   { return &m_BinStore; }
@@ -286,6 +291,14 @@ public:
 #else
   void encodeBin    ( unsigned bin, unsigned ctxId )  { m_ctx[ctxId].estFracBitsUpdate( bin, m_EstFracBits ); }
 #endif
+  
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+  uint16_t getProb( unsigned ctxId)
+  {
+    return m_ctx[ctxId].state();
+  }
+#endif
+  
   void encodeBinTrm ( unsigned bin )                  { m_EstFracBits += BinProbModel::estFracBitsTrm( bin ); }
   void            setBinStorage     ( bool b )        {}
   const BinStore* getBinStore       ()          const { return 0; }

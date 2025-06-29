@@ -10721,6 +10721,10 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
   {
     int      blkPos     = cctx.blockPos( nextSigPos );
     unsigned sigFlag    = ( !numNonZero && nextSigPos == inferSigPos );
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+    unsigned gt1Flag    = 0;
+    bool     isPTCC     = false;
+#endif
     if( !sigFlag )
     {
       RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_map );
@@ -10729,9 +10733,34 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
 #else
       const unsigned sigCtxId = cctx.sigCtxIdAbs(nextSigPos, coeff, state);
 #endif
-      sigFlag = m_BinDecoder.decodeBin( sigCtxId );
-      DTRACE( g_trace_ctx, D_SYNTAX_RESI, "sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId );
-      remRegBins--;
+      
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      bool needDecSign   = true;
+      isPTCC           =  (cctx.compID() == COMPONENT_Y) && m_BinDecoder.getProb(sigCtxId) > PTCC_SIG_THR;
+      if (isPTCC)
+      {
+        uint8_t&  ctxOff = ctxOffset[ nextSigPos - minSubPos ];
+        ctxOff           = cctx.ctxOffsetAbs();
+        gt1Flag = m_BinDecoder.decodeBin(cctx.greater1CtxIdAbs(ctxOff));
+        DTRACE( g_trace_ctx, D_SYNTAX_RESI, "sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId );
+        remRegBins--;
+        
+        needDecSign = !gt1Flag;
+      }
+    
+      if (needDecSign)
+      {
+#endif
+        sigFlag = m_BinDecoder.decodeBin( sigCtxId );
+        DTRACE( g_trace_ctx, D_SYNTAX_RESI, "sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId );
+        remRegBins--;
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      }
+      else
+      {
+        sigFlag = 1;    // inferred significant flags
+      }
+#endif
     }
     else if( nextSigPos != cctx.scanPosLast() )
     {
@@ -10751,10 +10780,18 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
       lastNZPos  = std::max<int>( lastNZPos, nextSigPos );
 
       RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_gt1 );
-
-      unsigned gt1Flag = m_BinDecoder.decodeBin( cctx.greater1CtxIdAbs(ctxOff) );
-      DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt1_flag() bin=%d ctx=%d\n", gt1Flag, cctx.greater1CtxIdAbs(ctxOff) );
-      remRegBins--;
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      if (!isPTCC)
+      {
+        gt1Flag = m_BinDecoder.decodeBin( cctx.greater1CtxIdAbs(ctxOff) );
+#else
+        unsigned gt1Flag = m_BinDecoder.decodeBin( cctx.greater1CtxIdAbs(ctxOff) );
+#endif
+        DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt1_flag() bin=%d ctx=%d\n", gt1Flag, cctx.greater1CtxIdAbs(ctxOff) );
+        remRegBins--;
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      }
+#endif
       unsigned parFlag = 0;
       unsigned gt2Flag = 0;
 #if JVET_AG0100_TRANSFORM_COEFFICIENT_CODING
