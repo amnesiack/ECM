@@ -10520,16 +10520,40 @@ void CABACWriter::residual_coding_subblock(CoeffCodingContext &cctx, const TCoef
   {
     TCoeff    Coeff      = coeff[ cctx.blockPos( nextSigPos ) ];
     unsigned  sigFlag    = ( Coeff != 0 );
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+    bool      isPTCC     = false;
+#endif
     if( numNonZero || nextSigPos != inferSigPos )
     {
-#if JVET_AE0102_LFNST_CTX 
+#if JVET_AE0102_LFNST_CTX
       const unsigned sigCtxId = cctx.sigCtxIdAbs(nextSigPos, coeff, state, lfnstIdx);
 #else
       const unsigned sigCtxId = cctx.sigCtxIdAbs(nextSigPos, coeff, state);
 #endif
-      m_BinEncoder.encodeBin( sigFlag, sigCtxId );
-      DTRACE( g_trace_ctx, D_SYNTAX_RESI, "sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId );
-      remRegBins--;
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      bool needEncSig    = true;
+      isPTCC              = (cctx.compID() == COMPONENT_Y) && m_BinEncoder.getProb(sigCtxId) > PTCC_SIG_THR;
+      if (isPTCC)
+      {
+        unsigned gt1      = std::abs(Coeff) > 1;
+        uint8_t&  ctxOff  = ctxOffset[ nextSigPos - minSubPos ];
+        ctxOff            = cctx.ctxOffsetAbs();
+        m_BinEncoder.encodeBin( gt1, cctx.greater1CtxIdAbs(ctxOff) );
+        DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt1_flag() bin=%d ctx=%d\n", gt1, cctx.greater1CtxIdAbs(ctxOff) );
+        remRegBins--;
+        
+        needEncSig        = !gt1;
+      }
+      
+      if (needEncSig)
+      {
+#endif
+        m_BinEncoder.encodeBin( sigFlag, sigCtxId );
+        DTRACE( g_trace_ctx, D_SYNTAX_RESI, "sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId );
+        remRegBins--;
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      }
+#endif
     }
     else if( nextSigPos != cctx.scanPosLast() )
     {
@@ -10553,11 +10577,16 @@ void CABACWriter::residual_coding_subblock(CoeffCodingContext &cctx, const TCoef
       if( Coeff < 0 )                        signPattern++;
 
       unsigned gt1 = !!remAbsLevel;
-
-      m_BinEncoder.encodeBin( gt1, cctx.greater1CtxIdAbs(ctxOff) );
-      DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt1_flag() bin=%d ctx=%d\n", gt1, cctx.greater1CtxIdAbs(ctxOff) );
-      remRegBins--;
-
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      if (!isPTCC)
+      {
+#endif
+        m_BinEncoder.encodeBin( gt1, cctx.greater1CtxIdAbs(ctxOff) );
+        DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt1_flag() bin=%d ctx=%d\n", gt1, cctx.greater1CtxIdAbs(ctxOff) );
+        remRegBins--;
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+      }
+#endif
       if( gt1 )
       {
         remAbsLevel  -= 1;

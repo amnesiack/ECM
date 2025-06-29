@@ -521,6 +521,13 @@ unsigned TBinDecoder<BinProbModel>::decodeBin( unsigned ctxId )
   return  bin;
 }
 
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+template <class BinProbModel>
+uint16_t TBinDecoder<BinProbModel>::getProb( unsigned ctxId )
+{
+  return m_ctx[ctxId].state();
+}
+#endif
 
 
 template class TBinDecoder<BinProbModel_Std>;

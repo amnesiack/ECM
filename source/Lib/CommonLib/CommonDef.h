@@ -113,6 +113,10 @@
 #define NULL              0
 #endif
 
+#if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
+static const int PTCC_SIG_THR                      = 31000;   // threshold for 15bit CABAC precsion
+#endif
+
 #if JVET_AG0100_TRANSFORM_COEFFICIENT_CODING
 #define GTN                                               7
 #define GTN_LEVEL                                         (GTN + 1)

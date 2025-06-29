@@ -51,8 +51,6 @@
 #include <cassert>
 #include <cstdint>
 
-
-
 #define AHG7_LN_TOOLOFF_CFG                               1
 #define FIXFILTER_CFG                                     1
 #define AHG7_MTS_TOOLOFF_CFG                              1
@@ -504,6 +502,7 @@
 #define JVET_AK0097_LAST_POS_SIGNALING                    1 // JVET-AK0097: Secondary prefix in last XY binarization 
 #define JVET_AK0217_INTRA_MTSS                            1 // JVET-AK0217: Multiple transform set selection for intra LFNST/NSPT with subsampled DIMD 
 #define JVET_AK0222_SGPM_DIMD_LFNST                       1 // JVET-AK0222: Improved LFNST/NSPT kernel set selection for SGPM
+#define JVET_AM0056_PRED_TRANSFORM_COEFF_CODING           1 // JVET-AM0056: Predictive Transform Coefficient Coding (PTCC)
 
 // Entropy Coding
 #define EC_HIGH_PRECISION                                 1 // CABAC high precision
