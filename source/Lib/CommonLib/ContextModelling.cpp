@@ -1753,6 +1753,9 @@ bool MergeCtx::xCheckSimilarMotion(int mergeCandIndex, uint32_t mvdSimilarityThr
 #if JVET_AD0213_LIC_IMP
 void MergeCtx::initMrgCand(int cnt)
 {
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+  posNeighbours[cnt] = Position(0, 0); // position from which candidate is derived - apply this only for spatial candidates
+#endif
   bcwIdx[cnt] = BCW_DEFAULT;
 #if JVET_AG0276_NLIC
   altLMFlag[cnt] = false;
