@@ -672,7 +672,11 @@ namespace PU
     , InterPrediction* interPred = nullptr
 #endif
   );
-  bool addMVPCandUnscaled             (const PredictionUnit &pu, const RefPicList &eRefPicList, const int &iRefIdx, const Position &pos, const MvpDir &eDir, AMVPInfo &amvpInfo);
+  bool addMVPCandUnscaled(const PredictionUnit& pu, const RefPicList& eRefPicList, const int& iRefIdx, const Position& pos, const MvpDir& eDir, AMVPInfo& amvpInfo
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+    , bool chase = false
+#endif  
+  );
   void xInheritedAffineMv             ( const PredictionUnit &pu, const PredictionUnit* puNeighbour, RefPicList eRefPicList, Mv rcMv[3] );
 #if JVET_AA0107_RMVF_AFFINE_MERGE_DERIVATION
   void xCalcRMVFParameters(std::vector<RMVFInfo> &mvpInfoVec, int64_t dMatrix[2][4],

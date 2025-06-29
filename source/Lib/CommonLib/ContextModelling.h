@@ -783,6 +783,9 @@ public:
 class MergeCtx
 {
 public:
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+  Position      posNeighbours[NUM_MERGE_CANDS];
+#endif
 #if (JVET_Y0134_TMVP_NAMVP_CAND_REORDERING && JVET_W0090_ARMC_TM) || JVET_Z0075_IBC_HMVP_ENLARGE
   MvField       mvFieldNeighbours[NUM_MERGE_CANDS << 1]; // double length for mv of both lists
   uint8_t       bcwIdx[NUM_MERGE_CANDS];

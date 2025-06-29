@@ -5990,6 +5990,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mergeCtx.addHypNeighbours[ui].clear();
 #endif
       mergeCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+      mergeCtx.posNeighbours[ui] = Position(0, 0);
+#endif
 #if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
       mergeCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
       mergeCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
@@ -6014,6 +6017,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mergeCtxOppositeLic.addHypNeighbours[ui].clear();
 #endif
       mergeCtxOppositeLic.candCost[ui] = MAX_UINT64;
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+      mergeCtxOppositeLic.posNeighbours[ui] = Position(0, 0);
+#endif
 #if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
       mergeCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
       mergeCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
@@ -6046,6 +6052,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mergeOrgCtx.addHypNeighbours[ui].clear();
 #endif
       mergeOrgCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+      mergeOrgCtx.posNeighbours[ui] = Position(0, 0);
+#endif
 #if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
       mergeOrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
       mergeOrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
@@ -6080,6 +6089,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       mrgCtxCiip.addHypNeighbours[uiMergeCand] = mergeCtx.addHypNeighbours[uiMergeCand];
 #endif
       mrgCtxCiip.candCost[uiMergeCand] = mergeCtx.candCost[uiMergeCand];
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+      mrgCtxCiip.posNeighbours[uiMergeCand] = mergeCtx.posNeighbours[uiMergeCand];
+#endif
     }
     
     if (sps.getUseAML()
@@ -6605,6 +6617,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           tmMrgCtx.addHypNeighbours[ui].clear();
 #endif
           tmMrgCtx.candCost[ui] = MAX_UINT64;
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+          tmMrgCtx.posNeighbours[ui] = Position(0, 0);
+#endif
 #if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
           tmMrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
           tmMrgCtx.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
@@ -6638,6 +6653,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           tmMrgCtxOppositeLic.addHypNeighbours[ui].clear();
 #endif
           tmMrgCtxOppositeLic.candCost[ui] = MAX_UINT64;
+#if JVET_AM0106_CHAIN_AMVP_MERGE
+          tmMrgCtxOppositeLic.posNeighbours[ui] = Position(0, 0);
+#endif
 #if JVET_AL0214_MV_REFINEMENT_FOR_TMVP
           tmMrgCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1)] = REF_PIC_LIST_X;
           tmMrgCtxOppositeLic.refineTmvpParams.refineTmvpRefList[(ui << 1) + 1] = REF_PIC_LIST_X;
