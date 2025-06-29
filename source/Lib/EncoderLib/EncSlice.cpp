@@ -1985,35 +1985,41 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if JVET_AE0159_FIBC
   if (m_pcCuEncoder->getEncCfg()->getIbcFilter())
   {
-    SPS* spsTmp = const_cast<SPS*>(cs.sps);
-    hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
-    bool isSCC = hashBlkHitPerc >= 20;
-    spsTmp->setUseIbcFilter(isSCC);   
-#if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
-    if ( cs.sps->getUseGeoBlend() && (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE) ) // ensure sequential and parallel simulation generate same output
+    if( cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE ) // ensure sequential and parallel simulation generate same output
     {
-      spsTmp->setUseGeoBlend(!isSCC);
+      SPS* spsTmp = const_cast< SPS* >( cs.sps );
+      hashBlkHitPerc = ( hashBlkHitPerc == -1 ) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc( cs.area.Y() ) : hashBlkHitPerc;
+      bool isSCC = hashBlkHitPerc >= 20;
+      spsTmp->setUseIbcFilter( isSCC );
+#if JVET_AG0112_REGRESSION_BASED_GPM_BLENDING
+      if( m_pcCuEncoder->getEncCfg()->getUseGeo() && m_pcCuEncoder->getEncCfg()->getTMToolsEnableFlag() )
+      {
+        spsTmp->setUseGeoBlend( !isSCC );
 #if JVET_AK0101_REGRESSION_GPM_INTRA
-      spsTmp->setUseGeoBlendIntra(!isSCC);
+        spsTmp->setUseGeoBlendIntra( !isSCC );
 #endif
-    }
+      }
 #endif
 #if JVET_AG0164_AFFINE_GPM
-    if (m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand() > 0 && isSCC)
-    {
-      spsTmp->setMaxNumGpmAffCand(m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand());
-    }
+      if( m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand() > 0 && isSCC )
+      {
+        spsTmp->setMaxNumGpmAffCand( m_pcCuEncoder->getEncCfg()->getMaxNumGpmAffCand() );
+      }
 #endif
-#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE 
-    if (cs.sps->getUseSyntheticAffine() && isSCC)
-    {
-      spsTmp->setUseSyntheticAffine(false);
-    }
-    if (cs.sps->getPLTMode())
-    {
-      spsTmp->setUseTemporalAffineOpt(false);
-    }
+#if JVET_AK0095_ENHANCED_AFFINE_CANDIDATE
+      const int pictureArea = m_pcCuEncoder->getEncCfg()->getSourceWidth() * m_pcCuEncoder->getEncCfg()->getSourceHeight();
+
+      if( pictureArea > 832 * 480 && m_pcCuEncoder->getEncCfg()->getBaseQP() > 22 )
+      {
+        spsTmp->setUseSyntheticAffine( !isSCC );
+      }
+
+      if( pictureArea < 3840 * 2160 && m_pcCuEncoder->getEncCfg()->getBaseQP() > 22 )
+      {
+        spsTmp->setUseTemporalAffineOpt( !m_pcCuEncoder->getEncCfg()->getPLTMode() );
+      }
 #endif
+    }
   }
 #endif
 
@@ -2083,11 +2089,11 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if JVET_AI0082_GPM_WITH_INTER_IBC
   if (m_pcCuEncoder->getEncCfg()->getUseGeoInterIbc())
   {
-    SPS* spsTmp = const_cast<SPS*>(cs.sps);
-    hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
-    bool isSCC = hashBlkHitPerc >= 20;
     if (cs.slice->getPOC() == 0 || cs.slice->getSliceType() == I_SLICE)
     {
+      SPS* spsTmp = const_cast<SPS*>(cs.sps);
+      hashBlkHitPerc = (hashBlkHitPerc == -1) ? m_pcCuEncoder->getIbcHashMap().calHashBlkMatchPerc(cs.area.Y()) : hashBlkHitPerc;
+      bool isSCC = hashBlkHitPerc >= 20;
       spsTmp->setUseGeoInterIbc(isSCC);
     }
   }
