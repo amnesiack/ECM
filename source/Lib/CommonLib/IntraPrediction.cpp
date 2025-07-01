@@ -4944,6 +4944,9 @@ void IntraPrediction::initPredIntraParams(const PredictionUnit & pu, const CompA
       CHECK( puSize.width * puSize.height <= 32, "DCT-IF interpolation filter is always used for 4x4, 4x8, and 8x4 luma CB" );
       m_ipaParam.refFilterFlag     =  isRefFilter;
       m_ipaParam.interpolationFlag = !isRefFilter;
+#if JVET_AM0163_CUBIC_FILTER_FOR_TIMD
+      m_ipaParam.interpolationFlag &= !pu.cu->timd;
+#endif
     }
   }
 
@@ -5608,9 +5611,20 @@ void IntraPrediction::xPredIntraAng(
           bool use8TapFilter=false;
           if (useCubicFilter)
           {
+#if JVET_AM0163_CUBIC_FILTER_FOR_TIMD
+            if (bExtIntraDir)
+            {
+              use8TapFilter = true;
+            }
+            else
+            {
+#endif
             const int log2Size = (floorLog2(width) + floorLog2(height)) >> 1;
             const int diff = std::min( abs( intraPredAngle - (bExtIntraDir ? EXT_HOR_IDX : HOR_IDX) ), abs( intraPredAngle - (bExtIntraDir ? EXT_VER_IDX : VER_IDX) ) );
             use8TapFilter = (diff > (bExtIntraDir ? log2Size: log2Size/2)) && (log2Size < (bExtIntraDir ? 6 : 4));
+#if JVET_AM0163_CUBIC_FILTER_FOR_TIMD
+            }
+#endif
           }
 #endif
 

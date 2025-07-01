@@ -165,6 +165,7 @@
 #define JVET_AJ0079_DISABLE_TIMD_COMBINATION              1 // JVET-AJ0079(2.7b): Disabling timd-isp and timd-mrl combinations in a non-normative way.
 #define JVET_AJ0061_TIMD_MERGE                            1 // TIMD merge mode 
 #define JVET_AJ0146_TIMDSAD                               1 // JVET-AJ0146: Additional TIMD mode with a different cost metric  
+#define JVET_AM0163_CUBIC_FILTER_FOR_TIMD                 1 // JVET-AM0163: Cubic filter for TIMD
 
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
