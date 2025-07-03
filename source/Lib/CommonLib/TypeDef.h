@@ -54,6 +54,7 @@
 // clang-format off
 
 //########### place macros to be removed in next cycle below this line ###############
+#define JVET_AM0280_MEMORY_PRINT                           1 // JVET-AM0280: Decoder memory print
 #define JVET_AH0171                                        1 // GOP-based RPR encoder control
 #define JVET_AC0096                                        1 // RPR functionality testing
 #define JVET_AB0081                                        1 // Upscaling filter for display 12-tap luma and 6-tap chroma
