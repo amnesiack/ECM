@@ -78,7 +78,18 @@ private:
   void    xDequantSample                 ( TCoeff& pRes, TCoeff& coeff, const TrQuantParams& trQuantParams );
   // RDOQ functions
   void xRateDistOptQuant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx &ctx);
-
+#if JVET_AM0068_AG0100_NONCTC_FIX
+  inline uint32_t xGetCodedLevel(double &rd64CodedCost, double &rd64CodedCost0, double &rd64CodedCostSig,
+                                 Intermediate_Int lLevelDouble, uint32_t uiMaxAbsLevel, const BinFracBits *fracBitsSig,
+                                 const BinFracBits &fracBitsGt1, const BinFracBits &fracBitsGt2,
+                                 const BinFracBits &fracBitsGt3, const BinFracBits &fracBitsGt4, const int remRegBins,
+                                 unsigned goRiceZero, uint16_t ui16AbsGoRice, int iQBits, double errorScale, bool bLast,
+                                 bool useLimitedPrefixLength, const int maxLog2TrDynamicRange) const;
+  inline int      xGetICRate(const uint32_t uiAbsLevel, const BinFracBits &fracBitsGt1, const BinFracBits &fracBitsGt2,
+                             const BinFracBits &fracBitsGt3, const BinFracBits &fracBitsGt4, const int remRegBins,
+                             unsigned goRiceZero, const uint16_t ui16AbsGoRice, const bool useLimitedPrefixLength,
+                             const int maxLog2TrDynamicRange) const;
+#else
   inline uint32_t xGetCodedLevel( double&            rd64CodedCost,
                               double&            rd64CodedCost0,
                               double&            rd64CodedCostSig,
@@ -105,6 +116,7 @@ private:
                               const uint16_t       ui16AbsGoRice,
                               const bool         useLimitedPrefixLength,
                               const int          maxLog2TrDynamicRange  ) const;
+#endif
   inline double xGetRateLast         ( const int* lastBitsX, const int* lastBitsY,
                                        unsigned        PosX, unsigned   PosY                              ) const;
 
