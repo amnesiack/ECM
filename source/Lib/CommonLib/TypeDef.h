@@ -166,6 +166,7 @@
 #define JVET_AJ0061_TIMD_MERGE                            1 // TIMD merge mode 
 #define JVET_AJ0146_TIMDSAD                               1 // JVET-AJ0146: Additional TIMD mode with a different cost metric  
 #define JVET_AM0163_CUBIC_FILTER_FOR_TIMD                 1 // JVET-AM0163: Cubic filter for TIMD
+#define JVET_AM0104_DISABLE_REFFILTER_FOR_TIMD            1 // JVET-AM0104: Disabling reference sample filtering for TIMD 
 
 #if ENABLE_DIMD
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation

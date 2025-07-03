@@ -4947,6 +4947,9 @@ void IntraPrediction::initPredIntraParams(const PredictionUnit & pu, const CompA
 #if JVET_AM0163_CUBIC_FILTER_FOR_TIMD
       m_ipaParam.interpolationFlag &= !pu.cu->timd;
 #endif
+#if JVET_AM0104_DISABLE_REFFILTER_FOR_TIMD
+      m_ipaParam.refFilterFlag     &= !pu.cu->timd;
+#endif // JVET_AM0104_DISABLE_REFFILTER_FOR_TIMD
     }
   }
 
