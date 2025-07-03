@@ -705,6 +705,28 @@ static inline int ceilLog2(uint32_t x)
   return (x==0) ? -1 : floorLog2(x - 1) + 1;
 }
 
+#if JVET_AM0280_MEMORY_PRINT
+#ifdef __linux
+static inline int getProcStatusValue(const char *key)
+{
+  FILE *file   = fopen("/proc/self/status", "r");
+  int   result = -1;
+  char  line[128];
+
+  int len = strlen(key);
+  while (fgets(line, 128, file) != nullptr)
+  {
+    if (strncmp(line, key, len) == 0)
+    {
+      result = atoi(line + len);
+      break;
+    }
+  }
+  fclose(file);
+  return result;
+}
+#endif
+#endif
 
 //CASE-BREAK for breakpoints
 #if defined ( _MSC_VER ) && defined ( _DEBUG )
