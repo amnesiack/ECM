@@ -1630,7 +1630,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("AlignCABACBeforeBypass",                          m_cabacBypassAlignmentEnabledFlag,                false, "Align the CABAC engine to a defined fraction of a bit prior to coding bypass data. Must be 1 in high bit rate profile, 0 otherwise")
 #if NN_COMMON_SPS
   ("NnlfOption",                                      m_nnlfOption, 0, "NN-based in-loop filter option (0:disable nnlf, 1: enable unified nnlf legacy hop/lop/vlop, 3: lop5/vlop3, 5: hop5")
+#if JVET_AM0231_NNLF
+  ("NnlfModelName",                                   m_nnlfModelName, string("models/nnlf_vlop4_model_int16.sadl"), "unified nnlf model name.")
+#else
   ("NnlfModelName",                                   m_nnlfModelName, string("models/model_name.sadl"), "unified nnlf model name.")
+#endif
 #endif
 #if NN_LF_UNIFIED
       ("NnlfBlockSize", m_nnlfBlockSize, 128u, "Base inference size of NN-based in-loop filter")

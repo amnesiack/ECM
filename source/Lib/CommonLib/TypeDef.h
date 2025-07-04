@@ -607,8 +607,13 @@
 
 // NNLF interface
 #if JVET_AL0228_NNLF_INTERFACES
+#define JVET_AM0231_NNLF                                  1 // NNLF interface 1 with nnlf_vlop4_model_int16.sadl
+#if JVET_AM0231_NNLF
+#define NNLF_ALF_POS_INTERFACE                            0 // 0: NNVC interface (interface 1)
+#define NNLF_JVET_AK0183_RDO                              1
+#else
 #define NNLF_ALF_POS_INTERFACE                            0 // 0: NNVC interface (interface 1), 1: ALF interface (interface 2)
-
+#endif
 #if NNLF_ALF_POS_INTERFACE
 #define NNLF_JVET_AK0183_RDO                              1
 #define NNLF_INPUT_Y_ONLY                                 0

@@ -64,6 +64,9 @@ public:
   std::vector<int>    getNnlfTDOParam();
   void                setNnlfTDOParam(const std::vector<int>& v);
 #endif
+#if JVET_AM0231_NNLF
+  void                setAICfg();
+#endif
 
 private:
   void   scaleFactorDerivation(Picture &pic, FilterParameters &prms, int prmId
@@ -88,5 +91,8 @@ private:
   void partitionCounter(Picture& pic, std::vector<uint32_t>& numPartitionCounter);
   double getLambdaBLKSkip(int sliceQp);
   double getSignalingCost(Picture& pic, const std::vector<int>& bsFilteringBlocks);
+#endif
+#if JVET_AM0231_NNLF
+  bool                          cfgAI = false;
 #endif
 };

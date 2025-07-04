@@ -117,6 +117,13 @@
 static const int PTCC_SIG_THR                      = 31000;   // threshold for 15bit CABAC precsion
 #endif
 
+#if JVET_AM0231_NNLF
+// Complexity tradeoff factors
+static const double I_SLICE_RDO_FACTOR_AI_CFG       = 0.940;
+static const double I_SLICE_RDO_FACTOR              = 0.965;
+static const double NON_I_SLICE_RDO_FACTOR          = 0.985;
+#endif
+
 #if JVET_AG0100_TRANSFORM_COEFFICIENT_CODING
 #define GTN                                               7
 #define GTN_LEVEL                                         (GTN + 1)

@@ -3595,6 +3595,12 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       }
 #endif
       m_nnfilterUnified.setNnlfInferGranularity(*pcPic, *pcSlice);
+#if JVET_AM0231_NNLF
+      if (m_pcCfg->getIntraPeriod() == 1)
+      {
+        m_nnfilterUnified.setAICfg();
+      }
+#endif
 #if JVET_AH0080_TRANS_INPUT
       m_nnfilterUnified.nnlfTransInput(m_pcCfg->getUseNnlfTransInput() == 1 ? true : false);
 #endif
