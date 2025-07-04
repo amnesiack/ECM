@@ -11821,6 +11821,12 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         pcIntraPred->predIntraAng(COMPONENT_Cr, tmpGeoBuf0.Cr(), pu);
       }
       pu.gpmIntraFlag = false;
+#if JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
+      if (m_pcReshape && cu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
+      {
+        tmpGeoBuf0.Y().rspSignal(m_pcReshape->getInvLUT());
+      }
+#endif
     }
     else
 #endif
@@ -11871,7 +11877,7 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         cu.isobmcMC = false;
         pu.bdmvrRefine = false;
         m_pixelRefine = false;
-#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA && !JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
         if (reshapeLUT && geoBI.isIntra[1] && pu.geoBlendIntraFlag)
         {
           tmpGeoBuf0.Y().rspSignal(*reshapeLUT);
@@ -11910,10 +11916,12 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         subBlockOBMC(pu, &tmpGeoBuf0);
 #endif
         cu.isobmcMC = false;
+#if !JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
         if (reshapeLUT)
         {
           tmpGeoBuf0.Y().rspSignal(*reshapeLUT);
         }
+#endif
       }
 #endif
     }
@@ -11934,6 +11942,12 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         pcIntraPred->predIntraAng(COMPONENT_Cr, tmpGeoBuf1.Cr(), pu);
       }
       pu.gpmIntraFlag = false;
+#if JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
+      if (m_pcReshape && cu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
+      {
+        tmpGeoBuf1.Y().rspSignal(m_pcReshape->getInvLUT());
+      }
+#endif
     }
     else
 #endif
@@ -11982,7 +11996,7 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         cu.isobmcMC = false;
         pu.bdmvrRefine = false;
         m_pixelRefine = false;
-#if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AK0101_REGRESSION_GPM_INTRA && !JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
         if (reshapeLUT && geoBI.isIntra[0] && pu.geoBlendIntraFlag)
         {
           tmpGeoBuf1.Y().rspSignal(*reshapeLUT);
@@ -12021,10 +12035,12 @@ void InterPrediction::motionCompensationGeoBlend( CodingUnit& cu, MergeCtx& geoM
         subBlockOBMC(pu, &tmpGeoBuf1);
 #endif
         cu.isobmcMC = false;
+#if !JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
         if (reshapeLUT)
         {
           tmpGeoBuf1.Y().rspSignal(*reshapeLUT);
         }
+#endif
       }
 #endif
     }
@@ -16952,6 +16968,12 @@ Distortion InterPrediction::deriveBcwBlendingBiDirIntra(PredictionUnit& pu, Intr
               memcpy((pcMbBuf.Y().buf + y * pcMbBuf.Y().stride + x), (tempPred.Y().buf + y * tempPred.Y().stride + x + (eTempType == LEFT_ABOVE_NEIGHBOR ? AML_MERGE_TEMPLATE_SIZE : 0)), sizeof(Pel));
             }
           }
+#if JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
+          if (m_pcReshape && pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
+          {
+            pcMbBuf.Y().rspSignal(m_pcReshape->getInvLUT());
+          }
+#endif
         }
         if (eTempType == LEFT_NEIGHBOR || eTempType == LEFT_ABOVE_NEIGHBOR)
         {
@@ -16964,6 +16986,12 @@ Distortion InterPrediction::deriveBcwBlendingBiDirIntra(PredictionUnit& pu, Intr
               memcpy((pcMbBuf.Y().buf + y * pcMbBuf.Y().stride + x), (tempPred.Y().buf + (y + (eTempType == LEFT_ABOVE_NEIGHBOR ? AML_MERGE_TEMPLATE_SIZE : 0)) * tempPred.Y().stride + x), sizeof(Pel));
             }
           }
+#if JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
+          if (m_pcReshape && pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
+          {
+            pcMbBuf.Y().rspSignal(m_pcReshape->getInvLUT());
+          }
+#endif
         }
         m_tplBuffers.setAvailPred(iPart);
       }

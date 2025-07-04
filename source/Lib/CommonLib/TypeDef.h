@@ -384,6 +384,9 @@
 #define JVET_AG0112_REGRESSION_BASED_GPM_BLENDING         1 // JVET-AG0112: Regression-based GPM blending
 #define JVET_AJ0274_REGRESSION_GPM_TM                     1 // JVET-AJ0274: Regression-based GPM with TM extension
 #define JVET_AK0101_REGRESSION_GPM_INTRA                  1 // JVET-AK0101: Regression-based GPM with intra and inter prediction
+#if JVET_AK0101_REGRESSION_GPM_INTRA
+#define JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY            1 // JVET-AM0215: Regression-based GPM intra-inter prediction modification
+#endif
 #define JVET_AG0135_AFFINE_CIIP                           1 // JVET-AG0135: CIIP with affine prediction 
 #define JVET_AG0164_AFFINE_GPM                            1 // JVET-AG0164: GPM with affine prediction
 #if JVET_AG0164_AFFINE_GPM
