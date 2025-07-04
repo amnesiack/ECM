@@ -84,7 +84,11 @@ bool DecAppCfg::parseCfg( int argc, char* argv[] )
   ("ReconFile,o",               m_reconFileName,                       string(""), "reconstructed YUV output file name\n")
 
 #if NN_COMMON_SPS
+#if JVET_AM0231_NNLF
+  ("NnlfModelName", m_nnlfModelName, string("models/nnlf_vlop4_model_int16.sadl"), "loop filter model name\n")
+#else
   ("NnlfModelName", m_nnlfModelName, string("models/model_name.sadl"), "loop filter model name\n")
+#endif
 #endif
 
   ("OplFile,-opl",              m_oplFilename ,                        string(""), "opl-file name without extension for conformance testing\n")

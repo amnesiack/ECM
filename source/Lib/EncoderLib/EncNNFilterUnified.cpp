@@ -264,6 +264,12 @@ double EncNNFilterUnified::getSignalingCost(Picture& pic, const std::vector<int>
   return rate;
 }
 #endif
+#if JVET_AM0231_NNLF
+void EncNNFilterUnified::setAICfg()
+{
+  cfgAI = true;
+}
+#endif
 
 double EncNNFilterUnified::getSignalingCost(Picture &pic)
 {
@@ -433,7 +439,7 @@ void EncNNFilterUnified::chooseParameters(Picture &pic)
 
 void EncNNFilterUnified::parameterSearch(Picture &pic, double &minCost, std::vector<int> &bestPrmId, int scaleId)
 {
-#if NNLF_ALF_POS_INTERFACE
+#if NNLF_ALF_POS_INTERFACE || NNLF_JVET_AK0183_RDO
   CodingStructure&  cs            = *pic.cs;
   const PreCalcValues& pcv        = *cs.pcv;
   
@@ -731,7 +737,11 @@ void EncNNFilterUnified::parameterSearch(Picture &pic, double &minCost, std::vec
   }
 
 #if NNLF_JVET_AK0183_RDO
+#if JVET_AM0231_NNLF
+  if (minCost > ((cs.slice->getSliceType() == I_SLICE) ? (cfgAI ? I_SLICE_RDO_FACTOR_AI_CFG : I_SLICE_RDO_FACTOR) : NON_I_SLICE_RDO_FACTOR) * costRec)
+#else
   if (minCost > ((cs.slice->getSliceType() == I_SLICE) ? 0.97 : 0.99) * costRec)
+#endif
   {
     minCost = costRec;
     picprms.sprm.mode = -1;
