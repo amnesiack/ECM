@@ -19411,6 +19411,12 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
         {
           PelUnitBuf gpmIntraBuffer = m_acMergeBuffer[gpmIntraBufferIdx[intraPred]].getBuf(localUnitArea);
           geoBlendIntraBuffer[intraIdx].copyFrom(gpmIntraBuffer);
+#if JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
+          if (m_pcReshape && pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
+          {
+            geoBlendIntraBuffer[intraIdx].Y().rspSignal(m_pcReshape->getInvLUT());
+          }
+#endif
           mpmPredAvail[intraPred] = true;
           continue;
         }
@@ -19421,6 +19427,12 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
         m_pcIntraSearch->predIntraAng(COMPONENT_Y, geoBlendIntraBuffer[intraIdx].Y(), pu);
         pu.geoBlendIntraFlag = false;
         pu.gpmIntraFlag = false;
+#if JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
+        if (m_pcReshape && pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
+        {
+          geoBlendIntraBuffer[intraIdx].Y().rspSignal(m_pcReshape->getInvLUT());
+        }
+#endif
         mpmPredAvail[mpmList[intraIdx]] = true;
       }
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
@@ -19710,10 +19722,12 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
         {
           geoBI.isIntra[0] ? mergeCtx[GEO_TM_OFF].setMergeInfo(pu, geoBI.mergeCand[1]) : mergeCtx[GEO_TM_OFF].setMergeInfo(pu, geoBI.mergeCand[0]);
           geoBI.isIntra[0] ? geoBlendOBMCBuffer.copyFrom(geoBuffer[geoBI.mergeCand[1]]) : geoBlendOBMCBuffer.copyFrom(geoBuffer[geoBI.mergeCand[0]]);
+#if !JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
           if (pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
           {
             geoBlendOBMCBuffer.Y().rspSignal(geoBlendOBMCBuffer.Y(), m_pcReshape->getFwdLUT());
           }
+#endif
         }
         else
 #endif
@@ -19738,10 +19752,12 @@ void EncCu::xCheckRDCostMergeGeoComb2Nx2N(CodingStructure *&tempCS, CodingStruct
           m_pcInterSearch->subBlockOBMC(pu, &geoBlendOBMCBuffer);
 #endif
           cu.isobmcMC = false;
+#if !JVET_AM0215_REG_GPM_INTRA_INTER_MODIFY
           if (pu.cs->slice->getLmcsEnabledFlag() && m_pcReshape->getCTUFlag())
           {
             geoBlendOBMCBuffer.Y().rspSignal(geoBlendOBMCBuffer.Y(), m_pcReshape->getFwdLUT());
           }
+#endif
         }
 
         if (noResidualPass == iterationBegin)
