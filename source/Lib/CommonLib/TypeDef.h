@@ -597,6 +597,9 @@
 #define JVET_Z0118_GDR                                    1 // JVET-Z0118: GDR
 #define JVET_AD0169_SMALL_SCALE_DOWNSAMPLING              1 // JVET-AD0169: Downsampling filters in range 1.1 to 1.35 based on Kaiser(7) windowed sinc
 #define JVET_AJ0237_INTERNAL_12BIT                        1 // JVET-AJ0237: Modifications for better operation at 12-bit internal bitdepth
+#if JVET_AJ0237_INTERNAL_12BIT
+#define JVET_AM0216_12BIT_FIX                             1 // JVET-AM0216: Fixes for 12-bit internal bit depth
+#endif
 
 #if JVET_Z0118_GDR
 #define GDR_LEAK_TEST                                     0

@@ -11077,7 +11077,11 @@ int IntraPrediction::deriveSgpmBlending(PredictionUnit& pu, PelBuf &predBuf0, Pe
   blendModel.params[1] = (int)((bcwModel.params[1] + offsetA) >> shiftA);
   blendModel.params[2] = (int)((bcwModel.params[2] + offsetA) >> shiftA);
 
+#if JVET_AM0216_12BIT_FIX
+  blendModel.shift = bcwModel.decimBits - shiftA - bcwBlendingLog2WeightBase;
+#else
   blendModel.shift = CCCM_DECIM_BITS - shiftA - bcwBlendingLog2WeightBase;
+#endif
   blendModel.offset = blendModel.shift ? (1 << (blendModel.shift - 1)) : 0;
   if (blendModel.shift < 0)
   {
@@ -30046,6 +30050,9 @@ void IntraPrediction::adjustCCPCandidates(PredictionUnit &pu, CCPModelCandidate 
               { CccmModel( CCCM_MULTI_PRED_FILTER_NUM_PARAMS2, bitDepth), CccmModel( CCCM_MULTI_PRED_FILTER_NUM_PARAMS2, bitDepth) },
               { CccmModel( CCCM_NO_SUB_NUM_PARAMS, bitDepth ), CccmModel( CCCM_NO_SUB_NUM_PARAMS, bitDepth ) }}};
 
+#if JVET_AM0216_12BIT_FIX
+  const int decimBits = DECIM_BITS(bitDepth);
+#endif
   const int maxNum = 8;
   const int deltaSet1[8] = {1, -1, 3, -3, 5, -5, 7, -7};
   const int deltaSet2[8] = {1, -1, 2, -2, 3, -3, 4, -4};
@@ -30132,7 +30139,11 @@ void IntraPrediction::adjustCCPCandidates(PredictionUnit &pu, CCPModelCandidate 
             for (int pIdx = pMinIdx; pIdx < pMaxIdx; pIdx++)
             {
               int delta1 = candList[i].params[compId][pIdx] > 0 ? -delta : delta;
+#if JVET_AM0216_12BIT_FIX
+              delta1 <<= (decimBits - shift);
+#else
               delta1 <<= ( CCCM_DECIM_BITS - shift );
+#endif
               candTmp.params[compId][pIdx] = candList[i].params[compId][pIdx] + delta1;
               cccmModel[compId][cccmModelIdx][0].params[pIdx] = candList[i].params[compId][pIdx] + delta1;
             }
@@ -30142,7 +30153,11 @@ void IntraPrediction::adjustCCPCandidates(PredictionUnit &pu, CCPModelCandidate 
             for (int pIdx = pMinIdx; pIdx < pMaxIdx; pIdx++)
             {
               int delta1 = candList[i].params2[compId][pIdx] > 0 ? -delta : delta;
+#if JVET_AM0216_12BIT_FIX
+              delta1 <<= (decimBits - shift);
+#else
               delta1 <<= ( CCCM_DECIM_BITS - shift );
+#endif
               candTmp.params2[compId][pIdx] = candList[i].params2[compId][pIdx] + delta1;
               cccmModel[compId][cccmModelIdx][1].params[pIdx] = candList[i].params2[compId][pIdx] + delta1;
             }
@@ -30214,7 +30229,11 @@ void IntraPrediction::adjustCCPCandidates(PredictionUnit &pu, CCPModelCandidate 
           for (int pIdx = pMinIdx; pIdx < pMaxIdx; pIdx++)
           {
             int delta1 = candList[i].params[compId][pIdx] > 0 ? -bestDelta : bestDelta;
+#if JVET_AM0216_12BIT_FIX
+            delta1 <<= (decimBits - shift);
+#else
             delta1 <<= ( CCCM_DECIM_BITS - shift );
+#endif
             candList[i].params[compId][pIdx] = candList[i].params[compId][pIdx] + delta1;
             cccmModel[compId][cccmModelIdx][0].params[pIdx] = candList[i].params[compId][pIdx] + delta1;
           }
@@ -30224,7 +30243,11 @@ void IntraPrediction::adjustCCPCandidates(PredictionUnit &pu, CCPModelCandidate 
           for (int pIdx = pMinIdx; pIdx < pMaxIdx; pIdx++)
           {
             int delta1 = candList[i].params2[compId][pIdx] > 0 ? -bestDelta : bestDelta;
+#if JVET_AM0216_12BIT_FIX
+            delta1 <<= (decimBits - shift);
+#else
             delta1 <<= ( CCCM_DECIM_BITS - shift );
+#endif
             candList[i].params2[compId][pIdx] = candList[i].params2[compId][pIdx] + delta1;
           }
         }
