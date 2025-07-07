@@ -263,6 +263,10 @@ private:
   Pel* m_pcLICRecAboveTemplate;
 #endif
 #endif
+#if JVET_AM0157_SGPM_BV_LIC
+  int  m_ibcLicMean[2][3] = {{0}};
+  int  m_ibcLicShift[2][2][3] = {{0}}, m_ibcLicScale[2][2][3] = {{0}}, m_ibcLicOffset[2][2][3] = {{0}};
+#endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM
   // buffer size for left/above current templates
   Pel* m_pcCurTplLeft;
@@ -1570,6 +1574,14 @@ public:
 #endif
   void xLicRemHighFreq        (const CodingUnit& cu, int compID, int licIdx);
   void setLicParam            (int refList, int compID, int& licScale, int& licOffset) { licScale = m_scale[refList][compID]; licOffset = m_offset[refList][compID]; }
+#if JVET_AM0157_SGPM_BV_LIC
+  void setMMLicParam          (int refList, int compID, int& licScale, int& licShift,int& licOffset, int& licScale2, int& licShift2, int& licOffset2, int& mean)
+  {
+    licScale = m_ibcLicScale[refList][0][compID]; licShift = m_ibcLicShift[refList][0][compID]; licOffset = m_ibcLicOffset[refList][0][compID];
+    licScale2 = m_ibcLicScale[refList][1][compID]; licShift2 = m_ibcLicShift[refList][1][compID]; licOffset2 = m_ibcLicOffset[refList][1][compID];
+    mean = m_ibcLicMean[refList][compID];
+  }
+#endif
   void resetFillLicTpl        () { m_fillLicTpl[COMPONENT_Y] = m_fillLicTpl[COMPONENT_Cb] = m_fillLicTpl[COMPONENT_Cr] = false; }
   void xLicCompAdj            (const PredictionUnit& pu, PelUnitBuf& pcYuvPred, const bool lumaOnly, const bool chromaOnly);
 #if JVET_AG0276_LIC_BDOF_BDMVR

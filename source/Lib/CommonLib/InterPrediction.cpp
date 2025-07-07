@@ -26426,6 +26426,15 @@ void InterPrediction::xGetLICParamGeneral(const CodingUnit& cu,
     *shift2 = parameters[1].shift;
     *mean = meanRef;
 #if JVET_AK0076_EXTENDED_OBMC_IBC
+#if JVET_AM0157_SGPM_BV_LIC
+    m_ibcLicShift[0][0][compID] = shift;
+    m_ibcLicScale[0][0][compID] = scale;
+    m_ibcLicOffset[0][0][compID] = offset;
+    m_ibcLicShift[0][1][compID] = *shift2;
+    m_ibcLicScale[0][1][compID] = *scale2;
+    m_ibcLicOffset[0][1][compID] = *offset2;
+    m_ibcLicMean[0][compID] = *mean;
+#endif
     m_shift[0][compID] = 5;
     m_scale[0][compID] = 32;
     m_offset[0][compID] = 0;

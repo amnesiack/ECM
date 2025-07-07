@@ -566,6 +566,12 @@ struct CodingUnit : public UnitArea
   bool           ibcLicFlag;
 #if JVET_AE0078_IBC_LIC_EXTENSION
   int            ibcLicIdx;
+#if JVET_AM0157_SGPM_BV_LIC
+  int            ibcLicMean[2][3];
+  int            ibcLicScale[2][2][3];
+  int            ibcLicOffset[2][2][3];
+  int            ibcLicShift[2][2][3];
+#endif
 #endif
 #endif
 #if JVET_AE0159_FIBC

@@ -26325,6 +26325,12 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
                       else
                       {
                         m_pcInterSearch->setLicParam(list, comp, pu.cu->licScale[list][comp], pu.cu->licOffset[list][comp]);
+#if JVET_AM0157_SGPM_BV_LIC
+                        if (pu.cu->ibcLicIdx == IBC_LIC_IDX_M)
+                        {
+                          m_pcInterSearch->setMMLicParam(list, comp, pu.cu->ibcLicScale[list][0][comp], pu.cu->ibcLicShift[list][0][comp], pu.cu->ibcLicOffset[list][0][comp], pu.cu->ibcLicScale[list][1][comp], pu.cu->ibcLicShift[list][1][comp], pu.cu->ibcLicOffset[list][1][comp], pu.cu->ibcLicMean[list][comp]);
+                        }
+#endif
                       }
                     }
                   }
@@ -26964,6 +26970,12 @@ void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&best
                 else
                 {
                   m_pcInterSearch->setLicParam(list, comp, pu.cu->licScale[list][comp], pu.cu->licOffset[list][comp]);
+#if JVET_AM0157_SGPM_BV_LIC
+                  if (pu.cu->ibcLicIdx == IBC_LIC_IDX_M)
+                  {
+                    m_pcInterSearch->setMMLicParam(list, comp, pu.cu->ibcLicScale[list][0][comp], pu.cu->ibcLicShift[list][0][comp], pu.cu->ibcLicOffset[list][0][comp], pu.cu->ibcLicScale[list][1][comp], pu.cu->ibcLicShift[list][1][comp], pu.cu->ibcLicOffset[list][1][comp], pu.cu->ibcLicMean[list][comp]);
+                  }
+#endif
                 }
               }
             }

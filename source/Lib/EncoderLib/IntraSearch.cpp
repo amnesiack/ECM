@@ -1388,6 +1388,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AK0076_EXTENDED_OBMC_IBC
     int bestTmpLicParam[2] = {32, 0};
     bool enableOBMC = (sps.getUseOBMC() && cu.lwidth() * cu.lheight() >= 32);
+#if JVET_AM0157_SGPM_BV_LIC
+    int bestLicMean = 0;
+    int bestTmpLicScale[2] = { 0, 0 };
+    int bestTmpLicShift[2] = { 0, 0 };
+    int bestTmpLicOffset[2] = { 0, 0 };
+#endif
 #endif
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST 
     int intraTmpDimdMode = 0;
@@ -3740,6 +3746,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   int bvFlip[2];
                   bvFlip[0] = sgpmInfoList[sgpmIdx].sgpmBv0.flipType;
                   bvFlip[1] = sgpmInfoList[sgpmIdx].sgpmBv1.flipType;
+#if JVET_AM0157_SGPM_BV_LIC
+                  BvInfo bvInfo[2];
+                  bvInfo[0] = sgpmInfoList[sgpmIdx].sgpmBv0;
+                  bvInfo[1] = sgpmInfoList[sgpmIdx].sgpmBv1;
+#endif
 #else
                   sgpmBV[0] = sgpmInfoList[sgpmIdx].sgpmBv0;
                   sgpmBV[1] = sgpmInfoList[sgpmIdx].sgpmBv1;
@@ -3765,6 +3776,33 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                         {
                           piPred.flipSignal(timdBvFlip == 1);
                         }
+#if JVET_AM0157_SGPM_BV_LIC
+                        BvInfo timdbvInfo = bvInfo[idxIn2];
+                        bool timdBvLic = timdbvInfo.licFlag;
+                        if (timdBvLic)
+                        {
+                          if (timdbvInfo.mmLicFlag)
+                          {
+                            int scale = timdbvInfo.licScale[0];
+                            int shift = timdbvInfo.licShift[0];
+                            int offset = timdbvInfo.licOffset[0];
+                            int scale2 = timdbvInfo.licScale[1];
+                            int shift2 = timdbvInfo.licShift[1];
+                            int offset2 = timdbvInfo.licOffset[1];
+                            int mean = timdbvInfo.mean;
+                            const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+                            piPred.linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+                          }
+                          else
+                          {
+                            int scale = timdbvInfo.licScale[0];
+                            int shift = timdbvInfo.licShift[0];
+                            int offset = timdbvInfo.licOffset[0];
+                            const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+                            piPred.linearTransform(scale, shift, offset, true, clpRng);
+                          }
+                        }
+#endif
 #endif
                       }
                       else
@@ -6320,6 +6358,15 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #if JVET_AK0076_EXTENDED_OBMC_IBC
             bestTmpLicParam[0] = curCu->licScale[0][COMPONENT_Y];
             bestTmpLicParam[1] = curCu->licOffset[0][COMPONENT_Y];
+#if JVET_AM0157_SGPM_BV_LIC
+            bestLicMean = curCu->ibcLicMean[0][0];
+            bestTmpLicScale[0] = curCu->ibcLicScale[0][0][COMPONENT_Y];
+            bestTmpLicShift[0] = curCu->ibcLicShift[0][0][COMPONENT_Y];
+            bestTmpLicOffset[0] = curCu->ibcLicOffset[0][0][COMPONENT_Y];
+            bestTmpLicScale[1] = curCu->ibcLicScale[0][1][COMPONENT_Y];
+            bestTmpLicShift[1] = curCu->ibcLicShift[0][1][COMPONENT_Y];
+            bestTmpLicOffset[1] = curCu->ibcLicOffset[0][1][COMPONENT_Y];
+#endif
 #endif
           }
 #endif 
@@ -6549,6 +6596,18 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       {
         cu.licScale[0][COMPONENT_Y] = bestTmpLicParam[0];
         cu.licOffset[0][COMPONENT_Y] = bestTmpLicParam[1];
+#if JVET_AM0157_SGPM_BV_LIC   
+        if (cu.ibcLicIdx == IBC_LIC_IDX_M && cu.tmpLicFlag)
+        {
+          cu.ibcLicMean[0][0] = bestLicMean;
+          cu.ibcLicScale[0][0][COMPONENT_Y] = bestTmpLicScale[0];
+          cu.ibcLicShift[0][0][COMPONENT_Y] = bestTmpLicShift[0];
+          cu.ibcLicOffset[0][0][COMPONENT_Y] = bestTmpLicOffset[0];
+          cu.ibcLicScale[0][1][COMPONENT_Y] = bestTmpLicScale[1];
+          cu.ibcLicShift[0][1][COMPONENT_Y] = bestTmpLicShift[1];
+          cu.ibcLicOffset[0][1][COMPONENT_Y] = bestTmpLicOffset[1];
+        }
+#endif
       }
       else
       {
@@ -14370,6 +14429,15 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
           if ((tu.cu)->ibcLicIdx == IBC_LIC_IDX_M)
           {
             piPred.linearTransforms(arrayLicParams[1], arrayLicParams[0], arrayLicParams[2], arrayLicParams[4], arrayLicParams[3], arrayLicParams[5], arrayLicParams[6], true, (tu.cu)->cs->slice->clpRng(COMPONENT_Y));
+#if JVET_AM0157_SGPM_BV_LIC
+            pu.cu->ibcLicMean[0][0] = arrayLicParams[6];
+            pu.cu->ibcLicScale[0][0][COMPONENT_Y] = arrayLicParams[1];
+            pu.cu->ibcLicShift[0][0][COMPONENT_Y] = arrayLicParams[0];
+            pu.cu->ibcLicOffset[0][0][COMPONENT_Y] = arrayLicParams[2];
+            pu.cu->ibcLicScale[0][1][COMPONENT_Y] = arrayLicParams[4];
+            pu.cu->ibcLicShift[0][1][COMPONENT_Y] = arrayLicParams[3];
+            pu.cu->ibcLicOffset[0][1][COMPONENT_Y] = arrayLicParams[5];
+#endif
           }
           else
           {
@@ -14891,6 +14959,15 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
                 if ((tu.cu)->ibcLicIdx == IBC_LIC_IDX_M)
                 {
                   piPred.linearTransforms(arrayLicParams[1], arrayLicParams[0], arrayLicParams[2], arrayLicParams[4], arrayLicParams[3], arrayLicParams[5], arrayLicParams[6], true, (tu.cu)->cs->slice->clpRng(COMPONENT_Y));
+#if JVET_AM0157_SGPM_BV_LIC
+                  pu.cu->ibcLicMean[0][0] = arrayLicParams[6];
+                  pu.cu->ibcLicScale[0][0][COMPONENT_Y] = arrayLicParams[1];
+                  pu.cu->ibcLicShift[0][0][COMPONENT_Y] = arrayLicParams[0];
+                  pu.cu->ibcLicOffset[0][0][COMPONENT_Y] = arrayLicParams[2];
+                  pu.cu->ibcLicScale[0][1][COMPONENT_Y] = arrayLicParams[4];
+                  pu.cu->ibcLicShift[0][1][COMPONENT_Y] = arrayLicParams[3];
+                  pu.cu->ibcLicOffset[0][1][COMPONENT_Y] = arrayLicParams[5];
+#endif
                 }
                 else
                 {

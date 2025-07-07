@@ -588,6 +588,27 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   ibcLicFlag = other.ibcLicFlag;
 #if JVET_AE0078_IBC_LIC_EXTENSION
   ibcLicIdx = other.ibcLicIdx;
+#if JVET_AM0157_SGPM_BV_LIC
+  for (int i = 0; i < 2; i++)
+  {
+    for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+    {
+      ibcLicMean[i][comp] = other.ibcLicMean[i][comp];
+    }
+  }
+  for (int i = 0; i < 2; i++)
+  {
+    for (int modeIdx = 0; modeIdx < 2; modeIdx++)
+    {
+      for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+      {
+        ibcLicScale[i][modeIdx][comp] = other.ibcLicScale[i][modeIdx][comp];
+        ibcLicShift[i][modeIdx][comp] = other.ibcLicShift[i][modeIdx][comp];
+        ibcLicOffset[i][modeIdx][comp] = other.ibcLicOffset[i][modeIdx][comp];
+      }
+    }
+  }
+#endif
 #endif
 #endif
 #if JVET_AE0159_FIBC
@@ -982,6 +1003,27 @@ void CodingUnit::initData()
   ibcLicFlag = false;
 #if JVET_AE0078_IBC_LIC_EXTENSION
   ibcLicIdx = 0;
+#if JVET_AM0157_SGPM_BV_LIC
+  for (int i = 0; i < 2; i++)
+  {
+    for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+    {
+      ibcLicMean[i][comp] = 0;
+    }
+  }
+  for (int i = 0; i < 2; i++)
+  {
+    for (int modeIdx = 0; modeIdx < 2; modeIdx++)
+    {
+      for (int comp = 0; comp < MAX_NUM_COMPONENT; comp++)
+      {
+        ibcLicScale[i][modeIdx][comp] = 0;
+        ibcLicShift[i][modeIdx][comp] = 0;
+        ibcLicOffset[i][modeIdx][comp] = 0;
+      }
+    }
+  }
+#endif
 #endif
 #endif
 #if JVET_AE0159_FIBC
