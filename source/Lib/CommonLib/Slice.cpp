@@ -6426,10 +6426,48 @@ void Slice::lfCccmClearControlInformation(const int ctuRsAddr)
     m_lfCccmCTUMerge.at(ctuRsAddr)  = 0;
     return;
   }
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  if (m_lfCccmEnabled.empty())
+  {
+    m_lfCccmEnabled.resize(getPic()->m_ctuNums, 0);
+  }
+  else
+  {
+    std::fill(m_lfCccmEnabled.begin(), m_lfCccmEnabled.end(), 0);
+  }
+
+  if (m_lfCccmWindowSizeIndex.empty())
+  {
+    m_lfCccmWindowSizeIndex.resize(getPic()->m_ctuNums, 0);
+  }
+  else
+  {
+    std::fill(m_lfCccmWindowSizeIndex.begin(), m_lfCccmWindowSizeIndex.end(), 0);
+  }
+
+  if (m_lfCccmModelType.empty())
+  {
+    m_lfCccmModelType.resize(getPic()->m_ctuNums, 0);
+  }
+  else
+  {
+    std::fill(m_lfCccmModelType.begin(), m_lfCccmModelType.end(), 0);
+  }
+
+  if (m_lfCccmCTUMerge.empty())
+  {
+    m_lfCccmCTUMerge.resize(getPic()->m_ctuNums, 0);
+  }
+  else
+  {
+    std::fill(m_lfCccmCTUMerge.begin(), m_lfCccmCTUMerge.end(), 0);
+  }
+#else
   m_lfCccmEnabled.resize(getPic()->m_ctuNums,0);
   m_lfCccmWindowSizeIndex.resize(getPic()->m_ctuNums,0);
   m_lfCccmModelType.resize(getPic()->m_ctuNums,0);
   m_lfCccmCTUMerge.resize(getPic()->m_ctuNums,0);
+#endif
   m_lfCccmFrameLevelInherit = 0;
 }
 const Picture* Slice::lfCccmGetReferencePicture() const

@@ -4839,6 +4839,14 @@ public:
   bool                    m_lfCccmEnabledFlag;
   bool                    getLfCccmEnabledFlag() const                                                    { return m_lfCccmEnabledFlag; }
   void                    setLfCccmEnabledFlag( bool b )                                                  { m_lfCccmEnabledFlag = b; }
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  bool                    m_lfCccmImpEnabledFlag;
+  bool                    getLfCccmImpEnabledFlag() const                                                 { return m_lfCccmImpEnabledFlag; }
+  void                    setLfCccmImpEnabledFlag(bool b)                                                 { m_lfCccmImpEnabledFlag = b; }
+  int                     m_lfCccmImpFactorIdx;
+  int                     getLfCccmImpFactorIdx() const                                                   { return m_lfCccmImpFactorIdx; }
+  void                    setLfCccmImpFactorIdx(int b)                                                    { m_lfCccmImpFactorIdx = b; }
+#endif
   std::vector<int8_t>     m_lfCccmEnabled;
   std::vector<int8_t>     m_lfCccmWindowSizeIndex;
   std::vector<int8_t>     m_lfCccmModelType;

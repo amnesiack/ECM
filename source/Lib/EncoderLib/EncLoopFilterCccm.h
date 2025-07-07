@@ -43,13 +43,20 @@
 class EncLoopFilterCccm : public LoopFilterCccm
 {
 public:
-  void lfCccmRDO(CodingStructure& cs, const PelUnitBuf recSAO, PelUnitBuf recYuv, CtxCache* ctxCache, CABACEncoder* cabacEncoder, Slice* pcSlice);
+  void lfCccmRDO(CodingStructure& cs, const PelUnitBuf recSAO
+#if !JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    , PelUnitBuf recYuv
+#endif
+    , CtxCache* ctxCache, CABACEncoder* cabacEncoder, Slice* pcSlice);
 protected:
   CtxCache *m_ctxCache;
   CABACWriter* m_CABACEstimator;
+#if !JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
   std::vector<std::vector<PelStorage>> m_lfCccmOutputsEncoder;
+#endif
   void lfCccmAllocateArraysEncoder(const int maxCUWidth, const int maxCUHeight)
   {
+#if !JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
     m_lfCccmOutputsEncoder.resize(m_lfCccmMaxNumModels);
     for(int i=0;i<m_lfCccmMaxNumModels;i++)
     {
@@ -67,6 +74,9 @@ protected:
       }
     }
     const int chromaArea = m_lfCccmOutputsEncoder.at(0).at(0).Cb().area();
+#else
+    const int chromaArea = (maxCUWidth >> 1) * (maxCUHeight >> 1);
+#endif
     m_lfCccmXCorr.resize(chromaArea);
     m_lfCccmAutoCorr.resize(chromaArea);
     for(int i=0;i<chromaArea;i++)
@@ -83,7 +93,9 @@ protected:
   {
     m_lfCccmXCorr.clear();
     m_lfCccmAutoCorr.clear();
+#if !JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
     m_lfCccmOutputsEncoder.clear();
+#endif
   }
 };
 #endif

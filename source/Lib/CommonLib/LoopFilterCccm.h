@@ -45,7 +45,11 @@ class LoopFilterCccm
 {
 public:
   void lfCccmFillDownsampledLumaBuffers(const CodingStructure &cs);
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  void lfCccmCtuProcess(const CodingStructure& cs, const PelUnitBuf& recSao, const int ctuRsAddr, PelUnitBuf& update, const int impMode, PelUnitBuf* updateImp[MAX_NUM_FACTOR_LF_CCCM], const bool isRDO, bool* ctuProcessedEnc = nullptr);
+#else
   void lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBuf &recSao, const int ctuRsAddr, PelBuf &updateCb, PelBuf &updateCr, bool *ctuProcessedEnc = nullptr);
+#endif
   void lfCccmSetFrameLevelInheritedParameters(CodingStructure &cs, const int ctuRsAddr0 = -1);
   void lfCccmInitIntraPred(IntraPrediction *intraPred)
   {
@@ -63,6 +67,12 @@ public:
     }
     m_lfCccmLumaSaoDownsampled = m_lfCccmPelStorage.Y();
   }
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  void lfCccmDestroyPelStorage()
+  {
+    m_lfCccmPelStorage.destroy();
+  }
+#endif
 protected:
   int                           m_lfCccmLumaOffset;
   int                           m_lfCccmModelType;
@@ -102,6 +112,10 @@ protected:
   CPelBuf                       m_lfCccmSaoY;
   PelBuf                        m_lfCccmUpdateCb;
   PelBuf                        m_lfCccmUpdateCr;
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  PelBuf                        m_lfCccmUpdateImpCb[MAX_NUM_FACTOR_LF_CCCM];
+  PelBuf                        m_lfCccmUpdateImpCr[MAX_NUM_FACTOR_LF_CCCM];
+#endif
   PelBuf                        m_lfCccmLumaSaoDownsampled;
 
   PelStorage                    m_lfCccmPelStorage;
@@ -400,8 +414,21 @@ protected:
 
   void lfCccmSetWindows( const int xi, const int yi );
 
-  void lfCccmWindowProcess();
-  void lfCccmFiltersConvolution();
+  void lfCccmWindowProcess(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    const int impMode
+#endif
+  );
+
+#if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+  void lfCccmDealWithBadWindow();
+#endif
+
+  void lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    const int impMode
+#endif
+  );
 };
 #endif
 #endif

@@ -2690,6 +2690,9 @@ struct lfCccmCand
   int8_t modelType;
 };
 static constexpr int lfCccmMaxNumCands = 2;
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+static constexpr int MAX_NUM_FACTOR_LF_CCCM = 4;
+#endif
 #endif
 
 #if JVET_AL0108_BVG_DIMD

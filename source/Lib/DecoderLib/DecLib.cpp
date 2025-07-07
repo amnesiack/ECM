@@ -314,6 +314,18 @@ bool tryDecodePicture( Picture* pcEncPic, const int expectedPoc, const std::stri
 #if JVET_AK0065_TALF
                     pcEncPic->slices[i]->setTileGroupTAlfControl(pic->slices[i]->getTileGroupTAlfControl());
 #endif
+#if JVET_AL0153_ALF_CCCM
+                    pcEncPic->slices[i]->setLfCccmEnabledFlag(pic->slices[i]->getLfCccmEnabledFlag());
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+                    pcEncPic->slices[i]->setLfCccmImpEnabledFlag(pic->slices[i]->getLfCccmImpEnabledFlag());
+                    pcEncPic->slices[i]->setLfCccmImpFactorIdx(pic->slices[i]->getLfCccmImpFactorIdx());
+#endif
+                    pcEncPic->slices[i]->m_lfCccmEnabled = pic->slices[i]->m_lfCccmEnabled;
+                    pcEncPic->slices[i]->m_lfCccmWindowSizeIndex = pic->slices[i]->m_lfCccmWindowSizeIndex;
+                    pcEncPic->slices[i]->m_lfCccmModelType = pic->slices[i]->m_lfCccmModelType;
+                    pcEncPic->slices[i]->m_lfCccmCTUMerge = pic->slices[i]->m_lfCccmCTUMerge;
+                    pcEncPic->slices[i]->m_lfCccmFrameLevelInherit = pic->slices[i]->m_lfCccmFrameLevelInherit;
+#endif
                   }
                 }
 
@@ -1034,13 +1046,33 @@ void DecLib::executeLoopFilters()
     m_cLoopFilterCccm.lfCccmInitIntraPred(&m_cIntraPred);
     cccmCorrection.create(CHROMA_ONLY_420, Area(0, 0, cs.picture->lwidth(), cs.picture->lheight()));
     cccmCorrection.copyFrom(cs.getRecoBuf(),false,true);
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    PelUnitBuf* cccmCorrectionImpPtr[MAX_NUM_FACTOR_LF_CCCM] = { nullptr };
+    for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+    {
+      cccmCorrectionImpPtr[factorIdx] = &cccmCorrection;
+    }
+    bool useImpFlag = cs.slice->getLfCccmImpEnabledFlag();
+    int impMode = useImpFlag ? 1 + cs.slice->getLfCccmImpFactorIdx() : 0;
+#endif
     m_cLoopFilterCccm.lfCccmCreatePelStorage(cs);
     for(int ctuRsAddr = 0; ctuRsAddr < cs.picture->m_ctuNums; ctuRsAddr++)
     {
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+      m_cLoopFilterCccm.lfCccmCtuProcess(cs, cs.getRecoBuf(), ctuRsAddr, cccmCorrection, impMode, cccmCorrectionImpPtr, false);
+#else
       m_cLoopFilterCccm.lfCccmCtuProcess(cs, cs.getRecoBuf(), ctuRsAddr, cccmCorrection.Cb(), cccmCorrection.Cr());
+#endif
     }
     cccmCorrection.getBuf(COMPONENT_Cb).subtract( cs.getRecoBuf(COMPONENT_Cb) );
     cccmCorrection.getBuf(COMPONENT_Cr).subtract( cs.getRecoBuf(COMPONENT_Cr) );
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    m_cLoopFilterCccm.lfCccmDestroyPelStorage();
+    for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+    {
+      cccmCorrectionImpPtr[factorIdx] = nullptr;
+    }
+#endif
   }
 #endif
   if( cs.sps->getALFEnabledFlag() )
@@ -1057,6 +1089,9 @@ void DecLib::executeLoopFilters()
   {
     cs.getRecoBuf(COMPONENT_Cb).reconstruct(cs.getRecoBuf(COMPONENT_Cb), cccmCorrection.getBuf(COMPONENT_Cb), cs.slice->clpRng(COMPONENT_Cb));
     cs.getRecoBuf(COMPONENT_Cr).reconstruct(cs.getRecoBuf(COMPONENT_Cr), cccmCorrection.getBuf(COMPONENT_Cr), cs.slice->clpRng(COMPONENT_Cr));
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    cccmCorrection.destroy();
+#endif
   }
 #endif
 #if JVET_AK0065_TALF
