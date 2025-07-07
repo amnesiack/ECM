@@ -67,13 +67,18 @@ protected:
   int                           m_lfCccmLumaOffset;
   int                           m_lfCccmModelType;
   int                           m_lfCccmModelSize;
+#if JVET_AM0216_12BIT_FIX
+  int                           m_lfCccmBadBlockThreshold;
+#endif
 
   static constexpr int          m_lfCccmMaxNumModels = 8;
   static constexpr int          m_lfCccmMaxNumWindows = 8;
   static constexpr int          m_lfCccmArrayStride = 16;
 
   static constexpr int          m_lfCccmFilterPadding = 1;
+#if !JVET_AM0216_12BIT_FIX
   static constexpr int          m_lfCccmBadBlockThreshold = 32;
+#endif
   static constexpr int          m_lfCccmModelMap[8][11] =
   {
     {0, 1,  2,  3,  4,  9,  10, 0,  0,  0,  0},
@@ -140,6 +145,9 @@ protected:
   void lfCccmInitBd(const SPS &sps)
   {
     m_lfCccmLumaOffset = 1<<(sps.getBitDepth(CH_L)-1);
+#if JVET_AM0216_12BIT_FIX
+    m_lfCccmBadBlockThreshold = 32 << std::max(0, sps.getBitDepth(CH_L) - 10);
+#endif
   }
 
   void lfCccmResetArrays()

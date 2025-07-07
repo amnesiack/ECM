@@ -231,7 +231,18 @@ struct CccmModel
   CccmModel() {}
   bool valid()
   {
+#if JVET_AM0216_12BIT_FIX
+    for (std::vector<TCccmCoeff>::iterator it = params.begin(); it < params.end(); it++)
+    {
+      if (abs(*it) > (4 << decimBits))
+      {
+        return false;
+      }
+    }
+    return true;
+#else
     return std::none_of(params.begin(),params.end(),[](TCccmCoeff x) {return abs(x) > (4 << CCCM_DECIM_BITS);});
+#endif
   }
 #endif
 };
