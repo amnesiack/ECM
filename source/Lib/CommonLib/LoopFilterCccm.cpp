@@ -212,7 +212,11 @@ void LoopFilterCccm::lfCccmSumStatisticsDecoder(int &numSamples, const Pel* src0
     m_lfCccmATCr[coli] += m_lfCccmIntraPred->m_calcAeipGroupSum(&m_lfCccmA[coli][samplesInBatches], &m_lfCccmYCr[samplesInBatches], numSamples - samplesInBatches);
   }
 }
-void LoopFilterCccm::lfCccmFiltersConvolution()
+void LoopFilterCccm::lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  const int impMode
+#endif
+)
 {
   if(m_lfCccmBadWindow)
   {
@@ -270,6 +274,20 @@ void LoopFilterCccm::lfCccmFiltersConvolution()
   const int strideUCb = m_lfCccmUpdateCb.stride;
   const int strideUCr = m_lfCccmUpdateCr.stride;
 
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  Pel* uImpCb[4] = { nullptr };
+  Pel* uImpCr[4] = { nullptr };
+  int strideUImpCb[4] = { 0 };
+  int strideUImpCr[4] = { 0 };
+  for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+  {
+    uImpCb[factorIdx] = m_lfCccmUpdateImpCb[factorIdx].bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+    strideUImpCb[factorIdx] = m_lfCccmUpdateImpCb[factorIdx].stride;
+    uImpCr[factorIdx] = m_lfCccmUpdateImpCr[factorIdx].bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+    strideUImpCr[factorIdx] = m_lfCccmUpdateImpCr[factorIdx].stride;
+  }
+#endif
+
   for (int y = 0; (y < m_lfCccmWindowArea.height) && !m_lfCccmBadWindow; y++)
   {
     for (int x = 0; (x < m_lfCccmWindowArea.width) && !m_lfCccmBadWindow; x++)
@@ -293,9 +311,49 @@ void LoopFilterCccm::lfCccmFiltersConvolution()
 
       m_lfCccmBadWindow |= abs(curCb-outCb) > m_lfCccmBadBlockThreshold;
       m_lfCccmBadWindow |= abs(curCr-outCr) > m_lfCccmBadBlockThreshold;
-
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+      switch (impMode)
+      {
+      case 0:
+        uCb[x] = (curCb + outCb + 1) >> 1;
+        uCr[x] = (curCr + outCr + 1) >> 1;
+        break;
+      case 1:
+        uImpCb[0][x] = (curCb + (outCb << 1) + outCb + 2) >> 2;
+        uImpCr[0][x] = (curCr + (outCr << 1) + outCr + 2) >> 2;
+        break;
+      case 2:
+        uImpCb[1][x] = ((curCb << 1) + curCb + (outCb << 2) + outCb + 4) >> 3;
+        uImpCr[1][x] = ((curCr << 1) + curCr + (outCr << 2) + outCr + 4) >> 3;
+        break;
+      case 3:
+        uImpCb[2][x] = ((curCb << 2) + curCb + (outCb << 1) + outCb + 4) >> 3;
+        uImpCr[2][x] = ((curCr << 2) + curCr + (outCr << 1) + outCr + 4) >> 3;
+        break;
+      case 4:
+        uImpCb[3][x] = ((curCb << 1) + curCb + outCb + 2) >> 2;
+        uImpCr[3][x] = ((curCr << 1) + curCr + outCr + 2) >> 2;
+        break;
+      case 5:
+        uCb[x] = (curCb + outCb + 1) >> 1;
+        uCr[x] = (curCr + outCr + 1) >> 1;
+        uImpCb[0][x] = (curCb + (outCb << 1) + outCb + 2) >> 2;
+        uImpCr[0][x] = (curCr + (outCr << 1) + outCr + 2) >> 2;
+        uImpCb[1][x] = ((curCb << 1) + curCb + (outCb << 2) + outCb + 4) >> 3;
+        uImpCr[1][x] = ((curCr << 1) + curCr + (outCr << 2) + outCr + 4) >> 3;
+        uImpCb[2][x] = ((curCb << 2) + curCb + (outCb << 1) + outCb + 4) >> 3;
+        uImpCr[2][x] = ((curCr << 2) + curCr + (outCr << 1) + outCr + 4) >> 3;
+        uImpCb[3][x] = ((curCb << 1) + curCb + outCb + 2) >> 2;
+        uImpCr[3][x] = ((curCr << 1) + curCr + outCr + 2) >> 2;
+        break;
+      default:
+        THROW("The factor idx is error.");
+        break;
+      }
+#else
       uCb[x] = (curCb + outCb + 1) >> 1;
       uCr[x] = (curCr + outCr + 1) >> 1;
+#endif
     }
     uCb += strideUCb;
     uCr += strideUCr;
@@ -304,9 +362,20 @@ void LoopFilterCccm::lfCccmFiltersConvolution()
     src0 += strideY;
     src1 += strideY;
     src2 += strideY;
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+    {
+      uImpCb[factorIdx] += strideUImpCb[factorIdx];
+      uImpCr[factorIdx] += strideUImpCr[factorIdx];
+    }
+#endif
   }
 }
-void LoopFilterCccm::lfCccmWindowProcess()
+void LoopFilterCccm::lfCccmWindowProcess(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  const int impMode
+#endif
+)
 {
   if( m_lfCccmIsEncoder )
   {
@@ -335,25 +404,113 @@ void LoopFilterCccm::lfCccmWindowProcess()
 
       m_lfCccmMultiModel = 0;
       m_lfCccmBadWindow = false;
-      lfCccmFiltersConvolution();
+      lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+        impMode
+#endif
+      );
       if( m_lfCccmBadWindow )
       {
         m_lfCccmBadWindow = false;
         lfCccmSetMultiModelParameters();
         m_lfCccmMultiModel = 1;
-        lfCccmFiltersConvolution();
+        lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+          impMode
+#endif
+        );
+#if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+        lfCccmDealWithBadWindow();
+        m_lfCccmBadWindow = false;
+#endif
         m_lfCccmMultiModel = 2;
-        lfCccmFiltersConvolution();
+        lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+          impMode
+#endif
+        );
+#if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+        lfCccmDealWithBadWindow();
+#endif
       }
-
+#if !JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
       if( m_lfCccmBadWindow )
       {
         m_lfCccmUpdateCb.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCb.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea));
         m_lfCccmUpdateCr.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCr.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea));
       }
+#endif
     }
   }
 }
+#if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+void LoopFilterCccm::lfCccmDealWithBadWindow()
+{
+  if (!m_lfCccmBadWindow)
+  {
+    return;
+  }
+
+  const Pel* src0 = m_lfCccmLumaSaoDownsampled.bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+  const int strideY = m_lfCccmLumaSaoDownsampled.stride;
+
+  const Pel* recCb = m_lfCccmSaoCb.bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+  const Pel* recCr = m_lfCccmSaoCr.bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+  const int strideCb = m_lfCccmSaoCb.stride;
+  const int strideCr = m_lfCccmSaoCr.stride;
+
+  Pel* uCb = m_lfCccmUpdateCb.bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+  Pel* uCr = m_lfCccmUpdateCr.bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+  const int strideUCb = m_lfCccmUpdateCb.stride;
+  const int strideUCr = m_lfCccmUpdateCr.stride;
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  Pel* uCbImp[MAX_NUM_FACTOR_LF_CCCM] = { nullptr };
+  int strideUCbImp[MAX_NUM_FACTOR_LF_CCCM] = { 0 };
+  Pel* uCrImp[MAX_NUM_FACTOR_LF_CCCM] = { nullptr };
+  int strideUCrImp[MAX_NUM_FACTOR_LF_CCCM] = { 0 };
+  for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+  {
+    uCbImp[factorIdx] = m_lfCccmUpdateImpCb[factorIdx].bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+    strideUCbImp[factorIdx] = m_lfCccmUpdateImpCb[factorIdx].stride;
+    uCrImp[factorIdx] = m_lfCccmUpdateImpCr[factorIdx].bufAt(m_lfCccmWindowArea.x, m_lfCccmWindowArea.y);
+    strideUCrImp[factorIdx] = m_lfCccmUpdateImpCr[factorIdx].stride;
+  }
+#endif
+  for (int y = 0; y < m_lfCccmWindowArea.height; y++)
+  {
+    for (int x = 0; x < m_lfCccmWindowArea.width; x++)
+    {
+      if (m_lfCccmMultiModel == 1 && src0[x] >= m_lfCccmThreshold)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModel == 2 && src0[x] < m_lfCccmThreshold)
+      {
+        continue;
+      }
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+      uCb[x] = uCbImp[0][x] = uCbImp[1][x] = uCbImp[2][x] = uCbImp[3][x] = recCb[x];
+      uCr[x] = uCrImp[0][x] = uCrImp[1][x] = uCrImp[2][x] = uCrImp[3][x] = recCr[x];
+#else
+      uCb[x] = recCb[x];
+      uCr[x] = recCr[x];
+#endif
+    }
+    src0 += strideY;
+    recCb += strideCb;
+    recCr += strideCr;
+    uCb += strideUCb;
+    uCr += strideUCr;
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+    {
+      uCbImp[factorIdx] += strideUCbImp[factorIdx];
+      uCrImp[factorIdx] += strideUCrImp[factorIdx];
+    }
+#endif
+  }
+}
+#endif
 void LoopFilterCccm::lfCccmCalcStats(const PelBuf &saoY, const CPelBuf &saoCb, const CPelBuf& saoCr, CccmModel &cccmModelCb, const Area partitionArea, std::vector<std::vector<int32_t>> &xCorr, std::vector<std::vector<std::vector<int32_t>>> &aCorr, Pel *samples)
 {
   auto model6 = [&](const Pel* src0, const Pel *src1, const Pel *src2)
@@ -535,9 +692,12 @@ void LoopFilterCccm::lfCccmSetFrameLevelInheritedParameters(CodingStructure &cs,
     cs.slice->m_lfCccmCTUMerge.at(ctuRsAddr) = 0;
   }
 }
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure& cs, const PelUnitBuf& recSao, const int ctuRsAddr, PelUnitBuf& update, const int impMode, PelUnitBuf* updateImp[MAX_NUM_FACTOR_LF_CCCM], const bool isRDO, bool* ctuProcessedEnc)
+#else
 void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBuf &recSao, const int ctuRsAddr, PelBuf &updateCb, PelBuf &updateCr, bool *ctuProcessedEnc )
+#endif
 {
-
   if(!cs.slice->m_lfCccmEnabled.at(ctuRsAddr))
   {
     return;
@@ -554,10 +714,18 @@ void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBu
 
   m_lfCccmClpRngCb = cs.slice->clpRng(COMPONENT_Cb);
   m_lfCccmClpRngCr = cs.slice->clpRng(COMPONENT_Cr);
-
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  m_lfCccmUpdateCb = update.get(COMPONENT_Cb);
+  m_lfCccmUpdateCr = update.get(COMPONENT_Cr);
+  for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+  {
+    m_lfCccmUpdateImpCb[factorIdx] = updateImp[factorIdx]->get(COMPONENT_Cb);
+    m_lfCccmUpdateImpCr[factorIdx] = updateImp[factorIdx]->get(COMPONENT_Cr);
+  }
+#else
   m_lfCccmUpdateCb = updateCb;
   m_lfCccmUpdateCr = updateCr;
-
+#endif
   switch( m_lfCccmModelType )
   {
     case 0:
@@ -597,8 +765,11 @@ void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBu
   const int yc = ctuRsAddr / pcv.widthInCtus;
   m_lfCccmPartitionArea = clipArea(UnitArea(pcv.chrFormat, Area(xc << pcv.maxCUWidthLog2, yc << pcv.maxCUHeightLog2, pcv.maxCUWidth, pcv.maxCUWidth)), *cs.slice->getPic()).Cb();
 
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+  m_lfCccmIsEncoder = cs.pcv->isEncoder && isRDO;
+#else
   m_lfCccmIsEncoder = cs.pcv->isEncoder;
-
+#endif
   if( m_lfCccmIsEncoder )
   {
     if(ctuProcessedEnc && !*ctuProcessedEnc)
@@ -614,6 +785,10 @@ void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBu
     lfCccmInitBd(*cs.sps);
     lfCccmFillDownsampledLumaBuffers(cs);
   }
-  lfCccmWindowProcess();
+  lfCccmWindowProcess(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    impMode
+#endif
+  );
 }
 #endif

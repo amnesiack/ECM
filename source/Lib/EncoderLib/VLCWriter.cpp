@@ -3370,6 +3370,16 @@ void HLSWriter::codeSliceHeader         ( Slice* pcSlice )
   if(pcSlice->getSPS()->getLfCccmEnabledFlag() && !pcSlice->isIntra())
   {
     WRITE_FLAG(pcSlice->getLfCccmEnabledFlag(), "slice_lfcccm_enabled_flag");
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    if (pcSlice->getLfCccmEnabledFlag())
+    {
+      WRITE_FLAG(pcSlice->getLfCccmImpEnabledFlag(), "slice_lfcccm_imp_enabled_flag");
+      if (pcSlice->getLfCccmImpEnabledFlag())
+      {
+        WRITE_CODE(pcSlice->getLfCccmImpFactorIdx(), 2, "slice_lfcccm_imp_factor_idx");
+      }
+    }
+#endif
   }
 #endif
   if (pcSlice->getSPS()->getALFEnabledFlag() && !pcSlice->getPPS()->getAlfInfoInPhFlag())

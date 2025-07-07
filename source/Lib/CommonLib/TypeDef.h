@@ -569,6 +569,10 @@
 #define JVET_AL0142_CCSAO_REUSE_CTU                       1 // JVET-AL0142: CCSAO with reused CTU control
 #define JVET_AL0182_TALF_EXTENSION                        1 // JVET-AL0182: TALF reference picture extension
 
+#if JVET_AL0153_ALF_CCCM
+#define JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR                1 // JVET-AM0063: adaptive factor for ALF-CCCM
+#define JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY  1 // JVET-AM0063: updated multi-models strategy for ALF-CCCM
+#endif
 
 // SIMD optimizations
 #if IF_12TAP

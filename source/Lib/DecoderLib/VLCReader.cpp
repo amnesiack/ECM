@@ -5277,6 +5277,27 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
   {
     READ_FLAG(uiCode, "slice_lfcccm_enabled_flag");
     pcSlice->setLfCccmEnabledFlag(uiCode);
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+    if (pcSlice->getLfCccmEnabledFlag())
+    {
+      READ_FLAG(uiCode, "slice_lfcccm_imp_enabled_flag");
+      pcSlice->setLfCccmImpEnabledFlag(uiCode);
+      if (pcSlice->getLfCccmImpEnabledFlag())
+      {
+        READ_CODE(2, uiCode, "slice_lfcccm_imp_factor_idx");
+        pcSlice->setLfCccmImpFactorIdx(uiCode);
+      }
+      else
+      {
+        pcSlice->setLfCccmImpFactorIdx(0);
+      }
+    }
+    else
+    {
+      pcSlice->setLfCccmImpEnabledFlag(false);
+      pcSlice->setLfCccmImpFactorIdx(0);
+    }
+#endif
   }
 #endif
   // inherit values from picture header

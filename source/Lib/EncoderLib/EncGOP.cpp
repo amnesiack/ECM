@@ -4276,12 +4276,43 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       PelStorage cccmCorrection, newOrgBuf;
       if(pcSlice->getSPS()->getLfCccmEnabledFlag() && !pcSlice->isIntra())
       {
+#if !JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
         cccmCorrection.create(cs.pcv->chrFormat, Area(0,0, cs.pcv->lumaWidth, cs.pcv->lumaHeight));
         cccmCorrection.copyFrom(cs.getRecoBuf());
+#endif
         m_pcLoopFilterCccm->lfCccmInitIntraPred(m_pcEncLib->getIntraSearch());
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+        pcSlice->setLfCccmImpEnabledFlag(false);
+        pcSlice->setLfCccmImpFactorIdx(0);
+        m_pcLoopFilterCccm->lfCccmRDO(cs, cs.getRecoBuf(), m_pcEncLib->getCtxCache(), m_pcEncLib->getCABACEncoder(), pcSlice);
+#else
         m_pcLoopFilterCccm->lfCccmRDO(cs, cs.getRecoBuf(), cccmCorrection, m_pcEncLib->getCtxCache(), m_pcEncLib->getCABACEncoder(), pcSlice);
+#endif
         if(pcSlice->getLfCccmEnabledFlag())
         {
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+          cccmCorrection.create(cs.pcv->chrFormat, Area(0, 0, cs.pcv->lumaWidth, cs.pcv->lumaHeight));
+          cccmCorrection.copyFrom(cs.getRecoBuf());
+          PelUnitBuf* cccmCorrectionImpPtr[MAX_NUM_FACTOR_LF_CCCM] = { nullptr };
+          for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+          {
+            cccmCorrectionImpPtr[factorIdx] = &cccmCorrection;
+          }
+          bool useImpFlag = cs.slice->getLfCccmImpEnabledFlag();
+          int impMode = useImpFlag ? 1 + cs.slice->getLfCccmImpFactorIdx() : 0;
+          CHECK(impMode > MAX_NUM_FACTOR_LF_CCCM, "the impMode should be in { 0, 1, ..., MAX_NUM_FACTOR_LF_CCCM }");
+          CHECK(impMode < 0, "the impMode should be in { 0, 1, ..., MAX_NUM_FACTOR_LF_CCCM }");
+          m_pcLoopFilterCccm->lfCccmCreatePelStorage(cs);
+          for (int ctuRsAddr = 0; ctuRsAddr < cs.picture->m_ctuNums; ctuRsAddr++)
+          {
+            m_pcLoopFilterCccm->lfCccmCtuProcess(cs, cs.getRecoBuf(), ctuRsAddr, cccmCorrection, impMode, cccmCorrectionImpPtr, false);
+          }
+          m_pcLoopFilterCccm->lfCccmDestroyPelStorage();
+          for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+          {
+            cccmCorrectionImpPtr[factorIdx] = nullptr;
+          }
+#endif
           newOrgBuf.create(cs.pcv->chrFormat, Area(0,0, cs.pcv->lumaWidth, cs.pcv->lumaHeight));
 #if ALF_SAO_TRUE_ORG
           newOrgBuf.copyFrom(cs.getTrueOrgBuf());
@@ -4422,6 +4453,10 @@ void EncGOP::compressGOP(int iPOCLast, int iNumPicRcvd, PicList &rcListPic, std:
       {
         cs.getRecoBuf(COMPONENT_Cb).reconstruct(cs.getRecoBuf(COMPONENT_Cb), cccmCorrection.getBuf(COMPONENT_Cb), cs.slice->clpRng(COMPONENT_Cb));
         cs.getRecoBuf(COMPONENT_Cr).reconstruct(cs.getRecoBuf(COMPONENT_Cr), cccmCorrection.getBuf(COMPONENT_Cr), cs.slice->clpRng(COMPONENT_Cr));
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+        cccmCorrection.destroy();
+        newOrgBuf.destroy();
+#endif
       }
 #endif
       DTRACE_UPDATE( g_trace_ctx, ( std::make_pair( "final", 1 ) ) );
