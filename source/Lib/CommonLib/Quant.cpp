@@ -1027,7 +1027,11 @@ void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf 
     const int64_t iAdd = int64_t(tu.cs->slice->isIRAP() ? 171 : 85) << int64_t(iQBits - 9);
     const int qBits8 = iQBits - 8;
 
+#if INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
+    const uint32_t lfnstIdx = tu.mtsIdx[compID] != MTS_SKIP && uiWidth >= 4 && uiHeight >= 4 ? tu.cu->lfnstIdx : 0;
+#else
     const uint32_t lfnstIdx = tu.cu->lfnstIdx;
+#endif
 #if JVET_W0119_LFNST_EXTENSION
 #if JVET_AC0130_NSPT
 #if JVET_AH0103_LOW_DELAY_LFNST_NSPT
