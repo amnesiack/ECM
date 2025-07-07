@@ -1572,6 +1572,32 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     {
       piPred.flipSignal(flipType == 1);
     }
+#if JVET_AM0157_SGPM_BV_LIC
+    bool licFlag = pu.cu->sgpmBv0.licFlag;
+    if (licFlag)
+    {
+      if (pu.cu->sgpmBv0.mmLicFlag)
+      {
+        int scale = pu.cu->sgpmBv0.licScale[0];
+        int shift = pu.cu->sgpmBv0.licShift[0];
+        int offset = pu.cu->sgpmBv0.licOffset[0];
+        int scale2 = pu.cu->sgpmBv0.licScale[1];
+        int shift2 = pu.cu->sgpmBv0.licShift[1];
+        int offset2 = pu.cu->sgpmBv0.licOffset[1];
+        int mean = pu.cu->sgpmBv0.mean;
+        const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+        piPred.linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+      }
+      else
+      {
+        int scale = pu.cu->sgpmBv0.licScale[0];
+        int shift = pu.cu->sgpmBv0.licShift[0];
+        int offset = pu.cu->sgpmBv0.licOffset[0];
+        const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+        piPred.linearTransform(scale, shift, offset, true, clpRng);
+      }  
+    }
+#endif
 #endif
   }
 #endif
@@ -3617,6 +3643,32 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
       {
         predFusion.flipSignal(flipType == 1);
       }
+#if JVET_AM0157_SGPM_BV_LIC
+      bool licFlag = pu.cu->sgpmBv1.licFlag;
+      if (licFlag)
+      {
+        if (pu.cu->sgpmBv1.mmLicFlag)
+        {
+          int scale = pu.cu->sgpmBv1.licScale[0];
+          int shift = pu.cu->sgpmBv1.licShift[0];
+          int offset = pu.cu->sgpmBv1.licOffset[0];
+          int scale2 = pu.cu->sgpmBv1.licScale[1];
+          int shift2 = pu.cu->sgpmBv1.licShift[1];
+          int offset2 = pu.cu->sgpmBv1.licOffset[1];
+          int mean = pu.cu->sgpmBv1.mean;
+          const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+          predFusion.linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+        }
+        else
+        {
+          int scale = pu.cu->sgpmBv1.licScale[0];
+          int shift = pu.cu->sgpmBv1.licShift[0];
+          int offset = pu.cu->sgpmBv1.licOffset[0];
+          const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+          predFusion.linearTransform(scale, shift, offset, true, clpRng);
+        }
+      }
+#endif
 #endif
     }
     if (!isBvPredicted)
@@ -10517,6 +10569,33 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
       tempPUTopBuf.bufs[0].flip(flipType);
       tempPULeftBuf.bufs[0].flip(flipType);
     }
+#if JVET_AM0157_SGPM_BV_LIC
+    if (curBv.licFlag)
+    {
+      if (curBv.mmLicFlag)
+      {
+        int scale = curBv.licScale[0];
+        int shift = curBv.licShift[0];
+        int offset = curBv.licOffset[0];
+        int scale2 = curBv.licScale[1];
+        int shift2 = curBv.licShift[1];
+        int offset2 = curBv.licOffset[1];
+        int mean = curBv.mean;
+        const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+        tempPUTopBuf.Y().linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+        tempPULeftBuf.Y().linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+      }
+      else
+      {
+        int scale = curBv.licScale[0];
+        int shift = curBv.licShift[0];
+        int offset = curBv.licOffset[0];
+        const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+        tempPUTopBuf.Y().linearTransform(scale, shift, offset, true, clpRng);
+        tempPULeftBuf.Y().linearTransform(scale, shift, offset, true, clpRng);
+      }
+    }
+#endif
 #endif
 #else
     predTimdIbcItmp(COMPONENT_Y, pu, curBv, tempPred, uiPredStride, uiRealW, uiRealH, eTempType, iTempWidth, iTempHeight, piOrg, iOrgStride);
@@ -10759,6 +10838,33 @@ void IntraPrediction::deriveSgpmModeOrdered(const CPelBuf &recoBuf, const CompAr
         tempPUTopBufWithIdx.bufs[0].flip(flipType);
         tempPULeftBufWithIdx.bufs[0].flip(flipType);
       }
+#if JVET_AM0157_SGPM_BV_LIC
+      if (bVCostVec[i].first.licFlag)
+      {
+        if (bVCostVec[i].first.mmLicFlag)
+        {
+          int scale = bVCostVec[i].first.licScale[0];
+          int shift = bVCostVec[i].first.licShift[0];
+          int offset = bVCostVec[i].first.licOffset[0];
+          int scale2 = bVCostVec[i].first.licScale[1];
+          int shift2 = bVCostVec[i].first.licShift[1];
+          int offset2 = bVCostVec[i].first.licOffset[1];
+          int mean = bVCostVec[i].first.mean;
+          const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+          tempPUTopBufWithIdx.Y().linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+          tempPULeftBufWithIdx.Y().linearTransforms(scale, shift, offset, scale2, shift2, offset2, mean, true, clpRng);
+        }
+        else
+        {
+          int scale = bVCostVec[i].first.licScale[0];
+          int shift = bVCostVec[i].first.licShift[0];
+          int offset = bVCostVec[i].first.licOffset[0];
+          const ClpRng& clpRng = pu.cu->cs->slice->clpRng(COMPONENT_Y);
+          tempPUTopBufWithIdx.Y().linearTransform(scale, shift, offset, true, clpRng);
+          tempPULeftBufWithIdx.Y().linearTransform(scale, shift, offset, true, clpRng);
+        }
+      }
+#endif
 #else
       if (flipType > 0)
       {

@@ -1488,10 +1488,31 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
     if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
     {
+#if JVET_AM0157_SGPM_BV_LIC
+      bool licFlag = pu->cu->ibcLicFlag && !pu->cu->ibcFilterFlag;
+      BvInfo curBvInfo;
+      if (licFlag && pu->cu->ibcLicIdx == IBC_LIC_IDX_M)
+      {
+        curBvInfo = BvInfo(sgpmMv, flipType, true, pu->cu->ibcLicScale[0][0][0], pu->cu->ibcLicShift[0][0][0], pu->cu->ibcLicOffset[0][0][0], pu->cu->ibcLicScale[0][1][0], pu->cu->ibcLicShift[0][1][0], pu->cu->ibcLicOffset[0][1][0], true, pu->cu->ibcLicMean[0][0]);
+      }
+      else if (licFlag)
+      {
+        curBvInfo = BvInfo(sgpmMv, flipType, true, pu->cu->licScale[0][0], 5, pu->cu->licOffset[0][0]);
+      }
+      else
+      {
+        curBvInfo = BvInfo(sgpmMv, flipType, licFlag);
+      }
+      if (!PU::checkBvInfoAvailable(pSgpmMvs, curBvInfo))
+      {
+        pSgpmMvs.push_back(curBvInfo);
+      }
+#else
       if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
       {
         pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
       }
+#endif
     }
 #else
     if (PU::validIBCItmpMv(puOrg, pu->mv[0], SGPM_TEMPLATE_SIZE))
@@ -1530,10 +1551,19 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
       if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
       {
+#if JVET_AM0157_SGPM_BV_LIC
+        bool licFlag = false;
+        BvInfo curBvInfo = BvInfo(sgpmMv, flipType, licFlag);
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, curBvInfo))
+        {
+          pSgpmMvs.push_back(curBvInfo);
+        }
+#else
         if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
         {
           pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
         }
+#endif
       }
 #else
       if (PU::validIBCItmpMv(puOrg, pu->mv[1], SGPM_TEMPLATE_SIZE))
@@ -1584,10 +1614,31 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
     if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
     {
+#if JVET_AM0157_SGPM_BV_LIC
+      bool licFlag = pu->cu->tmpLicFlag && !pu->cu->tmpFusionFlag;
+      BvInfo curBvInfo;
+      if (licFlag && pu->cu->ibcLicIdx == IBC_LIC_IDX_M)
+      {
+        curBvInfo = BvInfo(sgpmMv, flipType, true, pu->cu->ibcLicScale[0][0][0], pu->cu->ibcLicShift[0][0][0], pu->cu->ibcLicOffset[0][0][0], pu->cu->ibcLicScale[0][1][0], pu->cu->ibcLicShift[0][1][0], pu->cu->ibcLicOffset[0][1][0], true, pu->cu->ibcLicMean[0][0]);
+      }
+      else if(licFlag)
+      {
+        curBvInfo = BvInfo(sgpmMv, flipType, true, pu->cu->licScale[0][0], 5, pu->cu->licOffset[0][0]);
+      }
+      else
+      {
+        curBvInfo = BvInfo(sgpmMv, flipType, licFlag);
+      }
+      if (!PU::checkBvInfoAvailable(pSgpmMvs, curBvInfo))
+      {
+        pSgpmMvs.push_back(curBvInfo);
+      }
+#else
       if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
       {
         pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
       }
+#endif
     }
 #else
     if (PU::validIBCItmpMv(puOrg, pu->mv[0], SGPM_TEMPLATE_SIZE))
@@ -1638,10 +1689,19 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
       if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
       {
+#if JVET_AM0157_SGPM_BV_LIC
+        bool licFlag = false;
+        BvInfo curBvInfo = BvInfo(sgpmMv, flipType, licFlag);
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, curBvInfo))
+        {
+          pSgpmMvs.push_back(curBvInfo);
+        }
+#else
         if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
         {
           pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
         }
+#endif
       }
 #else
       bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
@@ -1692,10 +1752,19 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
       if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
       {
+#if JVET_AM0157_SGPM_BV_LIC
+        bool licFlag = false;
+        BvInfo curBvInfo = BvInfo(sgpmMv, flipType, licFlag);
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, curBvInfo))
+        {
+          pSgpmMvs.push_back(curBvInfo);
+        }
+#else
         if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
         {
           pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
         }
+#endif
       }
 #else
       bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);

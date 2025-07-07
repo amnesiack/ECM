@@ -150,6 +150,7 @@
 #define JVET_AG0136_INTRA_TMP_LIC                         1 // JVET-AG0136: Intra TMP extension to LIC
 #define JVET_AG0151_INTRA_TMP_MERGE_MODE                  1 // JVET-AG0151: Intra TMP with merge candidates
 #define JVET_AG0152_SGPM_ITMP_IBC                         1 // JVET-AG0152: SGPM with Intra TMP and IBC
+#define JVET_AM0157_SGPM_BV_LIC                           1 // JVET-AM0157: Harmonization of SGPM-BV and LIC
 #define JVET_AG0146_DIMD_ITMP_IBC                         1 // JVET-AG0146: DIMD with Intra TMP and IBC
 #define JVET_AH0055_INTRA_TMP_ARBVP                       1 // JVET-AH0055: AR-BVP for intra TMP merge candidates
 #define JVET_AH0200_INTRA_TMP_BV_REORDER                  1 // JVET-AH0200: Intra TMP BV reordering

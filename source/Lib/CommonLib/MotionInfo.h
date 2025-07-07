@@ -53,10 +53,61 @@ struct BvInfo
 {
   Mv   mv;
   int  flipType;
+#if JVET_AM0157_SGPM_BV_LIC
+  bool licFlag;
+  bool mmLicFlag;
+  int  mean;
+  int  licScale[2];
+  int  licShift[2];
+  int  licOffset[2];
+  BvInfo() :mv(0, 0), flipType(0), licFlag(false), mmLicFlag(false), mean(0)
+  {
+    for (int i = 0; i < 2; i++)
+    {
+      licScale[i] = 0;
+      licShift[i] = 0;
+      licOffset[i] = 0;
+    }
+  }
+  BvInfo(Mv bv, int flip, bool lic = false, int licScale0 = 0, int licShift0 = 0,int licOffset0 = 0, int licScale1 = 0, int licShift1 = 0, int licOffset1 = 0, bool mmLic = false, int meanValue = 0) :mv(bv), flipType(flip), licFlag(lic), mmLicFlag(mmLic), mean(meanValue)
+  {
+    licScale[0] = licScale0;
+    licShift[0] = licShift0;
+    licOffset[0] = licOffset0;
+    licScale[1] = licScale1;
+    licShift[1] = licShift1;
+    licOffset[1] = licOffset1;
+  }
+  bool operator!=(const BvInfo& other) const
+  {
+    if ((mv != other.mv) || (flipType != other.flipType) || (licFlag != other.licFlag) || (mmLicFlag != other.mmLicFlag))
+    {
+      return true;
+    }
+    if ((licScale[0] != other.licScale[0]) || (licScale[1] != other.licScale[1]) || (licOffset[0] != other.licOffset[0]) || (licOffset[1] != other.licOffset[1]) || (licShift[0] != other.licShift[0]) || (licShift[1] != other.licShift[1]) || mean != other.mean)
+    {
+      return true;
+    }
+    return false;
+  }
+  bool operator==(const BvInfo& other) const
+  {
+    if ((mv != other.mv) || (flipType != other.flipType) || (licFlag != other.licFlag) || (mmLicFlag != other.mmLicFlag))
+    {
+      return false;
+    }
+    if ((licScale[0] != other.licScale[0]) || (licScale[1] != other.licScale[1]) || (licOffset[0] != other.licOffset[0]) || (licOffset[1] != other.licOffset[1]) || (licShift[0] != other.licShift[0]) || (licShift[1] != other.licShift[1]) || mean != other.mean)
+    {
+      return false;
+    }
+    return true;
+  }
+#else
   BvInfo() :mv(0, 0), flipType(0) {}
   BvInfo(Mv bv, int flip) :mv(bv), flipType(flip) {}
   bool operator!=(const BvInfo& other)      const { return (mv != other.mv) || (flipType != other.flipType); }
   bool operator==(const BvInfo& other)      const { return (mv == other.mv) && (flipType == other.flipType); }
+#endif
 };
 #endif
 
