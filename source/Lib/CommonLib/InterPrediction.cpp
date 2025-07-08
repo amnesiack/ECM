@@ -4824,6 +4824,9 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
 #if JVET_AG0136_INTRA_TMP_LIC
                      , true
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                     , 0
+#endif
                      );
     }
     return;
@@ -25192,6 +25195,9 @@ void InterPrediction::xIntraBlockCopy(PredictionUnit &pu, PelUnitBuf &predBuf, c
 #if JVET_AG0136_INTRA_TMP_LIC
                    , true
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                   , 0
+#endif
                    );
   }
 #endif
@@ -27078,6 +27084,9 @@ void InterPrediction::xLocalIlluComp(const PredictionUnit& pu,
 #if JVET_AG0136_INTRA_TMP_LIC
                                      , const bool isLinearTransformDone
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                     , const int requiredTemplate
+#endif
 )
 {
 #if JVET_AE0159_FIBC
@@ -27095,7 +27104,11 @@ void InterPrediction::xLocalIlluComp(const PredictionUnit& pu,
     Pel* recAboveTemplate = m_pcLICRecAboveTemplate;
 #endif
     int numTemplate[2] = { 0 , 0 }; // 0:Above, 1:Left
-    xGetSublkTemplate(*pu.cu, compID, bv, pu.blocks[compID].width, pu.blocks[compID].height, 0, 0, numTemplate, refLeftTemplate, refAboveTemplate, recLeftTemplate, recAboveTemplate);
+    xGetSublkTemplate(*pu.cu, compID, bv, pu.blocks[compID].width, pu.blocks[compID].height, 0, 0, numTemplate, refLeftTemplate, refAboveTemplate, recLeftTemplate, recAboveTemplate
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                      , requiredTemplate
+#endif
+                      );
 
     int shift = 0, scale = 0, offset = 0;
 #if JVET_AE0078_IBC_LIC_EXTENSION
@@ -27189,6 +27202,9 @@ void InterPrediction::xGetSublkTemplate(const CodingUnit& cu,
                                         Pel*              refAboveTemplate,
                                         Pel*              recLeftTemplate,
                                         Pel*              recAboveTemplate
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                        , const int requiredTemplate
+#endif
                                         )
 {
   const int       bitDepth = cu.cs->sps->getBitDepth(toChannelType(compID));
@@ -27218,7 +27234,11 @@ void InterPrediction::xGetSublkTemplate(const CodingUnit& cu,
   const int lumaShift = 2 + MV_FRACTIONAL_BITS_DIFF;
 #endif
 #if JVET_AE0078_IBC_LIC_EXTENSION
-  if (cuAbove && posH == 0 && cu.ibcLicIdx != IBC_LIC_IDX_L)
+  if (cuAbove && posH == 0 && cu.ibcLicIdx != IBC_LIC_IDX_L
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      && requiredTemplate != 2
+#endif
+      )
 #else
   if (cuAbove && posH == 0)
 #endif
@@ -27267,7 +27287,11 @@ void InterPrediction::xGetSublkTemplate(const CodingUnit& cu,
 
   // left
 #if JVET_AE0078_IBC_LIC_EXTENSION
-  if (cuLeft && posW == 0 && cu.ibcLicIdx != IBC_LIC_IDX_T)
+  if (cuLeft && posW == 0 && cu.ibcLicIdx != IBC_LIC_IDX_T
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      && requiredTemplate != 1
+#endif
+      )
 #else
   if (cuLeft && posW == 0)
 #endif

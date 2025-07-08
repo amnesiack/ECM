@@ -787,7 +787,7 @@ static const int NUM_EXT_LUMA_MODE =                               30;
 static const int NUM_EXT_LUMA_MODE =                               28;
 #endif
 
-#if JVET_AJ0061_TIMD_MERGE
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
 static const int TIMDM_IDX =                                       251; // index for intra TIMD merge mode
 static const int NUM_TIMD_MERGE_CUS   =                            99 + 13;
 static const int NUM_TIMD_MERGE_MODES =                            1;
@@ -834,6 +834,11 @@ static const int NUM_CHROMA_MODE = (5 + NUM_LMC_MODE); ///< total number of chro
 #endif
 #endif
 static const int LM_CHROMA_IDX = NUM_LUMA_MODE; ///< chroma mode index for derived from LM mode
+#if JVET_AM0074_INTRA_MERGE
+static const int INTRA_MERGE_IDX =                                 517;   ///< index for intra DIMD mode
+static const int MAX_NUM_INITIAL_INTRA_MERGE_CAND =                5;
+static const int MAX_NUM_INTRA_MERGE_CAND =                        1;
+#endif
 #if ENABLE_DIMD
 static const int DIMD_IDX =                                        99; ///< index for intra DIMD mode
 #endif
@@ -2551,8 +2556,11 @@ static const int FIX_FILTER_NUM_COEFF    = 42;
 
 #if JVET_V0130_INTRA_TMP
 static const int TMP_TEMPLATE_SIZE =            4; // must be multiple of 4 for SIMD
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+#if !JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
 static const int TMP_MAXSIZE_DEPTH =            6; // should be log2(TMP_TEMPLATE_SIZE): keep as 6 to avoid any error
 static const int USE_MORE_BLOCKSIZE_DEPTH_MAX = TMP_MAXSIZE_DEPTH - 1;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 static const int INIT_THRESHOULD_SHIFTBITS =    0;
 #if JVET_AG0136_INTRA_TMP_LIC
@@ -2564,20 +2572,37 @@ static const int INIT_THRESHOULD_SHIFTBITS =    2;  ///< (default 2) Early skip 
 static const int INIT_THRESHOLD_SHIFTBITS_SUPP = 4;
 #endif
 #endif
+#endif
 static const int TMP_SEARCH_RANGE_MULT_FACTOR = 5;
 #if JVET_AD0086_ENHANCED_INTRA_TMP
 static const int TMP_FUSION_NUM      = 5;
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+static const int TMP_GROUP_IDX       = 4;
+static const int TMP_FUS_MODES_NUM   = TMP_GROUP_IDX + 3;
+static const int MAX_NON_LOC_DEP_NUM = 3;
+#else
 static const int TMP_GROUP_IDX       = 3;
 static const int FUSION_IDX_NUM      = TMP_FUSION_NUM * TMP_GROUP_IDX;
+#endif
 static const int MTMP_NUM            = 19;
 static const int MTMP_NUM_SPARSE     = 30;
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+static const int TMP_BV_FUS_CAND_MRG = 5;
+static const int LOG2MINCOST         = 5;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+static const int TMP_BV_REORDER_MAX  = 1;
+#else
 static const int TMP_BV_REORDER_MAX   = 2;
 static const int TMP_REFINE_NONLIC_BV_NUM  = 0;
 static const int TMP_REFINE_LIC_BV_NUM     = 0;
 static const int TMP_SKIP_REFINE_THRESHOLD = 128;
+#endif
 static const int TMP_TEMPLATE_COST_SHIFT   = 3;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
 static const double TMP_INT_BV_COST_SCALE = 0.85;
+#endif
 static const double TMP_ENC_REFINE_THRESHOLD = 1.1;
 #endif
 #if JVET_AG0136_INTRA_TMP_LIC 
@@ -2590,11 +2615,15 @@ static const int TL_NUM_SPARSE_FOR_LIC = TL_NUM;
 #endif
 static const int TMP_MINSR           = 64;
 static const int TMP_FILTER_PADDING  = 1;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
 static const int TMP_BEST_CANDIDATES = TMP_FUSION_NUM;
 static const int TMP_FUSION_PARAMS   = TMP_BEST_CANDIDATES + 1;
+#endif
 static const int TMP_FLM_PARAMS      = 6;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
 static const int TMP_FUSHION_CCCM_MAX_REF_SAMPLES =
   (2 * (TMP_TEMPLATE_SIZE * MAX_CU_SIZE) + TMP_TEMPLATE_SIZE * TMP_TEMPLATE_SIZE);
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
 static const int TMP_SAMPLING_LIC_MODE_1 = 3;
 static const int TMP_SAMPLING_LIC_MODE_0 = 4;
@@ -2602,16 +2631,31 @@ static const int TMP_SAMPLING_LIC_MODE_0 = 4;
 static const int TMP_SAMPLING       = 3;
 #endif
 static const int TMP_SUBPEL_PAD_NUM = 2;
+#if !JVET_AH0200_INTRA_TMP_BV_REORDER || JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
 static const int TMP_MAX_SUBPEL_DIR = 8;
+#endif
 struct IntraTMPFusionInfo
 {
   bool    bValid;
   bool    bFilter;
   int     tmpFusionIdx;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
   int     tmpMaxNum;
+#endif
   int     tmpFusionNumber;
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  int     idxLeftFirst;
+  int     idxTopFirst;
+  int     arrayIndicesFullFirst[MAX_NON_LOC_DEP_NUM];
+#endif
   int     tmpFusionWeight[TMP_FUSION_NUM];
-  int64_t tmpFushionParams[TMP_FUSION_PARAMS];
+  int64_t tmpFushionParams[
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                           TMP_FUSION_NUM + 1
+#else
+                           TMP_FUSION_PARAMS
+#endif
+                           ];
 };
 #else 
 #if JVET_AB0130_ITMP_SAMPLING
@@ -2626,7 +2670,16 @@ static const int TMP_NUM_MERGE_CANDS = 10;
 #endif
 #if JVET_AH0055_INTRA_TMP_ARBVP
 static const int NUM_TMP_ARBVP = 20;
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+static const int MAX_TO_KEEP       = 30;
+static const int NUM_BV            = 50;
+static const int MAX_TO_KEEP_MERGE = 36;
+static const int MERGE_RANGE       = 5;
+static const int ARBVP_RANGE       = 2;
+static const int ARBVPS_RANGE      = 2;
+#else
 static const int EBVP_RANGE = 1;
+#endif
 #endif
 
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
@@ -2640,6 +2693,9 @@ static const int SGPM_NUM_BVS = 6; // maximum BVs to be considered into the list
 static const int SGPM_BV_START_IDX = NUM_LUMA_MODE;
 #endif
 
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+static const int TIMD_BV_IDX  = 1000;
+#endif
 
 #if JVET_AK0185_TMVP_SELECTION
 static const int COLLECT_REF_FIRST = 4;

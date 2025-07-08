@@ -169,6 +169,9 @@ public:
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   void cu_pnn_flag(CodingUnit& cu);
 #endif
+#if JVET_AM0074_INTRA_MERGE
+  void        cu_derived_intra_flag     (CodingUnit&                   cu);
+#endif
 #if ENABLE_DIMD
   void        cu_dimd_flag              (CodingUnit&                   cu);
  #endif

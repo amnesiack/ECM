@@ -841,13 +841,25 @@ public:
   }
 #endif
 #if JVET_AG0136_INTRA_TMP_LIC
-  inline void LicItmp         (PredictionUnit &pu, PelBuf &dstBuf, const bool isLinearTransformDone)
+  inline void LicItmp         (PredictionUnit &pu, PelBuf &dstBuf
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                               , const int requiredTemplate
+#else
+                               , const bool isLinearTransformDone
+#endif
+                               )
   {
     CHECKD(pu.cu->ibcLicFlag!=pu.cu->tmpLicFlag, "InterPrediction::LicItmp: abnormal: pu.cu->ibcLicFlag and pu.cu->tmpLicFlag should be equal");
     CHECKD((pu.cu)->ibcFilterFlag, "`pu.cu->ibcFilterFlag` is not false.");
     if(pu.cu->ibcLicFlag || pu.cu->tmpLicFlag )
     {
-      xLocalIlluComp(pu, COMPONENT_Y, pu.mv[0], dstBuf, isLinearTransformDone);
+      xLocalIlluComp(pu, COMPONENT_Y, pu.mv[0], dstBuf
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                     , false, requiredTemplate
+#else
+                     , isLinearTransformDone
+#endif
+                     );
     }
   }
 #endif
@@ -1604,10 +1616,17 @@ public:
 #endif
 
 #if JVET_AC0112_IBC_LIC
-  void xGetSublkTemplate       (const CodingUnit& cu, const ComponentID compID, const Mv& bv, const int sublkWidth, const int sublkHeight, const int posW, const int posH, int* numTemplate, Pel* refLeftTemplate, Pel* refAboveTemplate, Pel* recLeftTemplate, Pel* recAboveTemplate);
+  void xGetSublkTemplate       (const CodingUnit& cu, const ComponentID compID, const Mv& bv, const int sublkWidth, const int sublkHeight, const int posW, const int posH, int* numTemplate, Pel* refLeftTemplate, Pel* refAboveTemplate, Pel* recLeftTemplate, Pel* recAboveTemplate
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                , const int requiredTemplate
+#endif
+                                );
   void xLocalIlluComp          (const PredictionUnit& pu, const ComponentID compID, const Mv& bv, PelBuf& dstBuf
 #if JVET_AG0136_INTRA_TMP_LIC
                        , const bool isLinearTransformDone
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                , const int requiredTemplate
 #endif
                        );
   template <bool trueAfalseL>

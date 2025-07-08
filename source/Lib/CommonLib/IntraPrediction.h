@@ -127,6 +127,16 @@ public:
   int   getDiff                       ()       { return m_pDiff;   }
   int   getDiffMax                    ()       { return m_diffMax; }
 #endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  bool operator==(const TempLibFast& in)
+  {
+    if ((m_pX == in.m_pX) && (m_pY == in.m_pY))
+    {
+      return 1;
+    }
+    return 0;
+  }
+#endif
 };
 
 #if JVET_AD0086_ENHANCED_INTRA_TMP
@@ -134,14 +144,30 @@ public:
 class TempLibFracFast
 {
 public:
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  int m_subpelX;
+  int m_subpelY;
+#else
   int   m_subpel;
+#endif
   int   m_fracDir;
 
   TempLibFracFast();
   ~TempLibFracFast();
-  TempLibFracFast(const int pPrec, const int pDirt)
+  TempLibFracFast(
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                  const int pPrecX, const int pPrecY
+#else
+                  const int pPrec
+#endif
+                  , const int pDirt)
   {
-    m_subpel = pPrec, m_fracDir = pDirt;
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+    m_subpelX = pPrecX, m_subpelY = pPrecY
+#else
+    m_subpel = pPrec
+#endif
+    , m_fracDir = pDirt;
   }; 
 };
 #endif
@@ -610,6 +636,10 @@ protected:
   static_vector<TempLibFast, MTMP_NUM> m_mtmpCandList;
   static_vector<uint64_t, MTMP_NUM>    m_mtmpCostList;
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  static_vector<TempLibFracFast, TMP_BV_REORDER_MAX> m_mtmpFracCandList;
+  static_vector<uint64_t, TMP_BV_REORDER_MAX> m_mtmpFracCostList;
+#else
   static_vector<TempLibFracFast, TMP_BV_REORDER_MAX> m_mtmpFracCandList[MTMP_NUM];
   static_vector<uint64_t, TMP_BV_REORDER_MAX>        m_mtmpFracCostList[MTMP_NUM];
   int m_log2SizeTop;
@@ -618,12 +648,17 @@ protected:
   int m_topMeanTar;
   int m_leftMeanTar;
 #endif
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
   static_vector<TempLibFast, MTMP_NUM> m_mtmpCandListUseMR;
   static_vector<uint64_t, MTMP_NUM>    m_mtmpCostListUseMR;
 #endif
 #else
   TempLibFast  m_tempLibFast;
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  static_vector<int, MTMP_NUM> m_mtmpRequiredTemplate;
+  static_vector<int, MTMP_NUM> m_mtmpRequiredTemplateUseMR;
 #endif
   Pel*         m_refPicUsed;
   Picture*     m_refPicBuf;
@@ -644,9 +679,21 @@ protected:
   int                m_tmpXdispUseMR[MTMP_NUM];
   int                m_tmpYdispUseMR[MTMP_NUM];
 #endif
-  IntraTMPFusionInfo m_tmpFusionInfo[TMP_GROUP_IDX << 1];
+  IntraTMPFusionInfo m_tmpFusionInfo[
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                     TMP_FUS_MODES_NUM
+#else
+                                     TMP_GROUP_IDX << 1
+#endif
+                                     ];
 #if JVET_AG0136_INTRA_TMP_LIC
-  IntraTMPFusionInfo m_tmpFusionInfoUseMR[TMP_GROUP_IDX << 1];
+  IntraTMPFusionInfo m_tmpFusionInfoUseMR[
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                          TMP_FUS_MODES_NUM
+#else
+                                          TMP_GROUP_IDX << 1
+#endif
+                                          ];
 #endif
 #else
   int            m_tmpXdisp;
@@ -658,7 +705,13 @@ protected:
 #endif
 #endif
 #if JVET_AG0136_INTRA_TMP_LIC
-  Pel m_memOffsetsFusionUseMR[3][TMP_FUSION_NUM];
+  Pel m_memOffsetsFusionUseMR[
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                              TMP_FUS_MODES_NUM - TMP_GROUP_IDX
+#else
+                              3
+#endif
+                              ][TMP_FUSION_NUM];
 #endif
 
   // prediction
@@ -762,6 +815,19 @@ protected:
 public:
 #endif
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  std::vector<Mv> m_itmpBvBasedMergeCandidates;
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  std::vector<Mv> m_timdBvBasedMergeCandidates;
+#endif
+  std::vector<Mv> m_dimdBvBasedMergeCandidates;
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+  std::vector<BvInfo> m_sgpmMvBasedMergeCandidates;
+#else
+  std::vector<Mv> m_sgpmMvBasedMergeCandidates;
+#endif
+  int itmpSize, itmpSize1;
+#else
   std::vector<Mv> m_bvBasedMergeCandidates;
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AL0188_SGPM_FLIPAWARE_BV
@@ -770,6 +836,15 @@ public:
   std::vector<Mv> m_sgpmMvBasedMergeCandidates;
 #endif
 #endif
+#endif
+#endif
+#if JVET_AM0074_INTRA_MERGE
+  std::vector<uint64_t> m_bvBasedMergeCostCandidates;
+  std::vector<int> m_bvBasedMergeLocDepCandidates;
+  uint64_t g_intraModeTmCost[EXT_VDIA_IDX + 1];
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  Pel* m_refTarget[TMP_FUSION_NUM];
 #endif
 #if LMS_LINEAR_MODEL && MMLM
   struct MMLMParameters
@@ -786,6 +861,9 @@ public:
   int xLMSampleClassifiedTraining    (int count, int mean, int meanC, int lumaSamples[], int chrmSamples[], int bitDepth, MMLMParameters parameters[]);
 #if JVET_AG0136_INTRA_TMP_LIC
   std::array<int, 7>& getMemLicParams(const int licIdc, const int idx) { return m_memLicParams[licIdc][idx]; }
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  int getRequiredTemplate(const bool useMR, const bool isLicExtension, const int idx) { return isLicExtension ? 0 : (useMR ? m_mtmpRequiredTemplateUseMR : m_mtmpRequiredTemplate)[idx]; }
 #endif
 #endif
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
@@ -1096,7 +1174,24 @@ public:
 #endif
   void predTimdIntraAng           ( const ComponentID compId, const PredictionUnit &pu, uint32_t uiDirMode, Pel* pPred, uint32_t uiStride, uint32_t iWidth, uint32_t iHeight, TemplateType eTempType, int32_t iTemplateWidth, int32_t iTemplateHeight);
 #if JVET_AG0146_DIMD_ITMP_IBC
+#if JVET_AM0074_INTRA_MERGE
+  void deriveIntraMergeCandFromNeighbor(CodingUnit& cu, const CodingUnit* cuNeighbour, int& cnt, IntraMergeCandidate* tempIntraFusionCand);
+  int deriveIntraMergeCand(CodingUnit &cu, IntraMergeCandidate* ddIntraFusionCand = NULL, bool isDecoder = false);
+  void reorderIntraMergeCand(const CompArea &area, CodingUnit &cu, IntraMergeCandidate *ddIntraFusionCand, int &validCandSize, const bool needDerive = true);
+  void generateDimdBuffersForLocDepBlending(const PredictionUnit& pu, PelBuf& piPred, PelBuf* predAngExtra, bool* blendModes, const int8_t* modeWeights, const int* modeLocDep);
+  void generateEncIntraMergeBlending(PelBuf &piPred, const PredictionUnit &pu, const IntraMergeCandidate &intraMergeCandidate, PelBuf *piBlock, PelBuf& plnBlock);
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AM0074_INTRA_MERGE  
+  int getBestNonAnglularMode(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, std::vector<uint64_t>& bvCosts, std::vector<int>& bvLocDeps);
+#else
+  int getBestNonAnglularMode      (const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu);
+#endif
+#elif JVET_AM0074_INTRA_MERGE
+  int getBestNonAnglularMode(const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, std::vector<Mv> BVs, std::vector<uint64_t>& bvCosts, std::vector<int>& bvLocDeps);
+#else
   int getBestNonAnglularMode      (const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu, std::vector<Mv> BVs);
+#endif
 #endif
 #if JVET_AH0076_OBIC
   void deriveObicMode             ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu );
@@ -1114,6 +1209,9 @@ public:
   int deriveTimdMode              ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu, bool bFull = true, bool bHorVer = false 
 #if JVET_AJ0146_TIMDSAD
     , bool createList = false
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    , bool rCalc = false, bool bUseBv = false
 #endif
   );
 #else
@@ -1465,7 +1563,9 @@ public:
   void         setStride          ( unsigned int uiPicStride )  { m_uiPicStride = uiPicStride;   }
 
 #if JVET_W0069_TMP_BOUNDARY
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
   RefTemplateType getRefTemplateType ( CodingUnit& cu, CompArea& area );
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
   void searchCandidateFromOnePicIntra(CodingUnit* pcCU, Pel* tarPatch, unsigned int uiPatchWidth, unsigned int uiPatchHeight, RefTemplateType tempType
 #else
@@ -1485,9 +1585,19 @@ public:
                                       );
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
   void xPadForFracSearchInterpolation (CodingUnit* pcCU, RefTemplateType tempType);
-  void xTmpFracSearchIF               (PredictionUnit& pu, Pel* padbf0, unsigned int padStride, Pel* preTmpbf0, unsigned int predTempStride, Pel* tmp0, unsigned int tmpStride, int extUiWidth, int extUiHeight, int fracPrec, int fracDir);
+  void xTmpFracSearchIF               (PredictionUnit& pu, Pel* padbf0, unsigned int padStride, Pel* preTmpbf0, unsigned int predTempStride, Pel* tmp0, unsigned int tmpStride, int extUiWidth, int extUiHeight
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                       , const int fracPrecX, const int fracPrecY
+#else
+                                       , int fracPrec
+#endif
+                                       , int fracDir);
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
-  void searchFracCandidate            (CodingUnit* pcCU, Pel* tarPatch, RefTemplateType tempType);
+  void searchFracCandidate            (CodingUnit* pcCU, Pel* tarPatch, RefTemplateType tempType
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                       , const bool isCalledFromEncSearch
+#endif
+                                       );
 #else
   void searchFracCandidate            ( CodingUnit* pcCU, Pel** tarPatch, RefTemplateType tempType);
 #endif
@@ -1500,11 +1610,13 @@ public:
 #endif
 #if JVET_AD0086_ENHANCED_INTRA_TMP
   void convertDiff2Weight            (int *pDiff, int *weights, const int start, const int foundCandiNum);
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
   int  xCalTMPFusionNumber           (const int maxNum, const int numIdx
 #if JVET_AG0136_INTRA_TMP_LIC
                                       , const bool useMR
 #endif
                                       );
+#endif
   void xTMPBuildFusionCandidate      (CodingUnit &cu, RefTemplateType tempType
 #if JVET_AG0136_INTRA_TMP_LIC
                                       , const bool useMR
@@ -1514,11 +1626,20 @@ public:
   void xCalcTmpFlmRefArea            (CodingUnit* pcCU, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType, bool& leftPadding, bool& rightPadding, bool& abovePadding, bool& belowPadding);
   void xGetTmpFlmRefBuf              (CodingUnit* pcCU, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType);
   void xCalTmpFlmParam               (CodingUnit* pcCU, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType);
-  void xGenerateTmpFlmPred           (PelBuf& piPred, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType, CodingUnit* pcCU, bool bDeriveDimdMode = true);
+  void xGenerateTmpFlmPred           (PelBuf& piPred, unsigned int uiBlkWidth, unsigned int uiBlkHeight
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                      , RefTemplateType tempType
+#endif
+                                      , CodingUnit* pcCU, bool bDeriveDimdMode = true);
 
   void xTMPFusionCalcParams          (CodingUnit* cu, CompArea area, CccmModel& tmpFusionModel, int foundCandiNum, RefTemplateType tempType, Pel* curPointTemplate, Pel* refPointTemplate[]
 #if JVET_AG0136_INTRA_TMP_LIC
-                                      , const bool useMR, const int* const ptrLicParamsFusion[TMP_BEST_CANDIDATES]
+                                      , const bool useMR
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                      , const int* const ptrLicParamsFusion[TMP_FUSION_NUM]
+#else
+                                      , const int* const ptrLicParamsFusion[TMP_BEST_CANDIDATES]
+#endif
 #endif
                                       );
   void xTMPFusionCalcModels          (CodingUnit* cu, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType
@@ -1532,7 +1653,9 @@ public:
 #endif
                                       , bool bDeriveDimdMode = true);
 
+#if !JVET_AH0200_INTRA_TMP_BV_REORDER
   void xPadForInterpolation          (CodingUnit* pcCU);
+#endif
 #endif
 
 #if JVET_AD0086_ENHANCED_INTRA_TMP
@@ -1579,10 +1702,26 @@ public:
 #endif
     }
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    m_itmpBvBasedMergeCandidates.clear();
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    m_timdBvBasedMergeCandidates.clear();
+#endif
+    m_dimdBvBasedMergeCandidates.clear();
+    m_sgpmMvBasedMergeCandidates.clear();
+    itmpSize = 0; itmpSize1 = 0;
+#else
     m_bvBasedMergeCandidates.clear();
 #endif
+#endif
+#if JVET_AM0074_INTRA_MERGE
+    m_bvBasedMergeCostCandidates.clear();
+    m_bvBasedMergeLocDepCandidates.clear();
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
     m_sgpmMvBasedMergeCandidates.clear();
+#endif
 #endif
   }
   void initTmpFlmParams()
@@ -1597,11 +1736,29 @@ public:
   }
   void initTmpFusionInfo()
   {
-    for (int i = 0; i < TMP_GROUP_IDX << 1; i++)
+    for (int i = 0; i < 
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                        TMP_FUS_MODES_NUM
+#else
+                        TMP_GROUP_IDX << 1
+#endif
+                        ; i++)
     {
-      m_tmpFusionInfo[i] = IntraTMPFusionInfo{ false, false, 0, 1 };
+      m_tmpFusionInfo[i] = IntraTMPFusionInfo{ false, false, 0
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                              , TMP_FUSION_NUM, MAX_INT, MAX_INT, {MAX_INT, MAX_INT, MAX_INT}
+#else
+                                              , 1
+#endif
+                                              };
 #if JVET_AG0136_INTRA_TMP_LIC
-      m_tmpFusionInfoUseMR[i] = IntraTMPFusionInfo{ false, false, 0, 1 };
+      m_tmpFusionInfoUseMR[i] = IntraTMPFusionInfo{ false, false, 0
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                                   , TMP_FUSION_NUM, MAX_INT, MAX_INT, {MAX_INT, MAX_INT, MAX_INT}
+#else
+                                                   , 1
+#endif
+                                                   };
 #endif
     }
   }
@@ -1627,7 +1784,11 @@ public:
 //! \}
 
 #if JVET_W0123_TIMD_FUSION && JVET_AG0092_ENHANCED_TIMD_FUSION
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+void xLocationdepBlending(Pel* pDst, const int strideDst, const Pel* pVer, const int strideVer, const Pel* pHor, const int strideHor, const Pel* pNonLocDep, const int strideNonLocDep, const int width, const int height, const int mode, const int wVer, const int wHor, const int wNonLocDep, const int range=10);
+#else
 void xLocationdepBlending    (Pel *pDst, int strideDst, Pel *pVer, int strideVer, Pel *pHor, int strideHor,Pel *pNonLocDep, int strideNonLocDep, int width, int height, int mode, int wVer, int wHor, int wNonLocDep, int range = 10);
+#endif
 #else
 #if ENABLE_DIMD
 #if JVET_AC0098_LOC_DEP_DIMD
@@ -1639,5 +1800,4 @@ void xDimdLocationdepBlending(Pel *pDst, int strideDst, Pel *pMainAng, int strid
 #endif
 #endif
 #endif
-
 #endif // __INTRAPREDICTION__

@@ -2616,6 +2616,12 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
   {
     return;
   }
+#if JVET_AM0074_INTRA_MERGE
+  if ((cu.intraMergeMode > 0) && !cu.slice->getPnnMode())
+  {
+    return;
+  }
+#endif
 #if JVET_AH0076_OBIC
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.obicFlag && !cu.slice->getPnnMode())
@@ -2989,6 +2995,42 @@ void CABACReader::cu_pnn_flag(CodingUnit& cu)
   }
 }
 #endif
+#if JVET_AM0074_INTRA_MERGE
+void CABACReader::cu_derived_intra_flag(CodingUnit& cu)
+{
+  cu.dimd = m_BinDecoder.decodeBin(Ctx::GeneralIntraDerivationFlag(0));
+
+  if (cu.dimd)
+  {
+    cu.intraMergeMode = 0;
+    if (CU::allowIntraMergeMode(cu))
+    {
+      cu.allowIntraMergeMode = 2;
+      for (int i = 0; i < MAX_NUM_INTRA_MERGE_CAND; i++)
+      {
+        if (m_BinDecoder.decodeBin(Ctx::IntraMergeModeFlag(i)))
+        {
+          cu.intraMergeMode++;
+        }
+        else
+        {
+          break;
+        }
+      }
+    }
+    else
+    {
+      cu.allowIntraMergeMode = 1;
+    }
+#if JVET_AH0076_OBIC
+    if (!cu.intraMergeMode)
+    {
+      cu_obic_flag(cu);
+    }
+#endif
+  }
+}
+#endif
 #if ENABLE_DIMD
 void CABACReader::cu_dimd_flag(CodingUnit& cu)
 {
@@ -3016,26 +3058,66 @@ void CABACReader::cu_dimd_flag(CodingUnit& cu)
     {
       return;
     }
+#if JVET_AM0074_INTRA_MERGE
+    cu.intraMergeMode = 0;
+    if (CU::allowIntraMergeMode(cu))
+    {
+      cu.allowIntraMergeMode = 2;
+      for (int i = 0; i < MAX_NUM_INTRA_MERGE_CAND; i++)
+      {
+        if (m_BinDecoder.decodeBin(Ctx::IntraMergeModeFlag(i)))
+        {
+          cu.intraMergeMode++;
+        }
+        else
+        {
+          break;
+        }
+      }
+      if (cu.intraMergeMode)
+      {
+        return;
+      }
+    }
+    else
+    {
+      cu.allowIntraMergeMode = 1;
+    }
+#else
+    // isObicAvail is already done in cu_obic_flag(cu);
     const bool bObicAvail = PU::isObicAvail(*cu.firstPU);
     if (bObicAvail)
+#endif
     {
       cu_obic_flag(cu);
       cu.bvgDimdFlag = !cu.obicFlag;
     }
+#if !JVET_AM0074_INTRA_MERGE
     else
     {
       cu.bvgDimdFlag = true;
     }
+#endif
   }
   else
   {
     cu.bvgDimdFlag = false;
 #endif
+#if JVET_AM0074_INTRA_MERGE
+    cu_derived_intra_flag(cu);
+#else
 #if JVET_AH0076_OBIC
   cu_obic_flag(cu);
 #endif
+#endif
 #if JVET_AL0108_BVG_DIMD
   }
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  if (cu.bvgDimdFlag)
+  {
+    cu.tempType = CU::getRefTemplateType(cu);
+  }
+#endif
 #endif
   DTRACE(g_trace_ctx, D_SYNTAX, "cu_dimd_flag() ctx=%d pos=(%d,%d) dimd=%d\n", ctxId, cu.lumaPos().x, cu.lumaPos().y, cu.dimd);
 }
@@ -3080,6 +3162,9 @@ void CABACReader::cu_eip_flag(CodingUnit& cu)
     cu.eipFlag = m_BinDecoder.decodeBin(Ctx::EipFlag(0));
     if (cu.eipFlag)
     {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      cu.tempType = CU::getRefTemplateType(cu);
+#endif
 #if JVET_AL0106_BV_EIP
       if (getAllowedEip(cu, COMPONENT_Y) && getAllowedEipMerge(cu, COMPONENT_Y))
       {
@@ -11276,6 +11361,9 @@ void CABACReader::tmp_flag(CodingUnit& cu)
 #if JVET_AD0086_ENHANCED_INTRA_TMP
   if (cu.tmpFlag)
   {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+    cu.tempType = CU::getRefTemplateType(cu);
+#endif
     unsigned ctxId_fusion = DeriveCtx::CtxTmpFusionFlag(cu);
     cu.tmpFusionFlag      = m_BinDecoder.decodeBin(Ctx::TmpFusion(ctxId_fusion));
     DTRACE(g_trace_ctx, D_SYNTAX, "tmp_fusion_flag() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y,
@@ -11289,13 +11377,23 @@ void CABACReader::tmp_flag(CodingUnit& cu)
       if(cu.tmpIdx)
       {
         cu.tmpIdx += m_BinDecoder.decodeBinEP();
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        if (cu.tmpIdx == TMP_GROUP_IDX - 2 && tmpFusionIdx == 0)
+        {
+          cu.tmpIdx += m_BinDecoder.decodeBinEP();
+        }
+#endif
       }
       cu.tmpIdx += tmpFusionIdx;
       DTRACE(g_trace_ctx, D_SYNTAX, "tmp_fusion_idx() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpIdx);
 #if JVET_AG0136_INTRA_TMP_LIC
       cu.tmpLicFlag = m_BinDecoder.decodeBin(Ctx::TmpLic(0));
       cu.ibcLicFlag = cu.tmpLicFlag;
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      cu.ibcLicIdx = IBC_LIC_IDX;
+#else
       cu.ibcLicIdx = 0;
+#endif
       DTRACE(g_trace_ctx, D_SYNTAX, "tmpLicFlag pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpLicFlag);
 #endif
     }
@@ -11339,7 +11437,15 @@ void CABACReader::tmp_flag(CodingUnit& cu)
 
         if (cu.slice->getSPS()->getItmpLicExtension() && cu.ibcLicFlag)
         {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          int bin1 = 0;
+          if (cu.tempType == L_SHAPE_TEMPLATE)
+          {
+            bin1 = m_BinDecoder.decodeBin(Ctx::ItmpLicIndex(0));
+          }
+#else
           const int bin1 = m_BinDecoder.decodeBin(Ctx::ItmpLicIndex(0));
+#endif
           const int bin2 = m_BinDecoder.decodeBin(Ctx::ItmpLicIndex(1));
           if (bin1)
           {
@@ -11353,8 +11459,13 @@ void CABACReader::tmp_flag(CodingUnit& cu)
         }
         else
         {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          cu.ibcLicIdx = IBC_LIC_IDX;
+#else
           cu.ibcLicIdx = 0;
+#endif
         }
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       }
 
 #if !JVET_AH0200_INTRA_TMP_BV_REORDER
@@ -11362,23 +11473,34 @@ void CABACReader::tmp_flag(CodingUnit& cu)
 #else
       if (!cu.tmpFlmFlag)
 #endif
+#endif
 #else
       if (!cu.tmpFlmFlag)
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       {
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         if(cu.lwidth() * cu.lheight() > TMP_SKIP_REFINE_THRESHOLD)
         {
+#endif
           cu.tmpFracIdx = 0;
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        if (m_BinDecoder.decodeBin(Ctx::TmpFlag(4)))
+#else
         }
         else if(m_BinDecoder.decodeBin(Ctx::TmpFlag(7)))
+#endif
         {
           cu.tmpFracIdx = 1;
         }
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         else
         {
           cu.tmpFracIdx = 0;
         }
+#endif
         cu.tmpIsSubPel  = 0;
         cu.tmpSubPelIdx = -1;
         DTRACE(g_trace_ctx, D_SYNTAX, "tmpFracIdx pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpFracIdx);

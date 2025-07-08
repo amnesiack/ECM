@@ -2118,6 +2118,12 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
   {
     return;
   }
+#if JVET_AM0074_INTRA_MERGE
+  if ((cu.intraMergeMode > 0) && !cu.slice->getPnnMode())
+  {
+    return;
+  }
+#endif
 #if JVET_AH0076_OBIC
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   if (cu.obicFlag && !cu.slice->getPnnMode())
@@ -2433,6 +2439,12 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
 
 void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
 {
+#if JVET_AM0074_INTRA_MERGE
+  if ((pu.cu->intraMergeMode > 0) && !(pu.cu)->slice->getPnnMode())
+  {
+    return;
+  }
+#endif
 #if JVET_AH0076_OBIC
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   if (pu.cu->obicFlag && !(pu.cu)->slice->getPnnMode())
@@ -2932,6 +2944,40 @@ void CABACWriter::cu_pnn_flag(const CodingUnit& cu)
   }
 }
 #endif
+#if JVET_AM0074_INTRA_MERGE
+void CABACWriter::cu_derived_intra_flag(const CodingUnit& cu)
+{
+  if (cu.dimd || cu.intraMergeMode || cu.obicFlag)
+  {
+    m_BinEncoder.encodeBin(true, Ctx::GeneralIntraDerivationFlag(0));
+    if (CU::allowIntraMergeMode(cu))
+    {
+      for (int i = 0; i < MAX_NUM_INTRA_MERGE_CAND; i++)
+      {
+        if (cu.intraMergeMode > i)
+        {
+          m_BinEncoder.encodeBin(true, Ctx::IntraMergeModeFlag(i));
+        }
+        else
+        {
+          m_BinEncoder.encodeBin(false, Ctx::IntraMergeModeFlag(i));
+          break;
+        }
+      }
+    }
+#if JVET_AH0076_OBIC
+    if (!cu.intraMergeMode)
+    {
+      cu_obic_flag(cu);
+    }
+#endif
+  }
+  else
+  {
+    m_BinEncoder.encodeBin(false, Ctx::GeneralIntraDerivationFlag(0));
+  }
+}
+#endif
 #if ENABLE_DIMD
 void CABACWriter::cu_dimd_flag(const CodingUnit& cu)
 {
@@ -2949,11 +2995,44 @@ void CABACWriter::cu_dimd_flag(const CodingUnit& cu)
   const bool bvgDimdAvail = PU::isBvgDimdAvail(*cu.firstPU);
   if (bvgDimdAvail)
   {
-    m_BinEncoder.encodeBin(!cu.obicFlag && !cu.bvgDimdFlag, Ctx::RegularDimdFlag(0));
-    if (cu.obicFlag || cu.bvgDimdFlag)
+#if JVET_AM0074_INTRA_MERGE
+    bool isRegularDimd = !cu.obicFlag && !cu.bvgDimdFlag && !cu.intraMergeMode;
+    m_BinEncoder.encodeBin(isRegularDimd, Ctx::RegularDimdFlag(0));
+    if (isRegularDimd)
     {
+      return;
+    }
+#else
+    m_BinEncoder.encodeBin(!cu.obicFlag && !cu.bvgDimdFlag, Ctx::RegularDimdFlag(0));
+#endif
+#if JVET_AM0074_INTRA_MERGE
+    if (CU::allowIntraMergeMode(cu))
+    {
+      for (int i = 0; i < MAX_NUM_INTRA_MERGE_CAND; i++)
+      {
+        if (cu.intraMergeMode > i)
+        {
+          m_BinEncoder.encodeBin(true, Ctx::IntraMergeModeFlag(i));
+        }
+        else
+        {
+          m_BinEncoder.encodeBin(false, Ctx::IntraMergeModeFlag(i));
+          break;
+        }
+      }
+      if (cu.intraMergeMode)
+      {
+        return;
+      }
+    }
+#else
+    if (cu.obicFlag || cu.bvgDimdFlag)
+#endif
+    {
+#if !JVET_AM0074_INTRA_MERGE
       const bool bObicAvail = PU::isObicAvail(*cu.firstPU);
       if (bObicAvail)
+#endif
       {
         cu_obic_flag(cu);
       }
@@ -2962,8 +3041,12 @@ void CABACWriter::cu_dimd_flag(const CodingUnit& cu)
   else
   {
 #endif
+#if JVET_AM0074_INTRA_MERGE
+    cu_derived_intra_flag(cu);
+#else
 #if JVET_AH0076_OBIC
   cu_obic_flag(cu);
+#endif
 #endif
 #if JVET_AL0108_BVG_DIMD
   }
@@ -11157,6 +11240,15 @@ void CABACWriter::tmp_flag(const CodingUnit& cu)
       if (tmpFusionIdx)
       {
         m_BinEncoder.encodeBinEP(tmpFusionIdx > 1 ? 1 : 0);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        if (cu.tmpIdx < TMP_GROUP_IDX)
+        {
+          if (tmpFusionIdx == TMP_GROUP_IDX - 2 || tmpFusionIdx == TMP_GROUP_IDX - 1)
+          {
+            m_BinEncoder.encodeBinEP(tmpFusionIdx == TMP_GROUP_IDX - 1 ? 1 : 0);
+          }
+        }
+#endif
       }
       DTRACE(g_trace_ctx, D_SYNTAX, "tmp_fusion_idx() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpIdx);
 #if JVET_AG0136_INTRA_TMP_LIC
@@ -11203,34 +11295,64 @@ void CABACWriter::tmp_flag(const CodingUnit& cu)
         DTRACE(g_trace_ctx, D_SYNTAX, "tmpLicFlag() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpLicFlag);
         if (cu.slice->getSPS()->getItmpLicExtension() && cu.tmpLicFlag)
         {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          if (cu.tempType == L_SHAPE_TEMPLATE)
+          {
+            const int bin1 = (cu.ibcLicIdx == IBC_LIC_IDX) || (cu.ibcLicIdx == IBC_LIC_IDX_M) ? 0 : 1;
+            m_BinEncoder.encodeBin(bin1, Ctx::ItmpLicIndex(0));
+          }
+#else
           const int bin1 = (cu.ibcLicIdx == IBC_LIC_IDX) || (cu.ibcLicIdx == IBC_LIC_IDX_M) ? 0 : 1;
+#endif
           const int bin2 = (cu.ibcLicIdx == IBC_LIC_IDX) || (cu.ibcLicIdx == IBC_LIC_IDX_T) ? 0 : 1;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           m_BinEncoder.encodeBin(bin1, Ctx::ItmpLicIndex(0));
+#endif
           m_BinEncoder.encodeBin(bin2, Ctx::ItmpLicIndex(1));
           DTRACE(g_trace_ctx, D_SYNTAX, "tmp_lic_idx=%d\n", cu.ibcLicIdx);
         }
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       }
 #if !JVET_AH0200_INTRA_TMP_BV_REORDER
       if (!cu.tmpFlmFlag && !cu.tmpLicFlag)
 #else
       if (!cu.tmpFlmFlag)
 #endif
+#endif
 #else
       if (!cu.tmpFlmFlag)
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       {
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         if(cu.lwidth() * cu.lheight() <= TMP_SKIP_REFINE_THRESHOLD)
         {
+#endif
           if(cu.tmpFracIdx > 0)
           {
-            m_BinEncoder.encodeBin(1, Ctx::TmpFlag(7));
+            m_BinEncoder.encodeBin(1, Ctx::TmpFlag(
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                                   4
+#else
+                                                   7
+#endif
+                                                   ));
           }
           else
           {
-            m_BinEncoder.encodeBin(0, Ctx::TmpFlag(7));
+            m_BinEncoder.encodeBin(0, Ctx::TmpFlag(
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                                   4
+#else
+                                                   7
+#endif
+                                                   ));
           }
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         }
+#endif
         DTRACE(g_trace_ctx, D_SYNTAX, "tmpFracIdx pos=(%d,%d) value=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.tmpFracIdx);
 #else
         m_BinEncoder.encodeBin(cu.tmpIsSubPel != 0 ? 1 : 0, Ctx::TmpFlag(4));

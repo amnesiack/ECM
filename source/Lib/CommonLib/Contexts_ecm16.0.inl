@@ -1393,6 +1393,28 @@ const CtxSet ContextSetCfg::MipFlag = ContextSetCfg::addCtxSet({
 
 const CtxSet ContextSetCfg::TmpFlag = ContextSetCfg::addCtxSet({
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+ { 25,  19,  29,  25,  34, },
+ { 25,  19,  14,  25,  27, },
+ { 25,  27,  44,  33,  42, },
+ { 33,  27,  37,  18,  49, },
+ { 2,   1,   1,   1,   9, },
+ { 5,   1,   0,   5,   9, },
+ { 6,   5,   1,   2,   DWS, },
+ { 5,   1,   1,   1,   9, },
+ { 11,  11,  4,   11,  32, },
+ { 11,  11,  4,   DWE, 25, },
+ { DWE, DWE, 4,   DWE, 25, },
+ { DWE, 11,  4,   11,  32, },
+ { 118, 138, 125, 117, 99, },
+ { 131, 147, 116, 131, 117, },
+ { 103, 138, 140, 108, 99, },
+ { 242, 131, 132, 114, 123, },
+ { 117, 108, 124, 115, 115, },
+ { 130, 115, 116, 130, 117, },
+ { 117, 134, 165, 117, 102, },
+ { 162, 131, 116, 131, 117, },
+#else
 // ctx 174 to 181
  { 25, 19, 29, 25, 43, 21, 41, 34, },
  { 25, 19, 14, 25, 13, 5, 49, 27, },
@@ -1414,6 +1436,7 @@ const CtxSet ContextSetCfg::TmpFlag = ContextSetCfg::addCtxSet({
  { 130, 115, 116, 130, 118, 85, 135, 117, },
  { 117, 134, 165, 117, 132, 251, 83, 102, },
  { 162, 131, 116, 131, 117, 83, 243, 117, },
+#endif
 #else
  {  25,  19,  29,  25,  43,  21,  41 },
  {   9,  19,  60,   9,  13,   5,  49 },
@@ -7373,7 +7396,53 @@ const CtxSet ContextSetCfg::nnlfUnifiedParams = ContextSetCfg::addCtxSet
   { DWO, DWO, },
     });
 #endif
-
+#if JVET_AM0074_INTRA_MERGE
+const CtxSet ContextSetCfg::GeneralIntraDerivationFlag = ContextSetCfg::addCtxSet({
+ {  40,  35,  35 },
+ {  48,  35,  35 },
+ {  25,  35,  35 },
+ {  40,  35,  35 },
+ {   9,   8,   8 },
+ {   6,   8,   8 },
+ {   6,   8,   8 },
+ {   9,   8,   8 },
+ {  11,  18,  18 },
+ {   4,  18,  18 },
+ {   4,  18,  18 },
+ {  11,  18,  18 },
+ { 116, 119, 119 },
+ { 104, 119, 119 },
+ { 100, 119, 119 },
+ { 117, 119, 119 },
+ { 115, 119, 119 },
+ { 147, 119, 119 },
+ { 116, 119, 119 },
+ { 105, 119, 119 },
+	});
+const CtxSet ContextSetCfg::IntraMergeModeFlag = ContextSetCfg::addCtxSet
+({
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, },
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, },
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, },
+  { CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, },
+  { DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, DWS, },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, },
+  { DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, DWE, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  { DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
+  });
+#endif
 // CONTEXTS WSA STOP
 #endif
 // 1630 replaced

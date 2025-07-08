@@ -49,7 +49,11 @@
 #if JVET_AG0136_INTRA_TMP_LIC
 template<X86_VEXT vext>
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+inline int calcDiff4(const short* pSrc1, const short* pSrc2, const int start, const int end)
+#else
 inline uint32_t calcDiff4(const short* pSrc1, const short* pSrc2, const int start, const int end)
+#endif
 {
 #if JVET_AG0136_INTRA_TMP_LIC
   const __m128i vsum16 = _mm_abs_epi16(_mm_sub_epi16(_mm_loadl_epi64((const __m128i*) &pSrc1[start]), _mm_loadl_epi64((const __m128i*) &pSrc2[start])));
@@ -69,11 +73,27 @@ inline uint32_t calcDiff4(const short* pSrc1, const short* pSrc2, const int star
   vsum32 = _mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0xb1));   // 10 11 00 01
   return _mm_cvtsi128_si32(vsum32);
 }
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+template<X86_VEXT vext>
+inline int calcDiffExtraction4(const short* pSrc1, const short* pSrc2, const int start, const int end, int& last)
+{
+  const __m128i vsum16 = _mm_abs_epi16(_mm_sub_epi16(_mm_loadl_epi64((const __m128i*) &pSrc1[start]), _mm_loadl_epi64((const __m128i*) &pSrc2[start])));
+  const __m128i vzero = _mm_setzero_si128();
+  __m128i vsum32 = _mm_unpacklo_epi16(vsum16, vzero);
+  vsum32 = _mm_add_epi32(_mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0x4e)), _mm_shuffle_epi32(vsum32, 0xb1));
+  last = _mm_extract_epi16(vsum16, 3);
+  return _mm_cvtsi128_si32(vsum32);
+}
+#endif
 // Calculation with step of 8
 #if JVET_AG0136_INTRA_TMP_LIC
 template<X86_VEXT vext>
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+inline int calcDiff8(const short* pSrc1, const short* pSrc2, const int start, const int end)
+#else
 inline uint32_t calcDiff8(const short* pSrc1, const short* pSrc2, const int start, const int end)
+#endif
 {
 #if JVET_AG0136_INTRA_TMP_LIC && USE_AVX2
   const __m128i vsum16 = _mm_abs_epi16(_mm_sub_epi16(_mm_loadu_si128((const __m128i*) &pSrc1[start]), _mm_lddqu_si128((const __m128i*) &pSrc2[start])));
@@ -204,6 +224,38 @@ inline int calcDiffDelta4(const short* const pSrc1, const short* const pSrc2, co
   vsum32 = _mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0xb1));
   return _mm_cvtsi128_si32(vsum32);
 }
+
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+template<X86_VEXT vext>
+inline void calcDiffDeltaExtraction4Joint(const short* const pSrc1, const short* const pSrc2, const __m128i delta, const int start, const int end, int& sad, int& mrsad, const int licShift, int& lastSad, int& lastMrsad)
+{
+  const __m128i referenceVec = _mm_loadl_epi64((const __m128i*) &pSrc2[start]);
+  const __m128i difference = _mm_sub_epi16(_mm_loadl_epi64((const __m128i*) &pSrc1[start]), referenceVec);
+  const __m128i differenceLic = _mm_sub_epi16(_mm_loadl_epi64((const __m128i*) &pSrc1[start + licShift]), referenceVec);
+  const __m128i vsumSad16 = _mm_abs_epi16(difference);
+  const __m128i vsumMrsad16 = _mm_abs_epi16(_mm_sub_epi16(differenceLic, delta));
+  const __m128i vzero = _mm_setzero_si128();
+  __m128i vsumSad32 = _mm_unpacklo_epi16(vsumSad16, vzero);
+  vsumSad32 = _mm_add_epi32(_mm_add_epi32(vsumSad32, _mm_shuffle_epi32(vsumSad32, 0x4e)), _mm_shuffle_epi32(vsumSad32, 0xb1));
+  __m128i vsumMrsad32 = _mm_unpacklo_epi16(vsumMrsad16, vzero);
+  vsumMrsad32 = _mm_add_epi32(_mm_add_epi32(vsumMrsad32, _mm_shuffle_epi32(vsumMrsad32, 0x4e)), _mm_shuffle_epi32(vsumMrsad32, 0xb1));
+  sad = _mm_cvtsi128_si32(vsumSad32);
+  mrsad = _mm_cvtsi128_si32(vsumMrsad32);
+  lastSad = _mm_extract_epi16(vsumSad16, 3);
+  lastMrsad = _mm_extract_epi16(vsumMrsad16, 3);
+}
+
+template<X86_VEXT vext>
+inline int calcDiffExtractionDelta4(const short* const pSrc1, const short* const pSrc2, const __m128i delta, const int start, const int end, int& last)
+{
+  const __m128i vsum16 = _mm_abs_epi16(_mm_sub_epi16(_mm_sub_epi16(_mm_loadl_epi64((const __m128i*) &pSrc1[start]), _mm_loadl_epi64((const __m128i*) &pSrc2[start])), delta));
+  const __m128i vzero = _mm_setzero_si128();
+  __m128i vsum32 = _mm_unpacklo_epi16(vsum16, vzero);
+  vsum32 = _mm_add_epi32(_mm_add_epi32(vsum32, _mm_shuffle_epi32(vsum32, 0x4e)), _mm_shuffle_epi32(vsum32, 0xb1));
+  last = _mm_extract_epi16(vsum16, 3);
+  return _mm_cvtsi128_si32(vsum32);
+}
+#endif
 
 template<X86_VEXT vext>
 inline void calcDiffDelta8Joint(const short* const pSrc1, const short* const pSrc2, const __m128i delta, const int start, const int end, int& sad, int& mrsad
@@ -622,6 +674,10 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
                                    , licShift
 #endif
                                    );
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        topDiffSad += iSumSad;
+        topDiffMrsad += iSumMrsad;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
         if (iY == (TMP_TEMPLATE_SIZE - 1))
         {
@@ -631,8 +687,10 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
 #endif
         diffSumSad += iSumSad;
         diffSumMrsad += iSumMrsad;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         topDiffSad += iSumSad;
         topDiffMrsad += iSumMrsad;
+#endif
         if (diffSumSad > iMaxSad[0] && topDiffSad > iMaxSad[1] && diffSumMrsad > iMaxMrsad[0] && topDiffMrsad > iMaxMrsad[1])
         {
           break;
@@ -673,6 +731,10 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
                                   , licShift
 #endif
                                   );
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        topDiffSad += iSumSad;
+        topDiffMrsad += iSumMrsad;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
         if (iY == (TMP_TEMPLATE_SIZE - 1))
         {
@@ -682,8 +744,10 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
 #endif
         diffSumSad += iSumSad;
         diffSumMrsad += iSumMrsad;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         topDiffSad += iSumSad;
         topDiffMrsad += iSumMrsad;
+#endif
         if (diffSumSad > iMaxSad[0] && topDiffSad > iMaxSad[1] && diffSumMrsad > iMaxMrsad[0] && topDiffMrsad > iMaxMrsad[1])
         {
           break;
@@ -721,6 +785,10 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
                                   , licShift
 #endif
                                   );
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        topDiffSad += iSumSad;
+        topDiffMrsad += iSumMrsad;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
         if (iY == (TMP_TEMPLATE_SIZE - 1))
         {
@@ -730,8 +798,10 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
 #endif
         diffSumSad += iSumSad;
         diffSumMrsad += iSumMrsad;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         topDiffSad += iSumSad;
         topDiffMrsad += iSumMrsad;
+#endif
         if (diffSumSad > iMaxSad[0] && topDiffSad > iMaxSad[1] && diffSumMrsad > iMaxMrsad[0] && topDiffMrsad > iMaxMrsad[1])
         {
           break;
@@ -743,28 +813,45 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
 #else
     const __m128i leftMeanDelta = calcMeanRefLeftSIMD<vext>(ref, uiPatchHeight, uiStride, log2SizeLeft, leftTargetMean);
 #endif
-#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AH0200_INTRA_TMP_BV_REORDER && !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
     const short leftMeanDeltaVal = (short)_mm_cvtsi128_si32(leftMeanDelta);
 #endif	
     refPatchRow = ref - TMP_TEMPLATE_SIZE;
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
     tmpBuf = tarPatch + TMP_TEMPLATE_SIZE * tarStride;
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+    int lastSad;
+    int lastMrsad;
+#endif
     for (int iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++, refPatchRow += uiStride)
     {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      calcDiffDeltaExtraction4Joint<vext>((const short*) refPatchRow, (const short*) tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, iSumSad, iSumMrsad, licShift, lastSad, lastMrsad);
+#else
       calcDiffDelta4Joint<vext>((const short*)refPatchRow, (const short*)tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, iSumSad, iSumMrsad, licShift);
+#endif
 #else
       calcDiffDelta4Joint<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], leftMeanDelta, 0, TMP_TEMPLATE_SIZE, iSumSad, iSumMrsad);
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      leftDiffSad += iSumSad + lastSad;
+      leftDiffMrsad += iSumMrsad + lastMrsad;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       const short *pSrc1 = (const short *) refPatchRow;
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       const short* pSrc2 = tmpBuf;
+#endif
       tmpBuf += tarStride;
 #else
       const short *pSrc2 = (const short *) tarPatch[iY];
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       iSumSad +=
         (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1]) * ((1 <<TMP_TEMPLATE_COST_SHIFT)-1));
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
@@ -774,10 +861,16 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
                     * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
 #endif
 #endif
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      diffSumSad += iSumSad + (lastSad << TMP_TEMPLATE_COST_SHIFT);
+      diffSumMrsad += iSumMrsad + (lastMrsad << TMP_TEMPLATE_COST_SHIFT);
+#else
       diffSumSad += iSumSad;
       diffSumMrsad += iSumMrsad;
       leftDiffSad += iSumSad;
       leftDiffMrsad += iSumMrsad;
+#endif
       if (diffSumSad > iMaxSad[0] && leftDiffSad > iMaxSad[2] && diffSumMrsad > iMaxMrsad[0] && leftDiffMrsad > iMaxMrsad[2])
       {
         break;
@@ -874,24 +967,37 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
 #else
     const __m128i leftMeanDelta = calcMeanRefLeftSIMD<vext>(ref, uiPatchHeight, uiStride, log2SizeLeft, leftTargetMean);
 #endif
-#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AH0200_INTRA_TMP_BV_REORDER && !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
     const short leftMeanDeltaVal = (short)_mm_cvtsi128_si32(leftMeanDelta);
 #endif	
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+    int lastSad;
+    int lastMrsad;
+#endif
     for (int iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++, refPatchRow += uiStride)
     {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      calcDiffDeltaExtraction4Joint<vext>((const short*) refPatchRow, (const short*) tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, iSumSad, iSumMrsad, licShift, lastSad, lastMrsad);
+#else
       calcDiffDelta4Joint<vext>((const short*)refPatchRow, (const short*)tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, iSumSad, iSumMrsad, licShift);
+#endif
 #else
       calcDiffDelta4Joint<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], leftMeanDelta, 0, TMP_TEMPLATE_SIZE, iSumSad, iSumMrsad);
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       const short *pSrc1 = (const short *) refPatchRow;
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       const short* pSrc2 = tmpBuf;
+#endif
       tmpBuf += tarStride;
 #else
       const short *pSrc2 = (const short *) tarPatch[iY];
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       iSumSad += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1])
                   * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
@@ -901,8 +1007,14 @@ void calcTemplateDiffJointSadMrsadSIMD(const Pel* const ref, const unsigned int 
                     * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
 #endif
 #endif
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      diffSumSad += iSumSad + (lastSad << TMP_TEMPLATE_COST_SHIFT);
+      diffSumMrsad += iSumMrsad + (lastMrsad << TMP_TEMPLATE_COST_SHIFT);
+#else
       diffSumSad += iSumSad;
       diffSumMrsad += iSumMrsad;
+#endif
       if (diffSumSad > iMaxSad[0] && diffSumMrsad > iMaxMrsad[0])
       {
         break;
@@ -961,7 +1073,11 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
   Pel *refPatchRow = ref - TMP_TEMPLATE_SIZE * uiStride - TMP_TEMPLATE_SIZE;
 #endif
   Pel *    tarPatchRow;
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  int uiSum;
+#else
   uint32_t uiSum;
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
   if (isMrSad)
   {
@@ -1070,6 +1186,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
             diffSum += calcDiffDelta4<vext>(pSrc1, pSrc2, topMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
             uiSum = calcDiffDelta16<vext>(pSrc1, pSrc2, topMeanDelta256, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            topDiff += uiSum;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
             if (iY == (TMP_TEMPLATE_SIZE-1)) 
             {
@@ -1077,7 +1196,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
             }
 #endif
             diffSum += uiSum;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             topDiff += uiSum;
+#endif
             if (diffSum > iMax[0] && topDiff > iMax[1])
             {
               break;
@@ -1110,6 +1231,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
             diffSum += calcDiffDelta4<vext>(pSrc1, pSrc2, topMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
             uiSum = calcDiffDelta8<vext>(pSrc1, pSrc2, topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            topDiff += uiSum;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
             if (iY == (TMP_TEMPLATE_SIZE-1)) 
             {
@@ -1117,7 +1241,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
             }
 #endif
             diffSum += uiSum;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             topDiff += uiSum;
+#endif
             if (diffSum > iMax[0] && topDiff > iMax[1])
             {
               break;
@@ -1147,6 +1273,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
             diffSum += calcDiffDelta4<vext>(pSrc1, pSrc2, topMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
             uiSum = calcDiffDelta4<vext>(pSrc1, pSrc2, topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            topDiff += uiSum;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
             if (iY == (TMP_TEMPLATE_SIZE-1)) 
             {
@@ -1154,7 +1283,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
             }
 #endif
             diffSum += uiSum;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             topDiff += uiSum;
+#endif
             if (diffSum > iMax[0] && topDiff > iMax[1])
             {
               break;
@@ -1162,33 +1293,53 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           }
         }
         const __m128i leftMeanDelta = calcMeanRefLeftSIMD<vext>(ref, uiPatchHeight, uiStride, log2SizeLeft, leftTargetMean);
-#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AH0200_INTRA_TMP_BV_REORDER && !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         const short leftMeanDeltaVal = (short)_mm_cvtsi128_si32(leftMeanDelta);
 #endif
         refPatchRow = ref - TMP_TEMPLATE_SIZE;
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
         tmpBuf = tarPatch + TMP_TEMPLATE_SIZE * tarStride;
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        int last;
+#endif
         for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++, refPatchRow += uiStride)
         {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          uiSum = calcDiffExtractionDelta4<vext>((const short*) refPatchRow, (const short*) tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, last);
+#else
           uiSum = calcDiffDelta4<vext>((const short*)refPatchRow, (const short*)tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
+#endif
 #else
           uiSum = calcDiffDelta4<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          leftDiff += uiSum + last;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           const short *pSrc1 = (const short *) refPatchRow;
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           const short* pSrc2 = tmpBuf;
+#endif
           tmpBuf += tarStride;
 #else
           const short *pSrc2 = (const short *) tarPatch[iY];
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           uiSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1] - leftMeanDeltaVal)
                     * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
 #endif
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          diffSum += uiSum + (last << TMP_TEMPLATE_COST_SHIFT);
+#else
           diffSum += uiSum;
           leftDiff += uiSum;
+#endif
           if (diffSum > iMax[0] && leftDiff > iMax[2])
           {
             break;
@@ -1310,30 +1461,45 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
         if (!isAboveLeftSkipped)
         {
           const __m128i leftMeanDelta = calcMeanRefLeftSIMD<vext>(ref, uiPatchHeight, uiStride, log2SizeLeft, leftTargetMean);
-#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AH0200_INTRA_TMP_BV_REORDER && !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           const short leftMeanDeltaVal = (short)_mm_cvtsi128_si32(leftMeanDelta);
 #endif
           refPatchRow = ref - TMP_TEMPLATE_SIZE;
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
           tmpBuf = tarPatch + TMP_TEMPLATE_SIZE * tarStride;
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          int last;
+#endif
           for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++, refPatchRow += uiStride)
           {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            diffSum += calcDiffExtractionDelta4<vext>((const short*) refPatchRow, tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, last);
+#else
             diffSum += calcDiffDelta4<vext>((const short*)refPatchRow, tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
+#endif
 #else
             diffSum += calcDiffDelta4<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             const short *pSrc1 = (const short *) refPatchRow;
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             const short* pSrc2 = tmpBuf;
+#endif
             tmpBuf += tarStride;
 #else
             const short *pSrc2 = (const short *) tarPatch[iY];
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            diffSum += last << TMP_TEMPLATE_COST_SHIFT;
+#else
             diffSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1] - leftMeanDeltaVal)
                         * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
+#endif
 #endif
             if (diffSum > iMax[0])
             {
@@ -1351,16 +1517,22 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            topDiff += calcDiffDelta16<vext>((const short*) refPatchRow, tmpBuf, topMeanDelta256, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#else
             uiSum = calcDiffDelta16<vext>((const short*)refPatchRow, tmpBuf, topMeanDelta256, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#endif
             tmpBuf += tarStride;
 #else
             uiSum = calcDiffDelta16<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], topMeanDelta256, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             if (iY == (TMP_TEMPLATE_SIZE-1)) 
             {
               uiSum <<= TMP_TEMPLATE_COST_SHIFT;
             }
             topDiff += uiSum;
+#endif
 #else
             topDiff += calcDiffDelta16<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], topMeanDelta256, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
@@ -1379,16 +1551,22 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            topDiff += calcDiffDelta8<vext>((const short*) refPatchRow, tmpBuf, topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#else
             uiSum = calcDiffDelta8<vext>((const short*)refPatchRow, tmpBuf, topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#endif
             tmpBuf += tarStride;
 #else
             uiSum = calcDiffDelta8<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             if (iY == (TMP_TEMPLATE_SIZE-1)) 
             {
               uiSum <<= TMP_TEMPLATE_COST_SHIFT;
             }
             topDiff += uiSum;
+#endif
 #else
             topDiff += calcDiffDelta8<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
@@ -1404,16 +1582,22 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            topDiff += calcDiffDelta4<vext>((const short*) refPatchRow, tmpBuf, topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#else
             uiSum = calcDiffDelta4<vext>((const short*)refPatchRow, tmpBuf, topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#endif
             tmpBuf += tarStride;
 #else
             uiSum = calcDiffDelta4<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
             if (iY == (TMP_TEMPLATE_SIZE-1)) 
             {
               uiSum <<= TMP_TEMPLATE_COST_SHIFT;
             }
             topDiff += uiSum;
+#endif
 #else
             topDiff += calcDiffDelta4<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], topMeanDelta, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
@@ -1427,7 +1611,7 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
       else
       {
         const __m128i leftMeanDelta = calcMeanRefLeftSIMD<vext>(ref, uiPatchHeight, uiStride, log2SizeLeft, leftTargetMean);
-#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AH0200_INTRA_TMP_BV_REORDER && !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         const short leftMeanDeltaVal = (short)_mm_cvtsi128_si32(leftMeanDelta);
 #endif
         refPatchRow = ref - TMP_TEMPLATE_SIZE;
@@ -1437,20 +1621,26 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
         for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++, refPatchRow += uiStride)
         {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
-          leftDiff += calcDiffDelta4<vext>((const short*)refPatchRow, tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
+          leftDiff += calcDiffDelta4<vext>((const short*) refPatchRow, tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #else
           leftDiff += calcDiffDelta4<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           const short *pSrc1 = (const short *) refPatchRow;
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           const short* pSrc2 = tmpBuf;
+#endif
           tmpBuf += tarStride;
 #else
           const short *pSrc2 = (const short *) tarPatch[iY];
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           leftDiff += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1] - leftMeanDeltaVal)
                        * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
+#endif
 #endif
           if (leftDiff > iMax[2])
           {
@@ -1545,26 +1735,41 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
     else if (tempType == LEFT_TEMPLATE)
     {
       const __m128i leftMeanDelta = calcMeanRefLeftSIMD<vext>(ref, uiPatchHeight, uiStride, log2SizeLeft, leftTargetMean);
-#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AH0200_INTRA_TMP_BV_REORDER && !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
       const short leftMeanDeltaVal = (short)_mm_cvtsi128_si32(leftMeanDelta);
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      int last;
 #endif
       for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++, refPatchRow += uiStride)
       {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        diffSum += calcDiffExtractionDelta4<vext>((const short*) refPatchRow, tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE, last);
+#else
         diffSum += calcDiffDelta4<vext>((const short*)refPatchRow, tmpBuf, leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
+#endif
 #else
         diffSum += calcDiffDelta4<vext>((const short*) refPatchRow, (const short*) tarPatch[iY], leftMeanDelta, 0, TMP_TEMPLATE_SIZE);
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         const short *pSrc1 = (const short *) refPatchRow;
+#endif
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
         const short* pSrc2 = tmpBuf;
+#endif
         tmpBuf += tarStride;
 #else
         const short *pSrc2 = (const short *) tarPatch[iY];
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        diffSum += last << TMP_TEMPLATE_COST_SHIFT;
+#else
         diffSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1] - leftMeanDeltaVal)
                     * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
+#endif
 #endif
         if (diffSum > iMax[0])
         {
@@ -1610,6 +1815,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           diffSum += calcDiff4<vext>(pSrc1, pSrc2, 0, TMP_TEMPLATE_SIZE);
 #endif
           uiSum = calcDiff16<vext>(pSrc1, pSrc2, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          topDiff += uiSum;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
           if (iY == (TMP_TEMPLATE_SIZE-1)) 
           {
@@ -1617,7 +1825,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           }
 #endif
           diffSum += uiSum;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           topDiff += uiSum;
+#endif
           if (diffSum > iMax[0] && topDiff > iMax[1])
           {
             break;
@@ -1649,6 +1859,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           diffSum += calcDiff4<vext>(pSrc1, pSrc2, 0, TMP_TEMPLATE_SIZE);
 #endif
           uiSum = calcDiff8<vext>(pSrc1, pSrc2, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          topDiff += uiSum;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
           if (iY == (TMP_TEMPLATE_SIZE-1)) 
           {
@@ -1656,7 +1869,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           }
 #endif
           diffSum += uiSum;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           topDiff += uiSum;
+#endif
           if (diffSum > iMax[0] && topDiff > iMax[1])
           {
             break;
@@ -1685,6 +1900,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           diffSum += calcDiff4<vext>(pSrc1, pSrc2, 0, TMP_TEMPLATE_SIZE);
 #endif
           uiSum = calcDiff4<vext>(pSrc1, pSrc2, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          topDiff += uiSum;
+#endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
           if (iY == (TMP_TEMPLATE_SIZE-1)) 
           {
@@ -1692,7 +1910,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
           }
 #endif
           diffSum += uiSum;
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           topDiff += uiSum;
+#endif
           if (diffSum > iMax[0] && topDiff > iMax[1])
           {
             break;
@@ -1754,6 +1974,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
       tmpBuf = tarPatch + TMP_TEMPLATE_SIZE * tarStride;
 #endif
 
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      int last;
+#endif
       for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++)
       {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
@@ -1762,6 +1985,11 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 #else
         tarPatchRow        = tarPatch[iY];
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        uiSum = calcDiffExtraction4<vext>((const short*) tarPatchRow, (const short*) refPatchRow, 0, iCols, last);
+        leftDiff += uiSum + last;
+        diffSum += uiSum + (last << TMP_TEMPLATE_COST_SHIFT);
+#else
         const short *pSrc1 = (const short *) tarPatchRow;
         const short *pSrc2 = (const short *) refPatchRow;
 
@@ -1774,10 +2002,11 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
         uiSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1])
                   * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
-#endif
 
         diffSum += uiSum;
         leftDiff += uiSum;
+#endif
+#endif
 
         if (diffSum > iMax[0] && leftDiff > iMax[2])
         {
@@ -1943,6 +2172,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
       tmpBuf = tarPatch + TMP_TEMPLATE_SIZE * tarStride;
 #endif
 
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      int last;
+#endif
       for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++)
       {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
@@ -1951,6 +2183,10 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 #else
         tarPatchRow        = tarPatch[iY];
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        uiSum = calcDiffExtraction4<vext>((const short*) tarPatchRow, (const short*) refPatchRow, 0, iCols, last);
+        diffSum += uiSum + (last << TMP_TEMPLATE_COST_SHIFT);
+#else
         const short *pSrc1 = (const short *) tarPatchRow;
         const short *pSrc2 = (const short *) refPatchRow;
 
@@ -1963,9 +2199,10 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
         uiSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1])
                   * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
-#endif
 
         diffSum += uiSum;
+#endif
+#endif
 
         if (diffSum > iMax[0])
         {
@@ -1988,16 +2225,22 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
         {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          topDiff += calcDiff16<vext>(tmpBuf, (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#else
           uiSum = calcDiff16<vext>(tmpBuf, (const short*)refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#endif
           tmpBuf += tarStride;
 #else
           uiSum = calcDiff16<vext>((const short*) tarPatch[iY], (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           if (iY == (TMP_TEMPLATE_SIZE-1)) 
           {
             uiSum <<= TMP_TEMPLATE_COST_SHIFT;
           }
           topDiff += uiSum;
+#endif
 #else
           topDiff += calcDiff16<vext>((const short*) tarPatch[iY], (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
@@ -2016,16 +2259,22 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
         {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          topDiff += calcDiff8<vext>(tmpBuf, (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#else
           uiSum = calcDiff8<vext>(tmpBuf, (const short*)refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#endif
           tmpBuf += tarStride;
 #else
           uiSum = calcDiff8<vext>((const short*) tarPatch[iY], (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           if (iY == (TMP_TEMPLATE_SIZE-1)) 
           {
             uiSum <<= TMP_TEMPLATE_COST_SHIFT;
           }
           topDiff += uiSum;
+#endif
 #else
           topDiff += calcDiff8<vext>((const short*) tarPatch[iY], (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
@@ -2041,16 +2290,22 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
         {
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+          topDiff += calcDiff4<vext>(tmpBuf, (const short*)refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#else
           uiSum = calcDiff4<vext>(tmpBuf, (const short*)refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
+#endif
           tmpBuf += tarStride;
 #else
           uiSum = calcDiff4<vext>((const short*) tarPatch[iY], (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
           if (iY == (TMP_TEMPLATE_SIZE-1)) 
           {
             uiSum <<= TMP_TEMPLATE_COST_SHIFT;
           }
           topDiff += uiSum;
+#endif
 #else
           topDiff += calcDiff4<vext>((const short*) tarPatch[iY], (const short*) refPatchRow, TMP_TEMPLATE_SIZE, uiPatchWidth);
 #endif
@@ -2118,17 +2373,23 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 
         // SIMD difference
 
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+        leftDiff += calcDiff4
+#else
         uiSum = calcDiff4
+#endif
 #if JVET_AG0136_INTRA_TMP_LIC
                          <vext>
 #endif
                          (pSrc1, pSrc2, 0, iCols);
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
         uiSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1])
                   * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
 #endif
 
         leftDiff += uiSum;
+#endif
 
         if (leftDiff > iMax[2])
         {
@@ -2266,6 +2527,9 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
     // vertical difference
     int iCols = TMP_TEMPLATE_SIZE;
 
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+   int last;
+#endif
     for (iY = TMP_TEMPLATE_SIZE; iY < uiPatchHeight; iY++)
     {
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
@@ -2274,6 +2538,10 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 #else
       tarPatchRow        = tarPatch[iY];
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      uiSum = calcDiffExtraction4<vext>((const short*) tarPatchRow, (const short*) refPatchRow, 0, iCols, last);
+      diffSum += uiSum + (last << TMP_TEMPLATE_COST_SHIFT);
+#else
       const short *pSrc1 = (const short *) tarPatchRow;
       const short *pSrc2 = (const short *) refPatchRow;
 
@@ -2287,9 +2555,10 @@ void calcTemplateDiffSIMD(Pel *ref, unsigned int uiStride, Pel **tarPatch, unsig
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
       uiSum += (abs(pSrc1[TMP_TEMPLATE_SIZE - 1] - pSrc2[TMP_TEMPLATE_SIZE - 1])
                 * ((1 << TMP_TEMPLATE_COST_SHIFT) - 1));
-#endif
 
       diffSum += uiSum;
+#endif
+#endif
 
       if (diffSum > iMax[0])   // for speeding up
       {

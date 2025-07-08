@@ -156,6 +156,8 @@
 #define JVET_AH0200_INTRA_TMP_BV_REORDER                  1 // JVET-AH0200: Intra TMP BV reordering
 #define JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT      1 // JVET-AI0129: Intra TMP candidates with overlapping refinement window enhanced.
 #define JVET_AL0108_BVG_DIMD                              1 // JVET-AL0108: Block vector guided DIMD
+#define JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV       1 // JVET_AM0138: TMP Merge list improvement and TIMD+BV
+#define JVET_AM0229_INTRATMP_SUBMODES_DEPENDING           1 // JVET_AM0229: Intra TMP sub-modes depending on the template type information.
 #endif
 
 #define JVET_W0123_TIMD_FUSION                            1 // JVET-W0123: Template based intra mode derivation and fusion
@@ -173,6 +175,7 @@
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
 #define JVET_AH0076_OBIC                                  1 // JVET-AH0076: OBIC
 #define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET-AK0056: Weighted OBIC
+#define JVET_AM0074_INTRA_MERGE                           1 // JVET-AM0074: Inta Merge
 #endif
 
 #endif
@@ -1220,6 +1223,9 @@ enum ChannelType
 #if JVET_W0069_TMP_BOUNDARY
 enum RefTemplateType
 {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  UNDEF_TEMPLATE   = 0,
+#endif
   L_SHAPE_TEMPLATE = 1,
   LEFT_TEMPLATE    = 2,
   ABOVE_TEMPLATE   = 3,

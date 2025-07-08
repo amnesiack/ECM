@@ -1524,7 +1524,43 @@ void TrQuant::getTrTypes(const TransformUnit tu, const ComponentID compID, int &
 #if JVET_W0123_TIMD_FUSION
       if (tu.cu->timd && compID == COMPONENT_Y)
       {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        if (PU::isBvTimdApplied(tu.cu))
+        {
+          int secondMode = 0;
+          PU::getTimdVimp(predMode, secondMode, tu.cu);
+        }
+        else
+        {
+          predMode = MAP131TO67(predMode);
+        }
+#else
         predMode = MAP131TO67(predMode);
+#endif
+      }
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AL0108_BVG_DIMD
+      if (tu.cu->dimd && !tu.cu->bvgDimdFlag && compID == COMPONENT_Y
+#if JVET_AM0074_INTRA_MERGE
+        && !tu.cu->intraMergeMode
+#endif
+        )
+#else
+      if (tu.cu->dimd && compID == COMPONENT_Y)
+#endif
+      {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        if (PU::isBvDimdApplied(tu.cu))
+        {
+          int secondMode = 0;
+          PU::getDimdVimp(predMode, secondMode, tu.cu);
+        }
+        else
+        {
+          // predMode = MAP131TO67(predMode);
+        }
+#endif
       }
 #endif
 #if JVET_AB0155_SGPM
@@ -1671,8 +1707,23 @@ void TrQuant::xT( const TransformUnit &tu, const ComponentID &compID, const CPel
     trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
 #endif
   }
+#endif
+#if JVET_AM0074_INTRA_MERGE
+#if JVET_AJ0061_TIMD_MERGE
   else
 #endif
+  if (tu.cu->intraMergeMode && !tu.cu->lfnstIdx)
+  {
+    int implicitDst7 = PU::canIntraMergeImplicitDst7(tu);
+    trTypeHor = (implicitDst7 & 2) ? DST7 : DCT2;
+    trTypeVer = (implicitDst7 & 1) ? DST7 : DCT2;
+#if AHG7_MTS_TOOLOFF_CFG
+    trTypeHor = (width > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeHor;
+    trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
+#endif
+  }
+#endif
+  else
   getTrTypes ( tu, compID, trTypeHor, trTypeVer );
 #if TU_256
   int  skipWidth  =  width  > JVET_C0024_ZERO_OUT_TH ? width  - JVET_C0024_ZERO_OUT_TH : 0;
@@ -1826,8 +1877,23 @@ void TrQuant::xIT( const TransformUnit &tu, const ComponentID &compID, const CCo
     trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
 #endif
   }
+#endif
+#if JVET_AM0074_INTRA_MERGE
+#if JVET_AJ0061_TIMD_MERGE
   else
 #endif
+  if (tu.cu->intraMergeMode && !tu.cu->lfnstIdx)
+  {
+    int implicitDst7 = PU::canIntraMergeImplicitDst7(tu);
+    trTypeHor = (implicitDst7 & 2) ? DST7 : DCT2;
+    trTypeVer = (implicitDst7 & 1) ? DST7 : DCT2;
+#if AHG7_MTS_TOOLOFF_CFG
+    trTypeHor = (width > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeHor;
+    trTypeVer = (height > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trTypeVer;
+#endif
+  }
+#endif
+  else
   getTrTypes ( tu, compID, trTypeHor, trTypeVer );
 #if TU_256
   int skipWidth  =  width  > JVET_C0024_ZERO_OUT_TH ? width  - JVET_C0024_ZERO_OUT_TH : 0;
@@ -3123,8 +3189,23 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
       trVer = (uiHeight > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trVer;
 #endif
     }
+#endif
+#if JVET_AM0074_INTRA_MERGE
+#if JVET_AJ0061_TIMD_MERGE
     else
 #endif
+    if (tu.cu->intraMergeMode && !tu.cu->lfnstIdx)
+    {
+      int implicitDst7 = PU::canIntraMergeImplicitDst7(tu);
+      trHor = (implicitDst7 & 2) ? DST7 : DCT2;
+      trVer = (implicitDst7 & 1) ? DST7 : DCT2;
+#if AHG7_MTS_TOOLOFF_CFG
+      trHor = (uiWidth > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trHor;
+      trVer = (uiHeight > tu.cs->sps->getIntraMTSMaxSize()) ? DCT2 : trVer;
+#endif
+    }
+#endif
+    else
     getTrTypes(tu, residCompID, trHor, trVer);
 #if JVET_W0103_INTRA_MTS
     actualTrIdx = trHor * NUM_TRANS_TYPE + trVer;

@@ -737,6 +737,46 @@ struct DecoderDerivedCcpCandidate
 };
 #endif
 
+#if JVET_AM0074_INTRA_MERGE
+struct IntraMergeCandidate
+{
+  int x{ -1 }, y{ -1 };
+  int8_t  dimdModeMerge = 0; // Angular mode with max amp
+  int8_t  dimdBlendModeMerge[DIMD_FUSION_NUM - 2] = { 0 }; // Angular modes with 2nd to nth max amp
+  int8_t  dimdRelWeightMerge[DIMD_FUSION_NUM] = { 0 }; // Weighting factors
+  int     dimdLocDepMerge[DIMD_FUSION_NUM - 1] = { 0 }; // Location dependency
+  int     dimdBv[DIMD_FUSION_NUM] = { 0 };
+  int     dimdBvX[DIMD_FUSION_NUM] = { 0 };
+  int     dimdBvY[DIMD_FUSION_NUM] = { 0 };
+  void init()
+  {
+    dimdModeMerge = 0;
+    for (int i = 0; i < DIMD_FUSION_NUM-2; i++)
+    {
+      dimdBlendModeMerge[i] = 0;
+      dimdLocDepMerge[i]    = 0;
+    }
+    dimdLocDepMerge[DIMD_FUSION_NUM - 2]    = 0;
+    for (int i = 0; i < DIMD_FUSION_NUM; i++)
+    {
+      dimdRelWeightMerge[i] = 0;
+      dimdBv[i]             = 0;
+      dimdBvX[i]            = 0;
+      dimdBvY[i]            = 0;
+    }
+  };
+  void initBvInfo()
+  {
+    for (int i = 0; i < DIMD_FUSION_NUM; i++)
+    {
+      dimdBv[i]            = 0;
+      dimdBvX[i]           = 0;
+      dimdBvY[i]           = 0;
+    }
+  };
+};
+#endif
+
 #if JVET_AG0276_NLIC
 struct AltLMInterUnit
 {
