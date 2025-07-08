@@ -569,6 +569,7 @@
 #define JVET_AL0153_ALF_CCCM                              1 // JVET-AL0153: ALF-CCCM
 #define JVET_AL0142_CCSAO_REUSE_CTU                       1 // JVET-AL0142: CCSAO with reused CTU control
 #define JVET_AL0182_TALF_EXTENSION                        1 // JVET-AL0182: TALF reference picture extension
+#define JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU            1 // JVET-AM0209: Chroma ALF and CCALF with reused CTB control
 
 #if JVET_AL0153_ALF_CCCM
 #define JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR                1 // JVET-AM0063: adaptive factor for ALF-CCCM

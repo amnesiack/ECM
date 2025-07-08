@@ -43,6 +43,11 @@
 #include "InterpolationFilter.h"
 #include "Reshape.h"
 
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+FrameCtrlInfo g_pictureControlInfo[ALF_CTB_MAX_NUM_APS];
+bool g_pictureControlInfoInit = false;
+#endif
+
 void applyPROFCore(Pel* dst, int dstStride, const Pel* src, int srcStride, int width, int height, const Pel* gradX, const Pel* gradY, int gradStride, const int* dMvX, const int* dMvY, int dMvStride, const bool& bi, int shiftNum, Pel offset, const ClpRng& clpRng)
 {
   int idx = 0;

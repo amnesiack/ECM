@@ -338,6 +338,9 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
       {
         continue;
       }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU 
+      if( compIdx == COMPONENT_Y || (compIdx != COMPONENT_Y && !cs.slice->getTileGroupAlfReuseFlag((ComponentID)compIdx)) )
+#endif
       codeAlfCtuEnableFlag(cs, ctuRsAddr, compIdx, NULL);
       if (isLuma(ComponentID(compIdx)))
       {
@@ -355,6 +358,9 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
         uint8_t* ctbAlfFlag = cs.slice->getTileGroupAlfEnabledFlag((ComponentID)compIdx) ? cs.slice->getPic()->getAlfCtuEnableFlag( compIdx ) : nullptr;
         if( ctbAlfFlag && ctbAlfFlag[ctuRsAddr] )
         {
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          if( !cs.slice->getTileGroupAlfReuseFlag((ComponentID)compIdx) )
+#endif
           codeAlfCtuAlternative( cs, ctuRsAddr, compIdx );
         }
       }
@@ -365,7 +371,11 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   {
     for ( int compIdx = 1; compIdx < getNumberValidComponents( cs.pcv->chrFormat ); compIdx++ )
     {
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      if (cs.slice->m_ccAlfFilterParam.ccAlfFilterEnabled[compIdx - 1] && (!cs.slice->getTileGroupCcalfReuseFlag(ComponentID(compIdx))))
+#else
       if (cs.slice->m_ccAlfFilterParam.ccAlfFilterEnabled[compIdx - 1])
+#endif
       {
         const int filterCount   = cs.slice->m_ccAlfFilterParam.ccAlfFilterCount[compIdx - 1];
 

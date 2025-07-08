@@ -1440,4 +1440,42 @@ private:
   Pel* m_memory;
 };
 
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+struct FrameCtrlInfo
+{
+  int8_t alfTemporalLayer[MAX_NUM_COMPONENT] = { 100, 100, 100 };
+  std::vector<uint8_t> bufAlfFlag[MAX_NUM_COMPONENT];
+  std::vector<uint8_t> bufAlfFilter[MAX_NUM_COMPONENT];
+  std::vector<uint8_t> bufCcalfFilter[MAX_NUM_COMPONENT];
+  int8_t ccalfTemporalLayer[MAX_NUM_COMPONENT] = { 100, 100, 100 };
+  FrameCtrlInfo() { reset(); }
+  void resize(int ctuSize)
+  {
+    bufAlfFlag[COMPONENT_Y].resize(1);
+    bufAlfFilter[COMPONENT_Y].resize(1);
+    bufCcalfFilter[COMPONENT_Y].resize(1);
+    for (int comp = 1; comp < MAX_NUM_COMPONENT; comp++)
+    {
+      bufAlfFlag[comp].resize(ctuSize);
+      bufAlfFilter[comp].resize(ctuSize);
+      bufCcalfFilter[comp].resize(ctuSize);
+    }
+    reset();
+  }
+
+  void reset()
+  {
+    for (int comp = 1; comp < MAX_NUM_COMPONENT; comp++)
+    {
+      memset(bufAlfFlag[comp].data(), 0, sizeof(uint8_t) * bufAlfFlag[comp].size());
+      memset(bufAlfFilter[comp].data(), 0, sizeof(uint8_t) * bufAlfFilter[comp].size());
+      alfTemporalLayer[comp] = 100;
+      memset(bufCcalfFilter[comp].data(), 0, sizeof(uint8_t) * bufCcalfFilter[comp].size());
+    }
+    ccalfTemporalLayer[COMPONENT_Y] = ccalfTemporalLayer[COMPONENT_Cb] = ccalfTemporalLayer[COMPONENT_Cr] = 100;
+  }
+};
+extern FrameCtrlInfo g_pictureControlInfo[ALF_CTB_MAX_NUM_APS];
+extern bool g_pictureControlInfoInit;
+#endif
 #endif

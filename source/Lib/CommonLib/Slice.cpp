@@ -648,6 +648,12 @@ void Slice::inheritFromPicHeader( PicHeader *picHeader, const PPS *pps, const SP
   setTileGroupAlfEnabledFlag(COMPONENT_Cb, picHeader->getAlfEnabledFlag(COMPONENT_Cb));
   setTileGroupAlfEnabledFlag(COMPONENT_Cr, picHeader->getAlfEnabledFlag(COMPONENT_Cr));
 #if ALF_IMPROVEMENT
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  setTileGroupAlfReuseFlag(COMPONENT_Cb, picHeader->getAlfReuseFlag(COMPONENT_Cb));
+  setTileGroupAlfReuseFlag(COMPONENT_Cr, picHeader->getAlfReuseFlag(COMPONENT_Cr));
+  setTileGroupCcalfReuseFlag(COMPONENT_Cb, picHeader->getCcalfReuseFlag(COMPONENT_Cb));
+  setTileGroupCcalfReuseFlag(COMPONENT_Cr, picHeader->getCcalfReuseFlag(COMPONENT_Cr));
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   setTileGroupAlfFixedFilterSetIdx(COMPONENT_Y, picHeader->getAlfFixedFilterSetIdx(COMPONENT_Y));
   setTileGroupAlfFixedFilterSetIdx(COMPONENT_Cb, picHeader->getAlfFixedFilterSetIdx(COMPONENT_Cb));
@@ -2171,6 +2177,10 @@ void Slice::copySliceInfo(Slice *pSrc, bool cpyAlmostAll)
   memcpy(m_talfApss, pSrc->m_talfApss, sizeof(m_talfApss)); // this might be quite unsafe
 #endif
 #if ALF_IMPROVEMENT
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  memcpy(m_tileGroupAlfReuseFlag, pSrc->m_tileGroupAlfReuseFlag, sizeof(m_tileGroupAlfReuseFlag));
+  memcpy(m_tileGroupCcalfReuseFlag, pSrc->m_tileGroupCcalfReuseFlag, sizeof(m_tileGroupCcalfReuseFlag)); 
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   memcpy( m_tileGroupAlfFixedFilterSetIdx, pSrc->m_tileGroupAlfFixedFilterSetIdx, sizeof(m_tileGroupAlfFixedFilterSetIdx));
 #else

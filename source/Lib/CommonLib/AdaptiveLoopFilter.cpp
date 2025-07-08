@@ -678,6 +678,24 @@ void AdaptiveLoopFilter::ALFProcess(CodingStructure& cs)
     m_ctuEnableFlag[compIdx] = cs.picture->getAlfCtuEnableFlag( compIdx );
     m_ctuAlternative[compIdx] = cs.picture->getAlfCtuAlternativeData( compIdx );
   }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  for (int compIdx = 1; compIdx < MAX_NUM_COMPONENT; compIdx++)
+  {
+    ComponentID compID = (ComponentID) compIdx;
+    if (cs.slice->getTileGroupAlfEnabledFlag(compID) && cs.slice->getTileGroupAlfReuseFlag(compID))
+    {
+      int apsIdxChroma = cs.slice->getTileGroupApsIdChroma();
+      memcpy(m_ctuEnableFlag[compID], g_pictureControlInfo[apsIdxChroma].bufAlfFlag[compID].data(), sizeof(uint8_t) * m_numCTUsInPic);
+      std::copy_n(g_pictureControlInfo[apsIdxChroma].bufAlfFilter[compID].data(), m_numCTUsInPic, m_ctuAlternative[compID]);
+    }
+
+    if (cs.slice->m_ccAlfFilterParam.ccAlfFilterEnabled[compIdx - 1] && cs.slice->getTileGroupCcalfReuseFlag(compID))
+    {
+      int apsIdxCcalf = compID == COMPONENT_Cb ? cs.slice->getTileGroupCcAlfCbApsId() : cs.slice->getTileGroupCcAlfCrApsId();
+      memcpy(m_ccAlfFilterControl[compIdx - 1], g_pictureControlInfo[apsIdxCcalf].bufCcalfFilter[compIdx].data(), sizeof(uint8_t) * m_numCTUsInPic);
+    }
+  }
+#endif
   short* alfCtuFilterIndex = nullptr;
   uint32_t lastSliceIdx = 0xFFFFFFFF;
 
@@ -1788,6 +1806,36 @@ void AdaptiveLoopFilter::ALFProcess(CodingStructure& cs)
   if ( cs.slice->getAlfScaleChroma(COMPONENT_Cb) || cs.slice->getAlfScaleChroma(COMPONENT_Cr) )
   {
     alfAddCorrectChroma( cs, recYuvSao );
+  }
+#endif
+
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  for (int compIdx = 1; compIdx < MAX_NUM_COMPONENT; compIdx++)
+  {
+    ComponentID compID = (ComponentID)compIdx;
+    if (cs.slice->getTileGroupAlfEnabledFlag(compID) && !cs.slice->getTileGroupAlfReuseFlag(compID))
+    {
+      int apsIdxChroma = cs.slice->getTileGroupApsIdChroma();
+      {
+        memcpy(g_pictureControlInfo[apsIdxChroma].bufAlfFlag[compID].data(), m_ctuEnableFlag[compID], sizeof(uint8_t)* m_numCTUsInPic);
+        memcpy(g_pictureControlInfo[apsIdxChroma].bufAlfFilter[compID].data(), m_ctuAlternative[compID], sizeof(uint8_t)* m_numCTUsInPic);
+        g_pictureControlInfo[apsIdxChroma].alfTemporalLayer[compID] = cs.slice->getTLayer();
+      }
+    }
+  }
+
+  for (int compIdx = 1; compIdx < MAX_NUM_COMPONENT; compIdx++)
+  {
+    ComponentID compID = (ComponentID)compIdx;
+
+    if (cs.slice->m_ccAlfFilterParam.ccAlfFilterEnabled[compIdx - 1] && !cs.slice->getTileGroupCcalfReuseFlag(compID))
+    {
+      int apsIdxCcalf = compID == COMPONENT_Cb ? cs.slice->getTileGroupCcAlfCbApsId() : cs.slice->getTileGroupCcAlfCrApsId();
+      {
+        memcpy(g_pictureControlInfo[apsIdxCcalf].bufCcalfFilter[compIdx].data(), m_ccAlfFilterControl[compIdx - 1], sizeof(uint8_t)* m_numCTUsInPic);
+        g_pictureControlInfo[apsIdxCcalf].ccalfTemporalLayer[compID] = cs.slice->getTLayer();
+      }
+    }
   }
 #endif
 

@@ -3915,6 +3915,23 @@ void DecLib::xDecodeSPS( InputNALUnit& nalu )
   sps->setLayerId( nalu.m_nuhLayerId );
   DTRACE( g_trace_ctx, D_QP_PER_CTU, "CTU Size: %dx%d", sps->getMaxCUWidth(), sps->getMaxCUHeight() );
   m_parameterSetManager.storeSPS( sps, nalu.getBitstream().getFifo() );
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  if (sps->getALFEnabledFlag() && !g_pictureControlInfoInit)
+  {
+    int picWidth = sps->getMaxPicWidthInLumaSamples();
+    int picHeight = sps->getMaxPicHeightInLumaSamples();
+    int maxCuWidth = sps->getMaxCUWidth();
+    int maxCuHeight = sps->getMaxCUHeight();
+    int numCTUsInWidth = (picWidth / maxCuWidth) + ((picWidth % maxCuWidth) ? 1 : 0);
+    int numCTUsInHeight = (picHeight / maxCuHeight) + ((picHeight % maxCuHeight) ? 1 : 0);
+    int numCTUsInPic = numCTUsInWidth * numCTUsInHeight;
+    for (int aps = 0; aps < ALF_CTB_MAX_NUM_APS; aps++)
+    {
+      g_pictureControlInfo[aps].resize(numCTUsInPic);
+    }
+    g_pictureControlInfoInit = true;
+  }
+#endif
 }
 
 void DecLib::xDecodePPS( InputNALUnit& nalu )
