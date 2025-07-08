@@ -1771,6 +1771,9 @@ private:
 #if JVET_W0066_CCSAO
   bool              m_ccSaoEnabledFlag;
 #endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  bool              m_alfReuseFlag;
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   bool              m_alfPrecisionFlag;
 #endif
@@ -3602,6 +3605,10 @@ private:
   bool                        m_ccSaoEnabledFlag[MAX_NUM_COMPONENT];
 #endif
 #if ALF_IMPROVEMENT
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  bool                        m_alfReuseFlag[MAX_NUM_COMPONENT];
+  bool                        m_ccalfReuseFlag[MAX_NUM_COMPONENT];
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   int                         m_alfFixedFilterSetIdx[MAX_NUM_COMPONENT];
 #else
@@ -3785,6 +3792,12 @@ public:
   bool                        getCcSaoEnabledFlag(ComponentID compId) const             { return m_ccSaoEnabledFlag[compId];                                                           }
 #endif
 #if ALF_IMPROVEMENT
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  void                        setAlfReuseFlag( ComponentID compId, bool b ) { m_alfReuseFlag[compId] = b; }
+  bool                        getAlfReuseFlag( ComponentID compId )  { return m_alfReuseFlag[compId]; }
+  void                        setCcalfReuseFlag( ComponentID compId, bool b ) { m_ccalfReuseFlag[compId] = b; }
+  bool                        getCcalfReuseFlag( ComponentID compId )  { return m_ccalfReuseFlag[compId]; }
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   void                        setAlfFixedFilterSetIdx( ComponentID compId, int i )                            { m_alfFixedFilterSetIdx[compId] = i;                                                                  }
   int                         getAlfFixedFilterSetIdx( ComponentID compId ) const                           { return m_alfFixedFilterSetIdx[compId];                                                               }
@@ -4100,6 +4113,10 @@ private:
 
   int                        m_rpPicOrderCntVal;
 #if ALF_IMPROVEMENT                   
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  bool                       m_tileGroupAlfReuseFlag[MAX_NUM_COMPONENT];
+  bool                       m_tileGroupCcalfReuseFlag[MAX_NUM_COMPONENT];
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   int                        m_tileGroupAlfFixedFilterSetIdx[MAX_NUM_COMPONENT];
 #else
@@ -4711,6 +4728,12 @@ public:
 
 
 #if ALF_IMPROVEMENT  
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  bool                        getTileGroupAlfReuseFlag(ComponentID compId) const { return m_tileGroupAlfReuseFlag[compId]; }
+  void                        setTileGroupAlfReuseFlag(ComponentID compId, bool b) { m_tileGroupAlfReuseFlag[compId] = b; }
+  bool                        getTileGroupCcalfReuseFlag( ComponentID compId ) const { return m_tileGroupCcalfReuseFlag[compId]; }
+  void                        setTileGroupCcalfReuseFlag(ComponentID compId, bool b) { m_tileGroupCcalfReuseFlag[compId] = b; }
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
   int                         getTileGroupAlfFixedFilterSetIdx( ComponentID compId ) const { return m_tileGroupAlfFixedFilterSetIdx[compId]; }
   void                        setTileGroupAlfFixedFilterSetIdx( ComponentID compId, int i ) { m_tileGroupAlfFixedFilterSetIdx[compId] = i; }

@@ -3915,6 +3915,9 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
       int alfCrEnabledFlag = 0;
       if (uiCode)
       {
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        picHeader->setAlfReuseFlag(COMPONENT_Y, false );
+#endif
 #if ALF_IMPROVEMENT
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
         READ_FLAG(uiCode, "ph_alf_fixed_filter_set_idx_luma");
@@ -3939,7 +3942,29 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
         if (sps->getChromaFormatIdc() != CHROMA_400)
         {
           READ_CODE(1, uiCode, "ph_alf_cb_enabled_flag");   alfCbEnabledFlag = uiCode;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          if (alfCbEnabledFlag)
+          {
+            READ_FLAG(uiCode, "ph_alf_cb_reuse_flag");
+            picHeader->setAlfReuseFlag(COMPONENT_Cb, uiCode);
+          }
+          else
+          {
+            picHeader->setAlfReuseFlag(COMPONENT_Cb, false);
+          }
+#endif
           READ_CODE(1, uiCode, "ph_alf_cr_enabled_flag");   alfCrEnabledFlag = uiCode;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          if (alfCrEnabledFlag)
+          {
+            READ_FLAG(uiCode, "ph_alf_cr_reuse_flag");
+            picHeader->setAlfReuseFlag(COMPONENT_Cr, uiCode);
+          }
+          else
+          {
+            picHeader->setAlfReuseFlag(COMPONENT_Cr, false);
+          }
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
           if( alfCbEnabledFlag )
           {
@@ -3973,6 +3998,10 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
             // parse APS ID
             READ_CODE(3, uiCode, "ph_cc_alf_cb_aps_id");
             picHeader->setCcAlfCbApsId(uiCode);
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+            READ_FLAG(uiCode, "ph_ccalf_cb_reuse_flag");
+            picHeader->setCcalfReuseFlag(COMPONENT_Cb, uiCode);
+#endif
           }
           // Cr
           READ_FLAG(uiCode, "ph_cc_alf_cr_enabled_flag");
@@ -3983,6 +4012,10 @@ void HLSyntaxReader::parsePictureHeader( PicHeader* picHeader, ParameterSetManag
             // parse APS ID
             READ_CODE(3, uiCode, "ph_cc_alf_cr_aps_id");
             picHeader->setCcAlfCrApsId(uiCode);
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+            READ_FLAG(uiCode, "ph_ccalf_cr_reuse_flag");
+            picHeader->setCcalfReuseFlag(COMPONENT_Cr, uiCode);
+#endif
           }
         }
       }
@@ -5332,7 +5365,29 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
       if (bChroma)
       {
         READ_CODE(1, uiCode, "slice_alf_cb_enabled_flag");   alfCbEnabledFlag = uiCode;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        if (alfCbEnabledFlag && !pcSlice->isIntra())
+        {
+          READ_FLAG(uiCode, "slice_alf_cb_reuse_flag");
+          pcSlice->setTileGroupAlfReuseFlag(COMPONENT_Cb, uiCode);
+        }
+        else
+        {
+          pcSlice->setTileGroupAlfReuseFlag(COMPONENT_Cb, false);
+        }
+#endif
         READ_CODE(1, uiCode, "slice_alf_cr_enabled_flag");   alfCrEnabledFlag = uiCode;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        if (alfCrEnabledFlag && !pcSlice->isIntra())
+        {
+          READ_FLAG(uiCode, "slice_alf_cr_reuse_flag");
+          pcSlice->setTileGroupAlfReuseFlag(COMPONENT_Cr, uiCode);
+        }
+        else
+        {
+          pcSlice->setTileGroupAlfReuseFlag(COMPONENT_Cr, false);
+        }
+#endif
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
         if (alfCbEnabledFlag)
         {
@@ -5391,6 +5446,17 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
         // parse APS ID
         READ_CODE(3, uiCode, "slice_cc_alf_cb_aps_id");
         pcSlice->setTileGroupCcAlfCbApsId(uiCode);
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        if (!pcSlice->isIntra())
+        {
+          READ_FLAG(uiCode, "slice_ccalf_cb_reuse_flag");
+          pcSlice->setTileGroupCcalfReuseFlag(COMPONENT_Cb, uiCode);
+        }
+        else
+        {
+          pcSlice->setTileGroupCcalfReuseFlag(COMPONENT_Cb, false);
+        }
+#endif
       }
       // Cr
       READ_FLAG(uiCode, "slice_cc_alf_cr_enabled_flag");
@@ -5402,6 +5468,17 @@ void HLSyntaxReader::parseSliceHeader (Slice* pcSlice, PicHeader* picHeader, Par
         // parse APS ID
         READ_CODE(3, uiCode, "slice_cc_alf_cr_aps_id");
         pcSlice->setTileGroupCcAlfCrApsId(uiCode);
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        if (!pcSlice->isIntra())
+        {
+          READ_FLAG(uiCode, "slice_ccalf_cr_reuse_flag");
+          pcSlice->setTileGroupCcalfReuseFlag(COMPONENT_Cr, uiCode);
+        }
+        else
+        {
+          pcSlice->setTileGroupCcalfReuseFlag(COMPONENT_Cr, false);
+        }
+#endif
       }
 
 #if JVET_AI0084_ALF_RESIDUALS_SCALING

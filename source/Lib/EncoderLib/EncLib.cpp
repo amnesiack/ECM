@@ -847,6 +847,20 @@ void EncLib::init( bool isFieldCoding, AUWriterIf* auWriterIf )
     picOrig->getOrigBuf().fill(0);
     m_cGOPEncoder.setPicOrig(picOrig);
   }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  if (sps0.getALFEnabledFlag())
+  {
+    int picWidth = pps0.getPicWidthInLumaSamples();
+    int picHeight = pps0.getPicHeightInLumaSamples();
+    int numCTUsInWidth = (picWidth / m_maxCUWidth) + ((picWidth % m_maxCUWidth) ? 1 : 0);
+    int numCTUsInHeight = (picHeight / m_maxCUHeight) + ((picHeight % m_maxCUHeight) ? 1 : 0);
+    int numCTUsInPic = numCTUsInWidth * numCTUsInHeight;
+    for (int aps = 0; aps < ALF_CTB_MAX_NUM_APS; aps++)
+    {
+      g_pictureControlInfo[aps].resize(numCTUsInPic);
+    }
+  }
+#endif
 }
 
 void EncLib::xInitScalingLists( SPS &sps, APS &aps )

@@ -870,6 +870,9 @@ void EncAdaptiveLoopFilter::create( const EncCfg* encCfg, const int picWidth, co
   m_isLowDelayConfig = encCfg->getIntraPeriod() == -1 ? true : false;
   m_chromaFactor = m_isLowDelayConfig ? ( m_picWidth > 1280 && m_picHeight > 720 ? 0.60 : 0.40 ) : 1.00;
 #endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  m_reuseCondition = m_isLowDelayConfig ? (m_picWidth > 1280 && m_picHeight > 720) : true;
+#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION 
   m_alfPrecisonFlag = m_encCfg->getUseAlfPrecision();
 #endif
@@ -1557,6 +1560,12 @@ void EncAdaptiveLoopFilter::xSetupCcAlfAPS( CodingStructure &cs )
       aps->getCcAlfAPSParam().newCcAlfFilter[COMPONENT_Cb - 1] = 1;
       m_apsMap->setChangedFlag((ccAlfCbApsId << NUM_APS_TYPE_LEN) + ALF_APS, true);
       aps->setTemporalId(cs.slice->getTLayer());
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      if( (!cs.slice->getTileGroupAlfEnabledFlag(COMPONENT_Cb) && !cs.slice->getTileGroupAlfEnabledFlag(COMPONENT_Cr) ) ||cs.slice->getTileGroupApsIdChroma() != ccAlfCbApsId)
+      {
+        aps->getAlfAPSParam().newFilterFlag[CHANNEL_TYPE_CHROMA] = 0;
+      }
+#endif
     }
     cs.slice->setTileGroupCcAlfCbEnabledFlag(true);
   }
@@ -1591,6 +1600,12 @@ void EncAdaptiveLoopFilter::xSetupCcAlfAPS( CodingStructure &cs )
       aps->getCcAlfAPSParam().newCcAlfFilter[COMPONENT_Cr - 1] = 1;
       m_apsMap->setChangedFlag((ccAlfCrApsId << NUM_APS_TYPE_LEN) + ALF_APS, true);
       aps->setTemporalId(cs.slice->getTLayer());
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      if( (!cs.slice->getTileGroupAlfEnabledFlag(COMPONENT_Cb) && !cs.slice->getTileGroupAlfEnabledFlag(COMPONENT_Cr) ) || cs.slice->getTileGroupApsIdChroma() != ccAlfCrApsId)
+      {
+        aps->getAlfAPSParam().newFilterFlag[CHANNEL_TYPE_CHROMA] = 0;
+      }
+#endif
     }
     aps->setAPSType(ALF_APS);
     cs.slice->setTileGroupCcAlfCrEnabledFlag(true);
@@ -1630,6 +1645,9 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
         alfAPS->getCcAlfAPSParam().reset();
         alfAPS = nullptr;
       }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      g_pictureControlInfo[i].reset();
+#endif
     }
 #if JVET_AK0065_TALF
     memset(cs.slice->getTAlfAPSs(), 0, sizeof(*cs.slice->getTAlfAPSs()) * ALF_CTB_MAX_NUM_APS);
@@ -1659,6 +1677,13 @@ void EncAdaptiveLoopFilter::ALFProcess( CodingStructure& cs, const double *lambd
 #else
   cs.slice->setTileGroupAlfFixedFilterSetIdx(-1);
 #endif
+#endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  cs.slice->setTileGroupAlfReuseFlag(COMPONENT_Y, false);
+  cs.slice->setTileGroupAlfReuseFlag(COMPONENT_Cb, false);
+  cs.slice->setTileGroupAlfReuseFlag(COMPONENT_Cr, false);
+  cs.slice->setTileGroupCcalfReuseFlag(COMPONENT_Cb, false);
+  cs.slice->setTileGroupCcalfReuseFlag(COMPONENT_Cr, false);
 #endif
   AlfParam alfParam;
   alfParam.reset();
@@ -8488,6 +8513,9 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
       newAPS->getAlfAPSParam().newFilterFlag[CHANNEL_TYPE_CHROMA] = false;
       m_apsMap->setChangedFlag((newApsId << NUM_APS_TYPE_LEN) + ALF_APS);
       m_apsIdStart = newApsId;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      g_pictureControlInfo[newApsId].reset();
+#endif
     }
 
     std::vector<int> apsIds = cs.slice->getTileGroupApsIdLuma();
@@ -8535,6 +8563,9 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
 
     for( int curApsId = 0; curApsId < ALF_CTB_MAX_NUM_APS; curApsId++ )
     {
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      bool bestReuseFlag[MAX_NUM_COMPONENT] = { false };
+#endif
       if( ( cs.slice->getPendingRasInit() || cs.slice->isIDRorBLA() || cs.slice->isIntra() )
           && curApsId != newApsIdChroma )
       {
@@ -8554,11 +8585,17 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
 #endif
       {
 #endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        bool checkReuse = !cs.slice->isIntra();
+#endif        
         double curCost = m_lambda[CHANNEL_TYPE_CHROMA] * 3;
         if( curApsId == newApsIdChroma )
         {
           m_alfParamTemp = alfParamNewFilters;
           curCost += m_lambda[CHANNEL_TYPE_CHROMA] * m_bitsNewFilter[CHANNEL_TYPE_CHROMA];
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          checkReuse = false;
+#endif
         }
         else if( curAPS && curAPS->getTemporalId() <= cs.slice->getTLayer() && curAPS->getAlfAPSParam().newFilterFlag[CHANNEL_TYPE_CHROMA] )
         {
@@ -8576,9 +8613,38 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
         for( int compId = 1; compId < MAX_NUM_COMPONENT; compId++ )
         {
           m_alfParamTemp.enabledFlag[compId] = true;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          bool checkReuseComponent = checkReuse && g_pictureControlInfo[curApsId].alfTemporalLayer[compId] <= cs.slice->getTLayer();
+          double costReuse[2] = { MAX_DOUBLE, MAX_DOUBLE };
+          for( int reuse = checkReuseComponent ? 1 : 0; reuse >= 0; reuse-- )
+          {
+            costReuse[reuse] = 0;
+#endif
           for( int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++ )
           {
             double distUnfilterCtu = m_ctbDistortionUnfilter[compId][ctbIdx];
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+            if (reuse)
+            {
+              costReuse[reuse] += distUnfilterCtu;
+              if (g_pictureControlInfo[curApsId].bufAlfFlag[compId][ctbIdx])
+              {
+                int altIdx = g_pictureControlInfo[curApsId].bufAlfFilter[compId][ctbIdx];
+                for (int i = 0; i < MAX_NUM_ALF_CHROMA_COEFF; i++)
+                {
+                  m_filterTmp[i] = m_chromaCoeffFinal[altIdx][i];
+                  m_clipTmp[i] = m_chromaClippFinal[altIdx][i];
+                }
+#if JVET_AK0123_ALF_COEFF_RESTRICTION
+                const char scaleIdx = m_chromaScaleIdxFinal[altIdx][0];
+#else
+                const char scaleIdx = 0;
+#endif
+                costReuse[reuse] += m_alfCovariance[compId][m_filterTypeToStatIndex[CHANNEL_TYPE_CHROMA][filterTypeChroma]][ctbIdx][fixedFilterSetIdx][0][0].calcErrorForCoeffs(m_clipTmp, m_filterTmp, m_filterShapes[CHANNEL_TYPE_CHROMA][m_filterTypeToStatIndex[CHANNEL_TYPE_CHROMA][filterTypeChroma]].numCoeff, m_NUM_BITS_CHROMA, scaleIdx);
+              }
+              continue;
+            }
+#endif
             //cost on
             m_ctuEnableFlag[compId][ctbIdx] = 1;
             ctxTempStart = AlfCtx( m_CABACEstimator->getCtx() );
@@ -8673,14 +8739,37 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
             {
               m_CABACEstimator->getCtx() = AlfCtx( ctxTempBest );
               m_ctuEnableFlag[compId][ctbIdx] = 1;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+              costReuse[reuse] += costOn;
+#else
               curCost += costOn;
+#endif
             }
             else
             {
               m_ctuEnableFlag[compId][ctbIdx] = 0;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+              costReuse[reuse] += costOff;
+#else
               curCost += costOff;
+#endif
             }
           }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          } //for( int reuse)
+          int bestReuse = 0;
+          if( (costReuse[1] < costReuse[0]) && ( (cs.picture->poc % 8) != 0 || m_reuseCondition) )
+          {
+            bestReuse = 1;
+            for (int ctbIdx = 0; ctbIdx < m_numCTUsInPic; ctbIdx++)
+            {
+              m_ctuEnableFlag[compId][ctbIdx] = g_pictureControlInfo[curApsId].bufAlfFlag[compId][ctbIdx];
+              m_ctuAlternative[compId][ctbIdx] = g_pictureControlInfo[curApsId].bufAlfFilter[compId][ctbIdx];
+            }
+          }
+          curCost += costReuse[bestReuse];
+          bestReuseFlag[compId] = bestReuse;
+#endif
         }
         // chroma idc
         setEnableFlag( m_alfParamTemp, CHANNEL_TYPE_CHROMA, m_ctuEnableFlag );
@@ -8694,6 +8783,10 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
 #if JVET_AG0157_ALF_CHROMA_FIXED_FILTER
           cs.slice->setTileGroupAlfFixedFilterSetIdx( COMPONENT_Cb, fixedFilterSetIdx );
           cs.slice->setTileGroupAlfFixedFilterSetIdx( COMPONENT_Cr, fixedFilterSetIdx );
+#endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          cs.slice->setTileGroupAlfReuseFlag(COMPONENT_Cb, bestReuseFlag[COMPONENT_Cb]);
+          cs.slice->setTileGroupAlfReuseFlag(COMPONENT_Cr, bestReuseFlag[COMPONENT_Cr]);
 #endif
           copyCtuEnableFlag( m_ctuEnableFlagTmp, m_ctuEnableFlag, CHANNEL_TYPE_CHROMA );
           copyCtuAlternativeChroma( m_ctuAlternativeTmp, m_ctuAlternative );
@@ -8759,6 +8852,21 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
         m_apsIdStart = newApsIdChroma;
       }
       apss[cs.slice->getTileGroupApsIdChroma()] = m_apsMap->getPS( ( cs.slice->getTileGroupApsIdChroma() << NUM_APS_TYPE_LEN ) + ALF_APS );
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      auto apsIdxChroma = cs.slice->getTileGroupApsIdChroma();
+      {
+        for (auto comp = 1; comp < 3; ++comp)
+        {
+          ComponentID compID = (ComponentID)comp;
+          if (cs.slice->getTileGroupAlfEnabledFlag(compID) && (!cs.slice->getTileGroupAlfReuseFlag(compID)))
+          {
+            memcpy(g_pictureControlInfo[apsIdxChroma].bufAlfFlag[compID].data(), m_ctuEnableFlag[compID], sizeof(uint8_t)* m_numCTUsInPic);
+            memcpy(g_pictureControlInfo[apsIdxChroma].bufAlfFilter[compID].data(), m_ctuAlternative[compID], sizeof(uint8_t)* m_numCTUsInPic);
+            g_pictureControlInfo[apsIdxChroma].alfTemporalLayer[compID] = cs.slice->getTLayer();
+          }
+        }
+      }
+#endif
     }
   }
 }
@@ -10565,6 +10673,9 @@ void EncAdaptiveLoopFilter::deriveCcAlfFilter( CodingStructure& cs, ComponentID 
         ccAlfFilterIdxEnabled[filterIdx] = false;
         memset(ccAlfFilterCoeff[filterIdx], 0, sizeof(ccAlfFilterCoeff[filterIdx]));
       }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      bool checkReuse = false;
+#endif
       if ( referencingExistingAps )
       {
         maxNumberOfFiltersBeingTested = m_apsMap->getPS((apsIds[testFilterIdx] << NUM_APS_TYPE_LEN) + ALF_APS)->getCcAlfAPSParam().ccAlfFilterCount[compID - 1];
@@ -10577,6 +10688,12 @@ void EncAdaptiveLoopFilter::deriveCcAlfFilter( CodingStructure& cs, ComponentID 
         memcpy( ccAlfFilterCoeff, m_apsMap->getPS((apsIds[testFilterIdx] << NUM_APS_TYPE_LEN) + ALF_APS)->getCcAlfAPSParam().ccAlfCoeff[compID - 1], sizeof(ccAlfFilterCoeff) );
 #if JVET_AH0057_CCALF_COEFF_PRECISION
         ccAlfCoeffPrec = m_apsMap->getPS((apsIds[testFilterIdx] << NUM_APS_TYPE_LEN) + ALF_APS)->getCcAlfAPSParam().ccAlfCoeffPrec[compID - 1];
+#endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        if( !cs.slice->isIntra() && g_pictureControlInfo[apsIds[testFilterIdx]].ccalfTemporalLayer[compID] <= cs.slice->getTLayer() )
+        {
+          checkReuse = true;
+        }
 #endif
       }
       else
@@ -10701,7 +10818,52 @@ void EncAdaptiveLoopFilter::deriveCcAlfFilter( CodingStructure& cs, ComponentID 
             m_bestFilterCount = ccAlfFilterCount;
             ccalfReuseApsId = referencingExistingAps ? apsIds[testFilterIdx] : -1;
             memcpy(bestMapFilterIdxToFilterIdc, mapFilterIdxToFilterIdc, sizeof(mapFilterIdxToFilterIdc));
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+            cs.slice->setTileGroupCcalfReuseFlag(compID, false);
+#endif
           }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          if (checkReuse)
+          {
+#if JVET_AF0197_LUMA_RESIDUAL_TAP_IN_CCALF
+            double reuseCost = 4 * m_lambda[compID] * chromaFactor;
+#else
+            double reuseCost = 4 * m_lambda[compID];
+#endif
+            for (int ctuIdx = 0; ctuIdx < m_numCTUsInPic; ctuIdx++)
+            {
+              int filterControl = g_pictureControlInfo[apsIds[testFilterIdx]].bufCcalfFilter[compID][ctuIdx];
+              m_filterControl[ctuIdx] = filterControl;
+              if (filterControl == 0)
+              {
+                reuseCost += m_ctbDistortionUnfilter[compID][ctuIdx];
+              }
+              else
+              {
+                reuseCost += m_trainingDistortion[filterControl - 1][ctuIdx];
+              }
+            }
+            if (reuseCost < prevTotalCost)
+            {
+              prevTotalCost = reuseCost;
+              improvement = true;
+            }
+            if (reuseCost < bestFilteredTotalCost && (cs.picture->poc % 8 != 0 || m_reuseCondition))
+            {
+              bestFilteredTotalCost = reuseCost;
+#if JVET_AH0057_CCALF_COEFF_PRECISION
+              bestCoeffPrec = coeffPrec;
+#endif
+              memcpy(m_bestFilterIdxEnabled, ccAlfFilterIdxEnabled, sizeof(ccAlfFilterIdxEnabled));
+              memcpy(m_bestFilterCoeffSet, ccAlfFilterCoeff, sizeof(ccAlfFilterCoeff));
+              memcpy(m_bestFilterControl, m_filterControl, sizeof(uint8_t) * m_numCTUsInPic);
+              m_bestFilterCount = ccAlfFilterCount;
+              ccalfReuseApsId = apsIds[testFilterIdx];
+              memcpy(bestMapFilterIdxToFilterIdc, mapFilterIdxToFilterIdc, sizeof(mapFilterIdxToFilterIdc));
+              cs.slice->setTileGroupCcalfReuseFlag(compID, true);
+            }
+          }
+#endif
         }
 
         trainingIterCount++;
@@ -10795,6 +10957,16 @@ void EncAdaptiveLoopFilter::deriveCcAlfFilter( CodingStructure& cs, ComponentID 
         cs.slice->setTileGroupCcAlfCrApsId(ccalfReuseApsId);
       }
     }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+    if ((!cs.slice->getTileGroupCcalfReuseFlag(compID)))
+    {
+      int apsID = compID == COMPONENT_Cb ? cs.slice->getTileGroupCcAlfCbApsId() : cs.slice->getTileGroupCcAlfCrApsId();  
+      {
+        memcpy(g_pictureControlInfo[apsID].bufCcalfFilter[compID].data(), m_ccAlfFilterControl[compID - 1], sizeof(uint8_t)* m_numCTUsInPic);
+        g_pictureControlInfo[apsID].ccalfTemporalLayer[compID] = cs.slice->getTLayer();
+      }
+    }
+#endif
   }
 }
 

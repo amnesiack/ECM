@@ -294,7 +294,14 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
         ctx += aboveCTUAddr > -1 ? ( ctbAlfFlag[aboveCTUAddr] ? 1 : 0 ) : 0;
 
         RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET(STATS__CABAC_BITS__ALF);
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        if (compIdx == COMPONENT_Y || (compIdx != COMPONENT_Y && !cs.slice->getTileGroupAlfReuseFlag((ComponentID)compIdx)))
+        {
+#endif
         ctbAlfFlag[ctuRsAddr] = m_BinDecoder.decodeBin( Ctx::ctbAlfFlag( compIdx * 3 + ctx ) );
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        }
+#endif
 
         if (isLuma((ComponentID)compIdx) && ctbAlfFlag[ctuRsAddr])
         {
@@ -326,6 +333,10 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
           const int numAlts = alfParam.numAlternativesChroma;
           uint8_t* ctbAlfAlternative = cs.slice->getPic()->getAlfCtuAlternativeData( compIdx );
           ctbAlfAlternative[ctuRsAddr] = 0;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          if(!cs.slice->getTileGroupAlfReuseFlag((ComponentID)compIdx))
+          {
+#endif
           if( ctbAlfFlag[ctuRsAddr] )
           {
             uint8_t decoded = 0;
@@ -340,6 +351,9 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
 
             ctbAlfAlternative[ctuRsAddr] = decoded;
           }
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+          }
+#endif
         }
       }
     }
@@ -348,7 +362,11 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
   {
     for ( int compIdx = 1; compIdx < getNumberValidComponents( cs.pcv->chrFormat ); compIdx++ )
     {
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+      if (cs.slice->m_ccAlfFilterParam.ccAlfFilterEnabled[compIdx - 1] && (!cs.slice->getTileGroupCcalfReuseFlag(ComponentID(compIdx))))
+#else
       if (cs.slice->m_ccAlfFilterParam.ccAlfFilterEnabled[compIdx - 1])
+#endif
       {
         const int filterCount   = cs.slice->m_ccAlfFilterParam.ccAlfFilterCount[compIdx - 1];
 

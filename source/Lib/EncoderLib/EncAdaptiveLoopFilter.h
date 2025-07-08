@@ -474,6 +474,9 @@ private:
   bool                   m_isLowDelayConfig;
   double                 m_chromaFactor;
 #endif
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+  bool                   m_reuseCondition;
+#endif
 #if JVET_AI0084_ALF_RESIDUALS_SCALING
   ScaleAlfEnc            m_scaleAlfEncParam[ALF_CTB_MAX_NUM_APS][MAX_NUM_ALF_ALTERNATIVES_LUMA];
 #endif
