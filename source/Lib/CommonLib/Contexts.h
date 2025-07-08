@@ -759,6 +759,10 @@ public:
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   static const CtxSet   ImvFlagIBC;
 #endif
+#if JVET_AM0074_INTRA_MERGE
+  static const CtxSet   GeneralIntraDerivationFlag;
+  static const CtxSet   IntraMergeModeFlag;
+#endif
 #if ENABLE_DIMD
   static const CtxSet   DimdFlag;
 #endif

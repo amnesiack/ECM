@@ -266,6 +266,10 @@ private:
     AffineBlendingModel sgpmBlendModel;
 #endif
 #endif
+#if JVET_AM0074_INTRA_MERGE
+    uint8_t     dimd;
+    uint8_t     timd;
+#endif
 #if JVET_AB0155_SGPM
 #if JVET_V0130_INTRA_TMP
     ModeInfo() : mipFlg( false ), mipTrFlg( false ), mRefId( 0 ), ispMod( NOT_INTRA_SUBPARTITIONS ), modeId( 0 ), tmpFlag( 0 )
@@ -291,6 +295,10 @@ private:
   , sgpmIsRegression(false)
   , sgpmBlendModel(AffineBlendingModel(5,1,31))
 #endif
+#if JVET_AM0074_INTRA_MERGE
+  , dimd (0)
+  , timd (0)
+#endif
 {}
     ModeInfo(const bool mipf, const bool miptf, const int mrid, const uint8_t ispm, const uint32_t mode,
              const bool tmpf = 0
@@ -304,7 +312,10 @@ private:
       , const int tmpi = 0 , const bool tmpff = 0  , const int tmpflmf = 0 , const int tmpsp = 0, const int tmpspi = 0
 #endif
 #endif
-	  , const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0, const int si = 0 
+	  , const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0, const int si = 0
+#if JVET_AM0074_INTRA_MERGE
+    , const uint8_t dimd = 0, const uint8_t timd = 0
+#endif
 #if JVET_AG0152_SGPM_ITMP_IBC
 #if JVET_AL0188_SGPM_FLIPAWARE_BV
       , const BvInfo sbv0 = BvInfo(Mv(0, 0), 0), const BvInfo sbv1 = BvInfo(Mv(0, 0), 0)
@@ -353,6 +364,10 @@ private:
       , sgpmIsRegression(sir)
       , sgpmBlendModel(sbm)
 #endif
+#if JVET_AM0074_INTRA_MERGE
+      , dimd(dimd)
+      , timd(timd)
+#endif
     {
     }
     ModeInfo &operator=(const ModeInfo &other)
@@ -392,6 +407,10 @@ private:
       sgpmIsRegression = other.sgpmIsRegression;
       sgpmBlendModel = other.sgpmBlendModel;
 #endif
+#if JVET_AM0074_INTRA_MERGE
+      dimd = other.dimd;
+      timd = other.timd;
+#endif
       return *this;
     }
     bool operator==(const ModeInfo cmp) const
@@ -416,7 +435,12 @@ private:
 #endif
 #endif
                 && sgpmFlag == cmp.sgpmFlag
-                && sgpmSplitDir == cmp.sgpmSplitDir); // sgpmMode0 and sgpmMode1 seems no need
+                && sgpmSplitDir == cmp.sgpmSplitDir // sgpmMode0 and sgpmMode1 seems no need
+#if JVET_AM0074_INTRA_MERGE
+                && dimd == cmp.dimd
+                && timd == cmp.timd
+#endif
+);
     }
 #elif JVET_V0130_INTRA_TMP
 	  ModeInfo() : mipFlg(false), mipTrFlg(false), mRefId(0), ispMod(NOT_INTRA_SUBPARTITIONS), modeId(0), tmpFlag(0) {}
@@ -426,6 +450,10 @@ private:
     ModeInfo() : mipFlg(false), mipTrFlg(false), mRefId(0), ispMod(NOT_INTRA_SUBPARTITIONS), modeId(0) {}
     ModeInfo(const bool mipf, const bool miptf, const int mrid, const uint8_t ispm, const uint32_t mode) : mipFlg(mipf), mipTrFlg(miptf), mRefId(mrid), ispMod(ispm), modeId(mode) {}
     bool operator==(const ModeInfo cmp) const { return (mipFlg == cmp.mipFlg && mipTrFlg == cmp.mipTrFlg && mRefId == cmp.mRefId && ispMod == cmp.ispMod && modeId == cmp.modeId); }
+#endif
+#if JVET_AM0074_INTRA_MERGE
+    void setDimdParam(uint8_t in) { dimd = in; }
+    void setTimdParam(uint8_t in) { timd = in; }
 #endif
   };
   struct ModeInfoWithCost : public ModeInfo
@@ -444,7 +472,12 @@ private:
                      const int tmpi, const bool tmpff, const int tmpflmf,  const int tmpsp, const int tmpspi,
 #endif
 #endif
-					 double cost, const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0)
+					 double cost, const bool sf = 0, const int sd = 0, const int sm0 = 0, const int sm1 = 0
+#if JVET_AM0074_INTRA_MERGE
+           , const uint8_t dimd = 0
+           , const uint8_t timd = 0
+#endif
+)
       : ModeInfo(mipf, miptf, mrid, ispm, mode, tpmf
 #if JVET_AD0086_ENHANCED_INTRA_TMP
 #if JVET_AG0136_INTRA_TMP_LIC
@@ -456,7 +489,12 @@ private:
         ,tmpi ,tmpff ,tmpflmf , tmpsp, tmpspi
 #endif
 #endif
-	  , sf, sd, sm0, sm1), rdCost(cost)
+	  , sf, sd, sm0, sm1
+#if JVET_AM0074_INTRA_MERGE
+	  , dimd
+	  , timd
+#endif
+      ), rdCost(cost)
     {
     }
     bool operator==(const ModeInfoWithCost cmp) const
@@ -477,8 +515,13 @@ private:
       && tmpFracIdx == cmp.tmpFracIdx
 #endif
 #endif
-			   && rdCost == cmp.rdCost && sgpmFlag == cmp.sgpmFlag
-              && sgpmSplitDir == cmp.sgpmSplitDir);   // sgpmMode0 and sgpmMode1 seems no need
+	  && rdCost == cmp.rdCost && sgpmFlag == cmp.sgpmFlag
+      && sgpmSplitDir == cmp.sgpmSplitDir
+#if JVET_AM0074_INTRA_MERGE
+      && dimd == cmp.dimd
+      && timd == cmp.timd
+#endif
+);   // sgpmMode0 and sgpmMode1 seems no need
     }
 #elif JVET_V0130_INTRA_TMP
 	  ModeInfoWithCost(const bool mipf, const bool miptf, const int mrid, const uint8_t ispm, const uint32_t mode, const bool tpmf, double cost) : ModeInfo(mipf, miptf, mrid, ispm, mode, tpmf), rdCost(cost) {}
@@ -798,6 +841,20 @@ private:
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
   PelStorage      m_predCCPFusionStorage[2];
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  Distortion m_backupMinSadHad[MTMP_NUM];
+  Distortion m_backupSadCost[MTMP_NUM];
+  Distortion m_backupLicMinSadHad[MTMP_NUM][4];
+  Distortion m_backupLicSadCost[MTMP_NUM][4];
+  static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> m_uiRdModeListFracTmp;
+  static_vector<double, FAST_UDI_MAX_RDMODE_NUM> m_candCostListFracTmp;
+  static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> m_uiRdModeListLicFracTmp;
+  static_vector<double, FAST_UDI_MAX_RDMODE_NUM> m_candCostListLicFracTmp;
+  static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> m_uiRdModeListTmp;
+  static_vector<double, FAST_UDI_MAX_RDMODE_NUM> m_candCostListTmp;
+  static_vector<ModeInfo, FAST_UDI_MAX_RDMODE_NUM> m_uiRdModeListTmpLic;
+  static_vector<double, FAST_UDI_MAX_RDMODE_NUM> m_candCostListTmpLic;
+#endif
 
 protected:
   // interface to option
@@ -837,7 +894,7 @@ public:
 #if JVET_AJ0112_REGRESSION_SGPM
   bool            m_skipSgpmLfnstMtsPass;
 #endif
-#if JVET_AJ0061_TIMD_MERGE
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
   bool            m_skipTimdMrgLfnstMtsPass;
   bool            m_skipObicMode;
   bool            m_skipDimdMode;
@@ -845,6 +902,17 @@ public:
   uint64_t        m_satdCostDIMD;
   bool            m_skipTimdMode[NumTimdMode];
   uint64_t        m_satdCostTIMD[NumTimdMode][2]; 
+#endif
+#if JVET_AM0074_INTRA_MERGE
+  Pel* m_intraMergePredBuf[MAX_NUM_INTRA_MERGE_CAND];
+  Pel* m_immBvPredBuf[DIMD_FUSION_NUM];
+  int m_intraMergeCandListSize;
+  IntraMergeCandidate m_intraMergeCand[MAX_NUM_INITIAL_INTRA_MERGE_CAND];
+  bool            m_skipIntraMergeMode;
+  uint64_t        m_satdCostIntraMerge;
+  double          m_dSavedSadHadRdCostIntraMerge[MAX_NUM_INTRA_MERGE_CAND];
+  double          m_dSavedSadHadRdCostObic{ MAX_DOUBLE };
+  bool            m_skipIntraMergeLfnstMtsPass;
 #endif
 #if JVET_AH0076_OBIC
   bool            m_skipObicLfnstMtsPass;
@@ -1072,6 +1140,9 @@ protected:
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
   void getPredForCCPMrgFusion(PredictionUnit& pu, PelBuf& predCb, PelBuf& predCr);
   void xCalcCcpMrgPred(const PredictionUnit& pu, const ComponentID compID, PelBuf& piPredNonLm, PelBuf& piPredLm);
+#endif
+#if JVET_AM0074_INTRA_MERGE
+  void updateIntraMergeModeTest(static_vector<std::pair<int32_t, double>, FAST_UDI_MAX_RDMODE_NUM> m_uiRdModeCostList);
 #endif
 };// END CLASS DEFINITION EncSearch
 

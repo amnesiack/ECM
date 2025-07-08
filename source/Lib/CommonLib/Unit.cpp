@@ -306,6 +306,38 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   candModeListForTransformMtss = other.candModeListForTransformMtss;
   candCostListForTransformMtss = other.candCostListForTransformMtss;
 #endif 
+#if JVET_AM0074_INTRA_MERGE
+  intraMergeMode = other.intraMergeMode;
+  allowIntraMergeMode = other.allowIntraMergeMode;
+#if JVET_AB0157_INTRA_FUSION
+  for (int i = 0; i < DIMD_FUSION_NUM - 1; i++)
+  {
+    dimdLocDepMerge[i] = other.dimdLocDepMerge[i];
+    dimdBlendModeMerge[i] = other.dimdBlendModeMerge[i];
+  }
+  for (int i = 0; i < DIMD_FUSION_NUM; i++)
+  {
+    dimdRelWeightMerge[i] = other.dimdRelWeightMerge[i];
+  }
+#else
+  for (int i = 0; i < 2; i++)
+  {
+    dimdLocDepMerge[i] = other.dimdLocDepMerge[i];
+    dimdBlendModeMerge[i] = other.dimdBlendModeMerge[i];
+  }
+  for (int i = 0; i < 3; i++)
+  {
+    dimdRelWeightMerge[i] = other.dimdRelWeightMerge[i];
+  }
+#endif
+  dimdModeMerge = other.dimdModeMerge;
+  isBvDimdExtAvail = other.isBvDimdExtAvail;
+  for (int i = 0; i < DIMD_FUSION_NUM; i++)
+  {
+    isBvDimdExt[i] = other.isBvDimdExt[i];
+    bvDimdExt[i]   = other.bvDimdExt[i];
+  }
+#endif
 #if ENABLE_DIMD
 #if JVET_AH0076_OBIC
   obicFlag = other.obicFlag;
@@ -405,8 +437,17 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if TMP_FAST_ENC
 #if JVET_AD0086_ENHANCED_INTRA_TMP
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if !JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
   tmpXdisp = other.tmpXdisp;
   tmpYdisp = other.tmpYdisp;
+#endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  for (int i = 0; i < MTMP_NUM; i++)
+  {
+    tmpXYdisp[i]      = other.tmpXYdisp[i];
+    tmpXYdispUseMR[i] = other.tmpXYdispUseMR[i];
+  }
 #endif
   tmpIdx        = other.tmpIdx;
   tmpFusionFlag = other.tmpFusionFlag;
@@ -418,6 +459,9 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   tmpSubPelIdx = other.tmpSubPelIdx;
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
   tmpFracIdx    = other.tmpFracIdx;
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  tempType      = other.tempType;
 #endif
 #endif
 #endif
@@ -463,6 +507,15 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
     timdFusionWeightSad[i] = other.timdFusionWeightSad[i];
     timdLocDepSad[i]       = other.timdLocDepSad[i];
   }
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  for (int i = 0; i < TIMD_FUSION_NUM; i++)
+  {
+    timdBv[i]      = other.timdBv[i];
+    isBvTimd[i]    = other.isBvTimd[i];
+    timdBvSad[i]   = other.timdBvSad[i];
+    isBvTimdSad[i] = other.isBvTimdSad[i];
+  }
+#endif
 #else
   timdFusionWeightSad[0] = other.timdFusionWeightSad[0];
   timdFusionWeightSad[1] = other.timdFusionWeightSad[1];
@@ -547,6 +600,21 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
   tmpFlag           = other.tmpFlag;
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST 
   intraTmpDimdMode = other.intraTmpDimdMode;
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  for (int iTimd = 0; iTimd < NumTimdMode; iTimd++)
+  {
+    timdDimdMode[iTimd]       = other.timdDimdMode[iTimd];
+    timdSecondDimdMode[iTimd] = other.timdSecondDimdMode[iTimd];
+  }
+  timdSadDimdMode       = other.timdSadDimdMode;
+  timdSecondSadDimdMode = other.timdSecondSadDimdMode;
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  dimdDimdMode       = other.dimdDimdMode;
+  dimdSecondDimdMode = other.dimdSecondDimdMode;
+  obicDimdMode       = other.obicDimdMode;
+  obicSecondDimdMode = other.obicSecondDimdMode;
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   dimdDerivedIntraDir = other.dimdDerivedIntraDir;
@@ -715,6 +783,38 @@ void CodingUnit::initData()
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   plIdx = 0;
 #endif
+#if JVET_AM0074_INTRA_MERGE
+  intraMergeMode = 0;
+  allowIntraMergeMode = 0;
+#if JVET_AB0157_INTRA_FUSION
+  for (int i = 0; i < DIMD_FUSION_NUM - 1; i++)
+  {
+    dimdLocDepMerge[i] = 0;
+    dimdBlendModeMerge[i] = -1;
+  }
+  for (int i = 0; i < DIMD_FUSION_NUM; i++)
+  {
+    dimdRelWeightMerge[i] = -1;
+  }
+#else
+  for (int i = 0; i < 2; i++)
+  {
+    dimdLocDepMerge[i] = 0;
+    dimdBlendModeMerge[i] = -1;
+  }
+  for (int i = 0; i < 3; i++)
+  {
+    dimdRelWeightMerge[i] = -1;
+  }
+#endif
+  dimdModeMerge = -1;
+  isBvDimdExtAvail = false;
+  for (int i = 0; i < DIMD_FUSION_NUM; i++)
+  {
+    isBvDimdExt[i] = false;
+    bvDimdExt[i]   = Mv(0, 0);
+  }
+#endif
 #if ENABLE_DIMD
 #if JVET_AH0076_OBIC
   obicFlag = false;
@@ -814,8 +914,17 @@ void CodingUnit::initData()
 #if TMP_FAST_ENC
 #if JVET_AD0086_ENHANCED_INTRA_TMP
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if !JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
   tmpXdisp = 0;
   tmpYdisp = 0;
+#endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  for (int i = 0; i < MTMP_NUM; i++)
+  {
+    tmpXYdisp[i]      = Mv(0, 0);
+    tmpXYdispUseMR[i] = Mv(0, 0);
+  }
 #endif
   tmpIdx        = 0;
   tmpFusionFlag = false;
@@ -827,6 +936,9 @@ void CodingUnit::initData()
 #endif
 #if JVET_AG0136_INTRA_TMP_LIC
   tmpLicFlag   = false;
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  tempType = UNDEF_TEMPLATE;
 #endif
 #endif
 #endif
@@ -874,6 +986,15 @@ void CodingUnit::initData()
   timdModeSecondarySad        = -1;
 #endif
   timdIsBlendedSad     = false;
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  for (int i = 0; i < TIMD_FUSION_NUM; i++)
+  {
+    timdBv[i]      = Mv(0, 0);
+    isBvTimd[i]    = false;
+    timdBvSad[i]   = Mv(0, 0);
+    isBvTimdSad[i] = false;
+  }
+#endif
 #if JVET_AG0092_ENHANCED_TIMD_FUSION
   timdModeNonAngSad    = INVALID_TIMD_IDX;
   for( int i = 0; i < TIMD_FUSION_NUM; i++ )
@@ -957,6 +1078,21 @@ void CodingUnit::initData()
   tmpFlag = false;
 #if JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST 
   intraTmpDimdMode = -1;
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  for (int iTimd = 0; iTimd < NumTimdMode; iTimd++)
+  {
+    timdDimdMode[iTimd]       = -1;
+    timdSecondDimdMode[iTimd] = -1;
+  }
+  timdSadDimdMode       = -1;
+  timdSecondSadDimdMode = -1;
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  dimdDimdMode       = -1;
+  dimdSecondDimdMode = -1;
+  obicDimdMode       = -1;
+  obicSecondDimdMode = -1;
 #endif
 #if JVET_AG0061_INTER_LFNST_NSPT
   dimdDerivedIntraDir = 0;

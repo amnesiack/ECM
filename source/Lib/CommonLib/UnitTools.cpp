@@ -1443,6 +1443,340 @@ bool PU::checkBvInfoAvailable(std::vector<BvInfo>& pBv, BvInfo curBv)
   return 0;
 }
 #endif
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vector<Mv>& pBv)
+{
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu) && !PU::isBvEip(*pu) && (!pu->cu->sgpm) && (!pu->cu->dimd)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    && (!pu->cu->timd)
+#endif
+    ))
+#else
+  if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu) && !PU::isBvEip(*pu)))
+#endif
+  {
+    return;
+  }
+
+  if (pu && pu->cu->predMode == MODE_IBC)
+  {
+    if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
+    {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+      if (!PU::checkBvAvailable(pBv, pu->bv))
+#else
+      if (!CheckBvAvailable(pBv, pu->bv))
+#endif
+      {
+        pBv.push_back(pu->bv);
+      }
+    }
+
+    if (pu->interDir == 3)
+    {
+      Mv bv(pu->mv[REF_PIC_LIST_1]);
+      bv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, bv))
+#else
+        if (!CheckBvAvailable(pBv, bv))
+#endif
+        {
+          pBv.push_back(bv);
+        }
+      }
+    }
+    return;
+  }
+#if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+  if (pu && (pu->cu->tmpFlag || PU::hasBvgBv(pu) || PU::isBvEip(*pu)))
+#else
+  if (pu && (pu->cu->tmpFlag || PU::hasBvgBv(pu)))
+#endif
+#else
+  if (pu && pu->cu->tmpFlag)
+#endif
+  {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    Mv bvFusion;
+    if (pu->cu->tmpFusionFlag)
+    {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      const int tmpFusionIdx = getTmpFusionIdx(pu->cu->tmpIdx);
+      const int tmpFusionNumber = getTmpFusionNumber(tmpFusionIdx, true);
+      for (int iIdx = tmpFusionIdx; iIdx < tmpFusionIdx + tmpFusionNumber; iIdx++)
+#else
+      const int tmpFusionIdx = (pu->cu->tmpIdx % TMP_GROUP_IDX) * TMP_FUSION_NUM;
+      int       iNumFusionCands = tmpFusionIdx + TMP_BV_FUS_CAND_MRG;
+      for (int iIdx = tmpFusionIdx; iIdx < iNumFusionCands; iIdx++)
+#endif
+      {
+        bvFusion = pu->cu->tmpLicFlag ? pu->cu->tmpXYdispUseMR[iIdx] : pu->cu->tmpXYdisp[iIdx];
+        if (PU::validItmpBv(puOrg, bvFusion.hor, bvFusion.ver))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pBv, bvFusion))
+#else
+          if (!CheckBvAvailable(pBv, bvFusion))
+#endif
+          {
+            pBv.push_back(bvFusion);
+          }
+        }
+      }
+      // Check the candidate at the index 0 (best-by-cost)
+      if (tmpFusionIdx != 0)
+      {
+        bvFusion = pu->cu->tmpLicFlag ? pu->cu->tmpXYdispUseMR[0] : pu->cu->tmpXYdisp[0];
+        if (PU::validItmpBv(puOrg, bvFusion.hor, bvFusion.ver))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pBv, bvFusion))
+#else
+          if (!CheckBvAvailable(pBv, bvFusion))
+#endif
+          {
+            pBv.push_back(bvFusion);
+          }
+        }
+      }
+      return;
+    }
+    else
+    {
+#endif
+      if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->bv))
+#else
+        if (!CheckBvAvailable(pBv, pu->bv))
+#endif  
+        {
+          pBv.push_back(pu->bv);
+        }
+      }
+
+      if (pu->cu->tmpIdx > 0
+#if JVET_AL0108_BVG_DIMD
+        && !PU::hasBvgBv(pu)
+#endif
+#if JVET_AL0106_BV_EIP
+        && !PU::isBvEip(*pu)
+#endif        
+        )
+      {
+        Mv bv = pu->cu->tmpLicFlag ? pu->cu->tmpXYdispUseMR[0] : pu->cu->tmpXYdisp[0];
+        if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pBv, bv))
+#else
+          if (!CheckBvAvailable(pBv, bv))
+#endif
+          {
+            pBv.push_back(bv);
+          }
+        }
+      }
+      return;
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    }
+#endif
+  }
+
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+  if (pu && CU::isInter(*pu->cu) && pu->cu->geoFlag && pu->gpmInterIbcFlag)
+  {
+    bool isValid = pu->getMotionInfo(pu->lumaPos().offset(pu->lwidth() >> 1, pu->lheight() >> 1)).isIBCmot;
+    if (isValid)
+    {
+      MotionInfo mi = pu->getMotionInfo(pu->lumaPos().offset(pu->lwidth() >> 1, pu->lheight() >> 1));
+      Mv bv = mi.mv[0];
+      bv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, bv))
+#else
+        if (!CheckBvAvailable(pBv, bv))
+#endif
+        {
+          pBv.push_back(bv);
+        }
+      }
+    }
+    return;
+  }
+#endif
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  if (pu && pu->cu->dimd && pu->cu->isBvDimd)
+  {
+    if (PU::validItmpBv(puOrg, pu->cu->bvDimd.hor, pu->cu->bvDimd.ver))
+    {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+      if (!PU::checkBvAvailable(pBv, pu->cu->bvDimd))
+#else
+      if (!CheckBvAvailable(pBv, pu->cu->bvDimd))
+#endif
+      {
+        pBv.push_back(pu->cu->bvDimd);
+      }
+    }
+    return;
+  }
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  if (pu && pu->cu->timd && !pu->cu->timdSad && !pu->cu->timdMrg)
+  {
+    if (pu->cu->isBvTimd[0]) // check first TIMD mode
+    {
+      if (PU::validItmpBv(puOrg, pu->cu->timdBv[0].hor, pu->cu->timdBv[0].ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->cu->timdBv[0]))
+#else
+        if (!CheckBvAvailable(pBv, pu->cu->timdBv[0]))
+#endif
+        {
+          pBv.push_back(pu->cu->timdBv[0]);
+        }
+      }
+    }
+    if (pu->cu->isBvTimd[1]) // check second TIMD mode
+    {
+      if (PU::validItmpBv(puOrg, pu->cu->timdBv[1].hor, pu->cu->timdBv[1].ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->cu->timdBv[1]))
+#else
+        if (!CheckBvAvailable(pBv, pu->cu->timdBv[1]))
+#endif
+        {
+          pBv.push_back(pu->cu->timdBv[1]);
+        }
+      }
+    }
+    if (pu->cu->isBvTimd[2]) // check non angular TIMD mode
+    {
+      if (PU::validItmpBv(puOrg, pu->cu->timdBv[2].hor, pu->cu->timdBv[2].ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->cu->timdBv[2]))
+#else
+        if (!CheckBvAvailable(pBv, pu->cu->timdBv[2]))
+#endif
+        {
+          pBv.push_back(pu->cu->timdBv[2]);
+        }
+      }
+    }
+    return;
+  }
+
+  if (pu && pu->cu->timd && pu->cu->timdSad && !pu->cu->timdMrg)
+  {
+    if (pu->cu->isBvTimdSad[0]) // check first TIMD-Sad mode
+    {
+      if (PU::validItmpBv(puOrg, pu->cu->timdBvSad[0].hor, pu->cu->timdBvSad[0].ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->cu->timdBvSad[0]))
+#else
+        if (!CheckBvAvailable(pBv, pu->cu->timdBvSad[0]))
+#endif
+        {
+          pBv.push_back(pu->cu->timdBvSad[0]);
+        }
+      }
+    }
+    if (pu->cu->isBvTimdSad[1]) // check second TIMD-Sad mode
+    {
+      if (PU::validItmpBv(puOrg, pu->cu->timdBvSad[1].hor, pu->cu->timdBvSad[1].ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->cu->timdBvSad[1]))
+#else
+        if (!CheckBvAvailable(pBv, pu->cu->timdBvSad[1]))
+#endif
+        {
+          pBv.push_back(pu->cu->timdBvSad[1]);
+        }
+      }
+    }
+    if (pu->cu->isBvTimdSad[2]) // check non angular TIMD-Sad mode
+    {
+      if (PU::validItmpBv(puOrg, pu->cu->timdBvSad[2].hor, pu->cu->timdBvSad[2].ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, pu->cu->timdBvSad[2]))
+#else
+        if (!CheckBvAvailable(pBv, pu->cu->timdBvSad[2]))
+#endif
+        {
+          pBv.push_back(pu->cu->timdBvSad[2]);
+        }
+      }
+    }
+    return;
+  }
+#endif
+
+  if (pu && pu->cu->sgpm)
+  {
+    if (pu->cu->sgpmMode0 >= SGPM_BV_START_IDX)
+    {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv curBv = pu->cu->sgpmBv0.mv;
+#else
+      Mv curBv = pu->cu->sgpmBv0;
+#endif
+      curBv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+    }
+
+    if (pu->cu->sgpmMode1 >= SGPM_BV_START_IDX)
+    {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv curBv = pu->cu->sgpmBv1.mv;
+#else
+      Mv curBv = pu->cu->sgpmBv1;
+#endif
+      curBv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+    }
+    return;
+  }
+#endif
+}
+#endif
+
 void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vector<Mv>& pBv
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AL0188_SGPM_FLIPAWARE_BV
@@ -1453,20 +1787,31 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
 )
 {
+#if JVET_AI0082_GPM_WITH_INTER_IBC
 #if JVET_AL0108_BVG_DIMD
 #if JVET_AL0106_BV_EIP
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu) && !PU::isBvEip(*pu) && (!pu->cu->sgpm) && (!pu->cu->dimd)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+      && (!pu->cu->timd)
+#endif
+      ))
+#else
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu) && !PU::isBvEip(*pu)))
+#endif
 #else
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag) && !PU::hasBvgBv(pu)))
 #endif
-#elif JVET_AI0082_GPM_WITH_INTER_IBC
+#else
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag) && (!pu->cu->geoFlag)))
+#endif
 #else
   if (!pu || ((pu->cu->predMode != MODE_IBC) && (!pu->cu->tmpFlag)))
 #endif
   {
     return;
   }
+
   if (pu && pu->cu->predMode == MODE_IBC)
   {
     if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
@@ -1518,7 +1863,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     if (PU::validIBCItmpMv(puOrg, pu->mv[0], SGPM_TEMPLATE_SIZE))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-      if (!PU::CheckBvAvailable(pSgpmMvs, pu->mv[0]))
+      if (!PU::checkBvAvailable(pSgpmMvs, pu->mv[0]))
 #else
       if (!CheckBvAvailable(pSgpmMvs, pu->mv[0]))
 #endif
@@ -1569,7 +1914,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       if (PU::validIBCItmpMv(puOrg, pu->mv[1], SGPM_TEMPLATE_SIZE))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-        if (!PU::CheckBvAvailable(pSgpmMvs, pu->mv[1]))
+        if (!PU::checkBvAvailable(pSgpmMvs, pu->mv[1]))
 #else
         if (!CheckBvAvailable(pSgpmMvs, pu->mv[1]))
 #endif
@@ -1580,7 +1925,6 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
 #endif
     }
-
     return;
   }
 
@@ -1594,6 +1938,117 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
   if (pu && pu->cu->tmpFlag)
 #endif
   {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    Mv bvFusion;
+    if (pu->cu->tmpFusionFlag)
+    {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      const int tmpFusionIdx = getTmpFusionIdx(pu->cu->tmpIdx);
+      const int tmpFusionNumber = getTmpFusionNumber(tmpFusionIdx, true);
+      for (int iIdx = tmpFusionIdx; iIdx < tmpFusionIdx + tmpFusionNumber; iIdx++)
+#else
+      const int tmpFusionIdx = (pu->cu->tmpIdx % TMP_GROUP_IDX) * TMP_FUSION_NUM;
+      int       iNumFusionCands = tmpFusionIdx + TMP_BV_FUS_CAND_MRG;
+
+      for (int iIdx = tmpFusionIdx; iIdx < iNumFusionCands; iIdx++)
+#endif
+      {
+        bvFusion = pu->cu->tmpLicFlag ? pu->cu->tmpXYdispUseMR[iIdx] : pu->cu->tmpXYdisp[iIdx];
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        if (PU::validItmpBv(puOrg, bvFusion.hor, bvFusion.ver))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pBv, bvFusion))
+#else
+          if (!CheckBvAvailable(pBv, bvFusion))
+#endif
+          {
+            pBv.push_back(bvFusion);
+          }
+        }
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+        bvFusion.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+        int flipType = pu->cu->rribcFlipType;
+        CompArea lumaArea = puOrg.Y();
+        bvFusion = PU::adjustLumaBv(*pu, lumaArea, bvFusion);
+        if (PU::validIBCItmpMv(puOrg, bvFusion, SGPM_TEMPLATE_SIZE, flipType))
+        {
+          if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(bvFusion, flipType)))
+          {
+            pSgpmMvs.push_back(BvInfo(bvFusion, flipType));
+          }
+        }
+#else
+        if (PU::validIBCItmpMv(puOrg, bvFusion, SGPM_TEMPLATE_SIZE))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pSgpmMvs, bvFusion))
+#else
+          if (!CheckBvAvailable(pSgpmMvs, bvFusion))
+#endif
+          {
+            pSgpmMvs.push_back(bvFusion);
+          }
+        }
+#endif
+#endif
+#endif
+      }
+      // Check the candidate at the index 0 (best-by-cost)
+      if (tmpFusionIdx != 0)
+      {
+        bvFusion = pu->cu->tmpLicFlag ? pu->cu->tmpXYdispUseMR[0] : pu->cu->tmpXYdisp[0];
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        if (PU::validItmpBv(puOrg, bvFusion.hor, bvFusion.ver))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pBv, bvFusion))
+#else
+          if (!CheckBvAvailable(pBv, bvFusion))
+#endif
+          {
+            pBv.push_back(bvFusion);
+          }
+        }
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+        bvFusion.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+        int flipType = pu->cu->rribcFlipType;
+        CompArea lumaArea = puOrg.Y();
+        bvFusion = PU::adjustLumaBv(*pu, lumaArea, bvFusion);
+        if (PU::validIBCItmpMv(puOrg, bvFusion, SGPM_TEMPLATE_SIZE, flipType))
+        {
+          if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(bvFusion, flipType)))
+          {
+            pSgpmMvs.push_back(BvInfo(bvFusion, flipType));
+          }
+        }
+#else
+        if (PU::validIBCItmpMv(puOrg, bvFusion, SGPM_TEMPLATE_SIZE))
+        {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+          if (!PU::checkBvAvailable(pSgpmMvs, bvFusion))
+#else
+          if (!CheckBvAvailable(pSgpmMvs, bvFusion))
+#endif
+          {
+            pSgpmMvs.push_back(bvFusion);
+          }
+        }
+#endif
+#endif
+#endif
+      }
+      return;
+    }
+    else
+    {
+#endif
     if (PU::validItmpBv(puOrg, pu->bv.hor, pu->bv.ver))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
@@ -1644,7 +2099,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
     if (PU::validIBCItmpMv(puOrg, pu->mv[0], SGPM_TEMPLATE_SIZE))
     {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-      if (!PU::CheckBvAvailable(pSgpmMvs, pu->mv[0]))
+      if (!PU::checkBvAvailable(pSgpmMvs, pu->mv[0]))
 #else
       if (!CheckBvAvailable(pSgpmMvs, pu->mv[0]))
 #endif
@@ -1657,7 +2112,9 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 
     if (pu->cu->tmpIdx > 0
 #if JVET_AG0136_INTRA_TMP_LIC
+#if !JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
       && !pu->cu->tmpLicFlag
+#endif
 #endif
 #if JVET_AL0108_BVG_DIMD
       && !PU::hasBvgBv(pu)
@@ -1667,7 +2124,11 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
       )
     {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV 
+      Mv bv = pu->cu->tmpLicFlag ? pu->cu->tmpXYdispUseMR[0] : pu->cu->tmpXYdisp[0];
+#else
       Mv bv(pu->cu->tmpXdisp, pu->cu->tmpYdisp);
+#endif
 
       if (PU::validItmpBv(puOrg, bv.hor, bv.ver))
       {
@@ -1708,7 +2169,7 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-        if (!PU::CheckBvAvailable(pSgpmMvs, bv))
+        if (!PU::checkBvAvailable(pSgpmMvs, bv))
 #else
         if (!CheckBvAvailable(pSgpmMvs, bv))
 #endif
@@ -1720,6 +2181,9 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
     }
     return;
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    }
+#endif
   }
 
 #if JVET_AI0082_GPM_WITH_INTER_IBC
@@ -1771,7 +2235,432 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
       if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
       {
 #if JVET_AH0055_INTRA_TMP_ARBVP
-        if (!PU::CheckBvAvailable(pSgpmMvs, bv))
+        if (!PU::checkBvAvailable(pSgpmMvs, bv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, bv))
+#endif
+        {
+          pSgpmMvs.push_back(bv);
+        }
+      }
+#endif
+#endif
+    }
+    return;
+  }
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  if (pu && pu->cu->dimd && pu->cu->isBvDimd)
+  {
+    if (PU::validItmpBv(puOrg, pu->cu->bvDimd.hor, pu->cu->bvDimd.ver))
+    {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+      if (!PU::checkBvAvailable(pBv, pu->cu->bvDimd))
+#else
+      if (!CheckBvAvailable(pBv, pu->cu->bvDimd))
+#endif
+      {
+        pBv.push_back(pu->cu->bvDimd);
+      }
+    }
+
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+    Mv bv(pu->cu->bvDimd);
+    bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+    int flipType = pu->cu->rribcFlipType;
+    Mv sgpmMv = bv;
+    CompArea lumaArea = puOrg.Y();
+    sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+    if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+    {
+      if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+      {
+        pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+      }
+    }
+#else
+    bv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+    if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
+    {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+      if (!PU::checkBvAvailable(pSgpmMvs, bv))
+#else
+      if (!CheckBvAvailable(pSgpmMvs, bv))
+#endif
+      {
+        pSgpmMvs.push_back(bv);
+      }
+    }
+#endif
+#endif
+    return;
+  }
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  if (pu && pu->cu->timd && !pu->cu->timdSad && !pu->cu->timdMrg)
+  {
+    if (pu->cu->isBvTimd[0])
+    {
+      Mv curBv = pu->cu->timdBv[0];
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = curBv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      if (PU::validIBCItmpMv(puOrg, curBv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, curBv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, curBv))
+#endif
+        {
+          pSgpmMvs.push_back(curBv);
+        }
+      }
+#endif
+#endif
+    }
+    if (pu->cu->isBvTimd[1])
+    {
+      Mv curBv = pu->cu->timdBv[1];
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = curBv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      if (PU::validIBCItmpMv(puOrg, curBv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, curBv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, curBv))
+#endif
+        {
+          pSgpmMvs.push_back(curBv);
+        }
+      }
+#endif
+#endif
+    }
+    if (pu->cu->isBvTimd[2])
+    {
+      Mv curBv = pu->cu->timdBv[2];
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = curBv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      if (PU::validIBCItmpMv(puOrg, curBv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, curBv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, curBv))
+#endif
+        {
+          pSgpmMvs.push_back(curBv);
+        }
+      }
+#endif
+#endif
+    }
+    return;
+  }
+
+  if (pu && pu->cu->timd && pu->cu->timdSad && !pu->cu->timdMrg)
+  {
+    if (pu->cu->isBvTimdSad[0])
+    {
+      Mv curBv = pu->cu->timdBvSad[0];
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = curBv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      if (PU::validIBCItmpMv(puOrg, curBv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, curBv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, curBv))
+#endif
+        {
+          pSgpmMvs.push_back(curBv);
+        }
+      }
+#endif
+#endif
+    }
+    if (pu->cu->isBvTimdSad[1])
+    {
+      Mv curBv = pu->cu->timdBvSad[1];
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = curBv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      if (PU::validIBCItmpMv(puOrg, curBv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, curBv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, curBv))
+#endif
+        {
+          pSgpmMvs.push_back(curBv);
+        }
+      }
+#endif
+#endif
+    }
+    if (pu->cu->isBvTimdSad[2])
+    {
+      Mv curBv = pu->cu->timdBvSad[2];
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = curBv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      curBv.changePrecision(MV_PRECISION_INT, MV_PRECISION_INTERNAL);
+      if (PU::validIBCItmpMv(puOrg, curBv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, curBv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, curBv))
+#endif
+        {
+          pSgpmMvs.push_back(curBv);
+        }
+      }
+#endif
+#endif
+    }
+    return;
+  }
+#endif
+
+  if (pu && pu->cu->sgpm)
+  {
+    if (pu->cu->sgpmMode0 >= SGPM_BV_START_IDX)
+    {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv curBv = pu->cu->sgpmBv0.mv;
+#else
+      Mv curBv = pu->cu->sgpmBv0;
+#endif
+      curBv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv bv(pu->cu->sgpmBv0.mv);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = bv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, bv))
+#else
+        if (!CheckBvAvailable(pSgpmMvs, bv))
+#endif
+        {
+          pSgpmMvs.push_back(bv);
+        }
+      }
+#endif
+#endif
+    }
+    if (pu->cu->sgpmMode1 >= SGPM_BV_START_IDX)
+    {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv curBv = pu->cu->sgpmBv1.mv;
+#else
+      Mv curBv = pu->cu->sgpmBv1;
+#endif
+      curBv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      if (PU::validItmpBv(puOrg, curBv.hor, curBv.ver))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pBv, curBv))
+#else
+        if (!CheckBvAvailable(pBv, curBv))
+#endif
+        {
+          pBv.push_back(curBv);
+        }
+      }
+#if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+      Mv bv(pu->cu->sgpmBv1.mv);
+      int flipType = pu->cu->rribcFlipType;
+      Mv sgpmMv = bv;
+      CompArea lumaArea = puOrg.Y();
+      sgpmMv = PU::adjustLumaBv(*pu, lumaArea, sgpmMv);
+      if (PU::validIBCItmpMv(puOrg, sgpmMv, SGPM_TEMPLATE_SIZE, flipType))
+      {
+        if (!PU::checkBvInfoAvailable(pSgpmMvs, BvInfo(sgpmMv, flipType)))
+        {
+          pSgpmMvs.push_back(BvInfo(sgpmMv, flipType));
+        }
+      }
+#else
+      if (PU::validIBCItmpMv(puOrg, bv, SGPM_TEMPLATE_SIZE))
+      {
+#if JVET_AH0055_INTRA_TMP_ARBVP
+        if (!PU::checkBvAvailable(pSgpmMvs, bv))
 #else
         if (!CheckBvAvailable(pSgpmMvs, bv))
 #endif
@@ -1787,6 +2676,1305 @@ void getNeighBv(const PredictionUnit& puOrg, const PredictionUnit* pu, std::vect
 #endif
 }
 
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+int PU::sortInOut(CodingUnit* pcCU, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType, std::vector<Mv>& mergeCands)
+{
+  if (tempType == NO_TEMPLATE || mergeCands.empty() || mergeCands.size() <= MAX_TO_KEEP_MERGE)
+  {
+    return (int)mergeCands.size();
+  }
+
+  CompArea area = pcCU->blocks[0];
+
+  const int iCurrY = area.pos().y;
+  const int iCurrX = area.pos().x;
+
+  Position ctuRsAddr = CU::getCtuXYAddr(*pcCU);
+  int      offsetLCUY = iCurrY - ctuRsAddr.y;
+  int      offsetLCUX = iCurrX - ctuRsAddr.x;
+
+  const int regionNum = 6;
+  int mvYMins[regionNum];
+  int mvYMaxs[regionNum];
+  int mvXMins[regionNum];
+  int mvXMaxs[regionNum];
+
+  std::vector<int> bvRegionIdList(mergeCands.size(), regionNum);
+
+  // set region boundaries
+  for (int regionId = 0; regionId < regionNum; regionId++)
+  {
+#if JVET_AD0086_ENHANCED_INTRA_TMP
+#if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+    const int searchRangeWidth = std::max((uiBlkWidth == 64 ? TMP_SEARCH_RANGE_MULT_FACTOR - 1 : TMP_SEARCH_RANGE_MULT_FACTOR) * static_cast<int>(uiBlkWidth), TMP_MINSR);
+    const int searchRangeHeight = std::max((uiBlkHeight == 64 ? TMP_SEARCH_RANGE_MULT_FACTOR - 1 : TMP_SEARCH_RANGE_MULT_FACTOR) * static_cast<int>(uiBlkHeight), TMP_MINSR);
+#else
+    int searchRangeWidth = std::max(TMP_SEARCH_RANGE_MULT_FACTOR * (int)uiBlkWidth, TMP_MINSR);
+    int searchRangeHeight = std::max(TMP_SEARCH_RANGE_MULT_FACTOR * (int)uiBlkHeight, TMP_MINSR);
+#endif
+#else  
+    int searchRangeWidth = TMP_SEARCH_RANGE_MULT_FACTOR * uiBlkWidth;
+    int searchRangeHeight = TMP_SEARCH_RANGE_MULT_FACTOR * uiBlkHeight;
+#endif   
+    int iMvShift = 0;
+    int iTemplateSize = TMP_TEMPLATE_SIZE;
+    int iBlkWidth = uiBlkWidth;
+    int iBlkHeight = uiBlkHeight;
+    int iCTUsize = pcCU->cs->sps->getCTUSize();
+
+    int iVerMin = mvYMins[regionId];
+    int iVerMax = mvYMaxs[regionId];
+    int iHorMin = mvXMins[regionId];
+    int iHorMax = mvXMaxs[regionId];
+
+    iHorMin = iVerMin = 0;
+    iHorMax = iVerMax = INT_MAX;
+
+    if (regionId == 0) // Above outside CTU
+    {
+      iVerMax = (iCurrY - offsetLCUY - iBlkHeight) << iMvShift;
+    }
+    else if (regionId == 1) // Left outside and top-left within CTU
+    {
+#if JVET_AD0086_ENHANCED_INTRA_TMP
+      iHorMax = (iCurrX - iBlkWidth) << iMvShift;
+#if JVET_AE0077_EXT_INTRATMP
+      iVerMin = (iCurrY - offsetLCUY - iBlkHeight + 1) << iMvShift;
+#else
+      iVerMin = (iCurrY - offsetLCUY - iBlkHeight) << iMvShift;
+#endif
+      iVerMax = (iCurrY) << iMvShift;
+#else
+      iHorMax = (iCurrX - offsetLCUX - iBlkWidth) << iMvShift;
+      iVerMin = (iCurrY - offsetLCUY - iBlkHeight) << iMvShift;
+      iVerMax = (iCurrY) << iMvShift;
+#endif
+    }
+    else if (regionId == 2) // Left-bottom outside CTU
+    {
+      iHorMax = (iCurrX - offsetLCUX - iBlkWidth) << iMvShift;
+      iVerMin = (iCurrY + 1) << iMvShift;
+      iVerMax = (iCurrY - offsetLCUY + iCTUsize - iBlkHeight) << iMvShift;
+    }
+    else if (regionId == 3)   // Top within CTU
+    {
+      iVerMin = (iCurrY - offsetLCUY - iBlkHeight + 1) << iMvShift;
+      iVerMax = (iCurrY - iBlkHeight) << iMvShift;
+#if JVET_AD0086_ENHANCED_INTRA_TMP
+      iHorMin = (iCurrX - iBlkWidth + 1) << iMvShift;
+      iHorMax = (iCurrX) << iMvShift;
+#else
+      iHorMin = (iCurrX - offsetLCUX - iBlkWidth + 1) << iMvShift;
+      iHorMax = (iCurrX - iBlkWidth) << iMvShift;
+#endif
+    }
+#if JVET_AE0077_EXT_INTRATMP
+    else if (regionId == 4)   // Bottom-Left within CTU
+    {
+      iHorMin = (iCurrX - offsetLCUX - iBlkWidth + 1) << iMvShift;
+      iHorMax = (iCurrX - iBlkWidth) << iMvShift;
+      iVerMin = (iCurrY + 1) << iMvShift;
+      iVerMax = (iCurrY - offsetLCUY + iCTUsize - iBlkHeight) << iMvShift;
+    }
+    else if (regionId == 5)   // Top-right within CTU
+    {
+      iHorMin = (iCurrX + 1) << iMvShift;
+      iHorMax = (iCurrX - offsetLCUX + iCTUsize - iBlkWidth) << iMvShift;
+      iVerMin = (iCurrY - offsetLCUY - iBlkHeight + 1) << iMvShift;
+      iVerMax = (iCurrY - iBlkHeight) << iMvShift;
+    }
+#endif
+
+    // Clipping by frame boundaries
+    iVerMin = std::max(iVerMin, (tempType != LEFT_TEMPLATE) ? iTemplateSize << iMvShift : 0);
+    iVerMax = std::min(iVerMax, ((int)pcCU->cs->pps->getPicHeightInLumaSamples() - iBlkHeight) << iMvShift);
+    iHorMin = std::max(iHorMin, (tempType != ABOVE_TEMPLATE) ? iTemplateSize << iMvShift : 0);
+    iHorMax = std::min(iHorMax, ((int)pcCU->cs->pps->getPicWidthInLumaSamples() - iBlkWidth) << iMvShift);
+
+    // Clipping by search range
+#if !JVET_AE0077_EXT_INTRATMP
+    if (regionId == 0)
+    {
+#endif
+      iVerMin = std::max(iVerMin, (iCurrY - searchRangeHeight) << iMvShift);
+      iVerMax = std::min(iVerMax, (iCurrY + searchRangeHeight) << iMvShift);
+#if !JVET_AE0077_EXT_INTRATMP
+    }
+    if (regionId != 3)
+    {
+#endif
+      iHorMin = std::max(iHorMin, (iCurrX - searchRangeWidth) << iMvShift);
+      iHorMax = std::min(iHorMax, (iCurrX + searchRangeWidth) << iMvShift);
+#if !JVET_AE0077_EXT_INTRATMP
+    }
+#endif
+
+    iHorMin = iHorMin - iCurrX;
+    iHorMax = iHorMax - iCurrX;
+    iVerMax = iVerMax - iCurrY;
+    iVerMin = iVerMin - iCurrY;
+
+    mvYMins[regionId] = iVerMin;
+    mvYMaxs[regionId] = iVerMax;
+    mvXMins[regionId] = iHorMin;
+    mvXMaxs[regionId] = iHorMax;
+  }
+
+  // set region id for each merge candidate
+  for (int checkIdx = 0; checkIdx < regionNum; checkIdx++)
+  {
+    int regionId = (checkIdx + 3) % regionNum;
+
+    int mvYMin = mvYMins[regionId];
+    int mvYMax = mvYMaxs[regionId];
+    int mvXMin = mvXMins[regionId];
+    int mvXMax = mvXMaxs[regionId];
+    if (mvYMax < mvYMin || mvXMax < mvXMin)
+    {
+      continue;
+    }
+
+    for (int mergeCandIdx = 0; mergeCandIdx < mergeCands.size(); mergeCandIdx++)
+    {
+      Mv mergeCand = mergeCands[mergeCandIdx];
+      if (mergeCand.getHor() >= mvXMin && mergeCand.getHor() <= mvXMax && mergeCand.getVer() >= mvYMin && mergeCand.getVer() <= mvYMax)
+      {
+        bvRegionIdList[mergeCandIdx] = regionId;
+      }
+    }
+  }
+
+  std::vector<Mv> bvBasedMergeCandidatesOut;
+  std::vector<Mv> bvBasedMergeCandidatesIn;
+  for (int iBv = 0; iBv < mergeCands.size(); iBv++)
+  {
+    if (bvRegionIdList[iBv] == regionNum)
+    {
+      bvBasedMergeCandidatesOut.push_back(mergeCands[iBv]);
+
+    }
+    else
+    {
+      bvBasedMergeCandidatesIn.push_back(mergeCands[iBv]);
+    }
+  }
+
+  int keepOut = MAX_TO_KEEP_MERGE - (int)(MAX_TO_KEEP_MERGE / 3);
+  int keepIn = (int)(MAX_TO_KEEP_MERGE / 3);
+  if ((bvBasedMergeCandidatesOut.size() > keepOut) && (bvBasedMergeCandidatesIn.size() > keepIn))
+  {
+    bvBasedMergeCandidatesOut.resize(keepOut);
+    bvBasedMergeCandidatesIn.resize(keepIn);
+  }
+  else
+  {
+    if (bvBasedMergeCandidatesOut.size() > keepOut)
+    {
+      int resize = std::min((int)bvBasedMergeCandidatesOut.size(), (MAX_TO_KEEP_MERGE - (int)bvBasedMergeCandidatesIn.size()));
+      bvBasedMergeCandidatesOut.resize(resize);
+    }
+    else if (bvBasedMergeCandidatesIn.size() > keepIn)
+    {
+      int resize = std::min((int)bvBasedMergeCandidatesIn.size(), (MAX_TO_KEEP_MERGE - (int)bvBasedMergeCandidatesOut.size()));
+      bvBasedMergeCandidatesIn.resize(resize);
+    }
+  }
+
+  bvBasedMergeCandidatesOut.insert(bvBasedMergeCandidatesOut.end(), bvBasedMergeCandidatesIn.begin(), bvBasedMergeCandidatesIn.end());
+
+  mergeCands = bvBasedMergeCandidatesOut;
+
+  return (int)mergeCands.size();
+}
+#endif
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+int PU::getArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs, const int numBvs)
+{
+  if (pBvs.size() == 0)
+  {
+    return 0;
+  }
+
+  const int totalNum = numBvs;
+
+  Position   posCand[5] = { pu.Y().center(), pu.Y().topLeft(), pu.Y().topRight(), pu.Y().bottomLeft(), pu.Y().bottomRight() };
+  int        offsetX = 0, offsetY = 0, start = 0, end = 0;
+  Mv         cMv, cascadedMv, arbv, arbv2, bv, bvFusion;;
+
+  do
+  {
+    start = end;
+    end = (int)pBvs.size();
+    for (int mergeIndex = start; mergeIndex < end && pBvs.size() < totalNum; mergeIndex++)
+    {
+      cMv = pBvs[mergeIndex];
+      offsetX = cMv.getHor();
+      offsetY = cMv.getVer();
+      for (int n = 0; n < 5 && pBvs.size() < totalNum; n++)
+      {
+        const PredictionUnit* puCascaded = pu.cs->getPURestricted(posCand[n].offset(offsetX, offsetY), pu, pu.chType);
+        if (!puCascaded || ((puCascaded->cu->predMode != MODE_IBC) && (!puCascaded->cu->tmpFlag) && (!puCascaded->cu->geoFlag) && !PU::hasBvgBv(puCascaded) && !PU::isBvEip(*puCascaded) && (!puCascaded->cu->sgpm) && (!puCascaded->cu->dimd)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          && (!puCascaded->cu->timd)
+#endif
+          ))
+        {
+          continue;
+        }
+
+        if (puCascaded->cu->predMode == MODE_IBC)
+        {
+          arbv = cMv + puCascaded->bv;
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->bv.hor, puCascaded->bv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->bv))
+            {
+              pBvs.push_back(puCascaded->bv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+
+          if (puCascaded->interDir == 3)
+          {
+            bv = puCascaded->mv[REF_PIC_LIST_1];
+            bv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+            arbv2 = cMv + bv;
+            if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv2))
+              {
+                pBvs.push_back(arbv2);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (validItmpBv(pu, bv.hor, bv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, bv))
+              {
+                pBvs.push_back(bv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+#if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+        if (puCascaded->cu->tmpFlag || PU::hasBvgBv(puCascaded) || PU::isBvEip(*puCascaded))
+#else
+        if (puCascaded->cu->tmpFlag || PU::hasBvgBv(puCascaded))
+#endif
+#else
+        if (puCascaded->cu->tmpFlag)
+#endif
+        {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          if (puCascaded->cu->tmpFusionFlag)
+          {
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+            const int tmpFusionIdx = getTmpFusionIdx(puCascaded->cu->tmpIdx);
+            const int tmpFusionNumber = getTmpFusionNumber(tmpFusionIdx, true);
+            for (int iIdx = tmpFusionIdx; iIdx < tmpFusionIdx + tmpFusionNumber; iIdx++)
+#else
+            const int tmpFusionIdx = (puCascaded->cu->tmpIdx % TMP_GROUP_IDX) * TMP_FUSION_NUM;
+            int       iNumFusionCands = tmpFusionIdx + TMP_BV_FUS_CAND_MRG;
+            for (int iIdx = tmpFusionIdx; iIdx < iNumFusionCands; iIdx++)
+#endif
+            {
+              bvFusion = puCascaded->cu->tmpLicFlag ? puCascaded->cu->tmpXYdispUseMR[iIdx] : puCascaded->cu->tmpXYdisp[iIdx];
+              arbv = cMv + bvFusion;
+              if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+              {
+                if (!PU::checkBvAvailable(pBvs, arbv))
+                {
+                  pBvs.push_back(arbv);
+                  if (pBvs.size() >= totalNum)
+                  {
+                    break;
+                  }
+                }
+              }
+              if (PU::validItmpBv(pu, bvFusion.hor, bvFusion.ver))
+              {
+                if (!PU::checkBvAvailable(pBvs, bvFusion))
+                {
+                  pBvs.push_back(bvFusion);
+                  if (pBvs.size() >= totalNum)
+                  {
+                    break;
+                  }
+                }
+              }
+            }
+
+            // Check the arbv candidate at the index 0 (best-by-cost)
+            if (tmpFusionIdx != 0)
+            {
+              bvFusion = puCascaded->cu->tmpLicFlag ? puCascaded->cu->tmpXYdispUseMR[0] : puCascaded->cu->tmpXYdisp[0];
+              arbv2 = cMv + bvFusion;
+              if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
+              {
+                if (!PU::checkBvAvailable(pBvs, arbv2))
+                {
+                  pBvs.push_back(arbv2);
+                  if (pBvs.size() >= totalNum)
+                  {
+                    break;
+                  }
+                }
+              }
+              if (PU::validItmpBv(pu, bvFusion.hor, bvFusion.ver))
+              {
+                if (!PU::checkBvAvailable(pBvs, bvFusion))
+                {
+                  pBvs.push_back(bvFusion);
+                  if (pBvs.size() >= totalNum)
+                  {
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          else
+          {
+#endif
+            arbv = cMv + puCascaded->bv;
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->bv.hor, puCascaded->bv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->bv))
+              {
+                pBvs.push_back(puCascaded->bv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+
+            if (puCascaded->cu->tmpIdx > 0
+#if JVET_AL0108_BVG_DIMD
+              && !PU::hasBvgBv(puCascaded)
+#endif
+#if JVET_AL0106_BV_EIP
+              && !PU::isBvEip(*puCascaded)
+#endif 
+              )
+            {
+              bv = puCascaded->cu->tmpLicFlag ? puCascaded->cu->tmpXYdispUseMR[0] : puCascaded->cu->tmpXYdisp[0];
+              arbv2 = cMv + bv;
+              if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
+              {
+                if (!PU::checkBvAvailable(pBvs, arbv2))
+                {
+                  pBvs.push_back(arbv2);
+
+                  if (pBvs.size() >= totalNum)
+                  {
+                    break;
+                  }
+                }
+              }
+              if (validItmpBv(pu, bv.hor, bv.ver))
+              {
+                if (!PU::checkBvAvailable(pBvs, bv))
+                {
+                  pBvs.push_back(bv);
+
+                  if (pBvs.size() >= totalNum)
+                  {
+                    break;
+                  }
+                }
+              }
+            }
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          }
+#endif
+        }
+
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+        if (CU::isInter(*puCascaded->cu) && puCascaded->cu->geoFlag && puCascaded->gpmInterIbcFlag)
+        {
+          bool isValid = puCascaded->getMotionInfo(puCascaded->lumaPos().offset(puCascaded->lwidth() >> 1, puCascaded->lheight() >> 1)).isIBCmot;
+          if (isValid)
+          {
+            MotionInfo mi = puCascaded->getMotionInfo(puCascaded->lumaPos().offset(puCascaded->lwidth() >> 1, puCascaded->lheight() >> 1));
+            bv = mi.mv[0];
+            bv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+            arbv = cMv + bv;
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (validItmpBv(pu, bv.hor, bv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, bv))
+              {
+                pBvs.push_back(bv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+        }
+#endif
+
+        //Dimd / Obic
+        if (puCascaded->cu->dimd && puCascaded->cu->isBvDimd
+#if JVET_AL0108_BVG_DIMD
+          && !PU::hasBvgBv(puCascaded)
+#endif
+#if JVET_AL0106_BV_EIP
+          && !PU::isBvEip(*puCascaded)
+#endif
+          )
+        {
+          arbv = cMv + puCascaded->cu->bvDimd;
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->bvDimd.hor, puCascaded->cu->bvDimd.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->bvDimd))
+            {
+              pBvs.push_back(puCascaded->cu->bvDimd);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        //Timd Bv
+        if (puCascaded->cu->timd && !puCascaded->cu->timdSad && !puCascaded->cu->timdMrg)
+        {
+          if (puCascaded->cu->isBvTimd[0])
+          {
+            Mv arbv = cMv + puCascaded->cu->timdBv[0];
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->cu->timdBv[0].hor, puCascaded->cu->timdBv[0].ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBv[0]))
+              {
+                pBvs.push_back(puCascaded->cu->timdBv[0]);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+
+          if (puCascaded->cu->isBvTimd[1])
+          {
+            Mv arbv = cMv + puCascaded->cu->timdBv[1];
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->cu->timdBv[1].hor, puCascaded->cu->timdBv[1].ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBv[1]))
+              {
+                pBvs.push_back(puCascaded->cu->timdBv[1]);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+
+          if (puCascaded->cu->isBvTimd[2])
+          {
+            Mv arbv = cMv + puCascaded->cu->timdBv[2];
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->cu->timdBv[2].hor, puCascaded->cu->timdBv[2].ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBv[2]))
+              {
+                pBvs.push_back(puCascaded->cu->timdBv[2]);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        //Timd-Sad Bv
+        if (puCascaded->cu->timd && puCascaded->cu->timdSad && !puCascaded->cu->timdMrg)
+        {
+          if (puCascaded->cu->isBvTimdSad[0])
+          {
+            Mv arbv = cMv + puCascaded->cu->timdBvSad[0];
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->cu->timdBvSad[0].hor, puCascaded->cu->timdBvSad[0].ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBvSad[0]))
+              {
+                pBvs.push_back(puCascaded->cu->timdBvSad[0]);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+
+          if (puCascaded->cu->isBvTimdSad[1])
+          {
+            Mv arbv = cMv + puCascaded->cu->timdBvSad[1];
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->cu->timdBvSad[1].hor, puCascaded->cu->timdBvSad[1].ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBvSad[1]))
+              {
+                pBvs.push_back(puCascaded->cu->timdBvSad[1]);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+
+          if (puCascaded->cu->isBvTimdSad[2])
+          {
+            Mv arbv = cMv + puCascaded->cu->timdBvSad[2];
+            if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, arbv))
+              {
+                pBvs.push_back(arbv);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+            if (PU::validItmpBv(pu, puCascaded->cu->timdBvSad[2].hor, puCascaded->cu->timdBvSad[2].ver))
+            {
+              if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBvSad[2]))
+              {
+                pBvs.push_back(puCascaded->cu->timdBvSad[2]);
+
+                if (pBvs.size() >= totalNum)
+                {
+                  break;
+                }
+              }
+            }
+          }
+        }
+#endif
+
+        //Sgpm
+        if (puCascaded->cu->sgpm && puCascaded->cu->sgpmMode0 >= SGPM_BV_START_IDX)
+        {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+          cascadedMv = puCascaded->cu->sgpmBv0.mv;
+#else
+          cascadedMv = puCascaded->cu->sgpmBv0;
+#endif
+          cascadedMv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+          arbv = cMv + cascadedMv;
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+
+          if (PU::validItmpBv(pu, cascadedMv.hor, cascadedMv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, cascadedMv))
+            {
+              pBvs.push_back(cascadedMv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+
+        if (puCascaded->cu->sgpm && puCascaded->cu->sgpmMode1 >= SGPM_BV_START_IDX)
+        {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+          cascadedMv = puCascaded->cu->sgpmBv1.mv;
+#else
+          cascadedMv = puCascaded->cu->sgpmBv1;
+#endif
+          cascadedMv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+          arbv = cMv + cascadedMv;
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+
+          if (PU::validItmpBv(pu, cascadedMv.hor, cascadedMv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, cascadedMv))
+            {
+              pBvs.push_back(cascadedMv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  } while (pBvs.size() > end && pBvs.size() < totalNum);
+  return (int)pBvs.size();
+}
+#endif
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
+void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs, static_vector<TempLibFast, MTMP_NUM_SPARSE>& sparseMtmpCandList)
+{
+  if (sparseMtmpCandList.size() == 0)
+  {
+    return;
+  }
+  const int numMrgMArbvp = static_cast<int>(pBvs.size());
+  const int totalNum = numMrgMArbvp + NUM_TMP_ARBVP_S;
+
+  Position  posCand[5] = { pu.Y().center(), pu.Y().topLeft(), pu.Y().topRight(), pu.Y().bottomLeft(), pu.Y().bottomRight() };
+  int       offsetX = 0, offsetY = 0;
+  Mv        cMv, cascadedMv, arbv, arbv2, bv, bvFusion;
+
+  int       end = (int)sparseMtmpCandList.size();
+
+  for (int mergeIndex = 0; mergeIndex < end && pBvs.size() < totalNum; mergeIndex++)
+  {
+    offsetX = sparseMtmpCandList[mergeIndex].m_pX;
+    offsetY = sparseMtmpCandList[mergeIndex].m_pY;
+    cMv = Mv(offsetX, offsetY);
+
+    for (int n = 0; n < 5 && pBvs.size() < totalNum; n++)
+    {
+      const PredictionUnit* puCascaded = pu.cs->getPURestricted(posCand[n].offset(offsetX, offsetY), pu, pu.chType);
+      if (!puCascaded || ((puCascaded->cu->predMode != MODE_IBC) && (!puCascaded->cu->tmpFlag) && (!puCascaded->cu->geoFlag) && !PU::hasBvgBv(puCascaded) && !PU::isBvEip(*puCascaded) && (!puCascaded->cu->sgpm) && (!puCascaded->cu->dimd)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        && (!puCascaded->cu->timd)
+#endif
+        ))
+      {
+        continue;
+      }
+
+      if (puCascaded->cu->predMode == MODE_IBC)
+      {
+        arbv = cMv + puCascaded->bv;
+        if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, arbv))
+          {
+            pBvs.push_back(arbv);
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+        if (PU::validItmpBv(pu, puCascaded->bv.hor, puCascaded->bv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, puCascaded->bv))
+          {
+            pBvs.push_back(puCascaded->bv);
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+
+        if (puCascaded->interDir == 3)
+        {
+          bv = puCascaded->mv[REF_PIC_LIST_1];
+          bv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+          arbv2 = cMv + bv;
+          if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv2))
+            {
+              pBvs.push_back(arbv2);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (validItmpBv(pu, bv.hor, bv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, bv))
+            {
+              pBvs.push_back(bv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+      }
+
+#if JVET_AL0108_BVG_DIMD
+#if JVET_AL0106_BV_EIP
+      if (puCascaded->cu->tmpFlag || PU::hasBvgBv(puCascaded) || PU::isBvEip(*puCascaded))
+#else
+      if (puCascaded->cu->tmpFlag || PU::hasBvgBv(puCascaded))
+#endif
+#else
+      if (puCascaded->cu->tmpFlag)
+#endif
+      {
+        arbv = cMv + puCascaded->bv;
+        if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, arbv))
+          {
+            pBvs.push_back(arbv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+        if (PU::validItmpBv(pu, puCascaded->bv.hor, puCascaded->bv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, puCascaded->bv))
+          {
+            pBvs.push_back(puCascaded->bv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+
+        if (puCascaded->cu->tmpIdx > 0
+#if JVET_AL0108_BVG_DIMD
+          && !PU::hasBvgBv(puCascaded)
+#endif
+#if JVET_AL0106_BV_EIP
+          && !PU::isBvEip(*puCascaded)
+#endif
+          )
+        {
+          bv = puCascaded->cu->tmpLicFlag ? puCascaded->cu->tmpXYdispUseMR[0] : puCascaded->cu->tmpXYdisp[0];
+          arbv2 = cMv + bv;
+
+          arbv2 = cMv + bv;
+          if (PU::validItmpBv(pu, arbv2.hor, arbv2.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv2))
+            {
+              pBvs.push_back(arbv2);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (validItmpBv(pu, bv.hor, bv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, bv))
+            {
+              pBvs.push_back(bv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+      }
+
+#if JVET_AI0082_GPM_WITH_INTER_IBC
+      if (CU::isInter(*puCascaded->cu) && puCascaded->cu->geoFlag && puCascaded->gpmInterIbcFlag)
+      {
+        bool isValid = puCascaded->getMotionInfo(puCascaded->lumaPos().offset(puCascaded->lwidth() >> 1, puCascaded->lheight() >> 1)).isIBCmot;
+        if (isValid)
+        {
+          MotionInfo mi = puCascaded->getMotionInfo(puCascaded->lumaPos().offset(puCascaded->lwidth() >> 1, puCascaded->lheight() >> 1));
+          bv = mi.mv[0];
+          bv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+          arbv = cMv + bv;
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (validItmpBv(pu, bv.hor, bv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, bv))
+            {
+              pBvs.push_back(bv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+      }
+#endif
+
+      //Dimd / Obic
+      if (puCascaded->cu->dimd && puCascaded->cu->isBvDimd
+#if JVET_AL0108_BVG_DIMD
+        && !PU::hasBvgBv(puCascaded)
+#endif
+#if JVET_AL0106_BV_EIP
+        && !PU::isBvEip(*puCascaded)
+#endif
+        )
+      {
+        arbv = cMv + puCascaded->cu->bvDimd;
+        if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, arbv))
+          {
+            pBvs.push_back(arbv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+        if (PU::validItmpBv(pu, puCascaded->cu->bvDimd.hor, puCascaded->cu->bvDimd.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, puCascaded->cu->bvDimd))
+          {
+            pBvs.push_back(puCascaded->cu->bvDimd);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+      }
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+      //Timd Bv
+      if (puCascaded->cu->timd && !puCascaded->cu->timdSad && !puCascaded->cu->timdMrg)
+      {
+        if (puCascaded->cu->isBvTimd[0])
+        {
+          arbv = cMv + puCascaded->cu->timdBv[0];
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->timdBv[0].hor, puCascaded->cu->timdBv[0].ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBv[0]))
+            {
+              pBvs.push_back(puCascaded->cu->timdBv[0]);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+
+        if (puCascaded->cu->isBvTimd[1])
+        {
+          arbv = cMv + puCascaded->cu->timdBv[1];
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->timdBv[1].hor, puCascaded->cu->timdBv[1].ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBv[1]))
+            {
+              pBvs.push_back(puCascaded->cu->timdBv[1]);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+
+        if (puCascaded->cu->isBvTimd[2])
+        {
+          arbv = cMv + puCascaded->cu->timdBv[2];
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->timdBv[2].hor, puCascaded->cu->timdBv[2].ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBv[2]))
+            {
+              pBvs.push_back(puCascaded->cu->timdBv[2]);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      //Timd-Sad Bv
+      if (puCascaded->cu->timd && puCascaded->cu->timdSad && !puCascaded->cu->timdMrg)
+      {
+        if (puCascaded->cu->isBvTimdSad[0])
+        {
+          arbv = cMv + puCascaded->cu->timdBvSad[0];
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->timdBvSad[0].hor, puCascaded->cu->timdBvSad[0].ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBvSad[0]))
+            {
+              pBvs.push_back(puCascaded->cu->timdBvSad[0]);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+
+        if (puCascaded->cu->isBvTimdSad[1])
+        {
+          arbv = cMv + puCascaded->cu->timdBvSad[1];
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->timdBvSad[1].hor, puCascaded->cu->timdBvSad[1].ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBvSad[1]))
+            {
+              pBvs.push_back(puCascaded->cu->timdBvSad[1]);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+
+        if (puCascaded->cu->isBvTimdSad[2])
+        {
+          arbv = cMv + puCascaded->cu->timdBvSad[2];
+          if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, arbv))
+            {
+              pBvs.push_back(arbv);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+          if (PU::validItmpBv(pu, puCascaded->cu->timdBvSad[2].hor, puCascaded->cu->timdBvSad[2].ver))
+          {
+            if (!PU::checkBvAvailable(pBvs, puCascaded->cu->timdBvSad[2]))
+            {
+              pBvs.push_back(puCascaded->cu->timdBvSad[2]);
+
+              if (pBvs.size() >= totalNum)
+              {
+                break;
+              }
+            }
+          }
+        }
+      }
+#endif
+
+      //Sgpm
+      if (puCascaded->cu->sgpm && puCascaded->cu->sgpmMode0 >= SGPM_BV_START_IDX)
+      {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+        cascadedMv = puCascaded->cu->sgpmBv0.mv;
+#else
+        cascadedMv = puCascaded->cu->sgpmBv0;
+#endif
+        cascadedMv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+        arbv = cMv + cascadedMv;
+        if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, arbv))
+          {
+            pBvs.push_back(arbv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+
+        if (PU::validItmpBv(pu, cascadedMv.hor, cascadedMv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, cascadedMv))
+          {
+            pBvs.push_back(cascadedMv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+      }
+
+      if (puCascaded->cu->sgpm && puCascaded->cu->sgpmMode1 >= SGPM_BV_START_IDX)
+      {
+#if JVET_AL0188_SGPM_FLIPAWARE_BV
+        cascadedMv = puCascaded->cu->sgpmBv1.mv;
+#else
+        cascadedMv = puCascaded->cu->sgpmBv1;
+#endif
+        cascadedMv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+        arbv = cMv + cascadedMv;
+        if (PU::validItmpBv(pu, arbv.hor, arbv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, arbv))
+          {
+            pBvs.push_back(arbv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+
+        if (PU::validItmpBv(pu, cascadedMv.hor, cascadedMv.ver))
+        {
+          if (!PU::checkBvAvailable(pBvs, cascadedMv))
+          {
+            pBvs.push_back(cascadedMv);
+
+            if (pBvs.size() >= totalNum)
+            {
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return;
+}
+#endif
+#else
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
 void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs, static_vector<TempLibFast, MTMP_NUM_SPARSE> &sparseMtmpCandList)
 {
@@ -1886,6 +4074,106 @@ void PU::getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& 
   return;
 }
 #endif
+#endif
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+int PU::getItmpMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs)
+{
+  const CompArea area = pu.Y();
+  const Position topLeft = area.topLeft();
+  const ChannelType ch = pu.chType;
+
+  const int step = 4;
+  CodingUnit cu = *pu.cu;
+  const CodingUnit* cuNeighbours[13];
+
+  cuNeighbours[0] = cu.cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CH_L);
+  cuNeighbours[1] = cu.cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CH_L);
+  cuNeighbours[2] = cu.cs->getCURestricted(cu.lumaPos().offset(-1, -1), cu, CH_L);
+
+  const CodingUnit* cuTemp;
+  for (int i = 0; i <= cu.lheight(); i += step)
+  {
+    cuTemp = cu.cs->getCURestricted(cu.lumaPos().offset(-1, i), cu, CH_L);
+    if (cuTemp && CU::isIntra(*cuTemp))
+    {
+      cuNeighbours[0] = cuTemp;
+      break;
+    }
+  }
+  for (int i = 0; i <= cu.lwidth(); i += step)
+  {
+    cuTemp = cu.cs->getCURestricted(cu.lumaPos().offset(i, -1), cu, CH_L);
+    if (cuTemp && CU::isIntra(*cuTemp))
+    {
+      cuNeighbours[1] = cuTemp;
+      break;
+    }
+  }
+
+  const CodingUnit* cuLeft = cu.cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CH_L);
+  const CodingUnit* cuTop = cu.cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CH_L);
+  cuNeighbours[3] = cuLeft ? cu.cs->getCURestricted(cuLeft->lumaPos().offset(cuLeft->lwidth() - 1, cuLeft->lheight()), cu, CH_L) : NULL;
+  cuNeighbours[4] = cuTop ? cu.cs->getCURestricted(cuTop->lumaPos().offset(cuTop->lwidth(), cuTop->lheight() - 1), cu, CH_L) : NULL;
+  cuNeighbours[5] = cuNeighbours[3] ? cu.cs->getCURestricted(cuNeighbours[3]->lumaPos().offset(cuNeighbours[3]->lwidth() - 1, cuNeighbours[3]->lheight()), cu, CH_L) : NULL;
+  cuNeighbours[6] = cuNeighbours[4] ? cu.cs->getCURestricted(cuNeighbours[4]->lumaPos().offset(cuNeighbours[4]->lwidth(), cuNeighbours[4]->lheight() - 1), cu, CH_L) : NULL;
+  cuNeighbours[7] = cuLeft ? cu.cs->getCURestricted(cuLeft->lumaPos().offset(-1, 0), cu, CH_L) : NULL;
+  cuNeighbours[8] = cuTop ? cu.cs->getCURestricted(cuTop->lumaPos().offset(0, -1), cu, CH_L) : NULL;
+  cuNeighbours[9] = cuNeighbours[3] ? cu.cs->getCURestricted(cuNeighbours[3]->lumaPos().offset(-1, 0), cu, CH_L) : NULL;
+  cuNeighbours[10] = cuNeighbours[4] ? cu.cs->getCURestricted(cuNeighbours[4]->lumaPos().offset(0, -1), cu, CH_L) : NULL;
+  cuNeighbours[11] = cuNeighbours[5] ? cu.cs->getCURestricted(cuNeighbours[5]->lumaPos().offset(-1, 0), cu, CH_L) : NULL;
+  cuNeighbours[12] = cuNeighbours[6] ? cu.cs->getCURestricted(cuNeighbours[6]->lumaPos().offset(0, -1), cu, CH_L) : NULL;
+
+  if ((!cuNeighbours[9]) && cuNeighbours[2])
+  {
+    cuNeighbours[9] = cu.cs->getCURestricted(cuNeighbours[2]->lumaPos().offset(-1, cuNeighbours[2]->lheight() - 1), cu, CH_L);
+  }
+  if ((!cuNeighbours[10]) && cuNeighbours[2])
+  {
+    cuNeighbours[10] = cu.cs->getCURestricted(cuNeighbours[2]->lumaPos().offset(cuNeighbours[2]->lwidth() - 1, -1), cu, CH_L);
+  }
+  if ((!cuNeighbours[11]) && cuLeft && cuNeighbours[7])
+  {
+    cuNeighbours[11] = cu.cs->getCURestricted(cuNeighbours[7]->lumaPos().offset(-1, 0), cu, CH_L);
+  }
+  if ((!cuNeighbours[12]) && cuTop && cuNeighbours[8])
+  {
+    cuNeighbours[12] = cu.cs->getCURestricted(cuNeighbours[8]->lumaPos().offset(0, -1), cu, CH_L);
+  }
+  for (int i = 0; i < 13; i++)
+  {
+    if (cuNeighbours[i])
+    {
+      getNeighBv(pu, cuNeighbours[i]->firstPU, pBvs);
+    }
+  }
+
+  int offsetX = 0;
+  int offsetY = 0;
+  const int numNACandidate[4] = { 3, 5, 5, 5 };
+  const int idxMap[4][5] = { { 0, 1, 4 },{ 0, 1, 2, 3, 4 },{ 0, 1, 2, 3, 4 },{ 0, 1, 2, 3, 4 } };
+  for (int iDistanceIndex = 0; iDistanceIndex < NADISTANCE_LEVEL; iDistanceIndex++)
+  {
+    const int iNADistanceHor = pu.Y().width * (iDistanceIndex + 1);
+    const int iNADistanceVer = pu.Y().height * (iDistanceIndex + 1);
+
+    for (int iNASPIdx = 0; iNASPIdx < numNACandidate[iDistanceIndex]; iNASPIdx++)
+    {
+      switch (idxMap[iDistanceIndex][iNASPIdx])
+      {
+      case 0:offsetX = -iNADistanceHor - 1; offsetY = pu.Y().height + iNADistanceVer - 1; break;
+      case 1:offsetX = pu.Y().width + iNADistanceHor - 1; offsetY = -iNADistanceVer - 1; break;
+      case 2:offsetX = pu.Y().width >> 1;   offsetY = -iNADistanceVer - 1;    break;
+      case 3:offsetX = -iNADistanceHor - 1; offsetY = pu.Y().height >> 1; break;
+      case 4:offsetX = -iNADistanceHor - 1; offsetY = -iNADistanceVer - 1;    break;
+      default: printf("error!"); exit(0); break;
+      }
+      getNeighBv(pu, pu.cs->getPURestricted(topLeft.offset(offsetX, offsetY), pu, ch), pBvs);
+    }
+  }
+  return (int)pBvs.size();
+}
+#endif
 
 int PU::getItmpMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
@@ -1902,11 +4190,79 @@ int PU::getItmpMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs
   const ChannelType ch = pu.chType;
 
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  const int step = 4;
+
+  CodingUnit cu = *pu.cu;
+  const CodingUnit* cuNeighbours[13];
+
+  cuNeighbours[0] = cu.cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CH_L);
+  cuNeighbours[1] = cu.cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CH_L);
+  cuNeighbours[2] = cu.cs->getCURestricted(cu.lumaPos().offset(-1, -1), cu, CH_L);
+
+  const CodingUnit* cuTemp;
+  for (int i = 0; i <= cu.lheight(); i += step)
+  {
+    cuTemp = cu.cs->getCURestricted(cu.lumaPos().offset(-1, i), cu, CH_L);
+    if (cuTemp && CU::isIntra(*cuTemp))
+    {
+      cuNeighbours[0] = cuTemp;
+      break;
+    }
+  }
+  for (int i = 0; i <= cu.lwidth(); i += step)
+  {
+    cuTemp = cu.cs->getCURestricted(cu.lumaPos().offset(i, -1), cu, CH_L);
+    if (cuTemp && CU::isIntra(*cuTemp))
+    {
+      cuNeighbours[1] = cuTemp;
+      break;
+    }
+  }
+
+  const CodingUnit* cuLeft = cu.cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CH_L);
+  const CodingUnit* cuTop = cu.cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CH_L);
+  cuNeighbours[3] = cuLeft ? cu.cs->getCURestricted(cuLeft->lumaPos().offset(cuLeft->lwidth() - 1, cuLeft->lheight()), cu, CH_L) : NULL;
+  cuNeighbours[4] = cuTop ? cu.cs->getCURestricted(cuTop->lumaPos().offset(cuTop->lwidth(), cuTop->lheight() - 1), cu, CH_L) : NULL;
+  cuNeighbours[5] = cuNeighbours[3] ? cu.cs->getCURestricted(cuNeighbours[3]->lumaPos().offset(cuNeighbours[3]->lwidth() - 1, cuNeighbours[3]->lheight()), cu, CH_L) : NULL;
+  cuNeighbours[6] = cuNeighbours[4] ? cu.cs->getCURestricted(cuNeighbours[4]->lumaPos().offset(cuNeighbours[4]->lwidth(), cuNeighbours[4]->lheight() - 1), cu, CH_L) : NULL;
+  cuNeighbours[7] = cuLeft ? cu.cs->getCURestricted(cuLeft->lumaPos().offset(-1, 0), cu, CH_L) : NULL;
+  cuNeighbours[8] = cuTop ? cu.cs->getCURestricted(cuTop->lumaPos().offset(0, -1), cu, CH_L) : NULL;
+  cuNeighbours[9] = cuNeighbours[3] ? cu.cs->getCURestricted(cuNeighbours[3]->lumaPos().offset(-1, 0), cu, CH_L) : NULL;
+  cuNeighbours[10] = cuNeighbours[4] ? cu.cs->getCURestricted(cuNeighbours[4]->lumaPos().offset(0, -1), cu, CH_L) : NULL;
+  cuNeighbours[11] = cuNeighbours[5] ? cu.cs->getCURestricted(cuNeighbours[5]->lumaPos().offset(-1, 0), cu, CH_L) : NULL;
+  cuNeighbours[12] = cuNeighbours[6] ? cu.cs->getCURestricted(cuNeighbours[6]->lumaPos().offset(0, -1), cu, CH_L) : NULL;
+
+  if ((!cuNeighbours[9]) && cuNeighbours[2])
+  {
+    cuNeighbours[9] = cu.cs->getCURestricted(cuNeighbours[2]->lumaPos().offset(-1, cuNeighbours[2]->lheight() - 1), cu, CH_L);
+  }
+  if ((!cuNeighbours[10]) && cuNeighbours[2])
+  {
+    cuNeighbours[10] = cu.cs->getCURestricted(cuNeighbours[2]->lumaPos().offset(cuNeighbours[2]->lwidth() - 1, -1), cu, CH_L);
+  }
+  if ((!cuNeighbours[11]) && cuLeft && cuNeighbours[7])
+  {
+    cuNeighbours[11] = cu.cs->getCURestricted(cuNeighbours[7]->lumaPos().offset(-1, 0), cu, CH_L);
+  }
+  if ((!cuNeighbours[12]) && cuTop && cuNeighbours[8])
+  {
+    cuNeighbours[12] = cu.cs->getCURestricted(cuNeighbours[8]->lumaPos().offset(0, -1), cu, CH_L);
+  }
+  for (int i = 0; i < 13; i++)
+  {
+    if (cuNeighbours[i])
+    {
+      getNeighBv(pu, cuNeighbours[i]->firstPU, pBvs, pSgpmMvs);
+    }
+  }
+#else
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(-1, pu.Y().height - 1), pu, ch)), pBvs, pSgpmMvs);
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(pu.Y().width - 1, -1), pu, ch)), pBvs, pSgpmMvs);
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(-1, -1), pu, ch)), pBvs, pSgpmMvs);
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(pu.Y().width, -1), pu, ch)), pBvs, pSgpmMvs);
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(-1, pu.Y().height), pu, ch)), pBvs, pSgpmMvs);
+#endif
 #else
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(-1, pu.Y().height - 1), pu, ch)), pBvs);
   getNeighBv(pu, (pu.cs->getPURestricted(topLeft.offset(pu.Y().width - 1, -1), pu, ch)), pBvs);
@@ -5715,6 +8071,574 @@ void CU::saveCcInsideFilterFlagInCCP(CodingUnit& cu)
 }
 #endif
 
+#if JVET_AM0074_INTRA_MERGE
+bool CU::checkNeighborIntraMergeCompatibility(const CodingUnit& cuNeighbour)
+{
+  if ((cuNeighbour.dimd && !cuNeighbour.obicFlag) || cuNeighbour.intraMergeMode || cuNeighbour.timd)
+  {
+    return true;
+  }
+  return false;
+}
+
+bool CU::allowIntraMergeMode(const CodingUnit &cu)
+{
+  if (cu.cs->pcv->isEncoder && (cu.allowIntraMergeMode > 0))
+  {
+    return cu.allowIntraMergeMode > 1 ? true: false;
+  }
+  if (cu.lwidth() * cu.lheight() <= 16)
+  {
+    return false;
+  }
+  const CodingUnit* cuLeft = cu.cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CH_L);
+  for (int i = 0; i <= cu.lheight(); i += 4)
+  {
+    cuLeft = cu.cs->getCURestricted(cu.lumaPos().offset(-1, i), cu, CH_L);
+    if (cuLeft)
+    {
+      if (CU::isIntra(*cuLeft) && checkNeighborIntraMergeCompatibility(*cuLeft))
+      {
+        return true;
+      }
+      i = cuLeft->ly() + cuLeft->lheight() - 4 - cu.ly();
+    }
+  }
+  const CodingUnit *cuTop = cu.cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CH_L);
+  for (int i = 0; i <= cu.lwidth(); i += 4)
+  {
+    cuTop = cu.cs->getCURestricted(cu.lumaPos().offset(i, -1), cu, CH_L);
+    if (cuTop)
+    {
+      if (CU::isIntra(*cuTop) && checkNeighborIntraMergeCompatibility(*cuTop))
+      {
+        return true;
+      }
+      i = cuTop->lx() + cuTop->lwidth() - 4 - cu.lx();
+    }
+  }
+
+  const CodingUnit *cuNeighbour = cu.cs->getCURestricted(cu.lumaPos().offset(-1, -1), cu, CH_L);
+  if (cuNeighbour && CU::isIntra(*cuNeighbour))
+  {
+    if (checkNeighborIntraMergeCompatibility(*cuNeighbour))
+    {
+      return true;
+    }
+  }
+
+  const CodingUnit *cuLeft2 = cuLeft ? cu.cs->getCURestricted(cuLeft->lumaPos().offset(cuLeft->lwidth() - 1, cuLeft->lheight()), cu, CH_L) : NULL;
+  cuNeighbour = cuLeft2;
+  if (cuNeighbour && CU::isIntra(*cuNeighbour))
+  {
+    if (checkNeighborIntraMergeCompatibility(*cuNeighbour))
+    {
+      return true;
+    }
+  }
+
+  const CodingUnit *cuTop2 = cuTop ? cu.cs->getCURestricted(cuTop->lumaPos().offset(cuTop->lwidth(), cuTop->lheight() - 1), cu, CH_L) : NULL;
+  cuNeighbour = cuTop2;
+  if (cuNeighbour && CU::isIntra(*cuNeighbour))
+  {
+    if (checkNeighborIntraMergeCompatibility(*cuNeighbour))
+    {
+      return true;
+    }
+  }
+
+  cuNeighbour = cuLeft2 ? cu.cs->getCURestricted(cuLeft2->lumaPos().offset(cuLeft2->lwidth() - 1, cuLeft2->lheight()), cu, CH_L) : NULL;
+  if (cuNeighbour && CU::isIntra(*cuNeighbour))
+  {
+    if (checkNeighborIntraMergeCompatibility(*cuNeighbour))
+    {
+      return true;
+    }
+  }
+
+  cuNeighbour = cuTop2 ? cu.cs->getCURestricted(cuTop2->lumaPos().offset(cuTop2->lwidth(), cuTop2->lheight() - 1), cu, CH_L) : NULL;
+  if (cuNeighbour && CU::isIntra(*cuNeighbour))
+  {
+    if (checkNeighborIntraMergeCompatibility(*cuNeighbour))
+    {
+      return true;
+    }
+  }
+
+  const CompArea &  area = cu.block(getFirstComponentOfChannel(CH_L));
+  const Position    topLeft = area.topLeft();
+  // non-adjacent spatial candidates
+  int       offsetX = 0;
+  int       offsetY = 0;
+  const int numNACandidate[4] = { 3, 5, 5, 5 };
+  const int idxMap[4][5] = { { 0, 1, 4 },{ 0, 1, 2, 3, 4 },{ 0, 1, 2, 3, 4 },{ 0, 1, 2, 3, 4 } };
+  for (int iDistanceIndex = 0; iDistanceIndex < NADISTANCE_LEVEL; iDistanceIndex++)
+  {
+    const int iNADistanceHor = cu.Y().width * (iDistanceIndex + 1);
+    const int iNADistanceVer = cu.Y().height * (iDistanceIndex + 1);
+
+    for (int iNASPIdx = 0; iNASPIdx < numNACandidate[iDistanceIndex]; iNASPIdx++)
+    {
+      switch (idxMap[iDistanceIndex][iNASPIdx])
+      {
+        case 0: offsetX = -iNADistanceHor - 1; offsetY = cu.Y().height + iNADistanceVer - 1; break;
+        case 1: offsetX = cu.Y().width + iNADistanceHor - 1; offsetY = -iNADistanceVer - 1; break;
+        case 2: offsetX = cu.Y().width >> 1; offsetY = -iNADistanceVer - 1; break;
+        case 3: offsetX = -iNADistanceHor - 1; offsetY = cu.Y().height >> 1; break;
+        case 4: offsetX = -iNADistanceHor - 1; offsetY = -iNADistanceVer - 1; break;
+        default: printf("error!"); exit(0); break;
+      }
+      cuNeighbour = cu.cs->getCURestricted(topLeft.offset(offsetX, offsetY), cu, CH_L);
+      if (cuNeighbour && CU::isIntra(*cuNeighbour))
+      {
+        if (checkNeighborIntraMergeCompatibility(*cuNeighbour))
+        {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool CU::isDifferentIntraBlk(const CodingUnit* cuNeighbour, IntraMergeCandidate* cands, int currIdx)
+{
+  for (int i = currIdx - 1; i >= 0; i--)
+  {
+    if (cuNeighbour->lx() == cands[i].x && cuNeighbour->ly() == cands[i].y)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+bool CU::areIntraParamsSame(IntraMergeCandidate* cands, int currIdx)
+{
+  if (currIdx == 0)
+  {
+    return false;
+  }
+
+  for (int i = 0; i < currIdx; i++)
+  {
+    if (cands[currIdx].dimdModeMerge != cands[i].dimdModeMerge)
+    {
+      continue;
+    }
+
+    bool isSameParams = true;
+    for (int j = 0; j < DIMD_FUSION_NUM - 2; j++)
+    {
+      if (cands[currIdx].dimdBlendModeMerge[j] != cands[i].dimdBlendModeMerge[j])
+      {
+        isSameParams = false;
+        break;
+      }
+    }
+    if (!isSameParams)
+    {
+      continue;
+    }
+
+    for (int j = 0; j < DIMD_FUSION_NUM; j++)
+    {
+      if (cands[currIdx].dimdRelWeightMerge[j] != cands[i].dimdRelWeightMerge[j])
+      {
+        isSameParams = false;
+        break;
+      }
+    }
+    if (!isSameParams)
+    {
+      continue;
+    }
+
+    for (int j = 0; j < DIMD_FUSION_NUM - 1; j++)
+    {
+      if (cands[currIdx].dimdLocDepMerge[j] != cands[i].dimdLocDepMerge[j])
+      {
+        isSameParams = false;
+        break;
+      }
+    }
+    if (isSameParams)
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool CU::setIntraMergeCandParamFromTimd(IntraMergeCandidate& ddIntraFusionCand, int timdMode, int timdModeSecondary, const int8_t timdFusionWeight[TIMD_FUSION_NUM], const int8_t timdLocDep[TIMD_FUSION_NUM])
+{
+  ddIntraFusionCand.dimdModeMerge = MAP131TO67(timdMode);
+  if (ddIntraFusionCand.dimdModeMerge > 1)
+  {
+    ddIntraFusionCand.dimdBlendModeMerge[0] = MAP131TO67(timdModeSecondary);
+    if (ddIntraFusionCand.dimdModeMerge == ddIntraFusionCand.dimdBlendModeMerge[0])
+    {
+      int diff = timdMode - timdModeSecondary;
+      diff = std::max(1, diff);
+      ddIntraFusionCand.dimdBlendModeMerge[0] = MAP131TO67(int(timdMode - 2 * diff));
+    }
+    if (ddIntraFusionCand.dimdBlendModeMerge[0] > 1)
+    {
+      for (int i = 1; i < DIMD_FUSION_NUM - 2; i++)
+      {
+        ddIntraFusionCand.dimdBlendModeMerge[i] = 0;
+      }
+
+      ddIntraFusionCand.dimdRelWeightMerge[0] = timdFusionWeight[0];
+      ddIntraFusionCand.dimdRelWeightMerge[1] = timdFusionWeight[2];
+      ddIntraFusionCand.dimdRelWeightMerge[2] = timdFusionWeight[1];
+      for (int m = 3; m < DIMD_FUSION_NUM; m++)
+      {
+        ddIntraFusionCand.dimdRelWeightMerge[m] = 0;
+      }
+      ddIntraFusionCand.dimdLocDepMerge[0] = timdLocDep[0];
+      ddIntraFusionCand.dimdLocDepMerge[1] = timdLocDep[1];
+      for (int m = 2; m < DIMD_FUSION_NUM - 1; m++)
+      {
+        ddIntraFusionCand.dimdLocDepMerge[m] = 0;
+      }
+    }
+    else if (ddIntraFusionCand.dimdBlendModeMerge[0] == -1)
+    {
+      for (int i = 0; i < DIMD_FUSION_NUM - 2; i++)
+      {
+        ddIntraFusionCand.dimdBlendModeMerge[i] = 0;
+      }
+
+      ddIntraFusionCand.dimdRelWeightMerge[0] = (1 << 6) - 16;
+      ddIntraFusionCand.dimdRelWeightMerge[1] = 16;
+      for (int m = 2; m < DIMD_FUSION_NUM; m++)
+      {
+        ddIntraFusionCand.dimdRelWeightMerge[m] = 0;
+      }
+      ddIntraFusionCand.dimdLocDepMerge[0] = timdLocDep[0];
+      for (int m = 1; m < DIMD_FUSION_NUM - 1; m++)
+      {
+        ddIntraFusionCand.dimdLocDepMerge[m] = 0;
+      }
+    }
+    else
+    {
+      return true;
+    }
+  }
+  else
+  {
+    return true;
+  }
+  return false;
+}
+
+Area CU::getOverlappedArea(const Area& a1, const Area& a2)
+{
+  Area intersectArea = Area(Position(0, 0), Size(0, 0));
+
+  if (
+    ((a1.x <= a2.x && a2.x <= a1.topRight().x) || (a2.x <= a1.x && a1.x <= a2.topRight().x)) &&
+    ((a1.y <= a2.y && a2.y <= a1.bottomRight().y) || (a2.y <= a1.y && a1.y <= a2.bottomRight().y))
+    )
+  {
+    int xArray[4] = { a1.x, a1.topRight().x,    a2.x, a2.topRight().x };
+    int yArray[4] = { a1.y, a1.bottomRight().y, a2.y, a2.bottomRight().y };
+    std::sort(xArray, xArray + 4);
+    std::sort(yArray, yArray + 4);
+
+    intersectArea = Area(Position(xArray[1], yArray[1]), Size(xArray[2] - xArray[1] + 1, yArray[2] - yArray[1] + 1));
+  }
+
+  return intersectArea;
+}
+
+bool CU::getItmpBasedIntraMergeCand(const CodingUnit* cuNeighbour, IntraMergeCandidate* ddIntraFusionCand, int ddIntrafusionCandIdx)
+{
+  Mv mvBv = Mv(0, 0);   // 1 BV pointed out for ITMP or IBC neighbor block
+  bool isTmp = (cuNeighbour && CU::isIntra(*cuNeighbour) && (cuNeighbour->slice->getSPS()->getUseIntraTMP() && PU::isTmp(*cuNeighbour->firstPU)));
+  if (isTmp)
+  {
+    auto mi = cuNeighbour->firstPU->getMotionInfo();
+    mvBv = mi.bv; // cuNeighbour->firstPU->bv;
+    const Position pos = cuNeighbour->Y().topLeft().offset(mvBv.hor, mvBv.ver);
+    const Area refArea = Area(pos.x, pos.y, cuNeighbour->lwidth(), cuNeighbour->lheight());
+    int maxOverlappedArea = 0;
+    const CodingUnit* cuTmp = nullptr;
+    const CodingUnit* cuBest = nullptr;
+    for (int j = 0; j < refArea.height; j += 4)
+    {
+      for (int i = 0; i < refArea.width; i += 4)
+      {
+        const Position posTmp = Position(refArea.offset(i, j));
+        cuTmp = cuNeighbour->cs->getCURestricted(posTmp, *cuNeighbour, CH_L);
+        const Area cuTmpBlockArea = Area(cuTmp->lx(), cuTmp->ly(), cuTmp->lwidth(), cuTmp->lheight());
+        auto intersectArea = getOverlappedArea(refArea, cuTmpBlockArea);
+        if (cuTmp && intersectArea.area() > maxOverlappedArea)
+        {
+          maxOverlappedArea = intersectArea.area();
+          cuBest = cuTmp;
+        }
+      }
+    }
+    if (cuBest && isAValidNeighborForIntraMerge(cuBest))
+    {
+      return setIntraMergeCandParam(cuBest, ddIntraFusionCand, ddIntrafusionCandIdx);
+    }
+
+  }
+  return false;
+}
+
+bool CU::setIntraMergeCandParam(const CodingUnit* cuNeighbour, IntraMergeCandidate* ddIntraFusionCand, int ddIntrafusionCandIdx, int itmpIbcMode)
+{
+  if (!isDifferentIntraBlk(cuNeighbour, ddIntraFusionCand, ddIntrafusionCandIdx))
+  {
+    return false;
+  }
+  // get timd/dimd/obic info from itmp/ibc ref blocks using BVs
+  if (itmpIbcMode)
+  {
+    if (!getItmpBasedIntraMergeCand(cuNeighbour, ddIntraFusionCand, ddIntrafusionCandIdx))
+    {
+      return false;
+    }
+  }
+  else
+  {
+    bool forceCandidate = false;
+    if (cuNeighbour->timd)
+    {
+#if JVET_AJ0146_TIMDSAD
+      if (cuNeighbour->timdSad)
+      {
+        forceCandidate = setIntraMergeCandParamFromTimd(ddIntraFusionCand[ddIntrafusionCandIdx], cuNeighbour->timdModeSad, cuNeighbour->timdModeSecondarySad, cuNeighbour->timdFusionWeightSad, cuNeighbour->timdLocDepSad);
+      }
+      else
+#endif
+      {
+#if JVET_AJ0061_TIMD_MERGE
+        if (cuNeighbour->timdMrg)
+        {
+          int index = cuNeighbour->timdMrg - 1;
+          int8_t weights[TIMD_FUSION_NUM] = { 0 };
+          for (uint8_t i = 0; i < TIMD_FUSION_NUM; i++) {
+            CHECK(cuNeighbour->timdMrgFusionWeight[index][i] > 254, "cuNeighbour->timdMrgFusionWeight[index][i] not compatible on int8_t");
+            weights[i] = (int8_t) cuNeighbour->timdMrgFusionWeight[index][i];
+          }
+
+          forceCandidate = setIntraMergeCandParamFromTimd(ddIntraFusionCand[ddIntrafusionCandIdx], cuNeighbour->timdMrgList[index][0], cuNeighbour->timdMrgList[index][1], weights, cuNeighbour->timdMrgLocDep[index]);
+        }
+        else
+#endif
+        {
+          forceCandidate = setIntraMergeCandParamFromTimd(ddIntraFusionCand[ddIntrafusionCandIdx], cuNeighbour->timdMode, cuNeighbour->timdModeSecondary, cuNeighbour->timdFusionWeight, cuNeighbour->timdLocDep);
+        }
+      }
+    }
+    if (!cuNeighbour->timd || forceCandidate)
+    {
+#if JVET_AH0076_OBIC
+      if (cuNeighbour->obicFlag)
+      {
+        ddIntraFusionCand[ddIntrafusionCandIdx].dimdModeMerge = cuNeighbour->obicMode[0];
+        ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[0] = cuNeighbour->obicFusionWeight[0];
+        if (cuNeighbour->obicIsBlended)
+        {
+          int lastNonZeroWeightIdx = 0;
+          for (int i = 0; i < OBIC_FUSION_NUM - 2; i++)
+          {
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdBlendModeMerge[i] = cuNeighbour->obicMode[i + 1] >= 0 ? cuNeighbour->obicMode[i + 1] : 0;
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdLocDepMerge[i] = 0;
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[i + 2] = cuNeighbour->obicFusionWeight[i + 1];
+            if (cuNeighbour->obicFusionWeight[i + 1] > 0)
+            {
+              lastNonZeroWeightIdx = i + 2;
+            }
+          }
+          // Reset remaining parameters
+          memset(&ddIntraFusionCand[ddIntrafusionCandIdx].dimdLocDepMerge[OBIC_FUSION_NUM - 2], 0, (DIMD_FUSION_NUM - OBIC_FUSION_NUM + 1) * sizeof(int));
+          memset(&ddIntraFusionCand[ddIntrafusionCandIdx].dimdBlendModeMerge[OBIC_FUSION_NUM - 2], 0, (6 - OBIC_FUSION_NUM + 2) * sizeof(int8_t));
+          memset(&ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[OBIC_FUSION_NUM], 0, (DIMD_FUSION_NUM - OBIC_FUSION_NUM) * sizeof(int8_t));
+
+          // dimd PLANAR_IDX weight is always in dimdRelWeightMerge[1]
+          if (cuNeighbour->obicFusionWeight[lastNonZeroWeightIdx] > 0)
+          {
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[1] = cuNeighbour->obicFusionWeight[lastNonZeroWeightIdx];
+          }
+          else
+          {
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[lastNonZeroWeightIdx] = 0;
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[1] = cuNeighbour->obicFusionWeight[lastNonZeroWeightIdx - 1];
+          }
+        }
+      }
+      else
+#endif
+#if JVET_AL0108_BVG_DIMD
+      if (cuNeighbour->bvgDimdFlag)
+      {
+        // Reset parameters
+        memset(&ddIntraFusionCand[ddIntrafusionCandIdx].dimdLocDepMerge[0], 0, (DIMD_FUSION_NUM - 1 ) * sizeof(int));
+        memset(&ddIntraFusionCand[ddIntrafusionCandIdx].dimdBlendModeMerge[0], 0, (DIMD_FUSION_NUM - 2) * sizeof(int8_t));
+        memset(&ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[0], 0, DIMD_FUSION_NUM * sizeof(int8_t));
+
+        ddIntraFusionCand[ddIntrafusionCandIdx].dimdModeMerge = cuNeighbour->bvgDimdMode[0];
+        ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[0] = cuNeighbour->bvgDimdFusionWeight[0];
+        for (int i = 1; i < BVG_DIMD_INTRA_NUM; i++)
+        {
+          if (cuNeighbour->bvgDimdMode[i] == PLANAR_IDX)
+          {
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[1] = cuNeighbour->bvgDimdFusionWeight[i];
+          }
+          else if (cuNeighbour->bvgDimdMode[i] > PLANAR_IDX)
+          {
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdBlendModeMerge[i - 1] = cuNeighbour->bvgDimdMode[i];
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[i + 1] = cuNeighbour->bvgDimdFusionWeight[i];
+          }
+          else
+          {
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdBlendModeMerge[i - 1] = 0;
+            ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge[i] = 0;
+          }
+        }
+      }
+      else
+#endif
+      {
+#if JVET_AJ0061_TIMD_MERGE
+        // TIMD merge does not derive DIMD parameters, so stop here.
+        if (cuNeighbour->timdMrg)
+        {
+          return false;
+        }
+#endif
+        int8_t const *dimdBlendMode = cuNeighbour->dimdBlendMode;
+        int8_t const *dimdRelWeight = cuNeighbour->dimdRelWeight;
+        int const *dimdLocDep = cuNeighbour->dimdLocDep;
+        if (cuNeighbour->intraMergeMode)
+        {
+          ddIntraFusionCand[ddIntrafusionCandIdx].dimdModeMerge = cuNeighbour->dimdModeMerge;
+          dimdBlendMode = cuNeighbour->dimdBlendModeMerge;
+          dimdRelWeight = cuNeighbour->dimdRelWeightMerge;
+          dimdLocDep = cuNeighbour->dimdLocDepMerge;
+        }
+        else
+        {
+          ddIntraFusionCand[ddIntrafusionCandIdx].dimdModeMerge = cuNeighbour->dimdMode;
+        }
+        for (int i = 0; i < DIMD_FUSION_NUM - 2; i++)
+        {
+          ddIntraFusionCand[ddIntrafusionCandIdx].dimdBlendModeMerge[i] = dimdBlendMode[i] >= 0 ? dimdBlendMode[i] : 0;
+        }
+        memcpy(ddIntraFusionCand[ddIntrafusionCandIdx].dimdLocDepMerge, dimdLocDep, (DIMD_FUSION_NUM - 1) * sizeof(int));
+        memcpy(ddIntraFusionCand[ddIntrafusionCandIdx].dimdRelWeightMerge, dimdRelWeight, DIMD_FUSION_NUM * sizeof(int8_t));
+      }
+    }
+  }
+
+  ddIntraFusionCand[ddIntrafusionCandIdx].x = cuNeighbour->lx();
+  ddIntraFusionCand[ddIntrafusionCandIdx].y = cuNeighbour->ly();
+
+  return (CU::areIntraParamsSame(ddIntraFusionCand, ddIntrafusionCandIdx)) ? false : true;
+}
+
+
+
+bool CU::isAValidNeighborForIntraMerge(const CodingUnit* cuNeighbour)
+{
+  if (isIBC(*cuNeighbour))
+  {
+    return false;
+  }
+  bool isRegTimdAvail = cuNeighbour->timd && cuNeighbour->timdIsBlended;
+#if JVET_AJ0146_TIMDSAD
+  isRegTimdAvail &= !cuNeighbour->timdSad;
+#else
+  bool isTimdSadAvail = false;
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+  isRegTimdAvail &= !(cuNeighbour->timdMrg > 0);
+#else
+  bool isTimdMrgAvail = false;
+#endif
+  bool isTimdAvail = isRegTimdAvail;
+#if JVET_AJ0146_TIMDSAD
+  bool isTimdSadAvail = cuNeighbour->timdSad && cuNeighbour->timdIsBlendedSad;
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+  bool isTimdMrgAvail = cuNeighbour->timdMrg && cuNeighbour->timdMrgIsBlended[cuNeighbour->timdMrg - 1];
+#endif
+  isTimdAvail |= isTimdMrgAvail | isTimdSadAvail;
+  bool isIntraMergeAvail = cuNeighbour->intraMergeMode > 0;
+  bool isObicAvail = false, isBvgDimd = false;
+#if JVET_AH0076_OBIC
+  isObicAvail = cuNeighbour->obicFlag;
+#endif
+#if JVET_AL0108_BVG_DIMD
+  isBvgDimd = cuNeighbour->bvgDimdFlag;
+#endif
+  bool isDimdAvail = cuNeighbour->dimd && cuNeighbour->dimdBlending && !isObicAvail && !isIntraMergeAvail && !isBvgDimd;
+  bool isAvail = isIntraMergeAvail || isDimdAvail || isTimdAvail || isBvgDimd || isObicAvail;
+
+  bool isMPM = !cuNeighbour->timd && !cuNeighbour->bdpcmMode && !cuNeighbour->tmpFlag && !cuNeighbour->mipFlag && !cuNeighbour->eipFlag && !cuNeighbour->mdip && !cuNeighbour->plIdx && (cuNeighbour->firstPU->intraDir[0] != PNN_IDX);
+  isAvail |= isMPM && cuNeighbour->dimdBlending && isIntra(*cuNeighbour);
+  if (!isAvail && cuNeighbour->timd)
+  {
+    // regular TIMD but not blended, and with IPM > DC
+    if (cuNeighbour->timd && (cuNeighbour->timdMode > 1))
+    {
+#if JVET_AJ0061_TIMD_MERGE
+      if (!cuNeighbour->timdMrg)
+      {
+        isAvail = true;
+      }
+#endif
+    }
+#if JVET_AJ0146_TIMDSAD
+    // TIMD SAD but not blended, and with IPM > DC
+    if (cuNeighbour->timdSad && (cuNeighbour->timdModeSad > 1))
+    {
+      isAvail = true;
+    }
+#endif
+#if JVET_AJ0061_TIMD_MERGE
+    // TIMD Mrg but not blended, and with IPM > DC
+    if (cuNeighbour->timdMrg && (cuNeighbour->timdMrgList[cuNeighbour->timdMrg - 1][0] > 1))
+    {
+      isAvail = true;
+    }
+#endif
+  }
+  return isAvail;
+}
+#endif
+
+#if JVET_AM0074_INTRA_MERGE
+int PU::canIntraMergeImplicitDst7(const TransformUnit &tu)
+{
+  if (!CS::isDualITree(*tu.cs))
+  {
+    return 0;
+  }
+  const int minTuSizeDst7 = 4;
+  const int maxTuSizeDst7 = 16;
+  const int compID = COMPONENT_Y;
+  int  width = tu.blocks[compID].width;
+  int  height = tu.blocks[compID].height;
+  bool widthDstOk = width >= minTuSizeDst7 && width <= maxTuSizeDst7;
+  bool heightDstOk = height >= minTuSizeDst7 && height <= maxTuSizeDst7;
+  /*
+  * 0: no
+  * 1: only ver
+  * 2: only hor
+  * 3: both hor and ver
+  */
+  return (2 * widthDstOk + heightDstOk);
+}
+#endif
+
 void PU::ccpParamsToCclmModel(const ComponentID compId, const CCPModelCandidate& params, CclmModel& cclmModel)
 {
   cclmModel.a = int(params.params[compId - 1][0]);
@@ -5861,6 +8785,12 @@ bool PU::isRegressionSgpmAllow(const PredictionUnit &pu)
 #if JVET_AH0076_OBIC
 bool PU::isObicAvail(const PredictionUnit &pu)
 {
+#if JVET_AM0074_INTRA_MERGE
+  if (pu.cu->allowIntraMergeMode == 2)
+  {
+    return false;
+  }
+#endif
   if (!pu.lumaPos().x && !pu.lumaPos().y)
   {
     return false;
@@ -37344,24 +40274,30 @@ bool CU::bdpcmAllowed( const CodingUnit& cu, const ComponentID compID )
   SizeType transformSkipMaxSize = 1 << cu.cs->sps->getLog2MaxTransformSkipBlockSize();
 
   bool bdpcmAllowed = cu.cs->sps->getBDPCMEnabledFlag();
-       bdpcmAllowed &= CU::isIntra( cu );
-       if (isLuma(compID))
-       {
-         bdpcmAllowed &= (cu.lwidth() <= transformSkipMaxSize && cu.lheight() <= transformSkipMaxSize);
+  bdpcmAllowed &= CU::isIntra( cu );
+  if (isLuma(compID))
+  {
+    bdpcmAllowed &= (cu.lwidth() <= transformSkipMaxSize && cu.lheight() <= transformSkipMaxSize);
 #if ENABLE_DIMD
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
-         bdpcmAllowed &= (cu.slice->getPnnMode() ? true : !cu.dimd);
+    bdpcmAllowed &= (cu.slice->getPnnMode() ? true : !cu.dimd);
 #else
-         bdpcmAllowed &= !cu.dimd;
+    bdpcmAllowed &= !cu.dimd;
 #endif
 #endif
-       }
-       else
-       {
-         bdpcmAllowed &=
-           (cu.chromaSize().width <= transformSkipMaxSize && cu.chromaSize().height <= transformSkipMaxSize)
-           && !cu.colorTransform;
-       }
+#if JVET_AJ0249_NEURAL_NETWORK_BASED && JVET_AM0074_INTRA_MERGE
+    if (!cu.slice->getPnnMode())
+    {
+      bdpcmAllowed &= !(cu.intraMergeMode > 0);
+    }
+#endif
+  }
+  else
+  {
+    bdpcmAllowed &=
+      (cu.chromaSize().width <= transformSkipMaxSize && cu.chromaSize().height <= transformSkipMaxSize)
+      && !cu.colorTransform;
+  }
   return bdpcmAllowed;
 }
 #if JVET_AG0061_INTER_LFNST_NSPT
@@ -37401,6 +40337,9 @@ bool CU::isMTSAllowed(const CodingUnit &cu, const ComponentID compID)
 #endif
 #if JVET_AJ0061_TIMD_MERGE
   mtsAllowed &= !cu.timdMrg; // Timd-Mrg CUs inherit transform type from their cands
+#endif
+#if JVET_AM0074_INTRA_MERGE
+  mtsAllowed &= !cu.intraMergeMode;
 #endif
   mtsAllowed &= !(cu.bdpcmMode && cuWidth <= tsMaxSize && cuHeight <= tsMaxSize);
 
@@ -37490,7 +40429,14 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
     if (checkLevel == 0 || checkLevel == 2)
     {
       currMi = pu.getMotionInfo(posSubBlock);
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      if (!(currMi.isIBCmot && ((pu.cu)->tmpFlmFlag || (pu.cu)->tmpFusionFlag || ((pu.cu)->ibcLicFlag && (pu.cu)->ibcLicIdx == IBC_LIC_IDX_M))))
+      {
+#endif
       bIsSimilarMV = PU::identicalMvOBMC(currMi, mi, pu.cs->slice->getCheckLDC());
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+      }
+#endif
     }
 #else
     MotionInfo currMi = pu.getMotionInfo(posSubBlock);
@@ -37637,7 +40583,19 @@ unsigned int PU::getSameNeigMotion(PredictionUnit &pu, MotionInfo& mi, Position 
 #endif
           {
 #if JVET_AK0076_EXTENDED_OBMC_IBC
-            if ((!currMi.isIBCmot && (tmpPu1->cu->licFlag != tmpPu->cu->licFlag)) || (currMi.isIBCmot && (tmpPu1->cu->ibcLicFlag != tmpPu->cu->ibcLicFlag)))
+            if ((
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                 !miNeigh.isIBCmot
+#else
+                 !currMi.isIBCmot
+#endif
+                 && (tmpPu1->cu->licFlag != tmpPu->cu->licFlag)) || (
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+                                                                     miNeigh.isIBCmot
+#else
+                                                                     currMi.isIBCmot
+#endif
+                                                                     && (tmpPu1->cu->ibcLicFlag != tmpPu->cu->ibcLicFlag)))
 #else
             if (tmpPu1->cu->licFlag != tmpPu->cu->licFlag)
 #endif
@@ -37948,6 +40906,9 @@ bool TU::isTSAllowed(const TransformUnit &tu, const ComponentID compID)
 #endif
 #if JVET_AJ0061_TIMD_MERGE
   tsAllowed &= !tu.cu->timdMrg;
+#endif
+#if JVET_AM0074_INTRA_MERGE
+  tsAllowed &= !(tu.cu->intraMergeMode);
 #endif
   return tsAllowed;
 }
@@ -38646,6 +41607,33 @@ bool CU::allowMdip(const CodingUnit& cu)
   return allowMdip;
 }
 #endif
+
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+RefTemplateType CU::getRefTemplateType(const CodingUnit& cu)
+{
+  const Position& posLT = cu.lumaPos();
+  if ((cu.cs)->getCURestricted(posLT.offset(-1, -1), cu, CHANNEL_TYPE_LUMA) != nullptr)
+  {
+    return L_SHAPE_TEMPLATE;
+  }
+  else
+  {
+    if ((cu.cs)->getCURestricted(posLT.offset(-1, cu.lheight() - 1), cu, CHANNEL_TYPE_LUMA) != nullptr)
+    {
+      return LEFT_TEMPLATE;
+    }
+    else if ((cu.cs)->getCURestricted(posLT.offset(cu.lwidth() - 1, -1), cu, CHANNEL_TYPE_LUMA) != nullptr)
+    {
+      return ABOVE_TEMPLATE;
+    }
+    else
+    {
+      return NO_TEMPLATE;
+    }
+  }
+}
+#endif
+
 #if JVET_AC0144_AFFINE_DMVR_REGRESSION
 int deriveAffineSubBlkSize(const int sz, const int minSbSz, const int deltaMvX, const int deltaMvY, const int shift)
 {
@@ -38990,6 +41978,203 @@ bool PU::getTransposeFlag(uint32_t intraMode)
     ((intraMode < NUM_LUMA_MODE) && (intraMode > DIA_IDX));
 }
 
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+void PU::setTimdVimp(int* timdDimdMode, int* timdSecondDimdMode, int& timdSadDimd, int& timdSadSecondDimd, CodingUnit* cu)
+{
+  int vipm = 0, svipm = 0;
+  PU::getTimdVimp(vipm, svipm, cu);
+  if (cu->timdSad == 0)
+  {
+    int timdMode = getTimdMode(cu->timdMrg, cu->firstPU->multiRefIdx);
+    timdDimdMode[timdMode] = vipm;
+    timdSecondDimdMode[timdMode] = svipm;
+  }
+  else
+  {
+    timdSadDimd = vipm;
+    timdSadSecondDimd = svipm;
+  }
+}
+
+void PU::setTimdVimpToCu(int* timdDimdMode, int* timdSecondDimdMode, int timdSadDimd, int timdSadSecondDimd, CodingUnit* cu)
+{
+  if (cu->timdSad == 0)
+  {
+    int timdMode = getTimdMode(cu->timdMrg, cu->firstPU->multiRefIdx);
+    cu->timdDimdMode[timdMode] = timdDimdMode[timdMode];
+    cu->timdSecondDimdMode[timdMode] = timdSecondDimdMode[timdMode];
+  }
+  else
+  {
+    cu->timdSadDimdMode = timdSadDimd;
+    cu->timdSecondSadDimdMode = timdSadSecondDimd;
+  }
+}
+
+void PU::setTimdVimp(int vipm, int svipm, CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    return;
+  }
+  if (cu->timdSad == 0)
+  {
+    int timdMode = getTimdMode(cu->timdMrg, cu->firstPU->multiRefIdx);
+    cu->timdDimdMode[timdMode] = vipm;
+    cu->timdSecondDimdMode[timdMode] = svipm;
+  }
+  else
+  {
+    cu->timdSadDimdMode = vipm;
+    cu->timdSecondSadDimdMode = svipm;
+  }
+}
+
+void PU::getTimdVimp(int& vipm, int& svipm, CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    vipm = -1;
+    svipm = -1;
+    return;
+  }
+  if (cu->timdSad == 0)
+  {
+    int timdMode = getTimdMode(cu->timdMrg, cu->firstPU->multiRefIdx);
+    vipm = cu->timdDimdMode[timdMode];
+    svipm = cu->timdSecondDimdMode[timdMode];
+  }
+  else
+  {
+    vipm = cu->timdSadDimdMode;
+    svipm = cu->timdSecondSadDimdMode;
+  }
+}
+
+bool PU::isBvTimdApplied(CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    return 0;
+  }
+  if (cu->timd)
+  {
+    if (cu->timdSad == 0)
+    {
+      if (cu->timdMrg == 0)
+      {
+        return (cu->isBvTimd[0] || cu->isBvTimd[1] || cu->isBvTimd[2]);
+      }
+      else
+      {
+        return 0; // BF ==> bv is not used in merge
+      }
+    }
+    else
+    {
+      return (cu->isBvTimdSad[0] || cu->isBvTimdSad[1] || cu->isBvTimdSad[2]);
+    }
+  }
+  else
+  {
+    CHECKD(1, "Wrong use of timd.");
+    return 0;
+  }
+}
+#endif
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+void PU::setDimdVimp(int& dimdDimdMode, int& dimdSecondDimdMode, int& obicDimdMode, int& obicSecondaryMode, CodingUnit* cu)
+{
+  int vipm = 0, svipm = 0;
+  PU::getDimdVimp(vipm, svipm, cu);
+  if (cu->obicFlag)
+  {
+    obicDimdMode = vipm;
+    obicSecondaryMode = svipm;
+  }
+  else
+  {
+    dimdDimdMode = vipm;
+    dimdSecondDimdMode = svipm;
+  }
+}
+
+void PU::setDimdVimpToCu(int dimdDimdMode, int dimdSecondDimdMode, int obicDimdMode, int obicSecondDimdMode, CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    return;
+  }
+  if (cu->obicFlag)
+  {
+    cu->obicDimdMode = obicDimdMode;
+    cu->obicSecondDimdMode = obicSecondDimdMode;
+  }
+  else
+  {
+    cu->dimdDimdMode = dimdDimdMode;
+    cu->dimdSecondDimdMode = dimdSecondDimdMode;
+  }
+}
+
+void PU::setDimdVimp(int vipm, int svipm, CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    return;
+  }
+  if (cu->obicFlag)
+  {
+    cu->obicDimdMode = vipm;
+    cu->obicSecondDimdMode = svipm;
+  }
+  else
+  {
+    cu->dimdDimdMode = vipm;
+    cu->dimdSecondDimdMode = svipm;
+  }
+}
+
+void PU::getDimdVimp(int& vipm, int& svipm, CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    vipm = -1;
+    svipm = -1;
+    return;
+  }
+  if (cu->obicFlag)
+  {
+    vipm = cu->obicDimdMode;
+    svipm = cu->obicSecondDimdMode;
+  }
+  else
+  {
+    vipm = cu->dimdDimdMode;
+    svipm = cu->dimdSecondDimdMode;
+  }
+}
+
+bool PU::isBvDimdApplied(CodingUnit* cu)
+{
+  if (cu->ispMode)
+  {
+    return 0;
+  }
+
+  if (cu->dimd)
+  {
+    return cu->isBvDimd;
+  }
+  else
+  {
+    CHECKD(1, "Wrong use of dimd.");
+    return 0;
+  }
+}
+#endif
+
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
 std::pair<uint32_t,uint32_t> PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUnit& tu, const ComponentID compID)
 #else
@@ -39165,10 +42350,43 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
 #endif
   }
 #endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AL0108_BVG_DIMD
+  if (tu.cu->dimd && !tu.cu->bvgDimdFlag && compID == COMPONENT_Y
+#if JVET_AM0074_INTRA_MERGE
+    && !tu.cu->intraMergeMode
+#endif
+    )
+#else
+  if (tu.cu->dimd && compID == COMPONENT_Y)
+#endif
+  {
+    int firstMode = -1;
+    int secondDimdMode = -1;
+    PU::getDimdVimp(firstMode, secondDimdMode, tu.cu);
+    bool isBvApplied = PU::isBvDimdApplied(tu.cu);
+    intraMode = isBvApplied ? (uint32_t)firstMode : tu.cu->dimdMode;
+    secondIntraMode = isBvApplied ? (uint32_t)secondDimdMode : tu.cu->candModeListForTransform[1];
+    secModeFound = true;
+    if (intraMode == secondIntraMode)
+    {
+      secModeFound = false;
+    }
+  }
+#endif
 #if JVET_W0123_TIMD_FUSION
   if (tu.cu->timd && compID == COMPONENT_Y)
   {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+    int firstMode = -1;
+    int secondTimdMode = -1;
+    PU::getTimdVimp(firstMode, secondTimdMode, tu.cu);
+    bool isBvApplied = PU::isBvTimdApplied(tu.cu);
+    intraMode = isBvApplied ? (uint32_t)firstMode : MAP131TO67(intraMode);
+    uint32_t uiTimdSecondMode = (uint32_t)secondTimdMode;
+#else
     intraMode = MAP131TO67(intraMode);
+#endif
 #if JVET_AK0187_IMPLICIT_MTS_LUT_EXTENSION
         if (isLuma(compID) &&
       ((((tu.cu->timd && tu.cu->timdIsBlended
@@ -39192,21 +42410,41 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
     {
       int timdModeSecondary =
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        tu.cu->timdMrg ? (isBvApplied ? uiTimdSecondMode : MAP131TO67(tu.cu->timdMrgList[tu.cu->timdMrg - 1][1])) :
+#else
         tu.cu->timdMrg ? tu.cu->timdMrgList[tu.cu->timdMrg - 1][1] :
+#endif
 #endif
         (
 #if JVET_AJ0146_TIMDSAD
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          tu.cu->timdSad ? (isBvApplied ? uiTimdSecondMode : MAP131TO67(tu.cu->timdModeSecondarySad)) :
+#else
           tu.cu->timdSad ? tu.cu->timdModeSecondarySad :
 #endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          isBvApplied ? uiTimdSecondMode : MAP131TO67(tu.cu->timdModeSecondary)
+#else
           tu.cu->timdModeSecondary
+#endif
           );
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+      secondIntraMode = timdModeSecondary;
+#else
       secondIntraMode = MAP131TO67(timdModeSecondary);
+#endif
 
       secModeFound = true;
     }
     else
     {
+#if JVET_AJ0061_TIMD_MERGE
       if( !tu.cu->timdMrg && !tu.cu->lfnstIdx)
+#else
+      if( !tu.cu->lfnstIdx)
+#endif
       {
         CHECK( tu.cu->candModeListForTransform.size() < 2, "Wrong candModeListForTransform size" );
         secondIntraMode = tu.cu->candModeListForTransform[ 1 ]; //no mapping
@@ -39365,20 +42603,65 @@ uint32_t PU::getFinalIntraModeForTransform(bool &secondBucket, const TransformUn
         )
       )
     {
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+      int firstMode = -1;
+      int secondTimdMode = -1;
+      PU::getTimdVimp(firstMode, secondTimdMode, tu.cu);
+      bool isBvApplied = PU::isBvTimdApplied(tu.cu);
+      uint32_t uiTimdSecondMode = (uint32_t)secondTimdMode;
+#endif
       int timdModeSecondary =
 #if JVET_AJ0061_TIMD_MERGE
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+        tu.cu->timdMrg ? (isBvApplied ? uiTimdSecondMode : MAP131TO67(tu.cu->timdMrgList[tu.cu->timdMrg - 1][1])) :
+#else
         tu.cu->timdMrg ? tu.cu->timdMrgList[tu.cu->timdMrg - 1][1] :
+#endif
 #endif
         (
 #if JVET_AJ0146_TIMDSAD
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          tu.cu->timdSad ? (isBvApplied ? uiTimdSecondMode : MAP131TO67(tu.cu->timdModeSecondarySad)) :
+#else
           tu.cu->timdSad ? tu.cu->timdModeSecondarySad :
 #endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+          isBvApplied ? uiTimdSecondMode : MAP131TO67(tu.cu->timdModeSecondary)
+#else
           tu.cu->timdModeSecondary
+#endif
           );
 
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+      testMode = timdModeSecondary;
+#else
       testMode = MAP131TO67(timdModeSecondary);
+#endif
       validMode = true;
     }
+
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+#if JVET_AL0108_BVG_DIMD
+    if (tu.cu->dimd && !tu.cu->bvgDimdFlag && compID == COMPONENT_Y
+#if JVET_AM0074_INTRA_MERGE
+      && !tu.cu->intraMergeMode
+#endif
+      )
+#else
+    if (tu.cu->dimd && compID == COMPONENT_Y)
+#endif
+    {
+      int firstMode = -1;
+      int secondDimdMode = -1;
+      PU::getDimdVimp(firstMode, secondDimdMode, tu.cu);
+      bool isBvApplied = PU::isBvDimdApplied(tu.cu);
+      //uint32_t uiDimdSecondMode = (uint32_t)secondDimdMode;
+      testMode = isBvApplied ? (uint32_t)secondDimdMode : tu.cu->candModeListForTransform[1];
+      secModeFound = true;
+      validMode = true;
+    }
+#endif
 
     if (tu.cu->obicFlag && tu.cu->obicIsBlended)
     {
@@ -41313,6 +44596,15 @@ bool isAllowedMultiple(const SizeType width, const SizeType height)
 {
   return !((height == 4 && width == 4) || (height == 8 && width == 4) || (height == 4 && width == 8));
 }
+#endif
+
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+int getTmpFusionIdx(const int tmpIdx) { return (tmpIdx % TMP_GROUP_IDX) * TMP_FUSION_NUM; }
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+int getTmpFusionNumber(const int tmpFusionIdx, const bool isBvFus) { return std::min(isBvFus ? TMP_BV_FUS_CAND_MRG : TMP_FUSION_NUM, MTMP_NUM - tmpFusionIdx); }
+#else
+int getTmpFusionNumber(const int tmpFusionIdx) { return std::min(TMP_FUSION_NUM, MTMP_NUM - tmpFusionIdx); }
+#endif
 #endif
 
 #if JVET_AK0059_MDIP

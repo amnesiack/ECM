@@ -112,7 +112,17 @@ namespace CU
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
   void saveCcInsideFilterFlagInCCP    (CodingUnit& cu);
 #endif
-
+#if JVET_AM0074_INTRA_MERGE
+  bool checkNeighborIntraMergeCompatibility(const CodingUnit& cuNeighbour);
+  bool allowIntraMergeMode(const CodingUnit &cu);
+  bool isDifferentIntraBlk(const CodingUnit* cuNeighbour, IntraMergeCandidate* cands, int currIdx);
+  bool areIntraParamsSame(IntraMergeCandidate* cands, int currIdx);
+  bool isAValidNeighborForIntraMerge(const CodingUnit* cuNeighbour);
+  bool setIntraMergeCandParamFromTimd(IntraMergeCandidate& ddIntraFusionCand, int timdMode, int timdModeSecondary, const int8_t timdFusionWeight[TIMD_FUSION_NUM], const int8_t timdLocDep[TIMD_FUSION_NUM]);
+  Area getOverlappedArea(const Area& a1, const Area& a2);
+  bool getItmpBasedIntraMergeCand(const CodingUnit* cuNeighbour, IntraMergeCandidate* ddIntraFusionCand, int ddIntrafusionCandIdx);
+  bool setIntraMergeCandParam(const CodingUnit* cuNeighbours, IntraMergeCandidate* cands, int currIdx, int itmpIbcMode = 0);
+#endif
   PartSplit getSplitAtDepth           (const CodingUnit& cu, const unsigned depth);
 #if !INTRA_RM_SMALL_BLOCK_SIZE_CONSTRAINTS
   ModeType  getModeTypeAtDepth        (const CodingUnit& cu, const unsigned depth);
@@ -204,6 +214,9 @@ namespace CU
 #if JVET_AK0059_MDIP
   bool allowMdip(const CodingUnit& cu);
 #endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  RefTemplateType getRefTemplateType(const CodingUnit& cu);
+#endif
 #if JVET_AC0094_REF_SAMPLES_OPT
   void getNbModesRemovedFirstLast(const bool &areAboveRightUnavail, const bool &areBelowLeftUnavail, const SizeType &height, const SizeType &width, int &nbRemovedFirst, int &nbRemovedLast);
   bool isIdxModeValid(const bool &areAboveRightUnavail, const bool &areBelowLeftUnavail, const SizeType &height, const SizeType &width, const SizeType &idx_mode_tested, const bool &isForcedValid);
@@ -246,6 +259,9 @@ namespace PU
   bool hasTimdMergeCandidate(const PredictionUnit &pu);
 #endif
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  int  getItmpMergeCandidate      (const PredictionUnit& pu, std::vector<Mv>& pBvs);
+#endif
   int  getItmpMergeCandidate      (const PredictionUnit& pu, std::vector<Mv>& pBvs
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
 #if JVET_AL0188_SGPM_FLIPAWARE_BV
@@ -277,6 +293,10 @@ namespace PU
 #if JVET_AI0129_INTRA_TMP_OVERLAPPING_REFINEMENT
   void  getSparseArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs, static_vector<TempLibFast, MTMP_NUM_SPARSE>& sparseMtmpCandList);
 #endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  int  sortInOut(CodingUnit* pcCU, unsigned int uiBlkWidth, unsigned int uiBlkHeight, RefTemplateType tempType, std::vector<Mv>& mergeCands);
+  int  getArBvMergeCandidate(const PredictionUnit& pu, std::vector<Mv>& pBvs, const int numBvs);
 #endif
 #if JVET_AD0184_REMOVAL_OF_DIVISION_OPERATIONS
   int getMeanValue(int sum, int div);
@@ -347,6 +367,20 @@ namespace PU
   uint32_t getFinalIntraMode              (const PredictionUnit &pu, const ChannelType &chType, const int partIdx = 0);
 #else
   uint32_t getFinalIntraMode              (const PredictionUnit &pu, const ChannelType &chType);
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  void setTimdVimp(int vipm, int svipm, CodingUnit* cu);
+  void setTimdVimp(int* timdDimdMode, int* timdSecondDimdMode, int& timdSadDimd, int& timdSadSecondDimd, CodingUnit* cu);
+  void setTimdVimpToCu(int* timdDimdMode, int* timdSecondDimdMode, int timdSadDimd, int timdSadSecondDimd, CodingUnit* cu);
+  void getTimdVimp(int& vipm, int& svipm, CodingUnit* cu);
+  bool isBvTimdApplied(CodingUnit* cu);
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  void setDimdVimp(int& dimdDimdMode, int& dimdSecondDimdMode, int& obicDimdMode, int& obicSecondaryMode, CodingUnit* cu);
+  void setDimdVimp(int vipm, int svipm, CodingUnit* cu);
+  void setDimdVimpToCu(int dimdDimdMode, int dimdSecondDimdMode, int obicDimdMode, int obicSecondDimdMode, CodingUnit* cu);
+  void getDimdVimp(int& vipm, int& svipm, CodingUnit* cu);
+  bool isBvDimdApplied(CodingUnit* cu);
 #endif
 #if JVET_AC0130_NSPT
 #if JVET_AK0217_INTRA_MTSS
@@ -1282,6 +1316,9 @@ namespace PU
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   bool  hasDecoderDerivedCCP(const PredictionUnit &pu);
 #endif
+#if JVET_AM0074_INTRA_MERGE
+  int canIntraMergeImplicitDst7(const TransformUnit &tu);
+#endif
 #if JVET_AD0188_CCP_MERGE || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   void ccpParamsToCclmModel(const ComponentID compID, const CCPModelCandidate& params, CclmModel& cclmModel);
   void cclmModelToCcpParams(const ComponentID compId, CCPModelCandidate& params, const CclmModel& cclmModel);
@@ -1909,5 +1946,13 @@ bool isAllowedMultiple(const SizeType width, const SizeType height);
 #endif
 #if JVET_AK0059_MDIP
 void buildExcludingMode(CodingUnit& cu, int *histogram, bool *includedMode);
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+int getTmpFusionIdx(const int tmpIdx);
+int getTmpFusionNumber(const int tmpFusionIdx
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+                       , const bool isBvFus
+#endif
+                       );
 #endif
 #endif

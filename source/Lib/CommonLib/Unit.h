@@ -333,6 +333,28 @@ struct CodingUnit : public UnitArea
 #if JVET_AC0105_DIRECTIONAL_PLANAR
   uint8_t        plIdx;
 #endif
+#if JVET_AM0074_INTRA_MERGE
+  int intraMergeMode{ 0 };
+  uint8_t allowIntraMergeMode{ 0 };
+  int8_t dimdModeMerge{ -1 };
+#if JVET_AC0098_LOC_DEP_DIMD
+#if JVET_AB0157_INTRA_FUSION
+  int dimdLocDepMerge[DIMD_FUSION_NUM - 1];
+#else
+  int dimdLocDepMerge[2];
+#endif
+#endif
+#if JVET_AB0157_INTRA_FUSION
+  int8_t dimdBlendModeMerge[DIMD_FUSION_NUM - 1];
+  int8_t dimdRelWeightMerge[DIMD_FUSION_NUM];
+#else
+  int8_t dimdBlendModeMerge[2];
+  int8_t dimdRelWeightMerge[3];
+#endif
+  bool   isBvDimdExtAvail;
+  bool   isBvDimdExt[DIMD_FUSION_NUM];
+  Mv     bvDimdExt[DIMD_FUSION_NUM];
+#endif
 #if ENABLE_DIMD
 #if JVET_AH0076_OBIC
   bool obicFlag;
@@ -400,8 +422,14 @@ struct CodingUnit : public UnitArea
 #if TMP_FAST_ENC
 #if JVET_AD0086_ENHANCED_INTRA_TMP
 #if (JVET_AG0146_DIMD_ITMP_IBC || JVET_AG0152_SGPM_ITMP_IBC || JVET_AG0151_INTRA_TMP_MERGE_MODE)
+#if !JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
   int                tmpXdisp;
   int                tmpYdisp;
+#endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  Mv                 tmpXYdisp[MTMP_NUM];
+  Mv                 tmpXYdispUseMR[MTMP_NUM];
 #endif
   bool               tmpFlmFlag;
 #if JVET_AG0136_INTRA_TMP_LIC
@@ -413,6 +441,9 @@ struct CodingUnit : public UnitArea
   int                tmpSubPelIdx;
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
   int                tmpFracIdx;
+#endif
+#if JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+  RefTemplateType    tempType;
 #endif
 #endif
 #endif
@@ -438,6 +469,12 @@ struct CodingUnit : public UnitArea
 #else
   int8_t         timdFusionWeight[2];
 #endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  Mv             timdBv		[TIMD_FUSION_NUM];
+  bool           isBvTimd	[TIMD_FUSION_NUM];
+  Mv             timdBvSad	[TIMD_FUSION_NUM];
+  bool           isBvTimdSad[TIMD_FUSION_NUM];
+#endif
 #if JVET_AJ0146_TIMDSAD
   bool           timdSad;
   int            timdModeSad;
@@ -454,6 +491,18 @@ struct CodingUnit : public UnitArea
 #else
   int8_t         timdFusionWeightSad[2];
 #endif
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  int            timdDimdMode[NumTimdMode];
+  int            timdSadDimdMode;
+  int            timdSecondDimdMode[NumTimdMode];
+  int            timdSecondSadDimdMode;
+#endif
+#if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+  int            dimdDimdMode;
+  int            dimdSecondDimdMode;
+  int            obicDimdMode;
+  int            obicSecondDimdMode;
 #endif
 
 #if JVET_AJ0061_TIMD_MERGE

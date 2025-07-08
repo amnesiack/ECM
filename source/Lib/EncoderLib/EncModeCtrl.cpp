@@ -3984,6 +3984,17 @@ bool EncModeCtrlMTnoRQT::checkSkipOtherLfnst( const EncTestMode& encTestmode, Co
     {
       skipOtherLfnst = !tempCS->cus[ 0 ]->rootCbf;
     }
+#if JVET_AM0074_INTRA_MERGE
+  if (cuECtx.bestCS && !skipOtherLfnst)
+  {
+    bool skipLfsnt23 = (tempCS->cus[0]->lfnstIdx > 1) && (tempCS->cost > 1.5 * cuECtx.bestCS->cost);
+    bool skipLfsnt123 = (tempCS->cus[0]->lfnstIdx > 0) && (tempCS->cost > 1.7 * cuECtx.bestCS->cost);
+    if(skipLfsnt23 || skipLfsnt123)
+    {
+      skipOtherLfnst = true;
+    }
+  }
+#endif
   }
 
   return skipOtherLfnst;
