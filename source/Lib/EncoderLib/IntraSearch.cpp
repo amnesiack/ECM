@@ -1224,7 +1224,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
 #endif
 #if JVET_AL0108_BVG_DIMD
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
   testBvgDimd &= !relatedCU->skipBvgDimd;
+#else
+  testBvgDimd &= !relatedCU.skipBvgDimd;
+#endif
   bvgDimdSaveFlag &= testBvgDimd;
 #endif
 #if JVET_AJ0146_TIMDSAD
@@ -2947,7 +2951,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   {
                     break;
                   }
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
                   if (idxInList >= numModesForFullRD - 1 && relatedCU && relatedCU->skipFracTmp)
+#else
+                  if (idxInList >= numModesForFullRD - 1 && relatedCU.skipFracTmp)
+#endif
                   {
                     break;
                   }
@@ -2963,7 +2971,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                   {
                     break;
                   }
+
+#if JVET_AI0136_ADAPTIVE_DUAL_TREE
                   if (idxInList >= numModesForFullRD - 1 && relatedCU && relatedCU->skipFracTmp)
+#else
+                  if (idxInList >= numModesForFullRD - 1 && relatedCU.skipFracTmp)
+#endif
                   {
                     break;
                   }
