@@ -4251,6 +4251,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
       dstBuf.stride = backupWidth;
       dstBuf.buf = m_filteredBlockTmp[2 + m_iRefListIdx][compID];
     }
+    JVET_AM0295_COND_PUSH_CACHE_ENABLE(isIBC, false);
     if (yFrac == 0)
     {
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
@@ -4269,7 +4270,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
     }
     else
     {
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
       if( compID == COMPONENT_Y
         && backupWidth == 4
         && backupHeight == 4
@@ -4308,17 +4309,18 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
 #else
         m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
 #endif
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
         m_if.filterVer( compID, ( Pel* ) tmpBuf.buf + ( ( vFilterSize >> 1 ) - 1 ) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter );
 #else
         m_if.filterVer(compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
 #endif
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+        JVET_AM0295_POP_CACHE_ENABLE();
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
       }
 #endif
     }
-    JVET_J0090_SET_CACHE_ENABLE((srcPadStride == 0) && (bioApplied == false));
+    JVET_AM0295_COND_POP_CACHE_ENABLE(isIBC);
 
     if (bioApplied && compID == COMPONENT_Y)
     {
@@ -4472,7 +4474,6 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
       else
 #endif
       xFrac = yFrac = 0;
-      JVET_J0090_SET_CACHE_ENABLE(false);
     }
 
     PelBuf & dstBuf = dstPic.bufs[compID];
@@ -4576,6 +4577,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
 #if JVET_AL0161_4TAP_TM
     const bool use4TapTM = (filterIdx == 1 && isLuma(compID) && !bilinearMC && !isIBC) ? true : false;
 #endif
+    JVET_AM0295_COND_PUSH_CACHE_ENABLE(isIBC, false);
     if( yFrac == 0 )
     {
 #if JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC || JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
@@ -4618,7 +4620,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
     }
     else
     {
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
       //use 4x4 if possible
       if( compID == COMPONENT_Y
           && backupWidth == 4
@@ -4688,7 +4690,7 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
         m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
 #endif
 #endif
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
 #if JVET_AL0161_4TAP_TM
         m_if.filterVer( compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf, useBiFilter, use4TapTM );
@@ -4702,19 +4704,18 @@ void InterPrediction::xPredInterBlk ( const ComponentID& compID, const Predictio
         m_if.filterVer(compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, filterIdx, bilinearMC, useAltHpelIf);
 #endif
 #endif
+        JVET_AM0295_POP_CACHE_ENABLE();
 #else
         m_if.filterHor( compID, ( Pel* ) refBuf.buf - ( ( vFilterSize >> 1 ) - 1 ) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, bilinearMC, bilinearMC, useAltHpelIf);
-        JVET_J0090_SET_CACHE_ENABLE( false );
+        JVET_AM0295_PUSH_CACHE_ENABLE( false );
         m_if.filterVer( compID, ( Pel* ) tmpBuf.buf + ( ( vFilterSize >> 1 ) - 1 ) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, bilinearMC, bilinearMC, useAltHpelIf);
+        JVET_AM0295_POP_CACHE_ENABLE();
 #endif
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
       }
 #endif
     }
-    JVET_J0090_SET_CACHE_ENABLE(
-      ( srcPadStride == 0 )
-      && ( bioApplied
-           == false ) );   // Enabled only in non-DMVR-non-BDOF process, In DMVR process, srcPadStride is always non-zero
+    JVET_AM0295_COND_POP_CACHE_ENABLE(isIBC);
 
     if( bioApplied && compID == COMPONENT_Y )
     {
@@ -5157,6 +5158,7 @@ void InterPrediction::xPredIBCBlkPadding(const PredictionUnit& pu, ComponentID c
   ibcRefBuf = refPic->getRecoBuf(CompArea(compID, pu.chromaFormat, ibcRefOffset, Size(ibcRefWidth, ibcRefHeight)), wrapRef);
 
   PelBuf localRefBuf(m_cRefSamplesDMVRL0[compID], copyWidth, ibcRefWidth, ibcRefHeight);
+  JVET_AM0295_PUSH_CACHE_ENABLE(false);
   m_if.filterHor(compID, (Pel*)ibcRefBuf.buf, ibcRefBuf.stride, localRefBuf.buf, localRefBuf.stride, copyWidth, ibcRefHeight, 0, true, pu.chromaFormat, clpRng
 #if JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC
   , 0
@@ -5164,7 +5166,7 @@ void InterPrediction::xPredIBCBlkPadding(const PredictionUnit& pu, ComponentID c
   , false
 #endif
   , false, false);
-
+  JVET_AM0295_POP_CACHE_ENABLE();
   refBuf.buf    = localRefBuf.bufAt(-addedOffsetTL.getX(), -addedOffsetTL.getY());
   refBuf.stride = localRefBuf.stride;
 
@@ -6274,9 +6276,9 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
           else
           {
             m_if.m_filterHor[0][1][false](clpRng, ref - refIfOfst, refStride, tmpBuf.buf, tmpBuf.stride, bw, blkH4HorInterP, InterpolationFilter::m_lumaFilter64[xFrac], false);
-            JVET_J0090_SET_CACHE_ENABLE(false);
+            JVET_AM0295_PUSH_CACHE_ENABLE(false);
             m_if.m_filterVer[0][0][isLast](clpRng, tmpBuf.buf + tmpBufIfOfst, tmpBuf.stride, dst, dstStride, bw, bh, InterpolationFilter::m_lumaFilter64[yFrac], false);
-            JVET_J0090_SET_CACHE_ENABLE(true);
+            JVET_AM0295_POP_CACHE_ENABLE();
           }
 
           dst += blockWidth;
@@ -6327,9 +6329,9 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
             else
             {
               m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng, -2, false, false);
-              JVET_J0090_SET_CACHE_ENABLE(false);
+              JVET_AM0295_PUSH_CACHE_ENABLE(false);
               m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng, -2, false, false);
-              JVET_J0090_SET_CACHE_ENABLE(true);
+              JVET_AM0295_POP_CACHE_ENABLE();
             }
           }
           else
@@ -6359,13 +6361,13 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
 #else
           m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng, 0, false, false);
 #endif
-          JVET_J0090_SET_CACHE_ENABLE(false);
+          JVET_AM0295_PUSH_CACHE_ENABLE(false);
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
           m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng, 0, false, false, bi);
 #else
           m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng, 0, false, false);
 #endif
-          JVET_J0090_SET_CACHE_ENABLE(true);
+          JVET_AM0295_POP_CACHE_ENABLE();
         }
 #else
         if (yFrac == 0)
@@ -6379,9 +6381,9 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
         else
         {
           m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng);
-          JVET_J0090_SET_CACHE_ENABLE(false);
+          JVET_AM0295_PUSH_CACHE_ENABLE(false);
           m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng);
-          JVET_J0090_SET_CACHE_ENABLE(true);
+          JVET_AM0295_POP_CACHE_ENABLE();
         }
 #endif
         dst += blockWidth;
@@ -6709,7 +6711,7 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
           }
           else
           {
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
             if (bw == 4 && bh == 4)
             {
               m_if.filter4x4(clpRng, (Pel*)ref, refStride, dst, dstStride, xFrac, yFrac, isLast, true);
@@ -6720,12 +6722,12 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
               m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng
                 , -2, false, false
               );
-              JVET_J0090_SET_CACHE_ENABLE(false);
+              JVET_AM0295_PUSH_CACHE_ENABLE(false);
               m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng
                 , -2, false, false
               );
-              JVET_J0090_SET_CACHE_ENABLE(true);
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+              JVET_AM0295_POP_CACHE_ENABLE();
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
             }
 #endif
           }
@@ -6755,7 +6757,7 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
         }
         else
         {
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
 #if AFFINE_RM_CONSTRAINTS_AND_OPT
           if (compID == COMPONENT_Y && bw == 4 && bh == 4)
 #else
@@ -6771,7 +6773,7 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
             m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1) * refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng
               , 0, false, false);
 #endif
-            JVET_J0090_SET_CACHE_ENABLE(false);
+            JVET_AM0295_PUSH_CACHE_ENABLE(false);
 #if JVET_AI0094_SHARP_MC_FILTER_FOR_BIPRED
             m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng
               , 0, false, false, bi);
@@ -6779,8 +6781,8 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
             m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng
               , 0, false, false);
 #endif
-            JVET_J0090_SET_CACHE_ENABLE(true);
-#if SIMD_4x4_12 && defined(TARGET_SIMD_X86)
+            JVET_AM0295_POP_CACHE_ENABLE();
+#if SIMD_4x4_12 && defined(TARGET_SIMD_X86) && !JVET_J0090_MEMORY_BANDWITH_MEASURE
           }
 #endif
         }
@@ -6797,10 +6799,10 @@ void InterPrediction::xPredAffineBlk(const ComponentID &compID, const Prediction
         {
           m_if.filterHor(compID, (Pel *) ref - ((vFilterSize >> 1) - 1) * refStride, refStride, tmpBuf.buf,
                          tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng);
-          JVET_J0090_SET_CACHE_ENABLE(false);
+          JVET_AM0295_PUSH_CACHE_ENABLE(false);
           m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dst, dstStride,
                          bw, bh, yFrac, false, isLast, chFmt, clpRng);
-          JVET_J0090_SET_CACHE_ENABLE(true);
+          JVET_AM0295_POP_CACHE_ENABLE();
         }
 #endif
 #if AFFINE_ENC_OPT
@@ -8480,9 +8482,9 @@ void InterPrediction::xGetPredBlkTpl(const CodingUnit& cu, const ComponentID com
     PelBuf tmpBuf = PelBuf(m_filteredBlockTmp[0][compID], Size(bw, bh + vFilterSize - 1));
 
     m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
-    JVET_J0090_SET_CACHE_ENABLE(false);
+    JVET_AM0295_PUSH_CACHE_ENABLE(false);
     m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
-    JVET_J0090_SET_CACHE_ENABLE(true);
+    JVET_AM0295_POP_CACHE_ENABLE();
   }
 }
 #endif
@@ -13851,11 +13853,11 @@ void InterPrediction::xFinalPaddedMCForDMVR(PredictionUnit &pu, PelUnitBuf &pcYu
         offset += (deltaIntMvX);
         srcBufPelPtr = (srcBuf.buf + offset);
       }
-      JVET_J0090_SET_CACHE_ENABLE(false);
+      JVET_AM0295_PUSH_CACHE_ENABLE(false);
       xPredInterBlk((ComponentID) compID, pu, refPic, cMvClipped, pcYUVTemp, true,
                     pu.cs->slice->getClpRngs().comp[compID], bioApplied, false,
                     pu.cu->slice->getScalingRatio(refId, pu.refIdx[refId]), 0, 0, 0, srcBufPelPtr, pcPadstride);
-      JVET_J0090_SET_CACHE_ENABLE(false);
+      JVET_AM0295_POP_CACHE_ENABLE();
     }
     pcYUVTemp = pcYuvSrc1;
     pcPadTemp = pcPad1;
@@ -25587,9 +25589,9 @@ bool InterPrediction::xPredInterBlkRPR( const std::pair<int, int>& scalingRatio,
 
       Pel* tempBuf = buffer + ( yInt - yInt0 ) * tmpStride;
 
-      JVET_J0090_SET_CACHE_ENABLE( false );
+      JVET_AM0295_PUSH_CACHE_ENABLE( false );
       m_if.filterVer( compID, tempBuf + ( ( vFilterSize >> 1 ) - 1 ) * tmpStride, tmpStride, dst + row * dstStride, dstStride, width, 1, yFrac, false, rndRes, chFmt, clpRng, yFilter, false, useAltHpelIf && scalingRatio.second == 1 << SCALE_RATIO_BITS );
-      JVET_J0090_SET_CACHE_ENABLE( true );
+      JVET_AM0295_POP_CACHE_ENABLE();
     }
   }
 
@@ -27065,13 +27067,13 @@ void InterPrediction::xGetPredBlkTpl(const CodingUnit& cu, const ComponentID com
 #else
     m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
 #endif
-    JVET_J0090_SET_CACHE_ENABLE( false );
+    JVET_AM0295_PUSH_CACHE_ENABLE( false );
 #if JVET_AL0161_4TAP_TM
     m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf, 0, use4TapTM);
 #else
     m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
 #endif
-    JVET_J0090_SET_CACHE_ENABLE( true );
+    JVET_AM0295_POP_CACHE_ENABLE();
   }
 }
 #endif // INTER_LIC
@@ -27411,7 +27413,7 @@ void InterPrediction::xGetIbcLicPredBlkTpl(const CodingUnit& cu, const Component
 
   const int  nFilterIdx   = 0;
   const bool useAltHpelIf = false;
-
+  JVET_AM0295_PUSH_CACHE_ENABLE(false);
   if ( yFrac == 0 )
   {
     m_if.filterHor( compID, (Pel*) ref, refStride, dst, dstStride, bw, bh, xFrac, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
@@ -27420,6 +27422,7 @@ void InterPrediction::xGetIbcLicPredBlkTpl(const CodingUnit& cu, const Component
   {
     m_if.filterVer( compID, (Pel*) ref, refStride, dst, dstStride, bw, bh, yFrac, true, true, cu.chromaFormat, cu.slice->clpRng(compID), nFilterIdx, false, useAltHpelIf);
   }
+  JVET_AM0295_POP_CACHE_ENABLE();
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   }
 #endif
@@ -27472,6 +27475,9 @@ Distortion InterPrediction::deriveTMMv2Pel(const PredictionUnit& pu, int step, b
 
   InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
     , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+    , m_cacheModel
+#endif
   );
 #if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   TplMatchingCtrl tplCtrl(pu, interRes, refPic, fillCurTpl, COMPONENT_Y, true, -1, maxSearchRounds, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, mv, (doSimilarityCheck ? &(otherMvf->mv) : nullptr), curBestCost);
@@ -27664,6 +27670,9 @@ Distortion InterPrediction::deriveTMMv(const PredictionUnit& pu, bool fillCurTpl
 
   InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
                            ,  m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+                           , m_cacheModel
+#endif
   );
 #if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
   TplMatchingCtrl tplCtrl(pu, interRes, refPic, fillCurTpl, COMPONENT_Y, true, mergeIdx, maxSearchRounds, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, mv, (doSimilarityCheck ? &(otherMvf->mv) : nullptr), curBestCost);
@@ -28639,6 +28648,7 @@ PelBuf TplMatchingCtrl::xGetRefTemplate(const PredictionUnit& curPu, const Pictu
   }
 #endif
 
+  JVET_AM0295_COND_PUSH_CACHE_ENABLE_TM(CU::isIBC(m_cu), false);
   const int  nFilterIdx   = 1;
   const bool useAltHpelIf = false;
   const bool biMCForDMVR  = false;
@@ -28676,14 +28686,15 @@ PelBuf TplMatchingCtrl::xGetRefTemplate(const PredictionUnit& curPu, const Pictu
 #else
     m_interRes.m_if.filterHor( m_compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
 #endif
-    JVET_J0090_SET_CACHE_ENABLE( false );
+    JVET_AM0295_PUSH_CACHE_ENABLE2(false);
 #if JVET_AL0161_4TAP_TM
     m_interRes.m_if.filterVer( m_compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf, 0, use4TapTM );
 #else
     m_interRes.m_if.filterVer( m_compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf );
 #endif
-    JVET_J0090_SET_CACHE_ENABLE( true );
+    JVET_AM0295_POP_CACHE_ENABLE_TM();
   }
+  JVET_AM0295_COND_POP_CACHE_ENABLE_TM(CU::isIBC(m_cu));
 
   return dstBuf;
 }
@@ -29134,6 +29145,7 @@ PelBuf TplMatchingCtrl::xGetCurTemplateBvd(const PredictionUnit& curPu, const Pi
   const bool useAltHpelIf = false;
   const bool biMCForDMVR = false;
 
+  JVET_AM0295_PUSH_CACHE_ENABLE2(false);
 #if JVET_AA0070_RRIBC
   if (0 != m_cu.rribcFlipType)
   {
@@ -29153,7 +29165,7 @@ PelBuf TplMatchingCtrl::xGetCurTemplateBvd(const PredictionUnit& curPu, const Pi
 #else
   m_interRes.m_if.filterHor(m_compID, (Pel*)ref, refStride, dst, dstStride, bw, bh, xFrac, true, m_cu.chromaFormat, m_cu.slice->clpRng(m_compID), nFilterIdx, biMCForDMVR, useAltHpelIf);
 #endif
-
+  JVET_AM0295_POP_CACHE_ENABLE_TM();
   return dstBuf;
 }
 
@@ -30458,9 +30470,9 @@ Distortion InterPrediction::xGetBilateralMatchingErrorAdaptiveAffine(const Predi
       else
       {
         m_if.filterHor(COMPONENT_Y, ref - m_bmInterpolationHOfst, refStride, m_bmInterpolationTmpBuf.buf, m_bmInterpolationTmpBuf.stride, m_bmSubBlkW, m_bmSubBlkH + m_bmFilterSize - 1, xFrac, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
         m_if.filterVer(COMPONENT_Y, m_bmInterpolationTmpBuf.buf + m_bmInterpolationVOfst, m_bmInterpolationTmpBuf.stride, ptDst, dstStride, m_bmSubBlkW, m_bmSubBlkH, yFrac, false, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(true);
+        JVET_AM0295_POP_CACHE_ENABLE();
       }
     }
   }
@@ -30874,9 +30886,9 @@ Distortion InterPrediction::xGetBilateralMatchingErrorAffine(const PredictionUni
       else
       {
         m_if.filterHor(COMPONENT_Y, ref - m_bmInterpolationHOfst, refStride, m_bmInterpolationTmpBuf.buf, m_bmInterpolationTmpBuf.stride, m_bmSubBlkW, m_bmSubBlkH + m_bmFilterSize - 1, xFrac, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
         m_if.filterVer(COMPONENT_Y, m_bmInterpolationTmpBuf.buf + m_bmInterpolationVOfst, m_bmInterpolationTmpBuf.stride, ptDst, dstStride, m_bmSubBlkW, m_bmSubBlkH, yFrac, false, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(true);
+        JVET_AM0295_POP_CACHE_ENABLE();
       }
     }
 #if !JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
@@ -30981,9 +30993,9 @@ Distortion InterPrediction::xGetBilateralMatchingErrorAffine(const PredictionUni
       else
       {
         m_if.filterHor(COMPONENT_Y, ref - m_bmInterpolationHOfst, refStride, m_bmInterpolationTmpBuf.buf, m_bmInterpolationTmpBuf.stride, m_bmSubBlkW, m_bmSubBlkH + m_bmFilterSize - 1, xFrac, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
         m_if.filterVer(COMPONENT_Y, m_bmInterpolationTmpBuf.buf + m_bmInterpolationVOfst, m_bmInterpolationTmpBuf.stride, ptDst, dstStride, m_bmSubBlkW, m_bmSubBlkH, yFrac, false, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(true);
+        JVET_AM0295_POP_CACHE_ENABLE();
       }
     }
 #if JVET_AD0182_AFFINE_DMVR_PLUS_EXTENSIONS
@@ -31235,9 +31247,9 @@ Distortion InterPrediction::xGetBilateralMatchingErrorAffineCheckMv(const Predic
       else
       {
         m_if.filterHor(COMPONENT_Y, ref - m_bmInterpolationHOfst, refStride, m_bmInterpolationTmpBuf.buf, m_bmInterpolationTmpBuf.stride, m_bmSubBlkW, m_bmSubBlkH + m_bmFilterSize - 1, xFrac, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
         m_if.filterVer(COMPONENT_Y, m_bmInterpolationTmpBuf.buf + m_bmInterpolationVOfst, m_bmInterpolationTmpBuf.stride, ptDst, dstStride, m_bmSubBlkW, m_bmSubBlkH, yFrac, false, false, m_bmChFmt, m_bmClpRng, 1, true, false);
-        JVET_J0090_SET_CACHE_ENABLE(true);
+        JVET_AM0295_POP_CACHE_ENABLE();
       }
     }
     it->m_bmCost = 1;
@@ -33702,9 +33714,9 @@ void InterPrediction::xBDMVRFillBlkPredPelBufferAffine(const PredictionUnit& pu,
       else
       {
         m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xFrac, false, chFmt, clpRng, nFilterIdx, biMCForDMVR, false);
-        JVET_J0090_SET_CACHE_ENABLE(false);
+        JVET_AM0295_PUSH_CACHE_ENABLE(false);
         m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac, false, isLast, chFmt, clpRng, nFilterIdx, biMCForDMVR, false);
-        JVET_J0090_SET_CACHE_ENABLE(true);
+        JVET_AM0295_POP_CACHE_ENABLE();
       }     
     }  
   }
@@ -33769,9 +33781,9 @@ void InterPrediction::xBDMVRFillBlkPredPelBufferAffineOPT(const PredictionUnit& 
         else
         {
           m_if.filterHor(compID, (Pel*)ref - ((vFilterSize >> 1) - 1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh + vFilterSize - 1, xOrgFrac, false, chFmt, clpRng, nFilterIdx, biMCForDMVR, false);
-          JVET_J0090_SET_CACHE_ENABLE(false);
+          JVET_AM0295_PUSH_CACHE_ENABLE(false);
           m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yOrgFrac, false, isLast, chFmt, clpRng, nFilterIdx, biMCForDMVR, false);
-          JVET_J0090_SET_CACHE_ENABLE(true);
+          JVET_AM0295_POP_CACHE_ENABLE();
         }
       }
       int xTmpInt, yTmpInt;
@@ -33967,10 +33979,10 @@ void InterPrediction::xBDMVRFillBlkPredPelBuffer(const PredictionUnit& pu, const
 
     m_if.filterHor( compID, (Pel*)ref - ((vFilterSize>>1) -1)*refStride, refStride, tmpBuf.buf, tmpBuf.stride, bw, bh+vFilterSize-1, xFrac,
                     false, pu.chromaFormat, pu.cu->slice->clpRng(compID), biMCForDMVR, biMCForDMVR, useAltHpelIf );
-    JVET_J0090_SET_CACHE_ENABLE( false );
+    JVET_AM0295_PUSH_CACHE_ENABLE(false);
     m_if.filterVer( compID, tmpBuf.buf + ((vFilterSize>>1) -1)*tmpBuf.stride, tmpBuf.stride, dst, dstStride, bw, bh, yFrac,
                     false, false/*rndRes=!bi*/, pu.chromaFormat, pu.cu->slice->clpRng(compID), biMCForDMVR, biMCForDMVR, useAltHpelIf );
-    JVET_J0090_SET_CACHE_ENABLE( true );
+    JVET_AM0295_POP_CACHE_ENABLE();
   }
 }
 
@@ -39383,6 +39395,9 @@ void InterPrediction::deriveMvdSign( const Mv& cMvPred, const Mv& cMvdKnownAtDec
   const Picture &refPic = *pu.cu->slice->getRefPic(eRefList, refIdx)->unscaledPic;
   InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
     , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+    , m_cacheModel
+#endif
   );
 
 #if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE
@@ -40029,6 +40044,9 @@ void InterPrediction::defineSignHypMatchAffine(PredictionUnit& pu, const RefPicL
     const Picture& refPic = *pu.cu->slice->getRefPic(eRefList, refIdx)->unscaledPic;
     InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
                                 , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+                                , m_cacheModel
+#endif
                                 );
     
     TplMatchingCtrl tplCtrl(pu, interRes, refPic, true, COMPONENT_Y, true, 0, m_pcCurTplAbove, m_pcCurTplLeft, m_pcRefTplAbove, m_pcRefTplLeft, Mv(0, 0), nullptr, 0);
@@ -40233,7 +40251,11 @@ void InterPrediction::defineSignHypMatchAffine(PredictionUnit& pu, const RefPicL
     }
     else
     {
-      InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y], m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]);
+      InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y], m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+      , m_cacheModel
+#endif
+      );
 
       // For L0
       int refIdx = pu.cs->slice->getSymRefIdx(REF_PIC_LIST_0);
@@ -40369,6 +40391,9 @@ void InterPrediction::defineSignHypMatchAffine(PredictionUnit& pu, const RefPicL
     std::vector<std::pair<Mv, Distortion>> aMvCostVec(patternsNum);
     InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
                                 , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+                                , m_cacheModel
+#endif
                                 );
     
     // For L0
@@ -42609,6 +42634,9 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
 
     InterPredResources interRes(m_pcReshape, m_pcRdCost, m_if, m_filteredBlockTmp[0][COMPONENT_Y]
       , m_filteredBlock[3][1][0], m_filteredBlock[3][0][0]
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+      , m_cacheModel
+#endif
     );
 
 #if JVET_AI0185_ADAPTIVE_COST_IN_MERGE_MODE

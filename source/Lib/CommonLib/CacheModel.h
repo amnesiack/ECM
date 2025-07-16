@@ -42,21 +42,37 @@
 
 // function list
 #if !JVET_J0090_MEMORY_BANDWITH_MEASURE
-#define JVET_J0090_SET_CACHE_ENABLE( enable )          /* do nothing */
-#define JVET_J0090_SET_REF_PICTURE( refPic, compID )   /* do nothing */
-#define JVET_J0090_CACHE_ACCESS( src, fileName, line ) /* do nothing */
+#define JVET_J0090_SET_CACHE_ENABLE( enable )                 /* do nothing */
+#define JVET_J0090_SET_REF_PICTURE( refPic, compID )          /* do nothing */
+#define JVET_J0090_CACHE_ACCESS( src, fileName, line )        /* do nothing */
+#define JVET_AM0295_PUSH_CACHE_ENABLE( enable )               /* do nothing */
+#define JVET_AM0295_PUSH_CACHE_ENABLE2( enable )              /* do nothing */
+#define JVET_AM0295_POP_CACHE_ENABLE()                        /* do nothing */
+#define JVET_AM0295_POP_CACHE_ENABLE_TM()                     /* do nothing */
+#define JVET_AM0295_COND_PUSH_CACHE_ENABLE( cond, enable )    /* do nothing */
+#define JVET_AM0295_COND_PUSH_CACHE_ENABLE_TM( cond, enable ) /* do nothing */
+#define JVET_AM0295_COND_POP_CACHE_ENABLE( cond )             /* do nothing */
+#define JVET_AM0295_COND_POP_CACHE_ENABLE_TM( cond )          /* do nothing */
 #else
-#define JVET_J0090_SET_CACHE_ENABLE( enable )          m_cacheModel->setCacheEnable( enable )
-#define JVET_J0090_SET_REF_PICTURE( refPic, compID )   m_cacheModel->setRefPicture( refPic, compID )
-#define JVET_J0090_CACHE_ACCESS( src, fileName, line ) m_cacheModel->cacheAccess( src, fileName, line )
-
-
-
+#define JVET_J0090_SET_CACHE_ENABLE( enable )                 if (m_cacheModel) m_cacheModel->setCacheEnable( enable )
+#define JVET_J0090_SET_REF_PICTURE( refPic, compID )          if (m_cacheModel) m_cacheModel->setRefPicture( refPic, compID )
+#define JVET_J0090_CACHE_ACCESS( src, fileName, line )        if (m_cacheModel) m_cacheModel->cacheAccess( src, fileName, line )
+#define JVET_AM0295_PUSH_CACHE_ENABLE( enable )               if (m_cacheModel) m_cacheModel->setTmpCacheEnable( enable )
+#define JVET_AM0295_PUSH_CACHE_ENABLE2( enable )              if (m_interRes.m_cacheModel) m_interRes.m_cacheModel->setTmpCacheEnable( enable )
+#define JVET_AM0295_POP_CACHE_ENABLE()                        if (m_cacheModel) m_cacheModel->restoreCacheEnable()
+#define JVET_AM0295_POP_CACHE_ENABLE_TM()                     if (m_interRes.m_cacheModel) m_interRes.m_cacheModel->restoreCacheEnable()
+#define JVET_AM0295_COND_PUSH_CACHE_ENABLE( cond, enable )    if (cond) JVET_AM0295_PUSH_CACHE_ENABLE( enable )
+#define JVET_AM0295_COND_PUSH_CACHE_ENABLE_TM( cond, enable ) if (cond) JVET_AM0295_PUSH_CACHE_ENABLE2( enable )
+#define JVET_AM0295_COND_POP_CACHE_ENABLE( cond )             if (cond) JVET_AM0295_POP_CACHE_ENABLE()
+#define JVET_AM0295_COND_POP_CACHE_ENABLE_TM( cond )          if (cond) JVET_AM0295_POP_CACHE_ENABLE_TM()
+#include <stack>
 class CacheModel
 {
 private:
   // cache enable
   bool          m_cacheEnable;
+  bool          m_cacheEnableFilterUsing;
+  std::stack<bool>          m_cacheEnableFilterTmp;
   bool          m_cacheEnableFilter;
   // report level
   bool          m_frameReport;
@@ -85,9 +101,9 @@ private:
   int*          m_treeStatus;
 
   // stastical infromation for a frame
-  int*          m_hitCount; // for each cache entry
-  int           m_missHitCount; // for calc total bandwidth
-  int           m_totalAccess;
+  int64_t*          m_hitCount; // for each cache entry
+  int64_t           m_missHitCount; // for calc total bandwidth
+  int64_t           m_totalAccess;
   // stastical infromation for a sequence
   int64_t       m_hitCountSeq;
   int64_t       m_missHitCountSeq;
@@ -106,6 +122,8 @@ public:
   void cacheAccess( const Pel *addr, const std::string& fileName, const int lineNum );
   void accumulateFrame( );
   void setCacheEnable( bool enable );
+  void setTmpCacheEnable( bool enable );
+  void restoreCacheEnable();
   void setRefPicture( const Picture *refPic, const ComponentID compID );
 
 protected:
