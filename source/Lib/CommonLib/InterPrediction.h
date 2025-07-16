@@ -2021,9 +2021,14 @@ struct InterPredResources // Bridge required resource from InterPrediction
   Pel*                  m_ifBuf;       // m_filteredBlockTmp[0][compID]: temp interpolation buffer used to buffer horizontal interpolation output before vertical one performs
   Pel*                  m_preFillBufA; // m_filteredBlock[3][1][0]: Pre-interpolation buffer used to store search area samples of above template
   Pel*                  m_preFillBufL; // m_filteredBlock[3][0][0]: Pre-interpolation buffer used to store search area samples of left  template
-
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+  CacheModel*           m_cacheModel;
+#endif
   InterPredResources( Reshape* pcReshape, RdCost* pcRdCost, InterpolationFilter& ifObj, Pel* ifBuf
                     , Pel* preFillBufA, Pel* preFillBufL
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+                    , CacheModel *cacheModel
+#endif
   )
   : m_pcReshape   (pcReshape)
   , m_pcRdCost    (pcRdCost)
@@ -2031,6 +2036,9 @@ struct InterPredResources // Bridge required resource from InterPrediction
   , m_ifBuf       (ifBuf)
   , m_preFillBufA (preFillBufA)
   , m_preFillBufL (preFillBufL)
+#if JVET_J0090_MEMORY_BANDWITH_MEASURE
+  , m_cacheModel(cacheModel)
+#endif
   {};
 };
 

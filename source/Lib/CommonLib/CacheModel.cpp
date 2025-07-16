@@ -195,7 +195,7 @@ void CacheModel::create(const std::string& cacheCfgFileName)
   m_cachePoc   = new int [m_cacheSize];
   m_cacheComp  = new ComponentID [m_cacheSize];
   m_available  = new bool  [m_cacheSize];
-  m_hitCount   = new int  [m_cacheSize];
+  m_hitCount   = new int64_t  [m_cacheSize];
   // PLRU
   m_treeDepth  = xCalcPower( m_numWay );
   m_treeStatus = new int [m_numCacheLine];
@@ -240,7 +240,7 @@ void CacheModel::clear()
   if ( m_cacheEnable )
   {
     ::memset( m_available, 0, m_cacheSize * sizeof(bool) );
-    ::memset( m_hitCount,  0, m_cacheSize * sizeof(int) );
+    ::memset( m_hitCount,  0, m_cacheSize * sizeof(int64_t) );
     m_missHitCount = 0;
     m_totalAccess  = 0;
   }
@@ -272,7 +272,7 @@ void CacheModel::reportFrame( )
   {
     if ( m_frameReport )
     {
-      int hitCount = 0;
+      int64_t hitCount = 0;
 
       for ( int i = 0 ; i < m_cacheSize ; i++ )
       {
@@ -280,8 +280,8 @@ void CacheModel::reportFrame( )
       }
 
       fprintf( stdout, "Cache Statics in frame %d\n", m_frameCount );
-      fprintf( stdout, "Hit ratio %5.2f [%%]\n", (100 * (double)(hitCount)) / m_totalAccess );
-      fprintf( stdout, "Required bandwidth %.1f [MB]\n", ((double)(m_missHitCount) * m_cacheLineSize) / (1024 * 1024) );
+      fprintf( stdout, "Hit ratio %5.2f [%%]\n", 100 * (((double)hitCount / m_totalAccess)) );
+      fprintf( stdout, "Required bandwidth %.1f [MB]\n", ((double)(m_missHitCount) / (1024 * 1024) * m_cacheLineSize) );
     }
     m_frameCount++;
   }
@@ -481,4 +481,17 @@ void CacheModel::setCacheEnable( bool enable )
 {
   m_cacheEnableFilter = enable;
 }
+
+void CacheModel::setTmpCacheEnable(bool enable)
+{
+  m_cacheEnableFilterTmp.push(m_cacheEnableFilter);
+  m_cacheEnableFilter = enable;
+}
+
+void CacheModel::restoreCacheEnable()
+{
+  m_cacheEnableFilter = m_cacheEnableFilterTmp.top();
+  m_cacheEnableFilterTmp.pop();
+}
+
 #endif // JVET_J0090_MEMORY_BANDWITH_MEASURE
