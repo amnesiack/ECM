@@ -2338,6 +2338,10 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               for (int x = 1; x < numMPMs; x++)
               {
                 uint32_t mode = multiRefMPM[x];
+                if (mode == PLANAR_IDX)
+                {
+                  continue;
+                }
                 {
                   pu.intraDir[0] = mode;
                   initPredIntraParams(pu, pu.Y(), sps);
