@@ -265,7 +265,7 @@ private:
 #endif
 #if JVET_AM0157_SGPM_BV_LIC
   int  m_ibcLicMean[2][3] = {{0}};
-  int  m_ibcLicShift[2][2][3] = {{0}}, m_ibcLicScale[2][2][3] = {{0}}, m_ibcLicOffset[2][2][3] = {{0}};
+  int  m_ibcLicShift[2][2][3] = {{{0}}}, m_ibcLicScale[2][2][3] = {{{0}}}, m_ibcLicOffset[2][2][3] = {{{0}}};
 #endif
 #if TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM
   // buffer size for left/above current templates
