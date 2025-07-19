@@ -1771,9 +1771,6 @@ private:
 #if JVET_W0066_CCSAO
   bool              m_ccSaoEnabledFlag;
 #endif
-#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
-  bool              m_alfReuseFlag;
-#endif
 #if JVET_AG0158_ALF_LUMA_COEFF_PRECISION
   bool              m_alfPrecisionFlag;
 #endif
