@@ -8850,6 +8850,9 @@ void  EncAdaptiveLoopFilter::alfEncoderCtb(CodingStructure& cs, AlfParam& alfPar
         }
         m_apsMap->setChangedFlag( ( newApsIdChroma << NUM_APS_TYPE_LEN ) + ALF_APS );
         m_apsIdStart = newApsIdChroma;
+#if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
+        g_pictureControlInfo[newApsIdChroma].reset();
+#endif
       }
       apss[cs.slice->getTileGroupApsIdChroma()] = m_apsMap->getPS( ( cs.slice->getTileGroupApsIdChroma() << NUM_APS_TYPE_LEN ) + ALF_APS );
 #if JVET_AM0209_CHROMA_ALF_CCALF_REUSE_CTU
