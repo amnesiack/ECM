@@ -175,7 +175,7 @@
 #define JVET_AC0098_LOC_DEP_DIMD                          1 // JVET-AC0098: Location-dependent Decoder-side Intra Mode Derivation
 #define JVET_AH0076_OBIC                                  1 // JVET-AH0076: OBIC
 #define JVET_AK0056_WEIGHTED_OBIC                         1 // JVET-AK0056: Weighted OBIC
-#define JVET_AM0074_INTRA_MERGE                           1 // JVET-AM0074: Inta Merge
+#define JVET_AM0074_INTRA_MERGE                           1 // JVET-AM0074: Intra Merge
 #endif
 
 #endif
