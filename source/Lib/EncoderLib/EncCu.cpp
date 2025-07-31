@@ -4621,7 +4621,7 @@ bool EncCu::xCheckRDCostIntra(CodingStructure *&tempCS, CodingStructure *&bestCS
           }
 #endif
 #if JVET_AM0074_INTRA_MERGE
-          if (!intraMergeModeDerived && isLuma(partitioner.chType))
+          if (!intraMergeModeDerived && isLuma(partitioner.chType) && cu.slice->getSPS()->getUseDimd())
           {
             if (CU::allowIntraMergeMode(cu))
             {
