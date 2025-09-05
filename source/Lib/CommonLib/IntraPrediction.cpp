@@ -3881,7 +3881,7 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 
 #if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
   // derive vipm for all TIMDs
-  if (pu.cu->ispMode == 0 && pu.cu->timd)
+  if (pu.cu->ispMode == 0 && pu.cu->timd && isLuma(compID))
   {
     int secondMode = 0;
     int vipm = deriveIpmForTransform(piPred, *pu.cu, secondMode);
@@ -3894,6 +3894,7 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #if JVET_AM0074_INTRA_MERGE
     && !pu.cu->intraMergeMode
 #endif
+    && isLuma(compID)
     )
 #else
   if (pu.cu->ispMode == 0 && pu.cu->dimd)
