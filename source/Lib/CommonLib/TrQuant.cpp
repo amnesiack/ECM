@@ -1723,8 +1723,14 @@ void TrQuant::xT( const TransformUnit &tu, const ComponentID &compID, const CPel
 #endif
   }
 #endif
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
   else
+  {
+#endif
   getTrTypes ( tu, compID, trTypeHor, trTypeVer );
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
+  }
+#endif
 #if TU_256
   int  skipWidth  =  width  > JVET_C0024_ZERO_OUT_TH ? width  - JVET_C0024_ZERO_OUT_TH : 0;
   int  skipHeight =  height > JVET_C0024_ZERO_OUT_TH ? height - JVET_C0024_ZERO_OUT_TH : 0;
@@ -1893,8 +1899,14 @@ void TrQuant::xIT( const TransformUnit &tu, const ComponentID &compID, const CCo
 #endif
   }
 #endif
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
   else
+  {
+#endif
   getTrTypes ( tu, compID, trTypeHor, trTypeVer );
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
+  }
+#endif
 #if TU_256
   int skipWidth  =  width  > JVET_C0024_ZERO_OUT_TH ? width  - JVET_C0024_ZERO_OUT_TH : 0;
   int skipHeight =  height > JVET_C0024_ZERO_OUT_TH ? height - JVET_C0024_ZERO_OUT_TH : 0;
@@ -3205,8 +3217,14 @@ void TrQuant::predCoeffSigns(TransformUnit &tu, const ComponentID compID, const 
 #endif
     }
 #endif
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
     else
+    {
+#endif
     getTrTypes(tu, residCompID, trHor, trVer);
+#if JVET_AJ0061_TIMD_MERGE || JVET_AM0074_INTRA_MERGE
+    }
+#endif
 #if JVET_W0103_INTRA_MTS
     actualTrIdx = trHor * NUM_TRANS_TYPE + trVer;
 #else

@@ -5588,8 +5588,12 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               modeInfoWithDCT2Cost[i] = { m_savedRdModeList[0][i], MAX_DOUBLE};
             }
             else
+            {
 #endif
             modeInfoWithDCT2Cost[i] = { m_savedRdModeList[0][i], m_modeCostStore[0][i] };
+#if JVET_AM0074_INTRA_MERGE
+            }
+#endif
           }
           std::stable_sort(modeInfoWithDCT2Cost.begin(), modeInfoWithDCT2Cost.end(), [](const std::pair<ModeInfo, double> & l, const std::pair<ModeInfo, double> & r) {return l.second < r.second; });
 
@@ -15672,7 +15676,9 @@ void IntraSearch::xSelectAMTForFullRD(TransformUnit &tu
   // Remove useless copy. May also be applied to timdMrg
   if (!tu.cu->intraMergeMode)
 #endif
-  sharedPredTS.copyFrom(piPred);
+  {  
+    sharedPredTS.copyFrom(piPred);
+  }
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   if (PU::getFinalIntraMode(pu, chType) == PNN_IDX)
   {
@@ -16305,7 +16311,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
       // Remove useless copy. May also be applied to timdMrg
       if (!tu.cu->intraMergeMode)
 #endif
-      piPred.copyFrom( sharedPredTS );
+      {
+        piPred.copyFrom( sharedPredTS );
+      }
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
       if (uiChFinalMode == PNN_IDX)
       {
@@ -20125,7 +20133,7 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
   if (testTimdMerge && 
       ( (testDimd && timdDimdCostMult * m_satdCostDIMD < m_satdCostTIMD[TimdMrg][1]) ||
 #if JVET_AM0074_INTRA_MERGE
-      (testIntraMerge && ((timdDimdCostMult * m_satdCostIntraMerge) < m_satdCostTIMD[TimdMrg][1])) ||
+        (testIntraMerge && ((timdDimdCostMult * m_satdCostIntraMerge) < m_satdCostTIMD[TimdMrg][1])) ||
 #endif
         (testObic && timdDimdCostMult * m_satdCostOBIC < m_satdCostTIMD[TimdMrg][1]) ))
   {
@@ -20171,8 +20179,8 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
 #if JVET_AM0074_INTRA_MERGE
       (testIntraMerge && timdDimdCostMult * m_satdCostIntraMerge          < m_satdCostTIMD[TimdMrl1][1]) ||
 #endif
-       (testTimdMerge  && multMrl          * m_satdCostTIMD[TimdMrg][1]    < m_satdCostTIMD[TimdMrl1][1])
-       ))
+      (testTimdMerge  && multMrl          * m_satdCostTIMD[TimdMrg][1]    < m_satdCostTIMD[TimdMrl1][1])
+      ))
   {
     m_skipTimdMode[TimdMrl1] = true;
     testTimdMrl1 = false;
@@ -20182,10 +20190,10 @@ void IntraSearch::reduceHadCandList(static_vector<T, N>& candModeList, static_ve
       (testObic       && timdDimdCostMult * m_satdCostOBIC              < m_satdCostTIMD[TimdMrl3][1]) ||
       (testTimd       && multMrl          * m_satdCostTIMD[Timd][1]     < m_satdCostTIMD[TimdMrl3][1]) ||
 #if JVET_AM0074_INTRA_MERGE
-       (testIntraMerge && timdDimdCostMult * m_satdCostIntraMerge        < m_satdCostTIMD[TimdMrl3][1]) ||
+      (testIntraMerge && timdDimdCostMult * m_satdCostIntraMerge        < m_satdCostTIMD[TimdMrl3][1]) ||
 #endif
-       (testTimdMerge  && multMrl          * m_satdCostTIMD[TimdMrg][1]  < m_satdCostTIMD[TimdMrl3][1])
-       ))
+      (testTimdMerge  && multMrl          * m_satdCostTIMD[TimdMrg][1]  < m_satdCostTIMD[TimdMrl3][1])
+      ))
   {
     m_skipTimdMode[TimdMrl3] = true;
     testTimdMrl3 = false;
