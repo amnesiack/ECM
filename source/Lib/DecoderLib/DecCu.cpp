@@ -673,8 +673,6 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           }
 #endif
 #else
-          PredictionUnit *pu = currCU.firstPU;
-          const CompArea &area = currCU.Y();
 #if SECONDARY_MPM
           IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
 #endif
