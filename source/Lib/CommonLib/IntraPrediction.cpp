@@ -25001,7 +25001,7 @@ void IntraPrediction::searchCandidateFromOnePicIntra( CodingUnit* pcCU, Pel** ta
   {
     Mv bvK1Wind;
     const int numTempSamples = (tempType == L_SHAPE_TEMPLATE) ? numPixTopLeft : (tempType == LEFT_TEMPLATE) ? numPixLeft : numPixTop;
-    int log2MinCost = pu.cu->cs->sps->getItmpLicMode() ? LOG2MINCOST : LOG2MINCOST + 1;
+    int log2MinCost = (pu.cu->cs->sps->getItmpLicMode() ? LOG2MINCOST : LOG2MINCOST + 1) + (channelBitDepth - 10);
     int costThreshold[3] = { (numTempSamples << log2MinCost), 0, 0 };
 
     // Adaptive Refinement window
@@ -25400,7 +25400,7 @@ void IntraPrediction::searchCandidateFromOnePicIntra( CodingUnit* pcCU, Pel** ta
 
       Mv bvK1Wind;
       const int numTempSamples = (tempType == L_SHAPE_TEMPLATE) ? numPixTopLeft : (tempType == LEFT_TEMPLATE) ? numPixLeft : numPixTop;
-      int log2MinCost = pu.cu->cs->sps->getItmpLicMode() ? LOG2MINCOST : LOG2MINCOST + 1;
+      int log2MinCost = (pu.cu->cs->sps->getItmpLicMode() ? LOG2MINCOST : LOG2MINCOST + 1) + (channelBitDepth - 10);
       int costThreshold[3] = { (numTempSamples << log2MinCost), 0, 0 };
 
       // Adaptive Refinement window
