@@ -3103,10 +3103,10 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
         xIntraPredPlanarDcPdpc(srcBuf3rd, m_tempBuffer[0].getBuf(localUnitArea.Y()).buf, m_tempBuffer[1].getBuf(localUnitArea.Y()).stride, iWidth, iHeight);
       }
 #endif
-#endif    
-    }
 #endif
 #if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
+      }
+#endif
     }
 #endif
   
@@ -19630,7 +19630,7 @@ int IntraPrediction::deriveIpmForTransform(CPelBuf predBuf, CodingUnit& cu
 #else 
   buildHistogram(pPred, iStride, height - 2, width - 2, histogram, 0, width - 2, height - 2
 #if JVET_AK0217_INTRA_MTSS
-    , 0, true
+    , true
 #endif 
   );
 #endif 
@@ -20927,7 +20927,14 @@ void IntraPrediction::deriveBvgDimdMode(const CPelBuf &recoBuf, const CompArea &
     const Position p2(x + currBR.hor, y + currBR.ver);
     const int  picStride = cu.cs->picture->getRecoBuf(cu.Y()).stride;
     const Pel *ref       = cu.cs->picture->getRecoBuf(cu.Y()).buf + currTL.hor + 1 + ((currTL.ver + 1) * picStride);
-    buildHistogram(ref, picStride, p2.y - p1.y - 1, p2.x - p1.x - 1, histogram, 0, uiWidth, uiHeight, 0, true);
+    buildHistogram(ref, picStride, p2.y - p1.y - 1, p2.x - p1.x - 1, histogram, 0, uiWidth, uiHeight
+#if JVET_AJ0203_DIMD_2X2_EDGE_OP
+      , 0
+#endif
+#if  JVET_AK0217_INTRA_MTSS
+      , true
+#endif
+    );
   }
 
   int bestAmps[BVG_DIMD_INTRA_NUM - 1] = { 0 };

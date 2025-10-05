@@ -558,7 +558,9 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
             pu->intraDir[0] = currCU.obicMode[0];
           }
 #endif
+#endif
         }
+#if JVET_AG0146_DIMD_ITMP_IBC
 #if JVET_AL0108_BVG_DIMD
 #if JVET_AM0138_ENHANCED_TMP_MERGE_LIST_TIMD_BV
         else if ((chType == CHANNEL_TYPE_LUMA) && currCU.bvgDimdFlag)
