@@ -761,27 +761,53 @@ void QuantRDOQ::xRateDistOptQuant(TransformUnit &tu, const ComponentID &compID, 
   DTRACE( g_trace_ctx, D_RDOQ, "%d: %3d, %3d, %dx%d, comp=%d\n", DTRACE_GET_COUNTER( g_trace_ctx, D_RDOQ ), rect.x, rect.y, rect.width, rect.height, compID );
 #endif
 
-  const uint32_t lfnstIdx = tu.cu->lfnstIdx;
-
-  const int iCGNum = lfnstIdx > 0 ? 1 : std::min<int>(JVET_C0024_ZERO_OUT_TH, uiWidth) * std::min<int>(JVET_C0024_ZERO_OUT_TH, uiHeight) >> cctx.log2CGSize();
+  const uint32_t lfnstIdx = tu.mtsIdx[compID] != MTS_SKIP && uiWidth >= 4 && uiHeight >= 4 ? tu.cu->lfnstIdx : 0;
+  int iCGNum=0;
+  int maxNumNZ=0;
+  if (lfnstIdx > 0)
+  {
+#if JVET_AC0130_NSPT
+    bool allowNSPT = CU::isNSPTAllowed(tu, compID, uiWidth, uiHeight, CU::isIntra(*(tu.cu)));
+    if (allowNSPT)
+    {
+      maxNumNZ = PU::getNSPTMatrixDim(uiWidth, uiHeight);
+      iCGNum = (maxNumNZ + 15) >> 4;
+    }
+    else
+#endif
+    {
+#if JVET_W0119_LFNST_EXTENSION
+#if AHG7_LN_TOOLOFF_CFG
+      maxNumNZ = PU::getLFNSTMatrixDim(uiWidth, uiHeight, tu.cu->cs->sps->getUseLFNSTExt());
+      iCGNum = (maxNumNZ + 15) >> 4;
+#else
+      maxNumNZ = PU::getLFNSTMatrixDim(uiWidth, uiHeight);
+      iCGNum = maxNumNZ >> 4;
+#endif
+#elif EXTENDED_LFNST
+      iCGNum = (width >= 8 && height >= 8) ? 4 : 1;
+      maxNumNZ = iCGNum << 4;
+#else
+      maxNumNZ = ((width == 4 && height == 4) || (width == 8 && height == 8)) ? 8 : 16;
+      iCGNum = 1;
+#endif
+    }
+  }
+  else
+  {
+    iCGNum = std::min<int>(JVET_C0024_ZERO_OUT_TH, uiWidth) * std::min<int>(JVET_C0024_ZERO_OUT_TH, uiHeight) >> cctx.log2CGSize();
+  }
 
   for (int subSetId = iCGNum - 1; subSetId >= 0; subSetId--)
   {
     cctx.initSubblock( subSetId );
 
     uint32_t maxNonZeroPosInCG = iCGSizeM1;
-#if !EXTENDED_LFNST && !JVET_W0119_LFNST_EXTENSION
-    if( lfnstIdx > 0 && ( ( uiWidth == 4 && uiHeight == 4 ) || ( uiWidth == 8 && uiHeight == 8 && cctx.cgPosX() == 0 && cctx.cgPosY() == 0 ) ) )
+    if (lfnstIdx > 0 && subSetId == iCGNum - 1)
     {
-      maxNonZeroPosInCG = 7;
+      maxNonZeroPosInCG = maxNumNZ - (subSetId << 4) - 1;
     }
-#endif
-#if JVET_W0119_LFNST_EXTENSION
-    if( lfnstIdx > 0 && ( uiWidth == 8 && uiHeight == 8 && cctx.cgPosX() == 0 && cctx.cgPosY() == 0 ) )
-    {
-      maxNonZeroPosInCG = 15;
-    }
-#endif
+
     memset( &rdStats, 0, sizeof (coeffGroupRDStats));
 
     for( int iScanPosinCG = iCGSizeM1; iScanPosinCG > maxNonZeroPosInCG; iScanPosinCG-- )
@@ -1153,18 +1179,10 @@ void QuantRDOQ::xRateDistOptQuant(TransformUnit &tu, const ComponentID &compID, 
     if (cctx.isSigGroup( iCGScanPos ) )
     {
       uint32_t maxNonZeroPosInCG = iCGSizeM1;
-#if !EXTENDED_LFNST && !JVET_W0119_LFNST_EXTENSION
-      if( lfnstIdx > 0 && ( ( uiWidth == 4 && uiHeight == 4 ) || ( uiWidth == 8 && uiHeight == 8 && cctx.cgPosX() == 0 && cctx.cgPosY() == 0 ) ) )
+      if (lfnstIdx > 0 && iCGScanPos == iCGNum - 1)
       {
-        maxNonZeroPosInCG = 7;
+        maxNonZeroPosInCG = maxNumNZ - (iCGScanPos << 4) - 1;
       }
-#endif
-#if JVET_W0119_LFNST_EXTENSION
-      if( lfnstIdx > 0 && ( uiWidth == 8 && uiHeight == 8 && cctx.cgPosX() == 0 && cctx.cgPosY() == 0 ) )
-      {
-        maxNonZeroPosInCG = 15;
-      }
-#endif
       for( int iScanPosinCG = maxNonZeroPosInCG; iScanPosinCG >= 0; iScanPosinCG-- )
       {
         iScanPos = iCGScanPos * (iCGSizeM1 + 1) + iScanPosinCG;
