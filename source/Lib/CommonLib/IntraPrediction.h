@@ -1763,15 +1763,18 @@ public:
     }
   }
 #elif TMP_FAST_ENC
+  void initTmpDisp()
+  {
     m_tmpXdisp = 0;
     m_tmpYdisp = 0;
+  }
 #endif
 #if TMP_FAST_ENC
 #if JVET_AG0136_INTRA_TMP_LIC
-    int getTmpNumCand() const { return m_tmpNumCand; }
-    int getTmpNumCandUseMR() const { return m_tmpNumCandUseMR; }
+  int getTmpNumCand() const { return m_tmpNumCand; }
+  int getTmpNumCandUseMR() const { return m_tmpNumCandUseMR; }
 #else
-    int getTmpNumCand() { return m_tmpNumCand; }
+  int getTmpNumCand() { return m_tmpNumCand; }
 #endif
 #endif
 

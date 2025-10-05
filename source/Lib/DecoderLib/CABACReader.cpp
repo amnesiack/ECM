@@ -11544,7 +11544,7 @@ void CABACReader::tmp_flag(CodingUnit& cu)
 #else
       if (!cu.tmpFlmFlag)
 #endif
-#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING || !JVET_AG0136_INTRA_TMP_LIC
       {
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
@@ -11595,6 +11595,7 @@ void CABACReader::tmp_flag(CodingUnit& cu)
 #endif
 }
 #endif
+
 void CABACReader::mip_flag( CodingUnit& cu )
 {
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2(STATS__CABAC_BITS__INTRA_MIP, cu.lumaSize(), COMPONENT_Y);

@@ -6079,7 +6079,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       ModeInfo m = ModeInfo( false, false, 0, HOR_INTRA_SUBPARTITIONS, TIMD_IDX );
       m.setTimdParam(3);
       uiRdModeList.push_back(m);
-      m = ModeInfo( false, false, 0, VER_INTRA_SUBPARTITIONS, TIMD_IDX ) );
+      m = ModeInfo( false, false, 0, VER_INTRA_SUBPARTITIONS, TIMD_IDX );
       m.setTimdParam(4);
       uiRdModeList.push_back(m);
 #else

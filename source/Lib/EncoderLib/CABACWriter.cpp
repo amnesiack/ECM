@@ -11332,7 +11332,7 @@ void CABACWriter::tmp_flag(const CodingUnit& cu)
 #else
       if (!cu.tmpFlmFlag)
 #endif
-#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING
+#if !JVET_AM0229_INTRATMP_SUBMODES_DEPENDING || !JVET_AG0136_INTRA_TMP_LIC
       {
 #endif
 #if JVET_AH0200_INTRA_TMP_BV_REORDER
