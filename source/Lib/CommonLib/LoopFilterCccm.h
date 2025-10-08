@@ -150,6 +150,16 @@ protected:
 
   int                           m_lfCccmMultiModel;
   Pel                           m_lfCccmThreshold;
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  bool                          m_lfCccmSampleLessThanModelSizeFlag;
+  bool                          m_lfCccmIsFR;
+  bool                          m_lfCccmSkipFlag;
+  int                           m_lfCccmMultiModelSR;
+  Pel                           m_lfCccmThresholdSR;
+  bool                          m_lfCccmBadWindowSR;
+  int                           m_lfCccmModelTypeTmp;
+  int                           m_lfCccmChromaBitDepth;
+#endif
 
   void lfCccmSetMultiModelParameters()
   {
@@ -429,6 +439,11 @@ protected:
     const int impMode
 #endif
   );
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  void lfCccmSetMultiModelParametersSR();
+  bool lfCccmUpdateStatus(int numSamples);
+  void lfCccmRecoverStatus();
+#endif
 };
 #endif
 #endif
