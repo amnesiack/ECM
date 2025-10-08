@@ -1343,6 +1343,7 @@ const CtxSet ContextSetCfg::ChromaFusionMode = ContextSetCfg::addCtxSet({
  { 84, },
 });
 
+#if JVET_AC0071_DBV
 const CtxSet ContextSetCfg::DbvChromaMode = ContextSetCfg::addCtxSet({
 // ctx 169
  { 17, },
@@ -1366,6 +1367,7 @@ const CtxSet ContextSetCfg::DbvChromaMode = ContextSetCfg::addCtxSet({
  { 117, },
  { 117, },
 });
+#endif
 
 const CtxSet ContextSetCfg::MipFlag = ContextSetCfg::addCtxSet({
 // ctx 170 to 173
@@ -1973,6 +1975,7 @@ const CtxSet ContextSetCfg::affBMFlag = ContextSetCfg::addCtxSet({
  { 121, 117, },
 });
 
+#if JVET_AA0070_RRIBC
 const CtxSet ContextSetCfg::rribcFlipType = ContextSetCfg::addCtxSet({
 // ctx 222 to 225
  { 39, 39, 39, CNU, },
@@ -1996,7 +1999,9 @@ const CtxSet ContextSetCfg::rribcFlipType = ContextSetCfg::addCtxSet({
  { 116, 116, 116, DWO, },
  { 116, 116, 116, DWO, },
 });
+#endif
 
+#if JVET_AC0060_IBC_BVP_CLUSTER_RRIBC_BVD_SIGN_DERIV
 const CtxSet ContextSetCfg::bvOneZeroComp = ContextSetCfg::addCtxSet({
 // ctx 226 to 229
  { 34, CNU, 28, 27, },
@@ -2020,6 +2025,7 @@ const CtxSet ContextSetCfg::bvOneZeroComp = ContextSetCfg::addCtxSet({
  { 117, 99, 122, 107, },
  { 118, 210, 116, 131, },
 });
+#endif
 
 const CtxSet ContextSetCfg::AffineFlag = ContextSetCfg::addCtxSet({
 // ctx 230 to 232
@@ -2263,6 +2269,7 @@ const CtxSet ContextSetCfg::MvsdIdxMVDMSB = ContextSetCfg::addCtxSet({
  { 89, 107, 90, 117, 101, 130, 69, 102, 148, 251, 116, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
 });
 
+#if JVET_AC0104_IBC_BVD_PREDICTION
 const CtxSet ContextSetCfg::MvsdIdxBVDMSB = ContextSetCfg::addCtxSet({
 // ctx 289 to 304
  { 34, 41, 57, 41, 42, 41, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, CNU, },
@@ -2286,6 +2293,7 @@ const CtxSet ContextSetCfg::MvsdIdxBVDMSB = ContextSetCfg::addCtxSet({
  { 106, 84, 186, 202, 83, 67, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
  { 89, 100, 114, 100, 250, 186, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, DWO, },
 });
+#endif
 
 const CtxSet ContextSetCfg::MvsdIdx = ContextSetCfg::addCtxSet({
 // ctx 305 to 308
@@ -2311,6 +2319,7 @@ const CtxSet ContextSetCfg::MvsdIdx = ContextSetCfg::addCtxSet({
  { 115, 100, 103, 99, },
 });
 
+#if JVET_AD0140_MVD_PREDICTION && JVET_AC0104_IBC_BVD_PREDICTION
 const CtxSet ContextSetCfg::MvsdIdxIBC = ContextSetCfg::addCtxSet({
 // ctx 309 to 310
  { 41, 33, },
@@ -2334,6 +2343,7 @@ const CtxSet ContextSetCfg::MvsdIdxIBC = ContextSetCfg::addCtxSet({
  { 74, 82, },
  { 105, 104, },
 });
+#endif
 
 const CtxSet ContextSetCfg::MultiHypothesisFlag = ContextSetCfg::addCtxSet({
 // ctx 311 to 313
@@ -5902,6 +5912,7 @@ const CtxSet ContextSetCfg::ImvFlag = ContextSetCfg::addCtxSet({
  { 117, 116, 118, 116, 101, },
 });
 
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
 const CtxSet ContextSetCfg::ImvFlagIBC = ContextSetCfg::addCtxSet({
 // ctx 1498 to 1502
  { 54, 41, CNU, CNU, CNU, },
@@ -5925,6 +5936,7 @@ const CtxSet ContextSetCfg::ImvFlagIBC = ContextSetCfg::addCtxSet({
  { 130, 116, DWO, DWO, DWO, },
  { 121, 116, DWO, DWO, DWO, },
 });
+#endif
 
 const CtxSet ContextSetCfg::ctbAlfFlag = ContextSetCfg::addCtxSet({
 // ctx 1503 to 1511

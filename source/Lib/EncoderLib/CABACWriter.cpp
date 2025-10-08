@@ -3755,10 +3755,12 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
       }
     }
 
+#if JVET_AC0071_DBV
     if (hasDBV)
     {
       chromaIdx--;
     }
+#endif
 
     CHECK(!hasMode, "wrong mode");
     const bool     isDerivedMode = chromaIdx == 0;

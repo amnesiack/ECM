@@ -14195,8 +14195,6 @@ void  InterPrediction::sortIbcAdaptiveMergeMbvdCandidates(PredictionUnit &pu, Me
 #if !JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   const int cuPelX = pu.Y().x;
   const int cuPelY = pu.Y().y;
-  const int roiWidth = pu.lwidth()   + (m_bAMLTemplateAvailabe[1] ? AML_MERGE_TEMPLATE_SIZE : 0);
-  const int roiHeight = pu.lheight() + (m_bAMLTemplateAvailabe[0] ? AML_MERGE_TEMPLATE_SIZE : 0);
   const int picWidth = pu.cs->slice->getPPS()->getPicWidthInLumaSamples();
   const int picHeight = pu.cs->slice->getPPS()->getPicHeightInLumaSamples();
   const unsigned int  lcuWidth = pu.cs->slice->getSPS()->getMaxCUWidth();

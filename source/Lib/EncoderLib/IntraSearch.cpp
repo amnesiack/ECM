@@ -8465,7 +8465,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 #endif
             initPredIntraParams(pu, pu.Cb(), *pu.cs->sps);
             predIntraAng(COMPONENT_Cb, predCb, pu);
-#if JVET_AH0136_CHROMA_REORDERING
+#if JVET_AH0136_CHROMA_REORDERING && JVET_AC0071_DBV
           }
 #endif
         }
@@ -8509,7 +8509,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 #endif
             initPredIntraParams(pu, pu.Cr(), *pu.cs->sps);
             predIntraAng(COMPONENT_Cr, predCr, pu);
-#if JVET_AH0136_CHROMA_REORDERING
+#if JVET_AH0136_CHROMA_REORDERING && JVET_AC0071_DBV
           }
 #endif
         }

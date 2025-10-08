@@ -1133,7 +1133,11 @@ void CABACReader::coding_tree( CodingStructure& cs, Partitioner& partitioner, CU
     cu.slice->setCUIntraRegionRoot( &cu );
   }
 
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   if (!cu.slice->getSeparateTreeEnabled() || !cu.slice->getProcessingIntraRegion() || (cu.slice->isIntra() && cu.slice->getUseIBC()))
+#else
+  if (!cu.slice->getSeparateTreeEnabled() || !cu.slice->getProcessingIntraRegion() || (cu.slice->isIntra() && cu.slice->getSPS()->getIBCFlag()))
+#endif
   {
     coding_unit_pred_mode( cu, partitioner );
   }
@@ -1656,7 +1660,7 @@ void CABACReader::coding_unit_pred_mode( CodingUnit &cu, Partitioner &partitione
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
   if ((!cu.slice->isIntra() || cu.slice->getUseIBC()) && cu.Y().valid())
 #else
-  if ((!cs.slice->isIntra() || cs.slice->getSPS()->getIBCFlag()) && cu.Y().valid())
+  if ((!cu.slice->isIntra() || cu.slice->getSPS()->getIBCFlag()) && cu.Y().valid())
 #endif
   {
     cu_skip_flag( cu );
