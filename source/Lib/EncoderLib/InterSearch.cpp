@@ -2524,7 +2524,7 @@ void InterSearch::xIBCEstimation(PredictionUnit& pu, PelUnitBuf& origBuf, Mv *pc
 #if JVET_Z0084_IBC_TM
       if (PU::searchBv(pu, cuPelX, cuPelY, iRoiWidth, iRoiHeight, iPicWidth, iPicHeight, xPred, yPred, lcuWidth))
 #else
-      if (searchBv(pu, cuPelX, cuPelY, iRoiWidth, iRoiHeight, iPicWidth, iPicHeight, xBv, yBv, lcuWidth))
+      if (searchBv(pu, cuPelX, cuPelY, iRoiWidth, iRoiHeight, iPicWidth, iPicHeight, xPred, yPred, lcuWidth))
 #endif
       {
         orgBufForAmvpMerge[idx] = PelUnitBuf(pu.chromaFormat, PelBuf(m_amvpMergeBuffer[idx], iRoiWidth, iRoiHeight));

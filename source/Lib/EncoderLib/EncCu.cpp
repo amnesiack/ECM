@@ -24334,6 +24334,7 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
           distParam.cur = predBuf;
         }
         else
+        {
 #endif
 #if JVET_AC0112_IBC_LIC
         if (pu.cu->ibcLicFlag)
@@ -24365,7 +24366,12 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
         }
         else
 #endif
-        distParam.cur.buf = piRefSrch + refStride * yPred + xPred;
+        {
+          distParam.cur.buf = piRefSrch + refStride * yPred + xPred;
+        }
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+        }
+#endif
 
         Distortion sad = distParam.distFunc(distParam);
         unsigned int bitsCand = mergeCand + 1;
@@ -24753,6 +24759,7 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
         distParam.cur = predBuf;
       }
       else
+      {
 #endif
 #if JVET_AC0112_IBC_LIC
       if (pu.cu->ibcLicFlag)
@@ -24784,7 +24791,12 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
       }
       else
 #endif
-      distParam.cur.buf = piRefSrch + refStride * yPred + xPred;
+      {
+        distParam.cur.buf = piRefSrch + refStride * yPred + xPred;
+      }
+#if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
+      }
+#endif
 
       Distortion sad = distParam.distFunc(distParam);
       unsigned int bitsCand = mergeCand + 1;
@@ -25263,7 +25275,9 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
           }
           else
 #endif
-          distParam.cur.buf = piRefSrch + refStride * yPred + xPred;
+          {
+            distParam.cur.buf = piRefSrch + refStride * yPred + xPred;
+          }
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS && JVET_AE0169_BIPREDICTIVE_IBC
           }
 #endif
@@ -26546,11 +26560,13 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
 #if JVET_AD0208_IBC_ADAPT_FOR_CAM_CAPTURED_CONTENTS
             if (!hasBufferedCanPred)
 #endif
+            {
 #if JVET_AE0169_BIPREDICTIVE_IBC
-            m_pcInterSearch->motionCompensation(pu,REF_PIC_LIST_X, true, chroma);
+              m_pcInterSearch->motionCompensation(pu,REF_PIC_LIST_X, true, chroma);
 #else
-            m_pcInterSearch->motionCompensation(pu,REF_PIC_LIST_0, true, chroma);
+              m_pcInterSearch->motionCompensation(pu,REF_PIC_LIST_0, true, chroma);
 #endif
+            }
 #if JVET_AK0076_EXTENDED_OBMC_IBC
             if (!hasBufferedCanPred)
             {
@@ -26720,13 +26736,17 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
             tempCS->initStructData(encTestMode.qp);
           }
 
-            if (m_pcEncCfg->getUseFastDecisionForMerge() && !bestIsSkip)
+          if (m_pcEncCfg->getUseFastDecisionForMerge() && !bestIsSkip)
+          {
+            if (bestCS->getCU(partitioner.chType) == NULL)
             {
-              if (bestCS->getCU(partitioner.chType) == NULL)
-                bestIsSkip = 0;
-              else
+              bestIsSkip = 0;
+            }
+            else
+            {
               bestIsSkip = bestCS->getCU(partitioner.chType)->rootCbf == 0;
             }
+          }
         }
       }
     }
@@ -27389,14 +27409,16 @@ void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&best
         }
 #endif
       }
-#if JVET_AE0169_BIPREDICTIVE_IBC
+#if JVET_AC0112_IBC_CIIP
+#if JVET_AC0112_IBC_LIC
       }
 #endif
-#if JVET_AC0112_IBC_LIC
     }
+#if JVET_AE0169_BIPREDICTIVE_IBC
+  }
 #endif
-#if JVET_AC0112_IBC_CIIP
-    }
+#elif JVET_AC0112_IBC_LIC
+  }
 #endif
 }
   // check ibc mode in encoder RD

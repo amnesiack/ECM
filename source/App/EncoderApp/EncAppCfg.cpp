@@ -6215,7 +6215,7 @@ void EncAppCfg::xPrintParameter()
 #endif
   msg(VERBOSE, ") ");
 #else
-  msg(VERBOSE, "EnableTMnoninterTools:%d ", m_tmNoninterToolsEnableFlag);
+  msg(VERBOSE, "EnableTMnoninterTools:%d ", 0);
 #endif
 
   //inter

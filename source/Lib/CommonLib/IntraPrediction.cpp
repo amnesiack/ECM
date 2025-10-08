@@ -36892,7 +36892,7 @@ bool IntraPrediction::xCflmCreateChromaPred(const PredictionUnit& pu, const Comp
 #endif
   initPredIntraParams(pu, area, *(pu.cs->sps));
   predTimdIntraAng(compId, pu, iMode, piRefPred, refChroma.stride, areaWidth, areaHeight, eTplType, refSizeX, refSizeY);
-#if JVET_AH0136_CHROMA_REORDERING
+#if JVET_AH0136_CHROMA_REORDERING && JVET_AC0071_DBV
   }
 #endif
 

@@ -10069,8 +10069,8 @@ void PU::addMergeHMVPCandSubTMVP(const CodingStructure &cs, MergeCtx &mrgCtx, co
   const uint32_t maxNumMergeCand, int &cnt, const bool isAvailableA1,
   const MotionInfo miLeft, const bool isAvailableB1, const MotionInfo miAbove,
 #if !JVET_Z0075_IBC_HMVP_ENLARGE
-  , const bool ibcFlag
-  , const bool isGt4x4
+  const bool ibcFlag,
+  const bool isGt4x4,
 #endif
   const PredictionUnit &pu, int col
 #if TM_MRG || (JVET_Z0084_IBC_TM && !JVET_Z0075_IBC_HMVP_ENLARGE)
@@ -10091,7 +10091,8 @@ void PU::addMergeHMVPCandSubTMVP(const CodingStructure &cs, MergeCtx &mrgCtx, co
 #endif
 #else
 
-#if JVET_Z0118_GDR  
+#if JVET_Z0118_GDR
+  bool isClean = cs.isClean(pu.cu->Y().bottomRight(), CHANNEL_TYPE_LUMA);
   auto &lut = ibcFlag ? (isClean ? cs.motionLut.lutIbc1 : cs.motionLut.lutIbc0) : (isClean ? cs.motionLut.lut1 : cs.motionLut.lut0);
 #else
   auto &lut = ibcFlag ? cs.motionLut.lutIbc : cs.motionLut.lut;
