@@ -986,6 +986,10 @@ void EncApp::xInitLibCfg()
 #if JVET_AD0082_TMRL_CONFIG
   m_cEncLib.setUseTmrl                                           ( m_tmrl );
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  m_cEncLib.setUseQcs                                            ( m_qcs );
+#endif
+
 #if JVET_AG0058_EIP
   m_cEncLib.setUseEip                                            ( m_eip );
 #endif

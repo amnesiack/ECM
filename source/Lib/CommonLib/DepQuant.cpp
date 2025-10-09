@@ -1220,18 +1220,25 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
         int64_t nomTCoeff = ((int64_t) qIdx * (int64_t) invQScale + add) >> ((shift < 0) ? 0 : shift);
 
 #if JVET_AE0125_SHIFT_QUANTIZATION_CENTER
-        // Latent Shift
-        int qIdx2 = qIdx;
-        qIdx2 += (qIdx > 0 ? 1 : -1);
-        int64_t nomTCoeff2 = ((int64_t) qIdx2 * (int64_t) invQScale + add) >> ((shift < 0) ? 0 : shift);
-        int     aqIdx      = abs(qIdx);
-        int     coef       = 0;
-        if (aqIdx < 64)
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+        if (sps.getUseQcs())
         {
-          coef = m_coeffShift[aqIdx];
+#endif
+          // Latent Shift
+          int qIdx2 = qIdx;
+          qIdx2 += (qIdx > 0 ? 1 : -1);
+          int64_t nomTCoeff2 = ((int64_t)qIdx2 * (int64_t)invQScale + add) >> ((shift < 0) ? 0 : shift);
+          int     aqIdx = abs(qIdx);
+          int     coef = 0;
+          if (aqIdx < 64)
+          {
+            coef = m_coeffShift[aqIdx];
+          }
+          nomTCoeff = (int64_t)((1024 - coef) * nomTCoeff + coef * nomTCoeff2) >> 10;
+          // Latent Shift
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
         }
-        nomTCoeff = (int64_t) ((1024 - coef) * nomTCoeff + coef * nomTCoeff2) >> 10;
-        // Latent Shift
+#endif
 #endif
 
         tCoeff[rasterPos] = (TCoeff) Clip3<int64_t>(minTCoeff, maxTCoeff, nomTCoeff);

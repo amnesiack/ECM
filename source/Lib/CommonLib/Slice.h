@@ -1906,6 +1906,9 @@ private:
 #if JVET_AD0082_TMRL_CONFIG
   bool              m_tmrl;
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  bool              m_qcs;
+#endif
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   bool              m_tmNoninterToolsEnableFlag;
 #endif
@@ -2781,6 +2784,11 @@ void                    setCCALFEnabledFlag( bool b )                           
   void      setUseTmrl         (bool b)                                          { m_tmrl = b; }
   bool      getUseTmrl         ()                                      const     { return m_tmrl; }
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  void      setUseQcs          (bool b)                                          { m_qcs = b; }
+  bool      getUseQcs          ()                                      const     { return m_qcs; }
+#endif
+
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   void      setTMnoninterToolsEnableFlag         (bool b)                                          { m_tmNoninterToolsEnableFlag = b; }
   bool      getTMnoninterToolsEnableFlag          ()                                      const     { return m_tmNoninterToolsEnableFlag; }

@@ -542,6 +542,10 @@ protected:
 #if JVET_AD0082_TMRL_CONFIG
   bool      m_tmrl;
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  bool      m_qcs;
+#endif
+
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   bool      m_tmNoninterToolsEnableFlag;
 #endif
@@ -855,6 +859,7 @@ protected:
   bool      m_bUseHADME;                                      ///< flag for using HAD in sub-pel ME
   bool      m_useRDOQ;                                       ///< flag for using RD optimized quantization
   bool      m_useRDOQTS;                                     ///< flag for using RD optimized quantization for transform skip
+
 #if T0196_SELECTIVE_RDOQ
   bool      m_useSelectiveRDOQ;                               ///< flag for using selective RDOQ
 #endif

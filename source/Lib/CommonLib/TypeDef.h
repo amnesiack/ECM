@@ -57,7 +57,6 @@
 #define FIXFILTER_CFG                                     1
 #define AHG7_MTS_TOOLOFF_CFG                              1
 
-
 #define BASE_ENCODER                                      1
 #define BASE_NORMATIVE                                    1
 #define TOOLS                                             1
@@ -502,6 +501,7 @@
 #endif
 #define JVET_AC0115_INTRA_TMP_DIMD_MTS_LFNST              1 // JVET-AC0115: Modifications of MTS/LFNST for Intra TMP coded block
 #define JVET_AE0125_SHIFT_QUANTIZATION_CENTER             1 // JVET-AE0125: Shifting quantization center
+#define JVET_AN0095_QUANTIZATION_CENTER_SHIFT             1 // JVET_AN0095,AN0096,adding quantization center shift for TSRC and nonCTC RRC
 #define JVET_AE0102_LFNST_CTX                             1 // JVET-AE0102: Context modelling for transform coefficients for LFNST/NSPT
 #define JVET_AG0061_INTER_LFNST_NSPT                      1 // JVET-AG0061: 3.3 Utilizing LFNST/NSPT for inter coding
 #define JVET_AG0100_TRANSFORM_COEFFICIENT_CODING          1 // JVET-AG0100: 3.2b Transform coefficient coding

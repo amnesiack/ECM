@@ -1214,6 +1214,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #if JVET_AD0082_TMRL_CONFIG
   ("TMRL",                                            m_tmrl,                                            true,  "Enable template based multiple reference line intra prediction\n")
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  ("QCS",                                             m_qcs,                                             true,  "Enable quantization center shifting\n")
+#endif
+
 #if JVET_AG0058_EIP
   ("EIP",                                             m_eip,                                             true, "Enable extrapolation filter-based intra prediction\n")
 #endif
@@ -4320,6 +4324,7 @@ bool EncAppCfg::xCheckParameter()
       m_tmrl = false;
     }
 #endif
+
 #if JVET_AD0085_MPM_SORTING
     if (m_mpmSorting)
     {
@@ -5798,6 +5803,7 @@ void EncAppCfg::xPrintParameter()
   msg( VERBOSE, "HAD:%d ", m_bUseHADME                          );
   msg( VERBOSE, "RDQ:%d ", m_useRDOQ                            );
   msg( VERBOSE, "RDQTS:%d ", m_useRDOQTS                        );
+
   msg( VERBOSE, "RDpenalty:%d ", m_rdPenalty                    );
 #if SHARP_LUMA_DELTA_QP
   msg( VERBOSE, "LQP:%d ", m_lumaLevelToDeltaQPMapping.mode     );
@@ -6133,6 +6139,10 @@ void EncAppCfg::xPrintParameter()
 #if JVET_AD0082_TMRL_CONFIG && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg(VERBOSE, "TMRL:%d ", m_tmrl);
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  msg(VERBOSE, "QCS:%d ", m_qcs);
+#endif
+
 #if JVET_AD0085_MPM_SORTING && !JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   msg(VERBOSE, "MPMSorting:%d ", m_mpmSorting);
 #endif

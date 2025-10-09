@@ -2179,6 +2179,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AD0082_TMRL_CONFIG
   sps.setUseTmrl            ( m_tmrl );
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  sps.setUseQcs             ( m_qcs );
+#endif
 #if JVET_AE0174_NONINTER_TM_TOOLS_CONTROL
   sps.setTMnoninterToolsEnableFlag            ( m_tmNoninterToolsEnableFlag );
 #endif

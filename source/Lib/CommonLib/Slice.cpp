@@ -4420,6 +4420,9 @@ SPS::SPS()
 #if JVET_AD0082_TMRL_CONFIG
   , m_tmrl(false)
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  , m_qcs(false)
+#endif
 , m_tmNoninterToolsEnableFlag ( false )
 #if JVET_AG0058_EIP
 , m_eip(false)
