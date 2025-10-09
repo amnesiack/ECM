@@ -240,7 +240,7 @@ void EncLoopFilterCccm::lfCccmRDO(CodingStructure& cs, const PelUnitBuf recSAO
     m_CABACEstimator->getCtx() = SubCtx(Ctx::LfCccmFlag, ctxStartlfCccm3);
   };
 
-  double totalCostBset = 0.0;
+  double totalCostBest = 0.0;
   // base mode
   std::vector<int8_t> lfCccmEnabled;
   std::vector<int8_t> lfCccmWindowSizeIndex;
@@ -540,7 +540,7 @@ void EncLoopFilterCccm::lfCccmRDO(CodingStructure& cs, const PelUnitBuf recSAO
 
   if (totalCostImpModeBest < totalCostBaseMode)
   {
-    totalCostBset = totalCostImpModeBest;
+    totalCostBest = totalCostImpModeBest;
     cs.slice->setLfCccmImpEnabledFlag(true);
     cs.slice->setLfCccmImpFactorIdx(bestFactorIdx);
     cs.slice->m_lfCccmEnabled.swap(lfCccmEnabledImp);
@@ -551,7 +551,7 @@ void EncLoopFilterCccm::lfCccmRDO(CodingStructure& cs, const PelUnitBuf recSAO
   }
   else
   {
-    totalCostBset = totalCostBaseMode;
+    totalCostBest = totalCostBaseMode;
     cs.slice->setLfCccmImpEnabledFlag(false);
     cs.slice->setLfCccmImpFactorIdx(0);
     cs.slice->m_lfCccmEnabled.swap(lfCccmEnabled);
@@ -561,7 +561,7 @@ void EncLoopFilterCccm::lfCccmRDO(CodingStructure& cs, const PelUnitBuf recSAO
     cs.slice->m_lfCccmFrameLevelInherit = frameLevelInheritBaseMode;
   }
 
-  if (totalCostOff < totalCostBset)
+  if (totalCostOff < totalCostBest)
   {
     cs.slice->lfCccmClearControlInformation();
     cs.slice->setLfCccmEnabledFlag(false);

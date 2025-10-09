@@ -52,6 +52,113 @@ void LoopFilterCccm::lfCccmSetWindows( const int xi, const int yi )
   m_lfCccmRegressionWindow.height += 2;
   m_lfCccmRegressionWindow = clipArea(m_lfCccmRegressionWindow, m_lfCccmPartitionArea);
 }
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+void LoopFilterCccm::lfCccmSetMultiModelParametersSR()
+{
+  const Pel* src = m_lfCccmLumaSaoDownsampled.bufAt(m_lfCccmRegressionWindow.x, m_lfCccmRegressionWindow.y);
+  const int strideY = m_lfCccmLumaSaoDownsampled.stride;
+  const int starty = m_lfCccmRegressionWindow.y;
+  const int startx = m_lfCccmRegressionWindow.x;
+  const int endy = m_lfCccmRegressionWindow.bottomRight().getY() + 1;
+  const int endx = m_lfCccmRegressionWindow.bottomRight().getX() + 1;
+  int numSamples = 0;
+  m_lfCccmThresholdSR = 0;
+  for (int y = starty; y < endy; y++)
+  {
+    for (int x = startx, xx = 0; x < endx; x++, xx++)
+    {
+      if (m_lfCccmMultiModel == 1 && src[xx] >= m_lfCccmThreshold)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModel == 2 && src[xx] < m_lfCccmThreshold)
+      {
+        continue;
+      }
+      m_lfCccmThresholdSR += src[xx];
+      numSamples++;
+    }
+    src += strideY;
+  }
+  m_lfCccmThresholdSR = numSamples == 0 ? 0 : Pel((m_lfCccmThresholdSR + (numSamples >> 1)) / numSamples);
+}
+bool LoopFilterCccm::lfCccmUpdateStatus(int numSamples)
+{
+  m_lfCccmModelTypeTmp = m_lfCccmModelType;
+  lfCccmResetArrays();
+  if (numSamples >= 7)
+  {
+    m_lfCccmModelType = 0;
+    m_lfCccmModelSize = 7;
+  }
+  else if (numSamples >= 3)
+  {
+    m_lfCccmModelType = 2;
+    m_lfCccmModelSize = 3;
+  }
+  else
+  {
+    return false;
+  }
+  if (m_lfCccmIsEncoder)
+  {
+    m_lfCccmMmap = m_lfCccmModelMap[m_lfCccmModelType];
+    for (int i = 0; i < 11; i++)
+    {
+      m_lfCccmMmap2[i] = m_lfCccmMmap[i] + m_lfCccmArrayStride;
+    }
+  }
+  m_lfCccmModelCb = CccmModel(m_lfCccmModelSize, m_lfCccmChromaBitDepth);
+  m_lfCccmModelCr = CccmModel(m_lfCccmModelSize, m_lfCccmChromaBitDepth);
+  m_lfCccmSamples[m_lfCccmModelSize - 1] = m_lfCccmLumaOffset;
+  return true;
+}
+void LoopFilterCccm::lfCccmRecoverStatus()
+{
+  m_lfCccmModelType = m_lfCccmModelTypeTmp;
+  switch (m_lfCccmModelType)
+  {
+  case 0:
+    m_lfCccmModelSize = CCCM_NUM_PARAMS;
+    break;
+  case 1:
+    m_lfCccmModelSize = 2;
+    break;
+  case 2:
+    m_lfCccmModelSize = 3;
+    break;
+  case 3:
+    m_lfCccmModelSize = 6;
+    break;
+  case 4:
+    m_lfCccmModelSize = 5;
+    break;
+  case 5:
+    m_lfCccmModelSize = 5;
+    break;
+  case 6:
+    m_lfCccmModelSize = 11;
+    break;
+  case 7:
+    m_lfCccmModelSize = 10;
+    break;
+  default:
+    THROW("modeltype not supported");
+    break;
+  }
+  if (m_lfCccmIsEncoder)
+  {
+    m_lfCccmMmap = m_lfCccmModelMap[m_lfCccmModelType];
+    for (int i = 0; i < 11; i++)
+    {
+      m_lfCccmMmap2[i] = m_lfCccmMmap[i] + m_lfCccmArrayStride;
+    }
+  }
+  m_lfCccmModelCb = CccmModel(m_lfCccmModelSize, m_lfCccmChromaBitDepth);
+  m_lfCccmModelCr = CccmModel(m_lfCccmModelSize, m_lfCccmChromaBitDepth);
+  m_lfCccmSamples[m_lfCccmModelSize - 1] = m_lfCccmLumaOffset;
+}
+#endif
 void LoopFilterCccm::lfCccmSumStatisticsEncoder(int &numSamples, const Pel *src00, const Pel *srcCb, const Pel *srcCr, const int strideY0, const int strideCb, const int strideCr)
 {
   m_lfCccmChromaOffsetCb = 0;
@@ -63,10 +170,31 @@ void LoopFilterCccm::lfCccmSumStatisticsEncoder(int &numSamples, const Pel *src0
   const int endy = m_lfCccmRegressionWindow.bottomRight().getY()+1;
   const int endx = m_lfCccmRegressionWindow.bottomRight().getX()+1;
   const int pstride = m_lfCccmPartitionArea.width;
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  const Pel* src0 = src00;
+#endif
   for (int y = starty, yy = startyy; y < endy; y++, yy += pstride)
   {
     for (int x = startx, xx = 0, xxx = startxxx; x < endx; x++, xx++, xxx++)
     {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+      if (m_lfCccmMultiModel == 1 && src0[xx] >= m_lfCccmThreshold)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModel == 2 && src0[xx] < m_lfCccmThreshold)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModelSR == 1 && src0[xx] >= m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModelSR == 2 && src0[xx] < m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+#else
       if(m_lfCccmMultiModel == 1 && src00[xx] >= m_lfCccmThreshold)
       {
         continue;
@@ -75,6 +203,7 @@ void LoopFilterCccm::lfCccmSumStatisticsEncoder(int &numSamples, const Pel *src0
       {
         continue;
       }
+#endif
       m_lfCccmChromaOffsetCb += srcCb[xx];
       m_lfCccmChromaOffsetCr += srcCr[xx];
       const int linIdx2 = xxx + yy;
@@ -93,12 +222,60 @@ void LoopFilterCccm::lfCccmSumStatisticsEncoder(int &numSamples, const Pel *src0
     }
     srcCb += strideCb;
     srcCr += strideCr;
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+    src0 += strideY0;
+#else
     src00 += strideY0;
+#endif
   }
   if(numSamples < m_lfCccmModelSize)
   {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+    m_lfCccmSampleLessThanModelSizeFlag = true;
+    bool isUpdated = lfCccmUpdateStatus(numSamples);
+    if (!isUpdated)
+    {
+      return;
+    }
+    for (int y = starty, yy = startyy; y < endy; y++, yy += pstride)
+    {
+      for (int x = startx, xx = 0, xxx = startxxx; x < endx; x++, xx++, xxx++)
+      {
+        if (m_lfCccmMultiModel == 1 && src00[xx] >= m_lfCccmThreshold)
+        {
+          continue;
+        }
+        if (m_lfCccmMultiModel == 2 && src00[xx] < m_lfCccmThreshold)
+        {
+          continue;
+        }
+        if (m_lfCccmMultiModelSR == 1 && src00[xx] >= m_lfCccmThresholdSR)
+        {
+          continue;
+        }
+        if (m_lfCccmMultiModelSR == 2 && src00[xx] < m_lfCccmThresholdSR)
+        {
+          continue;
+        }
+        const int linIdx2 = xxx + yy;
+        int32_t* gxlocal = m_lfCccmXCorr[linIdx2].data();
+        for (int coli0 = 0; coli0 < m_lfCccmModelSize; coli0++)
+        {
+          m_lfCccmATCb[coli0] += gxlocal[m_lfCccmMmap[coli0]];
+          m_lfCccmATCr[coli0] += gxlocal[m_lfCccmMmap2[coli0]];
+          int32_t* galocal = m_lfCccmAutoCorr[linIdx2][m_lfCccmMmap[coli0]].data();
+          for (int coli1 = coli0; coli1 < m_lfCccmModelSize; coli1++)
+          {
+            m_lfCccmATA[coli0][coli1] += galocal[m_lfCccmMmap[coli1]];
+          }
+        }
+      }
+      src00 += strideY0;
+    }
+#else
     m_lfCccmBadWindow = true;
     return;
+#endif
   }
   m_lfCccmChromaOffsetCb = (m_lfCccmChromaOffsetCb+numSamples/2)/numSamples;
   m_lfCccmChromaOffsetCr = (m_lfCccmChromaOffsetCr+numSamples/2)/numSamples;
@@ -112,6 +289,13 @@ void LoopFilterCccm::lfCccmSumStatisticsDecoder(int &numSamples, const Pel* src0
   const int startx = m_lfCccmRegressionWindow.x;
   const int endy = m_lfCccmRegressionWindow.bottomRight().getY()+1;
   const int endx = m_lfCccmRegressionWindow.bottomRight().getX()+1;
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  const Pel* src00 = src0;
+  const Pel* src01 = src1;
+  const Pel* src02 = src2;
+  for (int y = starty; y < endy; y++, srcCb += strideCb, srcCr += strideCr, src00 += stride, src01 += stride, src02 += stride)
+  {
+#else
   const int nx = endx - startx;
   for (int y = starty; y < endy; y++, srcCb += strideCb, srcCr += strideCr, src0 += stride, src1 += stride, src2 += stride)
   {
@@ -123,8 +307,28 @@ void LoopFilterCccm::lfCccmSumStatisticsDecoder(int &numSamples, const Pel* src0
       numSamples += nx;
       continue;
     }
+#endif
     for (int x = startx, xx = 0; x < endx; x++, xx++)
     {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+      if (m_lfCccmMultiModel == 1 && src00[xx] >= m_lfCccmThreshold)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModel == 2 && src00[xx] < m_lfCccmThreshold)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModelSR == 1 && src00[xx] >= m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModelSR == 2 && src00[xx] < m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+      lfCccmCollectData(&src00[xx], &src01[xx], &src02[xx], numSamples);
+#else
       if(m_lfCccmMultiModel == 1 && src0[xx] >= m_lfCccmThreshold)
       {
         continue;
@@ -133,18 +337,17 @@ void LoopFilterCccm::lfCccmSumStatisticsDecoder(int &numSamples, const Pel* src0
       {
         continue;
       }
-
+      lfCccmCollectData(&src0[xx], &src1[xx], &src2[xx], numSamples);
+#endif
       m_lfCccmChromaOffsetCb += srcCb[xx];
       m_lfCccmChromaOffsetCr += srcCr[xx];
 
       m_lfCccmYCb[numSamples] = srcCb[xx];
       m_lfCccmYCr[numSamples] = srcCr[xx];
-
-      lfCccmCollectData(&src0[xx], &src1[xx], &src2[xx], numSamples);
       numSamples++;
     }
   }
-
+#if !JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
   if(m_lfCccmMultiModel == 0)
   {
     m_lfCccmChromaOffsetCb = std::reduce(m_lfCccmYCb, m_lfCccmYCb + numSamples, Pel{0});
@@ -177,11 +380,45 @@ void LoopFilterCccm::lfCccmSumStatisticsDecoder(int &numSamples, const Pel* src0
       }
     }
   }
-
+#endif
   if(numSamples < m_lfCccmModelSize)
   {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+    m_lfCccmSampleLessThanModelSizeFlag = true;
+    bool isUpdated = lfCccmUpdateStatus(numSamples);
+    if (!isUpdated)
+    {
+      return;
+    }
+    numSamples = 0;
+    for (int y = starty; y < endy; y++, src0 += stride, src1 += stride, src2 += stride)
+    {
+      for (int x = startx, xx = 0; x < endx; x++, xx++)
+      {
+        if (m_lfCccmMultiModel == 1 && src0[xx] >= m_lfCccmThreshold)
+        {
+          continue;
+        }
+        if (m_lfCccmMultiModel == 2 && src0[xx] < m_lfCccmThreshold)
+        {
+          continue;
+        }
+        if (m_lfCccmMultiModelSR == 1 && src0[xx] >= m_lfCccmThresholdSR)
+        {
+          continue;
+        }
+        if (m_lfCccmMultiModelSR == 2 && src0[xx] < m_lfCccmThresholdSR)
+        {
+          continue;
+        }
+        lfCccmCollectData(&src0[xx], &src1[xx], &src2[xx], numSamples);
+        numSamples++;
+      }
+    }
+#else
     m_lfCccmBadWindow = true;
     return;
+#endif
   }
 
   m_lfCccmChromaOffsetCb = (m_lfCccmChromaOffsetCb+numSamples/2)/numSamples;
@@ -218,11 +455,16 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
 #endif
 )
 {
-  if(m_lfCccmBadWindow)
+#if !JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  if ((m_lfCccmBadWindow && m_lfCccmIsFR) || (m_lfCccmBadWindowSR && !m_lfCccmIsFR))
+#else
+  if (m_lfCccmBadWindow)
+#endif
   {
     return;
   }
-
+#endif
   lfCccmResetArrays();
 
   int numSamples = 0;
@@ -234,6 +476,10 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
   const int strideY0 = m_lfCccmLumaSaoDownsampled.stride;
   const int strideCb = m_lfCccmSaoCb.stride;
   const int strideCr = m_lfCccmSaoCr.stride;
+
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  m_lfCccmSampleLessThanModelSizeFlag = false;
+#endif
 
   if(m_lfCccmIsEncoder)
   {
@@ -248,7 +494,18 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
 
   if(numSamples < m_lfCccmModelSize)
   {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+    if (m_lfCccmIsFR)
+    {
+      m_lfCccmBadWindow = true;
+    }
+    else
+    {
+      m_lfCccmBadWindowSR = true;
+    }
+#else
     m_lfCccmBadWindow = true;
+#endif
     return;
   }
 
@@ -256,7 +513,22 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
 
   if(!m_lfCccmModelCb.valid() || !m_lfCccmModelCr.valid())
   {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+    if (m_lfCccmSampleLessThanModelSizeFlag)
+    {
+      lfCccmRecoverStatus();
+    }
+    if (m_lfCccmIsFR)
+    {
+      m_lfCccmBadWindow = true;
+    }
+    else
+    {
+      m_lfCccmBadWindowSR = true;
+    }
+#else
     m_lfCccmBadWindow = true;
+#endif
     return;
   }
 
@@ -288,9 +560,16 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
   }
 #endif
 
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  bool skipLoop = false;
+  for (int y = 0; (y < m_lfCccmWindowArea.height) && !skipLoop; y++)
+  {
+    for (int x = 0; (x < m_lfCccmWindowArea.width) && !skipLoop; x++)
+#else
   for (int y = 0; (y < m_lfCccmWindowArea.height) && !m_lfCccmBadWindow; y++)
   {
     for (int x = 0; (x < m_lfCccmWindowArea.width) && !m_lfCccmBadWindow; x++)
+#endif
     {
       const Pel curCb = recCb[x];
       const Pel curCr = recCr[x];
@@ -303,14 +582,37 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
       {
         continue;
       }
-
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+      if (m_lfCccmMultiModelSR == 1 && src0[x] >= m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModelSR == 2 && src0[x] < m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+#endif
       Pel outCb  = 0;
       Pel outCr  = 0;
 
       lfCccmConvolveModel(&src0[x], &src1[x], &src2[x], outCb, outCr, m_lfCccmModelCb, m_lfCccmModelCr);
-
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+      if (m_lfCccmIsFR)
+      {
+        m_lfCccmBadWindow |= abs(curCb - outCb) > m_lfCccmBadBlockThreshold;
+        m_lfCccmBadWindow |= abs(curCr - outCr) > m_lfCccmBadBlockThreshold;
+        skipLoop = m_lfCccmBadWindow;
+      }
+      else
+      {
+        m_lfCccmBadWindowSR |= abs(curCb - outCb) > m_lfCccmBadBlockThreshold;
+        m_lfCccmBadWindowSR |= abs(curCr - outCr) > m_lfCccmBadBlockThreshold;
+        skipLoop = m_lfCccmBadWindowSR;
+      }
+#else
       m_lfCccmBadWindow |= abs(curCb-outCb) > m_lfCccmBadBlockThreshold;
       m_lfCccmBadWindow |= abs(curCr-outCr) > m_lfCccmBadBlockThreshold;
+#endif
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
       switch (impMode)
       {
@@ -370,6 +672,12 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
     }
 #endif
   }
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  if (m_lfCccmSampleLessThanModelSizeFlag)
+  {
+    lfCccmRecoverStatus();
+  }
+#endif
 }
 void LoopFilterCccm::lfCccmWindowProcess(
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
@@ -401,7 +709,7 @@ void LoopFilterCccm::lfCccmWindowProcess(
       {
         continue;
       }
-
+#if !JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
       m_lfCccmMultiModel = 0;
       m_lfCccmBadWindow = false;
       lfCccmFiltersConvolution(
@@ -411,33 +719,155 @@ void LoopFilterCccm::lfCccmWindowProcess(
       );
       if( m_lfCccmBadWindow )
       {
+#endif
         m_lfCccmBadWindow = false;
         lfCccmSetMultiModelParameters();
         m_lfCccmMultiModel = 1;
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+        m_lfCccmIsFR = true;
+        m_lfCccmMultiModelSR = -1;
+#endif
         lfCccmFiltersConvolution(
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
           impMode
 #endif
         );
 #if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+        if (!m_lfCccmSkipFlag && !m_lfCccmSampleLessThanModelSizeFlag && m_lfCccmBadWindow)
+        {
+          m_lfCccmIsFR = false;
+          lfCccmSetMultiModelParametersSR();
+          m_lfCccmBadWindowSR = false;
+          m_lfCccmMultiModelSR = 1;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          lfCccmDealWithBadWindow();
+          m_lfCccmBadWindowSR = false;
+          m_lfCccmMultiModelSR = 2;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          lfCccmDealWithBadWindow();
+        }
+        else if (m_lfCccmBadWindow)
+        {
+          lfCccmDealWithBadWindow();
+        }
+#else
         lfCccmDealWithBadWindow();
+#endif
         m_lfCccmBadWindow = false;
+#else
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+        if (!m_lfCccmSampleLessThanModelSizeFlag && !m_lfCccmSkipFlag && m_lfCccmBadWindow)
+        {
+          m_lfCccmIsFR = false;
+          lfCccmSetMultiModelParametersSR();
+          m_lfCccmBadWindowSR = false;
+          m_lfCccmMultiModelSR = 1;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          m_lfCccmMultiModelSR = 2;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          m_lfCccmBadWindow = m_lfCccmBadWindowSR;
+        }
+        bool skipFlag = m_lfCccmBadWindow || m_lfCccmSkipFlag;
+#endif
 #endif
         m_lfCccmMultiModel = 2;
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+        m_lfCccmIsFR = true;
+        m_lfCccmMultiModelSR = -1;
+#endif
         lfCccmFiltersConvolution(
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
           impMode
 #endif
         );
 #if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+        if (!m_lfCccmSkipFlag && !m_lfCccmSampleLessThanModelSizeFlag && m_lfCccmBadWindow)
+        {
+          m_lfCccmIsFR = false;
+          lfCccmSetMultiModelParametersSR();
+          m_lfCccmBadWindowSR = false;
+          m_lfCccmMultiModelSR = 1;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          lfCccmDealWithBadWindow();
+          m_lfCccmBadWindowSR = false;
+          m_lfCccmMultiModelSR = 2;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          lfCccmDealWithBadWindow();
+        }
+        else if (m_lfCccmBadWindow)
+        {
+          lfCccmDealWithBadWindow();
+        }
+#else
         lfCccmDealWithBadWindow();
 #endif
+#else
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+        if (!skipFlag && !m_lfCccmSampleLessThanModelSizeFlag && m_lfCccmBadWindow)
+        {
+          m_lfCccmIsFR = false;
+          lfCccmSetMultiModelParametersSR();
+          m_lfCccmBadWindowSR = false;
+          m_lfCccmMultiModelSR = 1;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          m_lfCccmMultiModelSR = 2;
+          lfCccmFiltersConvolution(
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+            impMode
+#endif
+          );
+          m_lfCccmBadWindow = m_lfCccmBadWindowSR;
+        }
+#endif
+#endif
+#if !JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
       }
+#endif
 #if !JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
-      if( m_lfCccmBadWindow )
+      if (m_lfCccmBadWindow)
       {
-        m_lfCccmUpdateCb.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCb.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea));
-        m_lfCccmUpdateCr.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCr.subBuf(m_lfCccmWindowArea,m_lfCccmWindowArea));
+        m_lfCccmUpdateCb.subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCb.subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea));
+        m_lfCccmUpdateCr.subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCr.subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea));
+#if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
+        if (m_lfCccmIsEncoder)
+        {
+          for (int factorIdx = 0; factorIdx < MAX_NUM_FACTOR_LF_CCCM; factorIdx++)
+          {
+            m_lfCccmUpdateImpCb[factorIdx].subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCb.subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea));
+            m_lfCccmUpdateImpCr[factorIdx].subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea).copyFrom(m_lfCccmSaoCr.subBuf(m_lfCccmWindowArea, m_lfCccmWindowArea));
+          }
+        }
+#endif 
       }
 #endif
     }
@@ -446,7 +876,11 @@ void LoopFilterCccm::lfCccmWindowProcess(
 #if JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY
 void LoopFilterCccm::lfCccmDealWithBadWindow()
 {
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  if (!m_lfCccmIsFR && !m_lfCccmBadWindowSR)
+#else
   if (!m_lfCccmBadWindow)
+#endif
   {
     return;
   }
@@ -488,6 +922,16 @@ void LoopFilterCccm::lfCccmDealWithBadWindow()
       {
         continue;
       }
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+      if (m_lfCccmMultiModelSR == 1 && src0[x] >= m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+      if (m_lfCccmMultiModelSR == 2 && src0[x] < m_lfCccmThresholdSR)
+      {
+        continue;
+      }
+#endif
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
       uCb[x] = uCbImp[0][x] = uCbImp[1][x] = uCbImp[2][x] = uCbImp[3][x] = recCb[x];
       uCr[x] = uCrImp[0][x] = uCrImp[1][x] = uCrImp[2][x] = uCrImp[3][x] = recCr[x];
@@ -707,7 +1151,9 @@ void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBu
 
   m_lfCccmWindowSize = m_lfCccmWindowSizes.at(cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr));
   m_lfCccmModelType = cs.slice->m_lfCccmModelType.at(ctuRsAddr);
-
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  m_lfCccmSkipFlag = cs.slice->m_lfCccmWindowSizeIndex.at(ctuRsAddr) > 4 ? true : false;
+#endif
   m_lfCccmSaoY = recSao.get(COMPONENT_Y);
   m_lfCccmSaoCb = recSao.get(COMPONENT_Cb);
   m_lfCccmSaoCr = recSao.get(COMPONENT_Cr);
@@ -756,7 +1202,9 @@ void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBu
       THROW("modeltype not supported");
       break;
   }
-
+#if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
+  m_lfCccmChromaBitDepth = cs.sps->getBitDepth(CH_C);
+#endif
   m_lfCccmModelCb = CccmModel(m_lfCccmModelSize, cs.sps->getBitDepth(CH_C));
   m_lfCccmModelCr = CccmModel(m_lfCccmModelSize, cs.sps->getBitDepth(CH_C));
 
