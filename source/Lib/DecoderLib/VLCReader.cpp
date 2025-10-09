@@ -3010,6 +3010,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AD0082_TMRL_CONFIG
   READ_FLAG(uiCode, "sps_tmrl_enabled_flag");                       pcSPS->setUseTmrl(uiCode != 0);
 #endif
+#if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
+  READ_FLAG(uiCode, "sps_qcs_enabled_flag");                        pcSPS->setUseQcs(uiCode != 0);
+#endif
 #if JVET_AD0085_MPM_SORTING
   READ_FLAG(uiCode, "sps_mpm_sorting_enabled_flag");                pcSPS->setUseMpmSorting(uiCode != 0);
 #endif
