@@ -1780,6 +1780,9 @@ private:
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool              m_nnipMode;
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  int               m_ccpFusionMode;
+#endif
   bool              m_bTemporalIdNestingFlag; // temporal_id_nesting_flag
 
   bool              m_scalingListEnabledFlag;
@@ -2368,6 +2371,10 @@ public:
 #if JVET_AJ0249_NEURAL_NETWORK_BASED
   bool                    getNnipMode() const { return m_nnipMode; }
   void                    setNnipMode(const bool nnipMode) { m_nnipMode = nnipMode; }
+#endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+ int                      getCcpFusionMode() const                                                        { return m_ccpFusionMode; }
+ void                     setCcpFusionMode( const int fMode )                                             { m_ccpFusionMode = fMode; }
 #endif
 #if JVET_AL0153_ALF_CCCM
   bool                    getLfCccmEnabledFlag() const                                                    { return m_lfCccmEnabledFlag; }

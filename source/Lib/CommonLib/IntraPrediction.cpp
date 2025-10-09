@@ -118,14 +118,25 @@ IntraPrediction::IntraPrediction()
     m_ddCCPFusionTempCb[i] = nullptr;
     m_ddCCPFusionTempCr[i] = nullptr;
   }
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  for (int i = 0; i < (MAX_CCP_CAND_LIST_INIT_SIZE + 1); i++)
+#else
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
   for (int i = 0; i < MAX_CCP_CAND_LIST_INIT_SIZE; i++)
 #else
   for (int i = 0; i < MAX_CCP_CAND_LIST_SIZE; i++)
 #endif
+#endif
   {
     m_ccpFusionTempCb[i] = nullptr;
     m_ccpFusionTempCr[i] = nullptr;
+  }
+#endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  for (int i = 0; i < (MAX_CCP_CAND_LIST_SIZE + 1); i++)
+  {
+    m_ccpStoreFusionTempCb[i] = nullptr;
+    m_ccpStoreFusionTempCr[i] = nullptr;
   }
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
@@ -299,16 +310,29 @@ void IntraPrediction::destroy()
     delete[] m_ddCCPFusionTempCr[i];
     m_ddCCPFusionTempCr[i] = nullptr;
   }
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  for (int i = 0; i < (MAX_CCP_CAND_LIST_INIT_SIZE + 1); i++)
+#else
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
   for (int i = 0; i < MAX_CCP_CAND_LIST_INIT_SIZE; i++)
 #else
   for (int i = 0; i < MAX_CCP_CAND_LIST_SIZE; i++)
+#endif
 #endif
   {
     delete[] m_ccpFusionTempCb[i];
     m_ccpFusionTempCb[i] = nullptr;
     delete[] m_ccpFusionTempCr[i];
     m_ccpFusionTempCr[i] = nullptr;
+  }
+#endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  for (int i = 0; i < (MAX_CCP_CAND_LIST_SIZE + 1); i++)
+  {
+    delete[] m_ccpStoreFusionTempCb[i];
+    m_ccpStoreFusionTempCb[i] = nullptr;
+    delete[] m_ccpStoreFusionTempCr[i];
+    m_ccpStoreFusionTempCr[i] = nullptr;
   }
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
@@ -581,10 +605,14 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
       m_ddCCPFusionTempCr[i] = new Pel[2 * MAX_CU_SIZE];
     }
   }
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  for (int i = 0; i < (MAX_CCP_CAND_LIST_INIT_SIZE + 1); i++)
+#else
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
   for (int i = 0; i < MAX_CCP_CAND_LIST_INIT_SIZE; i++)
 #else
   for (int i = 0; i < MAX_CCP_CAND_LIST_SIZE; i++)
+#endif
 #endif
   {
     if (m_ccpFusionTempCb[i] == nullptr)
@@ -594,6 +622,19 @@ void IntraPrediction::init(ChromaFormat chromaFormatIDC, const unsigned bitDepth
     if (m_ccpFusionTempCr[i] == nullptr)
     {
       m_ccpFusionTempCr[i] = new Pel[2 * MAX_CU_SIZE];
+    }
+  }
+#endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  for (int i = 0; i < (MAX_CCP_CAND_LIST_SIZE + 1); i++)
+  {
+    if (m_ccpStoreFusionTempCb[i] == nullptr)
+    {
+      m_ccpStoreFusionTempCb[i] = new Pel[2 * MAX_CU_SIZE];
+    }
+    if (m_ccpStoreFusionTempCr[i] == nullptr)
+    {
+      m_ccpStoreFusionTempCr[i] = new Pel[2 * MAX_CU_SIZE];
     }
   }
 #endif
@@ -30856,6 +30897,234 @@ void IntraPrediction::xCccmApplyModelOffset(const PredictionUnit &pu, const Comp
   }
 }
 
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+
+void  IntraPrediction::storeFusionTemp(int numPos)
+{
+  for (int i = 0; i < numPos; i++)
+  {
+    memcpy(m_ccpStoreFusionTempCb[i], m_ccpFusionTempCb[i], sizeof(Pel) * (2 * MAX_CU_SIZE));
+    memcpy(m_ccpStoreFusionTempCr[i], m_ccpFusionTempCr[i], sizeof(Pel) * (2 * MAX_CU_SIZE));
+  }
+}
+
+int IntraPrediction::xComputeBlendFusionModelJoint( const PredictionUnit& pu, const CompArea& chromaAreaCb, const CompArea& chromaAreaCr, int candIdx0, int candIdx1, AffineBlendingModel& blendModel, const int idxTemp )
+{
+  const SizeType cWidth = chromaAreaCb.width;
+  const SizeType cHeight = chromaAreaCb.height;
+
+  CodingStructure& cs = *(pu.cs);
+  const CodingUnit& cu = *(pu.cu);
+
+  const bool aboveAvailable = cu.cs->getCU(cu.blocks[COMPONENT_Cb].pos().offset(0, -1), toChannelType(COMPONENT_Cb)) ? true : false;
+  const bool leftAvailable  = cu.cs->getCU(cu.blocks[COMPONENT_Cb].pos().offset(-1, 0), toChannelType(COMPONENT_Cb)) ? true : false;
+
+  PelBuf chromaRecoCb = cs.picture->getRecoBuf(chromaAreaCb);
+  PelBuf chromaRecoCr = cs.picture->getRecoBuf(chromaAreaCr);
+  int maxSize = std::max(cWidth, cHeight);
+  bool  useStoreTemp = (idxTemp == 1);
+  bool  useDdCCPTemp = (idxTemp == 2);
+  Pel* ccpFusionTempCb[2] = 
+  {
+    useStoreTemp ? m_ccpStoreFusionTempCb[candIdx0] : (useDdCCPTemp ? m_ddCCPFusionTempCb[candIdx0] : m_ccpFusionTempCb[candIdx0]),
+    useStoreTemp ? m_ccpStoreFusionTempCb[candIdx1] : (useDdCCPTemp ? m_ddCCPFusionTempCb[candIdx1] : m_ccpFusionTempCb[candIdx1])
+  };
+  Pel* ccpFusionTempCr[2] = 
+  {
+    useStoreTemp ? m_ccpStoreFusionTempCr[candIdx0] : (useDdCCPTemp ? m_ddCCPFusionTempCr[candIdx0] : m_ccpFusionTempCr[candIdx0]),
+    useStoreTemp ? m_ccpStoreFusionTempCr[candIdx1] : (useDdCCPTemp ? m_ddCCPFusionTempCr[candIdx1] : m_ccpFusionTempCr[candIdx1])
+  };
+  PelBuf predBuf0Cb( ccpFusionTempCb[0], maxSize, Size(maxSize, 2) );
+  PelBuf predBuf1Cb( ccpFusionTempCb[1], maxSize, Size(maxSize, 2) );
+  PelBuf predBuf0Cr( ccpFusionTempCr[0], maxSize, Size(maxSize, 2) );
+  PelBuf predBuf1Cr( ccpFusionTempCr[1], maxSize, Size(maxSize, 2) );
+
+  Pel(*A)[CCCM_REF_SAMPLES_MAX] = m_a;
+  static Pel Y[BCW_MAX_REF_SAMPLES];
+
+  int sampleNum = 0;
+  for (int iComp = 0; iComp < 2; iComp++)
+  {
+
+    Pel* curChromaBuf   = iComp ? chromaRecoCr.buf    : chromaRecoCb.buf;
+    const int curStride = iComp ? chromaRecoCr.stride : chromaRecoCb.stride;
+
+    PelBuf& predBuf0 = iComp ? predBuf0Cr : predBuf0Cb;
+    PelBuf& predBuf1 = iComp ? predBuf1Cr : predBuf1Cb;
+
+    int iTempFirst = aboveAvailable ? 0 : 1;
+    int iTempLast = leftAvailable ? 2 : 1;
+
+    for (int iTemp = iTempFirst; iTemp < iTempLast; iTemp++) // 0: Above, 1: Left
+    {
+      int cStride = iTemp ? curStride : 1;
+
+      Pel* curChroma0 = iTemp ? (curChromaBuf - 1) : (curChromaBuf - curStride);
+
+      const Pel* p0 = predBuf0.bufAt(0, iTemp);
+      const Pel* p1 = predBuf1.bufAt(0, iTemp);
+
+      for (int pos = 0; pos < (iTemp ? cHeight : cWidth); pos++)
+      {
+        int posX = iTemp ? (-AML_MERGE_TEMPLATE_SIZE) : (pos - AML_MERGE_TEMPLATE_SIZE);
+        int posY = iTemp ? (pos - AML_MERGE_TEMPLATE_SIZE) : (-AML_MERGE_TEMPLATE_SIZE);
+
+        const Pel P0 = p0[pos];
+        const Pel P1 = p1[pos];
+
+        A[0][sampleNum] = aboveAvailable ? ((P1 - P0) * posX) : 0;
+        A[1][sampleNum] = leftAvailable  ? ((P1 - P0) * posY) : 0;
+        A[2][sampleNum] = (P1 - P0);
+        Y[sampleNum++] = (curChroma0[pos * cStride] - P0);
+      }
+
+    } // iTemp
+
+  } // iComp
+
+  const int channelBitDepth = pu.cs->sps->getBitDepth(CHANNEL_TYPE_LUMA);
+
+  CccmModel       bcwModel( 3, channelBitDepth );
+  CccmCovariance  bcwSolver;
+
+  // weights of the CU :
+  const int bcwBlendingLog2WeightBase = 5;  // BCW is 3, GEO is 5
+  int min = 1;
+  int max = (1 << bcwBlendingLog2WeightBase) - min;
+  blendModel = AffineBlendingModel( bcwBlendingLog2WeightBase, min, max ); // only positive weights
+
+  blendModel.valid = true;
+
+  if( !sampleNum ) // should never happen
+  {
+    bcwModel.clearModel();
+    blendModel.average(bcwBlendingLog2WeightBase);
+  }
+  else
+  {
+#if JVET_AB0174_CCCM_DIV_FREE
+    bcwSolver.solve1( A, Y, sampleNum, 0, bcwModel );
+#else
+    bcwSolver.solve2( A, Y, Y, sampleNum, bcwModel, bcwModel );
+#endif
+  }
+
+  if ( blendModel.valid )
+  {
+    uint64_t  maxParam = blendModel.params[0] > blendModel.params[1] ? blendModel.params[0] : blendModel.params[1];
+    maxParam = blendModel.params[2] > maxParam ? blendModel.params[2] : maxParam;
+    int shiftA = floorLog2Uint64(maxParam) - 31;
+    shiftA = shiftA < 0 ? 0 : shiftA;
+
+    int offsetA = shiftA ? 1 << (shiftA - 1) : 0;
+    blendModel.params[0] = (int)((bcwModel.params[0] + offsetA) >> shiftA);
+    blendModel.params[1] = (int)((bcwModel.params[1] + offsetA) >> shiftA);
+    blendModel.params[2] = (int)((bcwModel.params[2] + offsetA) >> shiftA);
+
+#if JVET_AJ0237_INTERNAL_12BIT
+    blendModel.shift = bcwModel.decimBits - shiftA - bcwBlendingLog2WeightBase;
+#else
+    blendModel.shift = CCCM_DECIM_BITS - shiftA - bcwBlendingLog2WeightBase;
+#endif
+    blendModel.offset = blendModel.shift ? (1 << (blendModel.shift - 1)) : 0;
+    CHECK( blendModel.shift < 0, "xComputeBlendFusionModelJoint() failed");
+
+    blendModel.valid = true;
+
+    const int shiftBlend  = bcwBlendingLog2WeightBase;
+
+    // check validity :
+    int cornerWeight[4];
+    cornerWeight[0] = blendModel.compute( 0, 0 );
+    cornerWeight[1] = blendModel.compute( cWidth - 1, 0 );
+    cornerWeight[2] = blendModel.compute( 0, cHeight - 1 );
+    cornerWeight[3] = blendModel.compute( cWidth - 1, cHeight - 1 );
+    int minWeight = cornerWeight[0];
+    int maxWeight = cornerWeight[0];
+    for (int i = 0; i < 4; i++) 
+    {
+      minWeight = std::min(minWeight, cornerWeight[i]);
+      maxWeight = std::max(maxWeight, cornerWeight[i]);
+    }
+    bool unvalid = abs(minWeight - maxWeight) <= 4;
+    if ( unvalid ) 
+    {
+      blendModel.average(shiftBlend);
+    }
+  }
+  const int shiftBlend = bcwBlendingLog2WeightBase;
+  const int iOne = 1 << shiftBlend;
+  const int offBlend = 1 << (shiftBlend - 1);
+
+  int sad = 0;
+  for (int iComp = 0; iComp < 2; iComp++)
+  {
+
+    Pel* curChromaBuf   = iComp ? chromaRecoCr.buf    : chromaRecoCb.buf;
+    const int curStride = iComp ? chromaRecoCr.stride : chromaRecoCb.stride;
+
+    PelBuf& predBuf0 = iComp ? predBuf0Cr : predBuf0Cb;
+    PelBuf& predBuf1 = iComp ? predBuf1Cr : predBuf1Cb;
+
+    if (aboveAvailable)
+    {
+      Pel* curChroma0 = curChromaBuf - curStride;
+
+      int posY = (-1);
+      for (int pos = 0; pos < cWidth; pos++)
+      {
+        int posX = pos;
+        int iWeight = blendModel.compute(posX, posY);
+
+        const Pel P0 = predBuf0.at(pos, 0);
+        const Pel P1 = predBuf1.at(pos, 0);
+
+        Pel predChroma;
+        if ( !blendModel.valid )
+        {
+          predChroma = (P0 + P1 + 1) >> 1;
+        }
+        else
+        {
+          predChroma = ((iOne - iWeight) * P0 + iWeight * P1 + offBlend) >> shiftBlend;
+        }
+
+        sad += abs(curChroma0[pos] - predChroma);
+      }
+    }
+
+    if (leftAvailable)
+    {
+      Pel* curChroma0 = curChromaBuf - 1;
+      int posX = (-1);
+      for (int pos = 0; pos < cHeight; pos++)
+      {
+        int posY = pos;
+        int iWeight = blendModel.compute(posX, posY);
+
+        const Pel P0 = predBuf0.at(pos, 1);
+        const Pel P1 = predBuf1.at(pos, 1);
+
+        Pel predChroma;
+        if ( !blendModel.valid )
+        {
+          predChroma = (P0 + P1 + 1) >> 1;
+        }
+        else
+        {
+          predChroma = ((iOne - iWeight) * P0 + iWeight * P1 + offBlend) >> shiftBlend;
+        }
+
+        sad += abs(curChroma0[pos * curStride] - predChroma);
+      }
+    }
+
+  } // iComp
+
+  return sad;
+}
+#endif
+
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
 int IntraPrediction::xGetCostCCPFusion(const PredictionUnit& pu, const ComponentID compID, const CompArea& chromaArea, int candIdx0, int candIdx1)
 {
@@ -31087,7 +31356,14 @@ int IntraPrediction::xUpdateOffsetsAndGetCostCCCM(const PredictionUnit &pu, cons
   PelBuf chromaReco = cs.picture->getRecoBuf(chromaArea);
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   int maxSize = std::max(cWidth, cHeight);
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  bool  useStoreTemp = pu.ccpMergeFusionFlag && pu.cs->pcv->isEncoder;
+  PelBuf predBuf(compID == COMPONENT_Cb 
+    ? (candIdx == (-1) ? (useStoreTemp ? m_ccpStoreFusionTempCb[MAX_CCP_CAND_LIST_SIZE]: m_ccpFusionTempCb[MAX_CCP_CAND_LIST_SIZE]) : m_ccpFusionTempCb[candIdx])
+    : (candIdx == (-1) ? (useStoreTemp ? m_ccpStoreFusionTempCr[MAX_CCP_CAND_LIST_SIZE]: m_ccpFusionTempCr[MAX_CCP_CAND_LIST_SIZE]) : m_ccpFusionTempCr[candIdx]), maxSize, Size(maxSize, 2));
+#else
   PelBuf predBuf(compID == COMPONENT_Cb ? m_ccpFusionTempCb[candIdx] : m_ccpFusionTempCr[candIdx], maxSize, Size(maxSize, 2));
+#endif
 #endif
 
   const Pel *curChromaBuf[2] = { nullptr, }, *srcBuf[2] = { nullptr, };
@@ -31681,6 +31957,45 @@ void IntraPrediction::xCclmApplyModel(const PredictionUnit &pu, const ComponentI
   }
 }
 
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+void IntraPrediction::ccpmComputeTemplateFusionModel( const PredictionUnit& pu, const ComponentID compID, CccmModel cccmModel[2], int modelThr )
+{
+  int lumaOffset = 0; // m_cccmLumaOffset - ccpCand.lumaOffset; // not used
+  int refSizeX = m_cccmBlkArea.x - m_cccmRefArea.x;
+  int refSizeY = m_cccmBlkArea.y - m_cccmRefArea.y;
+  int offsetCx[2] = { 0, 0 };
+
+  const CompArea& Cx = (compID == COMPONENT_Cb) ? pu.Cb() : pu.Cr();
+
+  xUpdateOffsetsAndGetCostCCCM<false>(pu, compID, Cx, cccmModel, modelThr, lumaOffset, offsetCx, CCP_TYPE_CCCM | CCP_TYPE_MMLM
+#if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
+    , -1
+#endif
+    , refSizeX, refSizeY);
+}
+
+void IntraPrediction::ccpmComputeBlendFusionModelJoint( const PredictionUnit& pu )
+{
+  CHECK( pu.ccpMergeFusionType != 0 || pu.curCand.ccpCandIndex < 0, "ccpmComputeBlendFusionModelJoint() bad args.");
+
+  AffineBlendingModel& blendModelCb = m_ccpmListFusionBlendModel[0][pu.curCand.ccpCandIndex];
+  AffineBlendingModel& blendModelCr = m_ccpmListFusionBlendModel[1][pu.curCand.ccpCandIndex];
+
+  const int idxTemp = (pu.ccpMergeFusionFlag && pu.cs->pcv->isEncoder) ? 1 : 0;
+
+  if ( !useBlendModelCcpm( pu ) )
+  {
+    blendModelCb.valid = false;
+  }
+  else
+  {
+    xComputeBlendFusionModelJoint( pu, pu.Cb(), pu.Cr(), pu.curCand.ccpCandIndex, MAX_CCP_CAND_LIST_SIZE, blendModelCb, idxTemp );
+  }
+
+  blendModelCr = blendModelCb;
+}
+#endif
+
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
 void IntraPrediction::reorderCCPCandidates(PredictionUnit &pu, CCPModelCandidate candList[], int reorderlistSize, int* fusionList)
 #else
@@ -31700,6 +32015,9 @@ void IntraPrediction::reorderCCPCandidates(PredictionUnit &pu, CCPModelCandidate
 #endif
   for (int i = 0; i < reorderlistSize; i++)
   {
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+    candList[i].ccpCandIndex = i;
+#endif
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
     candCost[i] = xGetOneCCPCandCost(pu, candList[i], i);
     ccpCandIndex[i] = i;
@@ -31745,7 +32063,7 @@ void IntraPrediction::reorderCCPCandidates(PredictionUnit &pu, CCPModelCandidate
   if ((pu.cs->pcv->isEncoder || pu.ddNonLocalCCPFusion > 0) && (pu.cu->slice->getSPS()->getUseDdCcpFusion()))
 #endif
   {
-    int FusionCandCost[MAX_CCP_FUSION_NUM] = { MAX_INT };
+    int fusionCandCost[MAX_CCP_FUSION_NUM] = { MAX_INT };
 
     int maxCandIdxForCcpFusion = std::min(reorderlistSize, 9);
     for (int i = 0; i < maxCandIdxForCcpFusion - 1; i++)
@@ -31753,20 +32071,74 @@ void IntraPrediction::reorderCCPCandidates(PredictionUnit &pu, CCPModelCandidate
       for (int j = i + 1; j < maxCandIdxForCcpFusion; j++)
       {
         int sad = 0;
-        sad += xGetCostCCPFusion(pu, COMPONENT_Cb, pu.Cb(), ccpCandIndex[i], ccpCandIndex[j]);
-        sad += xGetCostCCPFusion(pu, COMPONENT_Cr, pu.Cr(), ccpCandIndex[i], ccpCandIndex[j]);
-        for (int m = 0; m < MAX_CCP_FUSION_NUM; m++)
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+        const bool bUseBlendModel = useBlendModelDdccp( pu );
+        AffineBlendingModel blendModelCb, blendModelCr;
+        blendModelCb.valid = false;
+        blendModelCr.valid = false;
+        if ( bUseBlendModel )
         {
-          if (sad < FusionCandCost[m])
+          const int idxTemp = (pu.ccpMergeFusionFlag && pu.cs->pcv->isEncoder) ? 1 : 0;
+
+          int sad1 = 0;
+          sad1 += xGetCostCCPFusion(pu, COMPONENT_Cb, pu.Cb(), ccpCandIndex[i], ccpCandIndex[j]);
+          sad1 += xGetCostCCPFusion(pu, COMPONENT_Cr, pu.Cr(), ccpCandIndex[i], ccpCandIndex[j]);
+
+          int sad2 = xComputeBlendFusionModelJoint( pu, pu.Cb(), pu.Cr(), ccpCandIndex[i], ccpCandIndex[j], blendModelCb, idxTemp );
+          blendModelCr = blendModelCb;
+
+          if ( sad2 >= sad1 ) 
           {
+            blendModelCb.valid = false;
+            blendModelCr.valid = false;
+            sad = sad1;
+            blendModelCb.average();
+            blendModelCr.average();
+          }
+          else
+          {
+            CHECK( !blendModelCb.valid, "blendModelCbCr failed");
+            sad = sad2;
+          }
+
+        }
+        else
+#endif
+        {
+          sad += xGetCostCCPFusion(pu, COMPONENT_Cb, pu.Cb(), ccpCandIndex[i], ccpCandIndex[j]);
+          sad += xGetCostCCPFusion(pu, COMPONENT_Cr, pu.Cr(), ccpCandIndex[i], ccpCandIndex[j]);
+        }
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+        const int maxNumCcpFusionModel = PU::getMaxNumCcpFusionModel(pu);
+        for (int m = 0; m < maxNumCcpFusionModel; m++)
+#else
+        for (int m = 0; m < MAX_CCP_FUSION_NUM; m++)
+#endif
+        {
+          if (sad < fusionCandCost[m])
+          {
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+            for (int n = maxNumCcpFusionModel - 2; n >= m; n--)
+#else
             for (int n = MAX_CCP_FUSION_NUM - 2; n >= m; n--)
+#endif
             {
               const int nextIdx = n + 1;
-              FusionCandCost[nextIdx] = FusionCandCost[n];
+              fusionCandCost[nextIdx] = fusionCandCost[n];
               fusionList[2 * nextIdx] = fusionList[2 * n];
               fusionList[2 * nextIdx + 1] = fusionList[2 * n + 1];
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+              m_listFusionBlendModel[0][nextIdx] = m_listFusionBlendModel[0][n];
+              m_listFusionBlendModel[1][nextIdx] = m_listFusionBlendModel[1][n];
             }
-            FusionCandCost[m] = sad;
+            m_listFusionBlendModel[0][m] = blendModelCb;
+            m_listFusionBlendModel[1][m] = blendModelCr;
+#else
+            }
+#endif
+            fusionCandCost[m] = sad;
             fusionList[2 * m] = i;
             fusionList[2 * m + 1] = j;
 
@@ -32334,6 +32706,26 @@ void IntraPrediction::predCCPCandidate(PredictionUnit &pu, PelBuf &predCb, PelBu
 
         xCccmApplyModel(pu2, COMPONENT_Cr, cccmModelCr[0], 1, modelThr, predBufferCr);
         xCccmApplyModel(pu2, COMPONENT_Cr, cccmModelCr[1], 2, modelThr, predBufferCr);
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+        if ( useBlendModelCcpm( pu ) )
+        {
+          ccpmComputeTemplateFusionModel( pu, COMPONENT_Cb, cccmModelCb, modelThr );
+          ccpmComputeTemplateFusionModel( pu, COMPONENT_Cr, cccmModelCr, modelThr );
+
+          ccpmComputeBlendFusionModelJoint( pu );
+        }
+        else
+        {
+          AffineBlendingModel& blendModelCb = m_ccpmListFusionBlendModel[0][pu.curCand.ccpCandIndex];
+          AffineBlendingModel& blendModelCr = m_ccpmListFusionBlendModel[1][pu.curCand.ccpCandIndex];
+          blendModelCb.valid = false;
+          blendModelCr.valid = false;
+          blendModelCb.average();
+          blendModelCr.average();
+        }
+#endif
+
 #else
         pu2.intraDir[1] = LM_CHROMA_IDX;
 
@@ -32352,6 +32744,19 @@ void IntraPrediction::predCCPCandidate(PredictionUnit &pu, PelBuf &predCb, PelBu
         predIntraAng(COMPONENT_Cr, predBufferCr, pu);
         pu.intraDir[1] = LM_CHROMA_IDX;
       }
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+      if ( pu.ccpMergeFusionType == 0 )
+      {
+        AffineBlendingModel& blendModelCb = m_ccpmListFusionBlendModel[0][pu.curCand.ccpCandIndex];
+        AffineBlendingModel& blendModelCr = m_ccpmListFusionBlendModel[1][pu.curCand.ccpCandIndex];
+        applyBlendFusion( blendModelCb, predCb, predBufferCb, predCb, pu.cu->cs->slice->clpRng(COMPONENT_Cb) );
+
+        applyBlendFusion( blendModelCr, predCr, predBufferCr, predCr, pu.cu->cs->slice->clpRng(COMPONENT_Cr) );
+
+        return;
+      }
+#endif
 
       int w0 = 2;
       int w1 = 2;
@@ -38825,7 +39230,45 @@ int IntraPrediction::decoderDerivedCcp(PredictionUnit& pu, std::vector<DecoderDe
   return numDdccpModes;
 }
 
-void IntraPrediction::predDecoderDerivedCcpMergeFusion(PredictionUnit& pu, PelBuf &predCb, PelBuf &predCr, CCPModelCandidate decoderDerivedCcp1, CCPModelCandidate decoderDerivedCcp2)
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+void  IntraPrediction::applyBlendFusion( AffineBlendingModel& blendModelCb, PelBuf& predP0, PelBuf& predP1, PelBuf& predDst, const ClpRng& clpRng )
+{
+  int width   = predP0.width;
+  int height  = predP0.height;
+
+  const int shiftBlend = 5;
+  const int iOne = 1 << shiftBlend;
+  const int offBlend = 1 << (shiftBlend - 1);
+
+  for (int y = 0; y < height; y++)
+  {
+    for (int x = 0; x < width; x++)
+    {
+      const Pel P0 = predP0.at(x, y);
+      const Pel P1 = predP1.at(x, y);
+
+      Pel& dstPel = predDst.at(x, y);
+
+      if ( blendModelCb.valid )
+      {
+        const int iWeight = blendModelCb.compute(x, y);
+
+        dstPel = ((iOne - iWeight) * P0 + iWeight * P1 + offBlend) >> shiftBlend;
+      }
+      else
+      {
+        dstPel = (P0 + P1 + 1) >> 1;
+      }
+    }
+  }
+}
+#endif
+
+void IntraPrediction::predDecoderDerivedCcpMergeFusion(PredictionUnit& pu, PelBuf &predCb, PelBuf &predCr, CCPModelCandidate decoderDerivedCcp1, CCPModelCandidate decoderDerivedCcp2
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  , const int ccpfusionIdx
+#endif
+)
 {
   int width = predCb.width;
   int height = predCb.height;
@@ -38839,6 +39282,13 @@ void IntraPrediction::predDecoderDerivedCcpMergeFusion(PredictionUnit& pu, PelBu
   pu.curCand = decoderDerivedCcp1;
   predCCPCandidate(pu, predCb, predCr);
 
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  AffineBlendingModel& blendModelCb = m_listFusionBlendModel[0][ccpfusionIdx];
+  AffineBlendingModel& blendModelCr = m_listFusionBlendModel[1][ccpfusionIdx];
+
+  applyBlendFusion( blendModelCb, predCb, predLmBufferCb, predCb, pu.cu->cs->slice->clpRng(COMPONENT_Cb) );
+  applyBlendFusion( blendModelCr, predCr, predLmBufferCr, predCr, pu.cu->cs->slice->clpRng(COMPONENT_Cr) );
+#else
   for (int y = 0; y < height; y++)
   {
     for (int x = 0; x < width; x++)
@@ -38847,6 +39297,7 @@ void IntraPrediction::predDecoderDerivedCcpMergeFusion(PredictionUnit& pu, PelBu
       predCr.at(x, y) = (predCr.at(x, y) + predLmBufferCr.at(x, y) + 1) >> 1;
     }
   }
+#endif
 }
 #endif
 

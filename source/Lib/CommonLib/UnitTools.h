@@ -1360,6 +1360,10 @@ int   getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate candL
 #endif
 #endif
 
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  const int getMaxNumCcpFusionModel(const PredictionUnit& pu);
+#endif
+
 #if JVET_AE0100_BVGCCCM
   bool hasBvgCccmFlag(const PredictionUnit &pu);
   bool bvgCccmModeAvail(const PredictionUnit &pu);

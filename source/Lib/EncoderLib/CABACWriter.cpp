@@ -3408,7 +3408,12 @@ void CABACWriter::nonLocalCCPIndex(const PredictionUnit &pu)
         }
         if (pu.ddNonLocalCCPFusion > 0)
         {
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+          const int maxNumCcpFusionModel = PU::getMaxNumCcpFusionModel(pu);
+          unary_max_eqprob(pu.ddNonLocalCCPFusion - 1, maxNumCcpFusionModel - 1);
+#else
           unary_max_eqprob(pu.ddNonLocalCCPFusion - 1, MAX_CCP_FUSION_NUM - 1);
+#endif
         }
         else
         {
