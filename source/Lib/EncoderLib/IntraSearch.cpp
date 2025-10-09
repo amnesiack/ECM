@@ -7840,14 +7840,26 @@ void IntraSearch::getPredForCCPMrgFusion(PredictionUnit& pu, PelBuf& predCb, Pel
     xCccmApplyModel(pu2, COMPONENT_Cb, cccmModelCb[0], 0, 0, predCb);
     xCccmApplyModel(pu2, COMPONENT_Cr, cccmModelCr[0], 0, 0, predCr);
 #endif
+#if !JVET_AN0168_REGRESSION_CCP_FUSION
     CCPModelCandidate ccpModel;
     ccpModel.type = CCP_TYPE_CCCM | CCP_TYPE_MMLM;
+#endif
 #if JVET_AD0188_CCP_MERGE
+#if !JVET_AN0168_REGRESSION_CCP_FUSION
     PU::cccmModelToCcpParams(ccpModel, cccmModelCb, cccmModelCr, modelThr
 #if JVET_AB0174_CCCM_DIV_FREE
                                  , 0
 #endif
                              );
+#endif
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+    int tmpCcpMergeFusionFlag = pu.ccpMergeFusionFlag;
+    pu.ccpMergeFusionFlag = 1;
+    ccpmComputeTemplateFusionModel( pu, COMPONENT_Cb, cccmModelCb, modelThr );
+    ccpmComputeTemplateFusionModel( pu, COMPONENT_Cr, cccmModelCr, modelThr );
+    pu.ccpMergeFusionFlag = tmpCcpMergeFusionFlag;
+#endif
   }
   else
   {
@@ -7868,6 +7880,21 @@ void IntraSearch::xCalcCcpMrgPred(const PredictionUnit& pu, const ComponentID co
   int height = piPred.height;
   Pel* pelPred = piPred.buf;
   Pel* pelLm = piLm.buf;
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  if ( pu.ccpMergeFusionType == 0 )
+  {
+    CHECK(pu.curCand.ccpCandIndex < 0 || pu.curCand.ccpCandIndex >= MAX_CCP_CAND_LIST_INIT_SIZE, "xCalcCcpMrgPred(): bad 'pu.curCand.ccpCandIndex' value")
+
+    AffineBlendingModel& blendModel = m_ccpmListFusionBlendModel[compID - 1][pu.curCand.ccpCandIndex];
+
+    if ( blendModel.valid )
+    {
+      applyBlendFusion( blendModel, piLm, piPred, piLm, pu.cu->cs->slice->clpRng(compID) );
+      return;
+    }
+  }
+#endif
 
   int  w0 = 2;
   int  w1 = 2;
@@ -9727,6 +9754,9 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 #else
         reorderCCPCandidates(pu, candList, numPos);
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+        storeFusionTemp( numPos );
+#endif
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
           m_skipCcpMergeListConstruction = true;
           m_ccpMergeListSize = numPos;
@@ -9865,6 +9895,12 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
             else
             {
               pu.curCand = candList[ccpMergeIdx];
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+              if ( pu.ccpMergeFusionType == 0 )
+              {
+                ccpmComputeBlendFusionModelJoint( pu );
+              }
+#endif
               xCalcCcpMrgPred(pu, COMPONENT_Cb, predCCPFusionStorage[pu.ccpMergeFusionType].Cb(), ccpCandStorage[nonAdjCCCMCand].Cb());
               xCalcCcpMrgPred(pu, COMPONENT_Cr, predCCPFusionStorage[pu.ccpMergeFusionType].Cr(), ccpCandStorage[nonAdjCCCMCand].Cr());
             }
@@ -10064,7 +10100,12 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
             int ccpfusionIdx;
 
             double orderedCCPFusioncost[MAX_CCP_FUSION_NUM];
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+            const int maxNumFusionCcpModel = PU::getMaxNumCcpFusionModel(pu);
+            for (ccpfusionIdx = 0; ccpfusionIdx < maxNumFusionCcpModel; ccpfusionIdx++)
+#else
             for (ccpfusionIdx = 0; ccpfusionIdx < MAX_CCP_FUSION_NUM; ccpfusionIdx++)
+#endif
             {
               int ccpMergeIndex0 = fusionList[2 * ccpfusionIdx];
               int ccpMergeIndex1 = fusionList[2 * ccpfusionIdx + 1];
@@ -10097,6 +10138,14 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 
               PelBuf   predCb = ccpFusionStorage[ccpfusionIdx].Cb();
               PelBuf   predCr = ccpFusionStorage[ccpfusionIdx].Cr();
+
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+              AffineBlendingModel& blendModelCb = m_listFusionBlendModel[0][ccpfusionIdx];
+              AffineBlendingModel& blendModelCr = m_listFusionBlendModel[1][ccpfusionIdx];
+
+              applyBlendFusion( blendModelCb, srcCb0, srcCb1, predCb, pu.cu->cs->slice->clpRng(COMPONENT_Cb) );
+              applyBlendFusion( blendModelCr, srcCr0, srcCr1, predCr, pu.cu->cs->slice->clpRng(COMPONENT_Cr) );
+#else
               for (int y = 0; y < areaCb.height; y++)
               {
                 for (int x = 0; x < areaCb.width; x++)
@@ -10105,6 +10154,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
                   predCr.at(x, y) = (srcCr0.at(x, y) + srcCr1.at(x, y) + 1) >> 1;
                 }
               }
+#endif
 
               m_pcRdCost->setDistParam(distParamSad, orgCb, predCb, pu.cs->sps->getBitDepth(CHANNEL_TYPE_CHROMA), COMPONENT_Cb, false);
               m_pcRdCost->setDistParam(distParamSatd, orgCb, predCb, pu.cs->sps->getBitDepth(CHANNEL_TYPE_CHROMA), COMPONENT_Cb, true);

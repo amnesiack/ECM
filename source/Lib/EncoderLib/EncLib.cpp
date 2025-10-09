@@ -2494,6 +2494,9 @@ void EncLib::xInitSPS( SPS& sps )
 #if JVET_AK0065_TALF
   sps.setUseTAlf(m_alf);
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  sps.setCcpFusionMode( getIntraPeriod() == 1 ? 0 : 1 );
+#endif
 
   if (sps.getVuiParametersPresentFlag())
   {

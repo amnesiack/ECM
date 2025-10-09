@@ -8753,6 +8753,15 @@ void PU::ccpParamsToGlmModel(const ComponentID compId, const CCPModelCandidate& 
 #endif
 #endif
 
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+const int PU::getMaxNumCcpFusionModel( const PredictionUnit& pu )
+{
+  const int numMaxCcpFusionModel = pu.cs->sps->getCcpFusionMode() ? MAX_CCP_FUSION_NUM : (MAX_CCP_FUSION_NUM - 4);
+  CHECK( numMaxCcpFusionModel <= 0, "numMaxCcpFusionModel is zero");
+  return numMaxCcpFusionModel;
+}
+#endif
+
 #if JVET_AB0155_SGPM
 bool PU::isSgpm(const PredictionUnit &pu, const ChannelType &chType)
 {

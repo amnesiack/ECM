@@ -395,6 +395,9 @@ struct CCPModelCandidate
 #if JVET_AG0059_CCP_MERGE_ENHANCEMENT
   int ccInsideFilter = 0;
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  int ccpCandIndex = -1;
+#endif
 
   template<int NUM>
   inline bool isTheSameParams(const CCPModelCandidate& p) const

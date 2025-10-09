@@ -386,6 +386,10 @@ public:
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   int m_mmlmThreshold2;
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  AffineBlendingModel m_listFusionBlendModel[2][MAX_CCP_FUSION_NUM];  // [Cb/Cr]
+  AffineBlendingModel m_ccpmListFusionBlendModel[2][MAX_CCP_FUSION_NUM];  // [Cb/Cr]
+#endif
 
 #if SECONDARY_MPM
   uint8_t m_intraMPM[NUM_MOST_PROBABLE_MODES];
@@ -564,12 +568,19 @@ private:
   Pel* m_decoderDerivedCcpProbeTemplateL[2];
   Pel* m_ddCCPFusionTempCb[MAX_DDCCP_CAND_LIST_SIZE];
   Pel* m_ddCCPFusionTempCr[MAX_DDCCP_CAND_LIST_SIZE];
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  Pel* m_ccpStoreFusionTempCb[MAX_CCP_CAND_LIST_SIZE + 1];
+  Pel* m_ccpStoreFusionTempCr[MAX_CCP_CAND_LIST_SIZE + 1];
+  Pel* m_ccpFusionTempCb[MAX_CCP_CAND_LIST_INIT_SIZE + 1];
+  Pel* m_ccpFusionTempCr[MAX_CCP_CAND_LIST_INIT_SIZE + 1];
+#else
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
   Pel* m_ccpFusionTempCb[MAX_CCP_CAND_LIST_INIT_SIZE];
   Pel* m_ccpFusionTempCr[MAX_CCP_CAND_LIST_INIT_SIZE];
 #else
   Pel* m_ccpFusionTempCb[MAX_CCP_CAND_LIST_SIZE];
   Pel* m_ccpFusionTempCr[MAX_CCP_CAND_LIST_SIZE];
+#endif
 #endif
 #endif
 #if JVET_AF0073_INTER_CCP_MERGE
@@ -1030,6 +1041,10 @@ public:
   void xGlmApplyModelOffset       (const PredictionUnit& pu, const ComponentID compId, const CompArea& chromaArea, CccmModel& glmModel, int glmIdc, PelBuf& piPred, int lumaOffset, int chromaOffset);  
 
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  void storeFusionTemp(int numPos);
+  int xComputeBlendFusionModelJoint(const PredictionUnit& pu, const CompArea& chromaAreaCb, const CompArea& chromaAreaCr, int candIdx0, int candIdx1, AffineBlendingModel& blendModel, const int idxTemp);
+#endif
   int xGetCostCCPFusion           (const PredictionUnit& pu, const ComponentID compID, const CompArea& chromaArea, int candIdx0, int candIdx1);
   template <const bool updateOffsets>
   int xUpdateOffsetsAndGetCostCCLM(const PredictionUnit &pu, const ComponentID compID, const CompArea &chromaArea, CclmModel &cclmModel, int modelNum, int glmIdc, int candIdx = 0);
@@ -1051,6 +1066,20 @@ public:
 #endif
 #endif
 
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  void ccpmComputeTemplateFusionModel( const PredictionUnit& pu, const ComponentID compID, CccmModel cccmModel[2], int modelThr );
+  void ccpmComputeBlendFusionModelJoint( const PredictionUnit& pu );
+  bool useBlendModelCcpm( const PredictionUnit& pu ) 
+  { 
+    bool useBlend = pu.cs->sps->getCcpFusionMode();
+    return useBlend; 
+  }  
+  bool useBlendModelDdccp( const PredictionUnit& pu ) 
+  { 
+    return true;
+  }  
+#endif
+
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   void filterPredInsideProbeLine         (const ComponentID compID, const PredictionUnit &pu, bool above); // training stage
   int ddccpFusionTemplateCost            (const PredictionUnit& pu, const ComponentID compID, const CompArea& chromaArea, int candIdx0, int candIdx1, int cost0, int cost1);
@@ -1059,7 +1088,14 @@ public:
   int tmCostDecoderDerivedCcp            (PredictionUnit& pu, int currIdx, int intraDir, bool isCcpMerge = false); // training stage 
   void predDecoderDerivedIntraCCCMFusions(PredictionUnit& pu, PelBuf &predCb, PelBuf &predCr, std::vector<DecoderDerivedCcpCandidate> &decoderDerivedCcpList);
   int decoderDerivedCcp                  (PredictionUnit& pu, std::vector<DecoderDerivedCcpCandidate> &decoderDerivedCcpList); // training stage
-  void   predDecoderDerivedCcpMergeFusion(PredictionUnit& pu, PelBuf &predCb, PelBuf &predCr, CCPModelCandidate decoderDerivedCcp1, CCPModelCandidate decoderDerivedCcp2);
+  void   predDecoderDerivedCcpMergeFusion(PredictionUnit& pu, PelBuf &predCb, PelBuf &predCr, CCPModelCandidate decoderDerivedCcp1, CCPModelCandidate decoderDerivedCcp2
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+    , const int idxDdNonLocalCCPFusion
+#endif
+  );
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  void applyBlendFusion                  (AffineBlendingModel& blendModelCb, PelBuf& predCb, PelBuf& predLmBufferCb, PelBuf& predDst, const ClpRng& clpRng);
+#endif
 #endif
 
 #if JVET_AF0073_INTER_CCP_MERGE || JVET_AG0154_DECODER_DERIVED_CCP_FUSION

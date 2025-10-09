@@ -1930,6 +1930,9 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
 #if JVET_AF0073_INTER_CCP_MERGE
   WRITE_FLAG( pcSPS->getUseInterCcpMerge() ? 1 : 0,                                    "sps_inter_ccp_merge");
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  WRITE_FLAG( pcSPS->getCcpFusionMode() ? 1 : 0,                                       "sps_ccp_fusion_mode");
+#endif
 #if JVET_AG0058_EIP
   WRITE_FLAG(pcSPS->getUseEip() ? 1 : 0, "sps_eip_enabled_flag");
 #endif

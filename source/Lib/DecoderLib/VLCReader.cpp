@@ -2955,6 +2955,9 @@ void HLSyntaxReader::parseSPS(SPS* pcSPS)
 #if JVET_AF0073_INTER_CCP_MERGE
   READ_FLAG(uiCode, "sps_inter_ccp_merge");                         pcSPS->setUseInterCcpMerge( uiCode != 0 );
 #endif
+#if JVET_AN0168_REGRESSION_CCP_FUSION
+  READ_FLAG(uiCode, "sps_ccp_fusion_mode");                         pcSPS->setCcpFusionMode(uiCode != 0);
+#endif
 #if JVET_AG0058_EIP
   READ_FLAG(uiCode, "sps_eip_enabled_flag");                        pcSPS->setUseEip(uiCode != 0);
 #endif
