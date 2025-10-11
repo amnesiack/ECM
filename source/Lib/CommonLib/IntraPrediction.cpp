@@ -38009,11 +38009,19 @@ void CccmCovariance::solve3( TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS
 #if JVET_AE0059_INTER_CCCM
     , const bool interCccmMode
 #endif
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+    , const bool hasNonLinearTerm
+    , const bool regularization
+#endif
 )
 #else
 void CccmCovariance::solve3( TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCb[CCCM_NUM_PARAMS_MAX], TCccmCoeff ATCr[CCCM_NUM_PARAMS_MAX], const int sampleNum, CccmModel& modelCb, CccmModel& modelCr
 #if JVET_AE0059_INTER_CCCM
     , const bool interCccmMode
+#endif
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+    , const bool hasNonLinearTerm
+    , const bool regularization
 #endif
 )
 #endif
@@ -38024,7 +38032,28 @@ void CccmCovariance::solve3( TCccmCoeff ATA[CCCM_NUM_PARAMS_MAX][CCCM_NUM_PARAMS
   CHECK( modelCr.getNumParams() != numParams, "Chroma number of parameters don't match" );
   CHECK( CCCM_REF_SAMPLES_MAX < sampleNum, "Insufficient buffer size" );
   CHECK( CCCM_NUM_PARAMS_MAX < numParams, "Insufficient buffer size" );
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  int regularizationParam = 0;
+  if (regularization)
+  {
+    int cnt = 0;
+    for (const auto& cand : L2_ALF_CCCM_SAMPLE_NUM)
+    {
+      if (sampleNum <= cand)
+      {
+        break;
+      }
+      cnt++;
+    }
+    regularizationParam = L2_ALF_CCCM_REG_PARAM[cnt] * numParams;
+  }
 
+  const int loopNum = hasNonLinearTerm ? numParams - 2 : numParams - 1;
+  for (int coli0 = 0; coli0 < loopNum; coli0++)
+  {
+    ATA[coli0][coli0] += regularizationParam;
+  }
+#endif
 #if JVET_AB0174_CCCM_DIV_FREE
   // Remove chromaOffset from stats to update cross-correlation
   for( int coli = 0; coli < numParams; coli++ )

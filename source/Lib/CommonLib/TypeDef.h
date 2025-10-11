@@ -581,6 +581,7 @@
 #if JVET_AL0153_ALF_CCCM
 #define JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR                1 // JVET-AM0063: adaptive factor for ALF-CCCM
 #define JVET_AM0063_ALF_CCCM_UPDATED_MULTI_MODELS_STRATEGY  1 // JVET-AM0063: updated multi-models strategy for ALF-CCCM
+#define JVET_AN0098_ALF_CCCM_REGULARIZATION                 1 // JVET-AN0098: on regularizaton of ALF-CCCM
 #define JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL            1 // JVET-AN0101: remove single model for ALF-CCCM
 #endif
 

@@ -51,7 +51,17 @@ void LoopFilterCccm::lfCccmSetWindows( const int xi, const int yi )
   m_lfCccmRegressionWindow.width += 2;
   m_lfCccmRegressionWindow.height += 2;
   m_lfCccmRegressionWindow = clipArea(m_lfCccmRegressionWindow, m_lfCccmPartitionArea);
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  m_lfCccmDoRegularization = m_lfCccmRegressionWindow.area() > 4096 ? false : true;
+#endif
 }
+
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+void LoopFilterCccm::setLfCccmBadPointThreshold()
+{
+  m_lfCccmBadBlockThreshold = m_lfCccmBadPointThreshold[m_lfCccmDoRegularization ? m_lfCccmMultiModel + 1 : 0];
+};
+#endif
 #if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
 void LoopFilterCccm::lfCccmSetMultiModelParametersSR()
 {
@@ -509,7 +519,11 @@ void LoopFilterCccm::lfCccmFiltersConvolution(
     return;
   }
 
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  m_lfCccmSolver.solve3(m_lfCccmATA, m_lfCccmATCb, m_lfCccmATCr, numSamples, m_lfCccmChromaOffsetCb, m_lfCccmChromaOffsetCr, m_lfCccmModelCb, m_lfCccmModelCr, true, m_lfCccmHasNonLinearTerm, m_lfCccmDoRegularization);
+#else
   m_lfCccmSolver.solve3(m_lfCccmATA, m_lfCccmATCb, m_lfCccmATCr, numSamples, m_lfCccmChromaOffsetCb, m_lfCccmChromaOffsetCr, m_lfCccmModelCb, m_lfCccmModelCr, true);
+#endif
 
   if(!m_lfCccmModelCb.valid() || !m_lfCccmModelCr.valid())
   {
@@ -711,6 +725,9 @@ void LoopFilterCccm::lfCccmWindowProcess(
       }
 #if !JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
       m_lfCccmMultiModel = 0;
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+      setLfCccmBadPointThreshold();
+#endif
       m_lfCccmBadWindow = false;
       lfCccmFiltersConvolution(
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
@@ -723,6 +740,9 @@ void LoopFilterCccm::lfCccmWindowProcess(
         m_lfCccmBadWindow = false;
         lfCccmSetMultiModelParameters();
         m_lfCccmMultiModel = 1;
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+        setLfCccmBadPointThreshold();
+#endif
 #if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
         m_lfCccmIsFR = true;
         m_lfCccmMultiModelSR = -1;
@@ -1217,6 +1237,9 @@ void LoopFilterCccm::lfCccmCtuProcess(const CodingStructure &cs, const PelUnitBu
   m_lfCccmIsEncoder = cs.pcv->isEncoder && isRDO;
 #else
   m_lfCccmIsEncoder = cs.pcv->isEncoder;
+#endif
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  m_lfCccmHasNonLinearTerm = (m_lfCccmModelType != 1 && m_lfCccmModelType != 3 && m_lfCccmModelType != 7) ? true : false;
 #endif
   if( m_lfCccmIsEncoder )
   {
