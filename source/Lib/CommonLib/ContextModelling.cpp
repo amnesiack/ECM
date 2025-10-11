@@ -298,16 +298,31 @@ void DeriveCtx::CtxSplit( const CodingStructure& cs, Partitioner& partitioner, u
 
   ctxSpl = 0;
 
-  if( cuLeft )
+#if JVET_AN0121_CONTEXT_CHANGE 
+  if (cuLeft)
+  {
+    const unsigned widthtLeft = cuLeft->blocks[partitioner.chType].width;
+    const unsigned heightLeft = cuLeft->blocks[partitioner.chType].height;
+    ctxSpl += ((widthtLeft * heightLeft) < (widthCurr * heightCurr) ? 1 : 0);
+  }
+  if (cuAbove)
+  {
+    const unsigned heightAbove = cuAbove->blocks[partitioner.chType].height;
+    const unsigned widthAbove  = cuAbove->blocks[partitioner.chType].width;
+    ctxSpl += ((heightAbove * widthAbove) < (heightCurr * widthCurr) ? 1 : 0);
+  }
+#else
+  if (cuLeft)
   {
     const unsigned heightLeft = cuLeft->blocks[partitioner.chType].height;
-    ctxSpl += ( heightLeft < heightCurr ? 1 : 0 );
+    ctxSpl += (heightLeft < heightCurr ? 1 : 0);
   }
-  if( cuAbove )
+  if (cuAbove)
   {
     const unsigned widthAbove = cuAbove->blocks[partitioner.chType].width;
-    ctxSpl += ( widthAbove < widthCurr ? 1 : 0 );
+    ctxSpl += (widthAbove < widthCurr ? 1 : 0);
   }
+#endif
 
   unsigned numSplit = 0;
   if (canSplit[QTSPLIT])
