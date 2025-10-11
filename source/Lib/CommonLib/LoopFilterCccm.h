@@ -79,6 +79,9 @@ protected:
   int                           m_lfCccmModelSize;
 #if JVET_AM0216_12BIT_FIX
   int                           m_lfCccmBadBlockThreshold;
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  int                           m_lfCccmBadPointThreshold[3];
+#endif
 #endif
 
   static constexpr int          m_lfCccmMaxNumModels = 8;
@@ -87,7 +90,11 @@ protected:
 
   static constexpr int          m_lfCccmFilterPadding = 1;
 #if !JVET_AM0216_12BIT_FIX
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  static constexpr int          m_lfCccmBadPointThreshold[3] = { 32, 16, 28 };
+#else
   static constexpr int          m_lfCccmBadBlockThreshold = 32;
+#endif
 #endif
   static constexpr int          m_lfCccmModelMap[8][11] =
   {
@@ -150,6 +157,10 @@ protected:
 
   int                           m_lfCccmMultiModel;
   Pel                           m_lfCccmThreshold;
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  bool                          m_lfCccmHasNonLinearTerm;
+  bool                          m_lfCccmDoRegularization;
+#endif
 #if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
   bool                          m_lfCccmSampleLessThanModelSizeFlag;
   bool                          m_lfCccmIsFR;
@@ -170,6 +181,11 @@ protected:
   {
     m_lfCccmLumaOffset = 1<<(sps.getBitDepth(CH_L)-1);
 #if JVET_AM0216_12BIT_FIX
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+    m_lfCccmBadPointThreshold[0] = 32 << std::max(0, sps.getBitDepth(CH_L) - 10);
+    m_lfCccmBadPointThreshold[1] = 16 << std::max(0, sps.getBitDepth(CH_L) - 10);
+    m_lfCccmBadPointThreshold[2] = 28 << std::max(0, sps.getBitDepth(CH_L) - 10);
+#endif
     m_lfCccmBadBlockThreshold = 32 << std::max(0, sps.getBitDepth(CH_L) - 10);
 #endif
   }
@@ -439,6 +455,9 @@ protected:
     const int impMode
 #endif
   );
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+  void setLfCccmBadPointThreshold();
+#endif
 #if JVET_AN0101_ALF_CCCM_REMOVE_SINGLE_MODEL
   void lfCccmSetMultiModelParametersSR();
   bool lfCccmUpdateStatus(int numSamples);

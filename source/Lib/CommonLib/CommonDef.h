@@ -2749,6 +2749,10 @@ static constexpr int lfCccmMaxNumCands = 2;
 #if JVET_AM0063_ALF_CCCM_ADAPTIVE_FACTOR
 static constexpr int MAX_NUM_FACTOR_LF_CCCM = 4;
 #endif
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+static const int L2_ALF_CCCM_SAMPLE_NUM[] = { 16, 32, 64, 256, 1024 };
+static const int L2_ALF_CCCM_REG_PARAM[] = { 192, 160, 128, 96, 64, 32 };
+#endif
 #endif
 
 #if JVET_AL0108_BVG_DIMD

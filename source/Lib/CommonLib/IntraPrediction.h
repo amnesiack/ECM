@@ -290,6 +290,10 @@ struct CccmCovariance
 #if JVET_AE0059_INTER_CCCM
     , const bool interCccmMode
 #endif
+#if JVET_AN0098_ALF_CCCM_REGULARIZATION
+    , const bool hasNonLinearTerm
+    , const bool regularization
+#endif
   );
 #endif
 #else
