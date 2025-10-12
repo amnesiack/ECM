@@ -323,7 +323,16 @@ public:
   void        sgpmInterFlag             (const PredictionUnit &pu);
   uint64_t    sgpmInterFlagEst          (const TempCtx &ctxStart, const int flag);
   uint64_t    sgpmInterTmFlagEst        (const TempCtx &ctxStart, const int flag);
-  uint64_t    sgpmInterIdxEst           (const TempCtx &ctxStart, const int idx);
+  uint64_t    sgpmInterIdxEst           (const TempCtx &ctxStart, const int idx
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  , const bool& sgpmIntraFlag = false, const bool& bLd = false
+#endif 
+  );
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA 
+  uint64_t    sgpmIntraFlagEst(const TempCtx& ctxStart, const int flag);
+  uint64_t    sgpmAffineFlagEst         ( const TempCtx &ctxStart, const int flag, const int ctxOffset = -1);
+  uint64_t    sgpmAffineIdxEst          ( const TempCtx &ctxStart, const int idx, const int maxNum);
+#endif
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   void        geoModeIdx                ( const PredictionUnit&         pu);

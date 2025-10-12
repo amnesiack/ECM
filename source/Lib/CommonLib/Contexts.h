@@ -600,6 +600,10 @@ public:
 #if JVET_AL0134_SGPM_INTER
   static const CtxSet   SgpmInterFlag;
   static const CtxSet   SgpmInterTmFlag;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  static const CtxSet   SgpmIntraFlag;
+  static const CtxSet   SgpmAffineFlag;
+#endif 
 #endif
 #if JVET_Z0056_GPM_SPLIT_MODE_REORDERING
   static const CtxSet   GeoSubModeIdx;

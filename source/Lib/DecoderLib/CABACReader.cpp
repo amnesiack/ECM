@@ -7646,6 +7646,10 @@ void CABACReader::sgpmInterFlag(PredictionUnit &pu)
   if (!(pu.cs->slice->getSPS()->getUseSgpmInter() && pu.lx() && pu.ly()))
   {
     pu.sgpmInter = false;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    pu.sgpmAffine = false;
+    pu.sgpmIntra = false;
+#endif
     return;
   }
 
@@ -7653,7 +7657,34 @@ void CABACReader::sgpmInterFlag(PredictionUnit &pu)
   DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInter);
   if (pu.sgpmInter)
   {
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    int  affGPMFlagCtxOffset = PU::getAffGPMCtxOffset(pu);
+    pu.sgpmAffine = false;
+    if (CU::isSgpmAffineAllowed(*pu.cu))
+    {
+      pu.sgpmAffine = m_BinDecoder.decodeBin(Ctx::SgpmAffineFlag(affGPMFlagCtxOffset));
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_affine_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmAffine);
+    }
+    if (pu.sgpmAffine)
+    {
+      uint32_t sgpmAffineIdx = 0;
+      const int maxSgpmAffineNum = pu.cs->slice->getCheckLDB() ? SGPM_AFFINE_INTRA_NUM_LD: SGPM_AFFINE_NUM;
+      xReadTruncBinCode(sgpmAffineIdx, maxSgpmAffineNum);
+      pu.sgpmInterIdx = sgpmAffineIdx;
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_affine_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+    }
+    else
+    {
+      pu.sgpmIntra = false;
+      if (CU::isSgpmIntraAllowed(*pu.cu))
+      {
+        pu.sgpmIntra = m_BinDecoder.decodeBin(Ctx::SgpmIntraFlag());
+        DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_intra_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmIntra);
+      }
+      if (!pu.cs->slice->getCheckLDB() && !pu.sgpmIntra)
+#else
     if (!pu.cs->slice->getCheckLDB())
+#endif
     {
       pu.sgpmInterTm = m_BinDecoder.decodeBin(Ctx::SgpmInterTmFlag());
       DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_tm_flag() pos=(%d,%d) sgpm_inter_tm_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterTm);
@@ -7664,9 +7695,17 @@ void CABACReader::sgpmInterFlag(PredictionUnit &pu)
     }
 
     uint32_t sgpmInterIdx = 0;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    const int maxSgpmNum = pu.sgpmIntra ? (pu.cs->slice->getCheckLDB() ? SGPM_AFFINE_INTRA_NUM_LD: SGPM_INTER_INTRA_NUM): SGPM_INTER_NUM;
+    xReadTruncBinCode(sgpmInterIdx, maxSgpmNum);
+#else
     xReadTruncBinCode(sgpmInterIdx, SGPM_INTER_NUM);
+#endif
     pu.sgpmInterIdx = sgpmInterIdx;
     DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    }
+#endif
   }
 }
 #endif

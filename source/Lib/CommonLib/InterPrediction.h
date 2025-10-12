@@ -200,6 +200,10 @@ public:
   bool              m_neighbSccChecked;
   bool              m_intraObmcReload;
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  Pel*              m_acSgpmAffineRefTemplate[GEO_MAX_NUM_UNI_AFF_CANDS_ARMC][2];
+  bool              m_bSgpmAffineRefTemplate[GEO_MAX_NUM_UNI_AFF_CANDS_ARMC];
+#endif
 #if JVET_AD0140_MVD_PREDICTION
   struct MvdDerivedInfo
   {
@@ -1193,7 +1197,10 @@ public:
 #if JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC || JVET_AA0061_IBC_MBVD || JVET_Y0058_IBC_LIST_MODIFY
   bool    xAMLGetCurBlkTemplate     (PredictionUnit& pu, int nCurBlkWidth, int nCurBlkHeight);
   bool    xAMLIsTopTempAvailable    (PredictionUnit& pu);
-  bool    xAMLIsLeftTempAvailable   (PredictionUnit& pu);
+  bool    xAMLIsLeftTempAvailable   (PredictionUnit& pu); 
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  void xAMLGetSgpmInterBlkTemplate(int nCurBlkWidth, int nCurBlkHeight,int iTempWeidth, int iTempHeight, PelBuf& recBuf);
+#endif 
 #endif
 #if JVET_Z0061_TM_OBMC
   void xOBMCWeightedAverageY    (const PredictionUnit &pu, const CPelUnitBuf &pcYuvSrc0, const CPelUnitBuf &pcYuvSrc1,
@@ -1236,6 +1243,9 @@ public:
   void    adjustAffineMergeCandidates   (PredictionUnit &pu, AffineMergeCtx& affMrgCtx, int mrgCandIdx = -1
 #if JVET_Z0139_NA_AFF
     , int sortedCandNum = -1
+#endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    , uint32_t* affCandList = NULL, bool saveTemplate = false
 #endif
   );
 #if JVET_AG0276_NLIC

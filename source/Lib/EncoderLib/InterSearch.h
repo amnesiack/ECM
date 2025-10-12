@@ -1364,6 +1364,9 @@ protected:
 #if JVET_AG0164_AFFINE_GPM
   uint32_t m_gpmacsSplitModeTmSelAvail [GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_MAX_ALL_INTER_UNI_CANDS]; // Note: sizeof(uint16_t) should not be less than GEO_MAX_NUM_UNI_CANDS
   uint8_t  m_gpmacsSplitModeTmSel      [GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_MAX_ALL_INTER_UNI_CANDS][GEO_MAX_ALL_INTER_UNI_CANDS][GEO_NUM_PARTITION_MODE];
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+public:
+#endif
   uint32_t m_gpmPartTplCost            [GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_MAX_ALL_INTER_UNI_CANDS][2][GEO_NUM_PARTITION_MODE]; // [][][0][]: partition 0, [][][1][]: partition 1
 #else
   uint16_t m_gpmacsSplitModeTmSelAvail [GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_MAX_NUM_UNI_CANDS]; // Note: sizeof(uint16_t) should not be less than GEO_MAX_NUM_UNI_CANDS

@@ -837,6 +837,10 @@ struct InterPredictionData
   bool        sgpmInter;
   bool        sgpmInterTm;
   uint8_t     sgpmInterIdx;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  bool        sgpmIntra;
+  bool        sgpmAffine;
+#endif 
 #endif
   bool        mmvdMergeFlag;
 #if JVET_AA0093_ENHANCED_MMVD_EXTENSION

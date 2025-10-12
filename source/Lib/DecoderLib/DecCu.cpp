@@ -407,8 +407,40 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
         }
 #endif
 #if JVET_AL0134_SGPM_INTER
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+        if (currCU.firstPU->sgpmInter && !currCU.firstPU->sgpmAffine)
+#else
         if (currCU.firstPU->sgpmInter)
+#endif
         {
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+          int mpmNum = 0;
+          if (currCU.firstPU->sgpmIntra)
+          {
+            if (cs.slice->getSPS()->getUseDimd())
+            {
+              const CompArea& area = currCU.Y();
+              IntraPrediction::deriveDimdMode(currCU.cs->picture->getRecoBuf(area), area, currCU);
+            }
+            uint8_t intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+            currCU.isModeExcluded = false;
+#endif
+            mpmNum = PU::getIntraMPMs(*currCU.firstPU, m_pcIntraPred->m_intraMPM, intraNonMPM
+#if JVET_AC0094_REF_SAMPLES_OPT
+              , true
+#endif
+#if JVET_AK0061_PDP_MPM
+              , true, true
+#endif
+              , m_pcIntraPred
+            );
+#if JVET_AK0059_MDIP
+            currCU.isModeExcluded = true;
+#endif
+            mpmNum = std::min(mpmNum, SGPM_INTRA_NUM);
+          }
+#endif
           const CompArea                              &area = currCU.Y();
           static_vector<SgpmInterInfo, SGPM_INTER_NUM> sgpmInterInfoList;
           static_vector<double, SGPM_INTER_NUM>        sgpmInterCostList;
@@ -417,19 +449,64 @@ void DecCu::decompressCtu( CodingStructure& cs, const UnitArea& ctuArea )
           {
             currCU.firstPU->geoTmFlag0   = true;
             currCU.firstPU->geoTmFlag1   = true;
-            m_pcIntraPred->deriveSgpmTmInterModeOrdered(m_geoMrgCtx, m_geoTmMrgCtx, currCU.cs->picture->getRecoBuf(area), area, currCU, sgpmInterInfoList, sgpmInterCostList, m_pcInterPred);
+            m_pcIntraPred->deriveSgpmTmInterModeOrdered(m_geoMrgCtx, m_geoTmMrgCtx, currCU.cs->picture->getRecoBuf(area), area, currCU, sgpmInterInfoList, sgpmInterCostList, m_pcInterPred
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+              , sgpmInterIdx + 1
+#endif
+            );
           }
           else
           {
             currCU.firstPU->geoTmFlag0   = false;
             currCU.firstPU->geoTmFlag1   = false;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+            if (currCU.firstPU->sgpmIntra)
+            {
+              m_pcIntraPred->deriveSgpmInterIntraModeOrdered(m_geoMrgCtx, 
+                currCU.cs->picture->getRecoBuf(area), area, currCU,
+                sgpmInterInfoList, sgpmInterCostList, m_pcInterPred
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+                , sgpmInterIdx + 1
+#endif 
+                , m_pcIntraPred, m_pcIntraPred->m_intraMPM, mpmNum
+
+              );
+            }
+            else
+            {
+#endif
             m_pcIntraPred->deriveSgpmInterModeOrdered(m_geoMrgCtx, currCU.cs->picture->getRecoBuf(area), area, currCU,
-                                                      sgpmInterInfoList, sgpmInterCostList, m_pcInterPred);
+                                                      sgpmInterInfoList, sgpmInterCostList, m_pcInterPred
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+              , sgpmInterIdx + 1
+#endif 
+            );
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+            }
+#endif
           }
           currCU.firstPU->geoSplitDir  = sgpmInterInfoList[sgpmInterIdx].sgpmSplitDir;
           currCU.firstPU->geoMergeIdx0 = sgpmInterInfoList[sgpmInterIdx].sgpmMode0;
           currCU.firstPU->geoMergeIdx1 = sgpmInterInfoList[sgpmInterIdx].sgpmMode1;
           currCU.firstPU->gpmIntraFlag = ((currCU.firstPU->geoMergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) || (currCU.firstPU->geoMergeIdx1 >= GEO_MAX_NUM_UNI_CANDS));
+        }
+#endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+        if (currCU.firstPU->sgpmAffine)
+        {
+          const CompArea                              &area = currCU.Y();
+          static_vector<SgpmInterInfo, SGPM_AFFINE_NUM> sgpmAffineInfoList;
+          static_vector<double, SGPM_AFFINE_NUM>        sgpmAffineCostList;
+          int                                           sgpmAffineIdx = currCU.firstPU->sgpmInterIdx;
+          currCU.firstPU->geoTmFlag0   = false;
+          currCU.firstPU->geoTmFlag1   = false;
+          m_pcIntraPred->deriveSgpmAffineModeOrdered(m_geoMrgCtx, m_geoAffMrgCtx, currCU.cs->picture->getRecoBuf(area), area, currCU, sgpmAffineInfoList, sgpmAffineCostList, m_pcInterPred, sgpmAffineIdx + 1);
+          currCU.firstPU->geoSplitDir  = sgpmAffineInfoList[sgpmAffineIdx].sgpmSplitDir;
+          currCU.firstPU->geoMergeIdx0 = sgpmAffineInfoList[sgpmAffineIdx].sgpmMode0;
+          currCU.firstPU->geoMergeIdx1 = sgpmAffineInfoList[sgpmAffineIdx].sgpmMode1;
+          currCU.firstPU->gpmIntraFlag = false;
+          currCU.firstPU->affineGPM[0] = sgpmAffineInfoList[sgpmAffineIdx].bAffine0;
+          currCU.firstPU->affineGPM[1] = sgpmAffineInfoList[sgpmAffineIdx].bAffine1;
         }
 #endif
         xReconInter( currCU );
@@ -3954,7 +4031,11 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
           int whIdx = !cu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(cu.firstPU->lwidth()) - floorLog2(cu.firstPU->lheight()) + GEO_SQUARE_IDX);
 #endif
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+          if (pu.affineGPM[0] || pu.affineGPM[1] || pu.sgpmAffine)
+#else
           if (pu.affineGPM[0] || pu.affineGPM[1])
+#endif
           {
             PU::getGeoAffMergeCandidates(pu, m_geoAffMrgCtx, m_pcInterPred);
             if (pu.cs->sps->getUseAML() && (m_geoAffMrgCtx.numValidMergeCand > 1)
@@ -3964,19 +4045,50 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
               )
             {
               m_geoAffMrgCtx.maxNumMergeCand = m_geoAffMrgCtx.numValidMergeCand;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+              if (!pu.sgpmAffine)              
+              {
+                bool affineStored = pu.cu->affine;
+                int  affTypeStored = pu.cu->affineType;
+                int  bcwStored = pu.cu->bcwIdx;
+#if INTER_LIC
+                bool licStored = pu.cu->licFlag;
+#endif
+#if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
+                bool obmcStored = pu.cu->obmcFlag;
+#endif
+                m_pcInterPred->adjustAffineMergeCandidates(pu, m_geoAffMrgCtx);
+                pu.cu->affine = affineStored;
+                pu.cu->affineType = affTypeStored;
+                pu.cu->bcwIdx = bcwStored;
+#if INTER_LIC
+                pu.cu->licFlag = licStored;
+#endif
+#if JVET_AD0193_ADAPTIVE_OBMC_CONTROL
+                pu.cu->obmcFlag = obmcStored;
+#endif
+#else
               PredictionUnit puSaved = pu;
               CodingUnit     cuSaved = *pu.cu;
               puSaved.cu = &cuSaved;
               m_pcInterPred->adjustAffineMergeCandidates(puSaved, m_geoAffMrgCtx);
+#endif
 
              m_geoAffMrgCtx.numValidMergeCand = std::min(m_geoAffMrgCtx.numValidMergeCand, (int)pu.cs->sps->getMaxNumGpmAffCand());
              m_geoAffMrgCtx.maxNumMergeCand = m_geoAffMrgCtx.numValidMergeCand;
 #if JVET_AJ0274_GPM_AFFINE_TM
             m_geoAffTmMrgCtx = m_geoAffMrgCtx;
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA 
+              }
+#endif
             }
           }
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+          if (!pu.affineGPM[0] || !pu.affineGPM[1] || pu.sgpmAffine)
+#else
           if (!pu.affineGPM[0] || !pu.affineGPM[1])
+#endif
           {
 #endif
 #if JVET_AE0046_BI_GPM
