@@ -69,6 +69,10 @@ namespace CU
   bool isAffineAllowed(const CodingUnit& cu);
   bool affineCtxInc(const CodingUnit& cu);
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  bool isSgpmAffineAllowed(const CodingUnit& cu);
+  bool isSgpmIntraAllowed(const CodingUnit &cu);
+#endif
 
 #if JVET_AG0276_NLIC
   bool isSecLicParaNeeded             (const CodingUnit &cu);
@@ -314,6 +318,9 @@ namespace PU
 #if JVET_AD0085_MPM_SORTING
                  , IntraPrediction* pIntraPred = nullptr
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+                 , const bool& needNonMPM = true
+#endif 
                  , const ChannelType &channelType = CHANNEL_TYPE_LUMA
   );
 #else
@@ -1580,6 +1587,45 @@ uint32_t updateCandListB2S(T uiMode, int uiCost, static_vector<T, N>& candModeLi
 #endif
 
 #if JVET_W0097_GPM_MMVD_TM
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+template<size_t N>
+void orderCandList(uint8_t uiMode, double uiCost, uint8_t bldIdx, static_vector<uint8_t, N>& candModeList, static_vector<double, N>& candCostList, static_vector<uint8_t, N>&  geoBldList, size_t uiFastCandNum = N)
+{
+  CHECK(std::min(uiFastCandNum, candModeList.size()) != std::min(uiFastCandNum, candCostList.size()), "Sizes do not match!");
+  CHECK(uiFastCandNum > candModeList.capacity(), "The vector is to small to hold all the candidates!");
+
+  size_t i;
+  size_t shift = 0;
+  size_t currSize = std::min(uiFastCandNum, candCostList.size());
+
+  while (shift < uiFastCandNum && shift < currSize && uiCost < candCostList[currSize - 1 - shift])
+  {
+    shift++;
+  }
+
+  if (candModeList.size() >= uiFastCandNum && shift != 0)
+  {
+    for (i = 1; i < shift; i++)
+    {
+      candModeList[currSize - i] = candModeList[currSize - 1 - i];
+      candCostList[currSize - i] = candCostList[currSize - 1 - i];
+      geoBldList[currSize - i] = geoBldList[currSize - 1 - i];
+    }
+    candModeList[currSize - shift] = uiMode;
+    candCostList[currSize - shift] = uiCost;
+    geoBldList[currSize - shift] = bldIdx;
+    return;
+  }
+  else if (currSize < uiFastCandNum)
+  {
+    candModeList.insert(candModeList.end() - shift, uiMode);
+    candCostList.insert(candCostList.end() - shift, uiCost);
+    geoBldList.insert(geoBldList.end() - shift, bldIdx);
+    return;
+  }
+  return;
+}
+#endif
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
 template<size_t N>
 void orderCandList(uint8_t uiMode, bool bNonMMVDListCand, int splitDir, double uiCost, uint8_t bldIdx, static_vector<uint8_t, N>& candModeList, static_vector<bool, N>& isNonMMVDListIdx, static_vector<int, N>&  candSplitDirList, static_vector<double, N>& candCostList, static_vector<uint8_t, N>&  geoBldList, size_t uiFastCandNum = N)

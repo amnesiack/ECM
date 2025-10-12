@@ -242,6 +242,16 @@ InterPrediction::InterPrediction()
   m_neighbSccChecked = false;
   m_intraObmcReload = false;
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  for(int i = 0; i < GEO_MAX_NUM_UNI_AFF_CANDS_ARMC; i++)
+  {
+    m_bSgpmAffineRefTemplate[i] = false;
+    for (int tmplt = 0; tmplt < 2; tmplt++)
+    {
+      m_acSgpmAffineRefTemplate[i][tmplt] = nullptr;
+    }
+  }
+#endif  
 
 #if MULTI_PASS_DMVR
   int mvSearchIdx_bilMrg = 0;
@@ -621,6 +631,16 @@ void InterPrediction::destroy()
   m_mbvdSearchCandsList = nullptr;
   m_mbvdTestedCandsList = nullptr;
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  for(int i = 0; i < GEO_MAX_NUM_UNI_AFF_CANDS_ARMC; i++)
+  {
+    for (int tmplt = 0; tmplt < 2; tmplt++)
+    {
+      xFree(m_acSgpmAffineRefTemplate[i][tmplt]);
+      m_acSgpmAffineRefTemplate[i][tmplt] = nullptr;
+    }
+  }
+#endif 
 }
 
 #if INTER_LIC || (TM_AMVP || TM_MRG || JVET_Z0084_IBC_TM) || JVET_W0090_ARMC_TM || JVET_Z0056_GPM_SPLIT_MODE_REORDERING || JVET_Z0061_TM_OBMC
@@ -1046,6 +1066,18 @@ void InterPrediction::init( RdCost* pcRdCost, ChromaFormat chromaFormatIDC, cons
   m_pixelRefine = false;
   m_neighbSccChecked = false;
   m_intraObmcReload = false;
+#endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  for(int i = 0; i < GEO_MAX_NUM_UNI_AFF_CANDS_ARMC; i++)
+  {
+    for (int tmplt = 0; tmplt < 2; tmplt++)
+    {
+      if (m_acSgpmAffineRefTemplate[i][tmplt] == nullptr)
+      {
+        m_acSgpmAffineRefTemplate[i][tmplt] = (Pel *) xMalloc(Pel, MAX_CU_SIZE);
+      }
+    }
+  }
 #endif
 }
 
@@ -12271,6 +12303,39 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #if JVET_AL0134_SGPM_INTER
   }
 #endif
+
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  int mpmSgpmNum = 0; 
+  if (cu.cs->pcv->isEncoder && cu.firstPU->sgpmInter && (cu.firstPU->geoMergeIdx0 >= GEO_MAX_NUM_UNI_CANDS || cu.firstPU->geoMergeIdx1 >= GEO_MAX_NUM_UNI_CANDS))
+  {
+    if (cu.cs->slice->getSPS()->getUseDimd())
+    {
+      const CompArea& area = cu.Y();
+      IntraPrediction::deriveDimdMode(cu.cs->picture->getRecoBuf(area), area, cu);
+    }
+    bool mpmSgpmPredAvail[NUM_LUMA_MODE];
+    memset(mpmSgpmPredAvail, false, sizeof(bool) * NUM_LUMA_MODE);
+    uint8_t intraNonMPM[NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES];
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = false;
+#endif
+    mpmSgpmNum = PU::getIntraMPMs(*cu.firstPU,
+      m_pcIntraPred->m_intraMPM, intraNonMPM
+#if JVET_AC0094_REF_SAMPLES_OPT
+      , true
+#endif
+#if JVET_AK0061_PDP_MPM
+      , true, true
+#endif
+      , m_pcIntraPred
+    );
+#if JVET_AK0059_MDIP
+    cu.isModeExcluded = true;
+#endif
+    mpmSgpmNum = std::min(mpmSgpmNum, SGPM_INTRA_NUM);
+  }
+#endif
+
 #if JVET_W0097_GPM_MMVD_TM && TM_MRG
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
   int whIdx = !cu.cs->slice->getSPS()->getUseGeoShapeAdapt() ? GEO_SQUARE_IDX : Clip3(0, GEO_NUM_CU_SHAPES-1, floorLog2(cu.firstPU->lwidth()) - floorLog2(cu.firstPU->lheight()) + GEO_SQUARE_IDX);
@@ -12321,8 +12386,13 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
     PelUnitBuf predBuf    = cu.cs->getPredBuf( pu );
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    bool isIntra0 = (cu.firstPU->sgpmInter && cu.firstPU->sgpmIntra) ? candIdx0 >= GEO_MAX_NUM_UNI_CANDS : candIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS;
+    bool isIntra1 = (cu.firstPU->sgpmInter && cu.firstPU->sgpmIntra) ? candIdx1 >= GEO_MAX_NUM_UNI_CANDS : candIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS;
+#else
     bool isIntra0 = candIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS;
     bool isIntra1 = candIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS;
+#endif
 #else
     bool isIntra0 = candIdx0 >= GEO_MAX_NUM_UNI_CANDS;
     bool isIntra1 = candIdx1 >= GEO_MAX_NUM_UNI_CANDS;
@@ -12345,8 +12415,13 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 
 #if JVET_AI0082_GPM_WITH_INTER_IBC
 #if JVET_AG0164_AFFINE_GPM
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    bool isIbc0 = cu.firstPU->sgpmInter ? false : candIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
+    bool isIbc1 = cu.firstPU->sgpmInter ? false : candIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
+#else
     bool isIbc0 = candIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
     bool isIbc1 = candIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
+#endif
 #else
     bool isIbc0 = candIdx0 >= GEO_MAX_NUM_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
     bool isIbc1 = candIdx1 >= GEO_MAX_NUM_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS;
@@ -12387,6 +12462,15 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #endif
     if (isIntra0)
     {
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      if (cu.firstPU->sgpmInter)
+      {
+        pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx0 - GEO_MAX_NUM_UNI_CANDS];
+      }
+      else
+      {
+#endif
+
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
       PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM, splitDir, g_geoTmShape[0][g_geoParams[g_gpmSplitDir[whIdx][pu.geoSplitDir]][0]]);
 #else
@@ -12396,6 +12480,9 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS];
 #else
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx0 - GEO_MAX_NUM_UNI_CANDS];
+#endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      }
 #endif
       pcIntraPred->initIntraPatternChType(cu, pu.Y());
       pcIntraPred->predIntraAng(COMPONENT_Y, tmpGeoBuf0.Y(), pu);
@@ -12484,7 +12571,13 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #if JVET_AG0164_AFFINE_GPM
     pu.cu->affine = false;
 #endif
-#if JVET_AE0046_BI_GPM
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    pu.bdmvrRefine = false;
+    if(!pu.affineGPM[0])
+    {
+    ::memcpy(subBdofBuf[candIdx0], getBdofSubPuMvOffset(), sizeof(Mv) * BDOF_SUBPU_MAX_NUM);
+    }
+#elif JVET_AE0046_BI_GPM
     pu.bdmvrRefine = false;
     ::memcpy(subBdofBuf[candIdx0], getBdofSubPuMvOffset(), sizeof(Mv) * BDOF_SUBPU_MAX_NUM);
 #endif
@@ -12634,6 +12727,14 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #endif
     if (isIntra1)
     {
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      if (cu.firstPU->sgpmInter)
+      {
+        pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx1 - GEO_MAX_NUM_UNI_CANDS];
+      }
+      else
+      {
+#endif
 #if JVET_AJ0107_GPM_SHAPE_ADAPT
       PU::getGeoIntraMPMs(pu, pcIntraPred->m_intraMPM+GEO_MAX_NUM_INTRA_CANDS, splitDir, g_geoTmShape[1][g_geoParams[g_gpmSplitDir[whIdx][pu.geoSplitDir]][0]]);
 #else
@@ -12644,6 +12745,10 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #else
       pu.intraDir[0] = pcIntraPred->m_intraMPM[candIdx1 - GEO_MAX_NUM_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS];
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      }
+#endif 
+
       pcIntraPred->initIntraPatternChType(cu, pu.Y());
       pcIntraPred->predIntraAng(COMPONENT_Y, tmpGeoBuf1.Y(), pu);
       if (isChromaEnabled(pu.chromaFormat))
@@ -12732,7 +12837,13 @@ void InterPrediction::motionCompensationGeo( CodingUnit &cu, MergeCtx &geoMrgCtx
 #if JVET_AG0164_AFFINE_GPM
     pu.cu->affine = false;
 #endif
-#if JVET_AE0046_BI_GPM
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    pu.bdmvrRefine = false;
+    if(!pu.affineGPM[1])
+    {
+    ::memcpy(subBdofBuf[candIdx1], getBdofSubPuMvOffset(), sizeof(Mv) * BDOF_SUBPU_MAX_NUM);
+    }
+#elif JVET_AE0046_BI_GPM
     pu.bdmvrRefine = false;
     ::memcpy(subBdofBuf[candIdx1], getBdofSubPuMvOffset(), sizeof(Mv) * BDOF_SUBPU_MAX_NUM);
 #endif
@@ -19637,6 +19748,20 @@ bool InterPrediction::xAMLIsLeftTempAvailable(PredictionUnit& pu)
 
   return (puLeft && pu.cu != puLeft->cu);
 }
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+void InterPrediction::xAMLGetSgpmInterBlkTemplate(int nCurBlkWidth, int nCurBlkHeight, int iTempWeidth, int iTempHeight, PelBuf& recBuf)
+{
+  uint32_t       uiOrgStride = recBuf.stride;
+  Pel* recTop = recBuf.buf - iTempHeight* uiOrgStride;
+  memcpy(recTop, m_acYuvCurAMLTemplate[0][0], sizeof(Pel) * nCurBlkWidth);
+  
+  Pel* recLeft = recBuf.buf - iTempWeidth;
+  for (int i = 0; i < nCurBlkHeight; i++)
+  {
+    recLeft[i * uiOrgStride] = m_acYuvCurAMLTemplate[1][0][i];
+  }
+}
+#endif
 #endif
 
 #if JVET_W0090_ARMC_TM || JVET_AA0070_RRIBC
@@ -20624,6 +20749,9 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
 #if JVET_Z0139_NA_AFF
     , int sortedCandNum
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    , uint32_t* affCandList, bool saveTemplate
+#endif
 )
 {
 #if JVET_Z0139_NA_AFF
@@ -20819,7 +20947,22 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
 
         uiCost += cDistParam.distFunc(cDistParam);
       }
-      
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      if(saveTemplate)
+      {
+        if (m_bAMLTemplateAvailabe[0])
+        {
+          PelBuf sgpmAffineRefTop(m_acSgpmAffineRefTemplate[uiMergeCand][0], nWidth, AML_MERGE_TEMPLATE_SIZE);
+          sgpmAffineRefTop.copyFrom(pcBufPredRefTop.Y());
+        }
+        if (m_bAMLTemplateAvailabe[1])
+        {
+          PelBuf sgpmAffineRefLeft(m_acSgpmAffineRefTemplate[uiMergeCand][1], AML_MERGE_TEMPLATE_SIZE, nHeight);
+          sgpmAffineRefLeft.copyFrom(pcBufPredRefLeft.Y());
+        }
+        m_bSgpmAffineRefTemplate[uiMergeCand] = true;
+      }
+#endif
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
       if (m_bAMLTemplateAvailabe[0] && !m_bAMLTemplateAvailabe[1])
       {
@@ -20915,6 +21058,15 @@ void  InterPrediction::adjustAffineMergeCandidates(PredictionUnit &pu, AffineMer
       {
         break;
       }
+    }
+  }
+#endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  if(affCandList != NULL)
+  {
+    for(int i = 0; i < affMrgCtx.numValidMergeCand; i++)
+    {
+      affCandList[rdCandList[0][i]] = i; 
     }
   }
 #endif

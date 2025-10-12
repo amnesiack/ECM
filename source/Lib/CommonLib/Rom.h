@@ -64,7 +64,9 @@ void         destroyROM();
 extern const bool g_sBlkPdpMode[NUM_LUMA_MODE];
 extern const bool g_bBlkPdpMode[NUM_LUMA_MODE];
 #endif
-
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+extern const int g_modeGroupExt[(PDP_NUM_MODES - 3) * 2 + 3];
+#endif
 #if JVET_AH0209_PDP
 extern const int g_sizeData[PDP_NUM_SIZES][11];
 extern std::unordered_map<int, int> g_size;

@@ -1587,6 +1587,10 @@ void PredictionUnit::initData()
   sgpmInter          = false;
   sgpmInterTm        = false;
   sgpmInterIdx       = MAX_UCHAR;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  sgpmIntra          = false;
+  sgpmAffine         = false;
+#endif
 #endif
   mmvdMergeFlag = false;
   mmvdMergeIdx = MAX_UCHAR;
@@ -1832,6 +1836,10 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   sgpmInter          = predData.sgpmInter;
   sgpmInterTm        = predData.sgpmInterTm;
   sgpmInterIdx       = predData.sgpmInterIdx;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  sgpmIntra          = predData.sgpmIntra;
+  sgpmAffine         = predData.sgpmAffine;
+#endif
 #endif
   mmvdMergeFlag = predData.mmvdMergeFlag;
   mmvdMergeIdx = predData.mmvdMergeIdx;
@@ -2086,6 +2094,10 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   sgpmInter          = other.sgpmInter;
   sgpmInterTm        = other.sgpmInterTm;
   sgpmInterIdx       = other.sgpmInterIdx;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  sgpmIntra          = other.sgpmIntra;
+  sgpmAffine         = other.sgpmAffine;   
+#endif
 #endif
   mmvdMergeFlag = other.mmvdMergeFlag;
   mmvdMergeIdx = other.mmvdMergeIdx;

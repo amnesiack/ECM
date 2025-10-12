@@ -441,6 +441,7 @@
 #define JVET_W0090_ARMC_TM                                1 // JVET-W0090: Adaptive reordering of merge candidates with template matching
 #define JVET_Z0056_GPM_SPLIT_MODE_REORDERING              1 // JVET-Z0056: Template matching based reordering for GPM split modes
 #define JVET_AL0134_SGPM_INTER                            1 // JVET-AL0134: Joint reordering of GPM split modes and partition indices
+#define JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA           1 // JVET-AN0093: Joint reordering of GPM with affine and intra prediction
 #if ENABLE_OBMC
 #define JVET_Z0061_TM_OBMC                                1 // JVET-Z0061: Template matching based OBMC
 #endif
@@ -2188,7 +2189,23 @@ struct SgpmInterInfo
   int sgpmSplitDir;
   int sgpmMode0;
   int sgpmMode1;
-
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  bool bAffine0 = false;
+  bool bAffine1 = false;
+  
+  SgpmInterInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0), bAffine0(false), bAffine1(false){}
+  SgpmInterInfo(const int sd, const int sm0, const int sm1, const bool baff0 = false, const bool baff1 = false) 
+    : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1), bAffine0(baff0), bAffine1(baff1) {}
+  SgpmInterInfo &operator=(const SgpmInterInfo &other)
+  {
+    sgpmSplitDir = other.sgpmSplitDir;
+    sgpmMode0    = other.sgpmMode0;
+    sgpmMode1    = other.sgpmMode1;
+    bAffine0     = other.bAffine0;
+    bAffine1     = other.bAffine1;
+    return *this;
+  }
+#else
   SgpmInterInfo() : sgpmSplitDir(0), sgpmMode0(0), sgpmMode1(0) {}
   SgpmInterInfo(const int sd, const int sm0, const int sm1) : sgpmSplitDir(sd), sgpmMode0(sm0), sgpmMode1(sm1) {}
   SgpmInterInfo &operator=(const SgpmInterInfo &other)
@@ -2198,6 +2215,7 @@ struct SgpmInterInfo
     sgpmMode1    = other.sgpmMode1;
     return *this;
   }
+#endif
 };
 #endif
 

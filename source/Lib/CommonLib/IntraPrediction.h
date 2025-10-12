@@ -417,6 +417,10 @@ public:
   Pel m_leftRefShort[256] = { 0 };
 #endif
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  Pel m_refTimd[2][256] = { {0}, {0} };
+  Pel m_refShortTimd[2][256] = { {0}, {0} };
+#endif
 #if JVET_AL0108_BVG_DIMD
   int8_t m_bvgDimdFusionWeight[BVG_DIMD_INTRA_NUM];
   int8_t m_bvgDimdMode[BVG_DIMD_INTRA_NUM];
@@ -636,6 +640,13 @@ protected:
 #endif
 #if JVET_AL0134_SGPM_INTER
   Pel*                      m_acSgpmInterYuvRefTemplate[2][MAX_NUM_COMPONENT];   // 0: top, 1: left
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+public:
+  bool                      m_sgpmInterSadAvail[GEO_MAX_NUM_UNI_CANDS];
+  Distortion                m_sgpmInterSadWholeTM[GEO_MAX_NUM_UNI_CANDS];
+  Distortion                m_sgpmInterSadPartsTM[GEO_MAX_NUM_UNI_CANDS][GEO_NUM_PARTITION_MODE];
+protected:
+#endif 
 #endif
   // used in timd tmrl sortedMPM
   std::vector<PelStorage>   m_intraPredBuffer;
@@ -1212,7 +1223,11 @@ public:
   template<typename T, size_t N>
   void calcTimdMrgCandCosts       ( const CodingUnit &cu, static_vector<TimdMergeInfo, NUM_TIMD_MERGE_CUS> &timdMrgList, static_vector<T, N>& uiModeList, static_vector<uint64_t, N>& candCostList );
 #endif
-  void predTimdIntraAng           ( const ComponentID compId, const PredictionUnit &pu, uint32_t uiDirMode, Pel* pPred, uint32_t uiStride, uint32_t iWidth, uint32_t iHeight, TemplateType eTempType, int32_t iTemplateWidth, int32_t iTemplateHeight);
+  void predTimdIntraAng           ( const ComponentID compId, const PredictionUnit &pu, uint32_t uiDirMode, Pel* pPred, uint32_t uiStride, uint32_t iWidth, uint32_t iHeight, TemplateType eTempType, int32_t iTemplateWidth, int32_t iTemplateHeight
+#if  JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    , const bool& pdpRefAvailable = false
+#endif
+  );
 #if JVET_AG0146_DIMD_ITMP_IBC
 #if JVET_AM0074_INTRA_MERGE
   void deriveIntraMergeCandFromNeighbor(CodingUnit& cu, const CodingUnit* cuNeighbour, int& cnt, IntraMergeCandidate* tempIntraFusionCand);
@@ -1257,7 +1272,11 @@ public:
 #else
   int deriveTimdMode              ( const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu );
 #endif
-  void initTimdIntraPatternLuma   (const CodingUnit &cu, const CompArea &area, int iTemplateWidth, int iTemplateHeight, uint32_t uiRefWidth, uint32_t uiRefHeight);
+  void initTimdIntraPatternLuma   (const CodingUnit &cu, const CompArea &area, int iTemplateWidth, int iTemplateHeight, uint32_t uiRefWidth, uint32_t uiRefHeight
+#if  JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    , const bool& pdpRefAvailable = false, const bool& allPDPMode = false
+#endif
+  );
 #if GRAD_PDPC
   void xIntraPredTimdAngGradPdpc  (Pel* pDsty, const int dstStride, Pel* refMain, Pel* refSide, const int width, const int height, int xOffset, int yOffset, int scale, int deltaPos, int intraPredAngle, const ClpRng& clpRng
 #if JVET_AC0119_LM_CHROMA_FUSION
@@ -1282,11 +1301,41 @@ public:
 #if JVET_AL0134_SGPM_INTER
   void deriveSgpmInterModeOrdered(MergeCtx &mergeCtx, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
                                   static_vector<SgpmInterInfo, SGPM_INTER_NUM> &candModeList,
-                                  static_vector<double, SGPM_INTER_NUM> &candCostList, InterPrediction *pcInterPred);
+                                  static_vector<double, SGPM_INTER_NUM> &candCostList, InterPrediction *pcInterPred
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    , int sgpmInterNum, uint32_t m_gpmPartTplCost[GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_MAX_ALL_INTER_UNI_CANDS][2][GEO_NUM_PARTITION_MODE] = NULL
+#endif
+  );
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  void xFillTimdReferenceSamples2(const CPelBuf& recoBuf, const CompArea& area, const CodingUnit& cu, int iTemplateWidth, int iTemplateHeight);
+  void deriveSgpmInterIntraModeOrdered(MergeCtx& mergeCtx,
+    const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu,
+    static_vector<SgpmInterInfo, SGPM_INTER_NUM>& candModeList,
+    static_vector<double, SGPM_INTER_NUM>& candCostList,
+    InterPrediction* pcInterPred, int sgpmInterNum, IntraPrediction* pcIntraPred, uint8_t* mpmList, const int mpmNum
+  );
+  void deriveSgpmInterModeEncOrdered(MergeCtx& mergeCtx,
+    const CPelBuf& recoBuf, const CompArea& area, CodingUnit& cu,
+    static_vector<SgpmInterInfo, SGPM_INTER_NUM>& interCandModeList,
+    static_vector<double, SGPM_INTER_NUM>& interCandCostList, InterPrediction* pcInterPred,
+    static_vector<SgpmInterInfo, SGPM_INTER_INTRA_NUM>& intraCandModeList,
+    static_vector<double, SGPM_INTER_INTRA_NUM>& intraCandCostList, 
+    IntraPrediction* pcIntraPred, uint8_t* mpmList, const int mpmNum, uint32_t m_gpmPartTplCost[GEO_ENC_MMVD_MAX_REFINE_NUM_ADJ][GEO_MAX_ALL_INTER_UNI_CANDS][2][GEO_NUM_PARTITION_MODE] = NULL
+  );
+  void InvLutSgpmIntraTemplate(PredictionUnit& pu, Pel* src, Pel* bufTop, Pel* bufLeft, std::vector<Pel>* lut, int iTempWidth, int iTempHeight, const uint32_t uiPredStride);
+  void deriveSgpmAffineModeOrdered(MergeCtx &mergeCtx, AffineMergeCtx &affMrgCtx, const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
+                                  static_vector<SgpmInterInfo, SGPM_AFFINE_NUM> &candModeList,
+                                  static_vector<double, SGPM_AFFINE_NUM> &candCostList, InterPrediction *pcInterPred, int sgpmInterNum);
+#endif 
+
   void deriveSgpmTmInterModeOrdered(MergeCtx      &mergeCtxTmOff, MergeCtx (&mergeCtx)[GEO_NUM_TM_MV_CAND],
                                     const CPelBuf &recoBuf, const CompArea &area, CodingUnit &cu,
                                     static_vector<SgpmInterInfo, SGPM_INTER_NUM> &candModeList,
-                                    static_vector<double, SGPM_INTER_NUM> &candCostList, InterPrediction *pcInterPred);
+                                    static_vector<double, SGPM_INTER_NUM> &candCostList, InterPrediction *pcInterPred
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    , int sgpmInterNum
+#endif
+  );
 #endif
 #if JVET_AD0085_MPM_SORTING
   void deriveMPMSorted            (

@@ -815,8 +815,53 @@ const CtxSet ContextSetCfg::SgpmInterTmFlag   = ContextSetCfg::addCtxSet({
   { 172, },
   { 102, },
 });
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+const CtxSet ContextSetCfg::SgpmIntraFlag = ContextSetCfg::addCtxSet({
+  { 58 },
+  { 59 },
+  { CNU },
+  { 50 },
+  { 1 },
+  { 1 },
+  { DWS },
+  { 1 },
+  { 11 },
+  { 4 },
+  { DWE },
+  { 4 },
+  { 243 },
+  { 117 },
+  { 117 },
+  { DWO },
+  { DWO },
+  { DWO },
+  { 132 },
+  { 117 },
+  });
+const CtxSet ContextSetCfg::SgpmAffineFlag = ContextSetCfg::addCtxSet({
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { CNU, CNU, CNU },
+  { DWS, DWS, DWS },
+  { DWS, DWS, DWS },
+  { DWS, DWS, DWS },
+  { DWS, DWS, DWS },
+  { DWE, DWE, DWE },
+  { DWE, DWE, DWE },
+  { DWE, DWE, DWE },
+  { DWE, DWE, DWE },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+  { DWO, DWO, DWO },
+});
 #endif
-
+#endif
 const CtxSet ContextSetCfg::AfMmvdFlag = ContextSetCfg::addCtxSet({
 // ctx 118
  { 18, },

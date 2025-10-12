@@ -505,14 +505,18 @@ unsigned DeriveCtx::CtxAffineFlag( const CodingUnit& cu )
 
 #if JVET_AG0164_AFFINE_GPM
   const CodingUnit* cuLeft = cs->getCURestricted(cu.lumaPos().offset(-1, 0), cu, CH_L);
-#if JVET_AG0135_AFFINE_CIIP
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  ctxId = (cuLeft && ((cuLeft->affine && !cuLeft->firstPU->ciipAffine) || (cuLeft->geoFlag && (cuLeft->firstPU->affineGPM[0] || cuLeft->firstPU->affineGPM[1] || cuLeft->firstPU->sgpmAffine)))) ? 1 : 0;
+#elif JVET_AG0135_AFFINE_CIIP
   ctxId = (cuLeft && ((cuLeft->affine && !cuLeft->firstPU->ciipAffine) || (cuLeft->geoFlag && (cuLeft->firstPU->affineGPM[0] || cuLeft->firstPU->affineGPM[1])))) ? 1 : 0;
 #else
   ctxId = (cuLeft && (cuLeft->affine || (cuLeft->geoFlag && (cuLeft->firstPU->affineGPM[0] || cuLeft->firstPU->affineGPM[1])))) ? 1 : 0;
 #endif
 
   const CodingUnit* cuAbove = cs->getCURestricted(cu.lumaPos().offset(0, -1), cu, CH_L);
-#if JVET_AG0135_AFFINE_CIIP
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  ctxId += (cuAbove && ((cuAbove->affine && !cuAbove->firstPU->ciipAffine) || (cuAbove->geoFlag && (cuAbove->firstPU->affineGPM[0] || cuAbove->firstPU->affineGPM[1] || cuAbove->firstPU->sgpmAffine)))) ? 1 : 0;
+#elif JVET_AG0135_AFFINE_CIIP
   ctxId += (cuAbove && ((cuAbove->affine && !cuAbove->firstPU->ciipAffine) || (cuAbove->geoFlag && (cuAbove->firstPU->affineGPM[0] || cuAbove->firstPU->affineGPM[1])))) ? 1 : 0;
 #else
   ctxId += (cuAbove && (cuAbove->affine || (cuAbove->geoFlag && (cuAbove->firstPU->affineGPM[0] || cuAbove->firstPU->affineGPM[1])))) ? 1 : 0;

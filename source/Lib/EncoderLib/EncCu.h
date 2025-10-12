@@ -351,7 +351,9 @@ private:
 
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AA0058_GPM_ADAPTIVE_BLENDING
-#if JVET_AL0134_SGPM_INTER
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  PelStorage            m_acGeoWeightedBuffer[(GEO_MAX_TRY_WEIGHTED_SAD + (SGPM_INTER_NUM + SGPM_INTER_INTRA_NUM) + SGPM_AFFINE_NUM) * GEO_BLENDING_NUM + 1 + 1];
+#elif JVET_AL0134_SGPM_INTER
   PelStorage            m_acGeoWeightedBuffer[(GEO_MAX_TRY_WEIGHTED_SAD + SGPM_INTER_NUM) * GEO_BLENDING_NUM + 1 + 1];   // to store weighted prediction pixels
 #else
   PelStorage            m_acGeoWeightedBuffer[GEO_MAX_TRY_WEIGHTED_SAD*GEO_BLENDING_NUM+1]; // to store weighted prediction pixels
@@ -386,6 +388,10 @@ private:
   PelStorage            m_acGeoMergeTmpBuffer[GEO_TM_MAX_NUM_CANDS];
   PelStorage            m_acGeoSADTmpBuffer[GEO_TM_MAX_NUM_CANDS];
 #endif
+#endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  PelStorage            m_acSgpmAffineBuffer[GEO_MAX_NUM_UNI_AFF_CANDS_ARMC];
+  PelStorage            m_acSgpmIntraBuffer[SGPM_INTRA_NUM];
 #endif
 #if JVET_AJ0274_REGRESSION_GPM_TM
   PelStorage            m_acGeoBlendTMBuffer[GEO_TM_MAX_NUM_CANDS];

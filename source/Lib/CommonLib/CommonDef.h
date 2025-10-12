@@ -1063,8 +1063,13 @@ static const int FAST_UDI_MAX_RDMODE_NUM = (NUM_LUMA_MODE + MAX_NUM_MIP_MODE); /
 
 #if JVET_AL0134_SGPM_INTER
 static const int SGPM_INTER_NUM =                                  32;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+static const int SGPM_INTRA_NUM =                                   6;
+static const int SGPM_INTER_INTRA_NUM =                            16;
+static const int SGPM_AFFINE_NUM =                                 16;
+static const int SGPM_AFFINE_INTRA_NUM_LD =                        10;
+#endif 
 #endif
-
 static const int MAX_LFNST_COEF_NUM =                              16;
 
 static const int LFNST_LAST_SIG_LUMA =                              1;

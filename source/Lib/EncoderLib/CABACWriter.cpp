@@ -7598,7 +7598,34 @@ uint64_t CABACWriter::sgpmInterFlagEst(const TempCtx &ctxStart, const int flag)
 
   return getEstFracBits();
 }
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+uint64_t CABACWriter::sgpmIntraFlagEst(const TempCtx& ctxStart, const int flag)
+{
+  getCtx() = SubCtx(Ctx::SgpmIntraFlag, ctxStart);
+  resetBits();
 
+  m_BinEncoder.encodeBin(flag, Ctx::SgpmIntraFlag());
+
+  return getEstFracBits();
+}
+uint64_t CABACWriter::sgpmAffineFlagEst(const TempCtx &ctxStart, const int flag, const int ctxOffset)
+{
+  getCtx() = SubCtx(Ctx::SgpmAffineFlag, ctxStart);
+  resetBits();
+  m_BinEncoder.encodeBin(flag, Ctx::SgpmAffineFlag(ctxOffset));
+
+  return getEstFracBits();
+}
+
+uint64_t CABACWriter::sgpmAffineIdxEst(const TempCtx &ctxStart, const int idx, const int maxNum)
+{
+  resetBits();
+
+  xWriteTruncBinCode(idx, maxNum);
+
+  return getEstFracBits();
+}
+#endif
 uint64_t CABACWriter::sgpmInterTmFlagEst(const TempCtx &ctxStart, const int flag)
 {
   getCtx() = SubCtx(Ctx::SgpmInterTmFlag, ctxStart);
@@ -7609,11 +7636,18 @@ uint64_t CABACWriter::sgpmInterTmFlagEst(const TempCtx &ctxStart, const int flag
   return getEstFracBits();
 }
 
-uint64_t CABACWriter::sgpmInterIdxEst(const TempCtx &ctxStart, const int idx)
+uint64_t CABACWriter::sgpmInterIdxEst(const TempCtx &ctxStart, const int idx
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  , const bool& sgpmIntraFlag, const bool& bLd
+#endif 
+)
 {
   resetBits();
-
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  xWriteTruncBinCode(idx, (sgpmIntraFlag ? (bLd ? SGPM_AFFINE_INTRA_NUM_LD: SGPM_INTER_INTRA_NUM) : SGPM_INTER_NUM));
+#else
   xWriteTruncBinCode(idx, SGPM_INTER_NUM);
+#endif 
 
   return getEstFracBits();
 }
@@ -7630,13 +7664,45 @@ void CABACWriter::sgpmInterFlag(const PredictionUnit &pu)
 
   if (pu.sgpmInter)
   {
-    if (!pu.cs->slice->getCheckLDB())
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    int affGPMFlagCtxOffset = PU::getAffGPMCtxOffset(pu);
+    if (CU::isSgpmAffineAllowed(*pu.cu))
     {
-      m_BinEncoder.encodeBin(pu.sgpmInterTm, Ctx::SgpmInterTmFlag());
-      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_tm_flag() pos=(%d,%d) sgpm_inter_tm_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterTm);
+      m_BinEncoder.encodeBin(pu.sgpmAffine, Ctx::SgpmAffineFlag(affGPMFlagCtxOffset));
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_affine_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmAffine);
     }
-    xWriteTruncBinCode(pu.sgpmInterIdx, SGPM_INTER_NUM);
-    DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+    if (pu.sgpmAffine)
+    {
+      const int maxSgpmAffineNum = pu.cs->slice->getCheckLDB() ? SGPM_AFFINE_INTRA_NUM_LD: SGPM_AFFINE_NUM;
+      xWriteTruncBinCode(pu.sgpmInterIdx, maxSgpmAffineNum);
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_affine_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+    }
+    else
+    {
+      if (CU::isSgpmIntraAllowed(*pu.cu))
+      {
+        m_BinEncoder.encodeBin(pu.sgpmIntra, Ctx::SgpmIntraFlag());
+      }
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_intra_flag() pos=(%d,%d) sgpm_inter_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmIntra);
+
+      if (!pu.cs->slice->getCheckLDB() && !pu.sgpmIntra)
+#else
+      if (!pu.cs->slice->getCheckLDB())
+#endif
+      {
+        m_BinEncoder.encodeBin(pu.sgpmInterTm, Ctx::SgpmInterTmFlag());
+        DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_tm_flag() pos=(%d,%d) sgpm_inter_tm_flag=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterTm);
+      }
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      const int maxSgpmNum = pu.sgpmIntra ? (pu.cs->slice->getCheckLDB() ? SGPM_AFFINE_INTRA_NUM_LD: SGPM_INTER_INTRA_NUM): SGPM_INTER_NUM;
+      xWriteTruncBinCode(pu.sgpmInterIdx, maxSgpmNum);
+#else
+      xWriteTruncBinCode(pu.sgpmInterIdx, SGPM_INTER_NUM);
+#endif 
+      DTRACE(g_trace_ctx, D_SYNTAX, "sgpm_inter_flag() pos=(%d,%d) sgpm_inter_idx=%d\n", pu.lumaPos().x, pu.lumaPos().y, pu.sgpmInterIdx);
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    }
+#endif
   }
 }
 #endif

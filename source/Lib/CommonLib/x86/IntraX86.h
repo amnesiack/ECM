@@ -3050,7 +3050,7 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
   {
     pred += stride;
   }
-#if JVET_AK0061_PDP_MPM 
+#if JVET_AK0061_PDP_MPM && !JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
   width = pDst.width;
   height = isHeightLarge ? pu.lumaSize().height : pDst.height;
 #endif 
@@ -3068,9 +3068,17 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
     __m128i vmat128[4], vcoef128[4], vsrc128;
     __m128i result;
     const int length = (refLen >> 4) << 4;
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    for (int y = startY; y < pDst.height; y += offsetY, pred += strideOffset)
+#else
     for (int y = startY; y < height; y += offsetY, pred += strideOffset) 
+#endif
     {
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      for (int x = 0; x < pDst.width; x += 4)
+#else
       for (int x = 0; x < width; x += 4) 
+#endif
       {
         const int16_t* f0 = filter[y >> yShift][(x >> xShift) >> 2];
         
@@ -3148,9 +3156,17 @@ bool xPredIntraOpt_SIMD(PelBuf &pDst, const PredictionUnit &pu, const uint32_t m
     const __m128i zeros = _mm_setzero_si128();
     __m128i vmat[4], vcoef[4], vsrc;
 #endif
-  for (int y = startY; y < height; y+=offsetY, pred += strideOffset)
-  {
-    for (int x = 0; x < width; x+=4)
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    for (int y = startY; y < pDst.height; y += offsetY, pred += strideOffset)
+#else
+    for (int y = startY; y < height; y += offsetY, pred += strideOffset)
+#endif
+    {
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      for (int x = 0; x < pDst.width; x += 4)
+#else
+      for (int x = 0; x < width; x += 4)
+#endif
     {
       const int16_t* f0 = filter[y >> yShift][(x >> xShift)>>2];
 

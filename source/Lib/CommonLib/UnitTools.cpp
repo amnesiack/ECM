@@ -4445,6 +4445,9 @@ int PU::getIntraMPMs( const PredictionUnit &pu, uint8_t* mpm, uint8_t* nonMpm
 #if JVET_AD0085_MPM_SORTING
                     , IntraPrediction* pIntraPred/* = nullptr*/
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+                    , const bool& needNonMPM
+#endif
                     , const ChannelType &channelType /*= CHANNEL_TYPE_LUMA*/)
 #else
 int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType &channelType /*= CHANNEL_TYPE_LUMA*/)
@@ -4549,6 +4552,16 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
   {
     return numCand;
   }
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  if (pu.cu->geoBlendFlag && pu.cu->geoFlag && numCand >= GEO_BLEND_MAX_NUM_INTRA_CANDS)
+  {
+    return numCand;
+  }
+  if (pu.sgpmInter && pu.sgpmIntra)
+  {
+    return numCand;
+  }
+#endif 
   fillMPMList(
 #if JVET_AL0125_IMPROVEMENT_ON_MPM
   mpmSort,
@@ -4565,6 +4578,16 @@ int PU::getIntraMPMs(const PredictionUnit &pu, unsigned* mpm, const ChannelType 
     return numCand;
   }
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  if (pu.cu->geoBlendFlag && pu.cu->geoFlag)
+  {
+    return numCand;
+  }
+  if (!needNonMPM)
+  {
+    return numCand;
+  }
+#endif 
   fillNonMPMList(mpm, nonMpm
 #if JVET_AK0061_PDP_MPM
     , pu, pdpRefAvailable
@@ -38489,7 +38512,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #if JVET_AE0046_BI_GPM
 #if JVET_AG0164_AFFINE_GPM
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  int interDirIdx0 = ((pu.geoBlendIntraFlag || (pu.sgpmInter && !pu.sgpmAffine)) && (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS)) ? -1 : ((mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx0->interDirNeighbours[mergeIdx0]);
+#else
   int interDirIdx0 = (pu.geoBlendIntraFlag && (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS)) ? -1 : ((mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx0->interDirNeighbours[mergeIdx0]);
+#endif 
 #else
   int interDirIdx0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx0->interDirNeighbours[mergeIdx0];
 #endif
@@ -38508,7 +38535,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
   }
 #if JVET_AG0164_AFFINE_GPM
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  int interDirIdx1 = ((pu.geoBlendIntraFlag || pu.sgpmInter) && (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS)) ? -1 : ((mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx1->interDirNeighbours[mergeIdx1]);
+#else
   int interDirIdx1 = (pu.geoBlendIntraFlag && (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS)) ? -1 : ((mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx1->interDirNeighbours[mergeIdx1]);
+#endif
 #else
   int interDirIdx1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) ? -1 : mergeCtx1->interDirNeighbours[mergeIdx1];
 #endif
@@ -38896,13 +38927,28 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AG0164_AFFINE_GPM
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  bool isIntra0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) && !pu.geoBlendIntraFlag && !pu.sgpmInter;
+  bool isIntra1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) && !pu.geoBlendIntraFlag && !pu.sgpmInter;
+  bool isBlendIntra0 = (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) && pu.geoBlendIntraFlag && !pu.sgpmInter;
+  bool isBlendIntra1 = (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS) && pu.geoBlendIntraFlag && !pu.sgpmInter;
+  bool isSgpmIntra0 = (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) && pu.sgpmInter && !pu.sgpmAffine;
+  bool isSgpmIntra1 = (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS) && pu.sgpmInter && !pu.sgpmAffine;
+#else
   bool isIntra0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS) && !pu.geoBlendIntraFlag;
   bool isIntra1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS) && !pu.geoBlendIntraFlag;
   bool isBlendIntra0 = (mergeIdx0 >= GEO_MAX_NUM_UNI_CANDS) && pu.geoBlendIntraFlag;
   bool isBlendIntra1 = (mergeIdx1 >= GEO_MAX_NUM_UNI_CANDS) && pu.geoBlendIntraFlag;
+#endif
+
 #if JVET_AI0082_GPM_WITH_INTER_IBC
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+  bool isIbc0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS) && !pu.geoBlendIntraFlag && !pu.sgpmInter;
+  bool isIbc1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS) && !pu.geoBlendIntraFlag && !pu.sgpmInter;
+#else
   bool isIbc0 = (mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS) && !pu.geoBlendIntraFlag;
   bool isIbc1 = (mergeIdx1 >= GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS) && !pu.geoBlendIntraFlag;
+#endif
 #endif
 #else
   bool isIntra0 = mergeIdx0 >= GEO_MAX_ALL_INTER_UNI_CANDS;
@@ -39048,7 +39094,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #endif
       tpmMask = motionIdx <= 0 ? (1 - isFlip) : isFlip;
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      if (tpmMask == 0 && (isIntra0 || isBlendIntra0 || isSgpmIntra0))
+#else
       if (tpmMask == 0 && (isIntra0 || isBlendIntra0))
+#endif 
 #else
       if (tpmMask == 0 && isIntra0)
 #endif
@@ -39152,7 +39202,11 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
       }
 #if JVET_Y0065_GPM_INTRA
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+      else if (tpmMask == 1 && (isIntra1 || isBlendIntra1 || isSgpmIntra1))
+#else
       else if (tpmMask == 1 && (isIntra1 || isBlendIntra1))
+#endif
 #else
       else if (tpmMask == 1 && isIntra1)
 #endif
@@ -39268,11 +39322,21 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
     int geoIpm[3];
 #if JVET_AG0164_AFFINE_GPM
 #if JVET_AK0101_REGRESSION_GPM_INTRA
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    geoIpm[0] = isIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS] : ((isBlendIntra0 || isSgpmIntra0) ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1);
+    geoIpm[1] = isIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS] : ((isBlendIntra1 || isSgpmIntra1) ? intraMPM[mergeIdx1 - GEO_MAX_NUM_UNI_CANDS] : -1);
+#else
     geoIpm[0] = isIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS] : (isBlendIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1);
     geoIpm[1] = isIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS] : (isBlendIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_NUM_UNI_CANDS] : -1);
+#endif
 #if JVET_AI0082_GPM_WITH_INTER_IBC
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    geoIpm[0] = isIntra0 ? (isIbc0 ? PLANAR_IDX : intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS]) : ((isBlendIntra0 || isSgpmIntra0) ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1);
+    geoIpm[1] = isIntra1 ? (isIbc1 ? PLANAR_IDX : intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS]) : ((isBlendIntra1 || isSgpmIntra1) ? intraMPM[mergeIdx1 - GEO_MAX_NUM_UNI_CANDS] : -1);
+#else
     geoIpm[0] = isIntra0 ? (isIbc0 ? PLANAR_IDX : intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS]) : (isBlendIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_NUM_UNI_CANDS] : -1);
     geoIpm[1] = isIntra1 ? (isIbc1 ? PLANAR_IDX : intraMPM[mergeIdx1 - GEO_MAX_ALL_INTER_UNI_CANDS + GEO_MAX_NUM_INTRA_CANDS]) : (isBlendIntra1 ? intraMPM[mergeIdx1 - GEO_MAX_NUM_UNI_CANDS] : -1);
+#endif 
 #endif
 #else
     geoIpm[0] = isIntra0 ? intraMPM[mergeIdx0 - GEO_MAX_ALL_INTER_UNI_CANDS] : -1;
@@ -39294,7 +39358,9 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
 #if JVET_AK0101_REGRESSION_GPM_INTRA
     geoIpm[2] = pu.geoBlendIntraFlag ? (isBlendIntra0 ? geoIpm[0] : geoIpm[1]) : geoIpm[2];
 #endif
-
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    geoIpm[2] = (pu.sgpmInter && (isSgpmIntra0 || isSgpmIntra1)) ? (isSgpmIntra0 ? geoIpm[0] : geoIpm[1]) : geoIpm[2];
+#endif 
     for (int y = 0; y < mb.height; y++)
     {
       lookUpY = (((4 * y + offsetY) << 1) + 5) * g_dis[distanceY];
@@ -41031,8 +41097,11 @@ bool TU::isInterAsbt(const TransformUnit& tu)
   {
     return false;
   }
-
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA 
+  if (tu.cu->firstPU->gpmIntraFlag && !tu.cu->firstPU->sgpmInter)
+#else
   if (tu.cu->firstPU->gpmIntraFlag)
+#endif 
   {
     return false;
   }
@@ -45698,6 +45767,24 @@ void getTemporalBv(const PredictionUnit &pu, std::vector<MotionInfo>& temporalMi
   addOneTypeTempCandidates(pu, temporalMiCandList, temporalPos);
 }
 #endif
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+bool CU::isSgpmAffineAllowed(const CodingUnit& cu)
+{
+  if(!cu.cs->sps->getUseSgpmInter() || cu.Y().x == 0 || cu.Y().y == 0 || cu.cs->slice->getTLayer() >= 5)
+  {
+    return false;
+  }
+  return true;
+}
+bool CU::isSgpmIntraAllowed(const CodingUnit& cu)
+{
+  if(!cu.cs->sps->getUseSgpmInter() || cu.Y().x == 0 || cu.Y().y == 0 || cu.cs->slice->getTLayer() >= 5)
+  {
+    return false;
+  }
+  return true;
+}
+#endif
 #if JVET_AJ0085_SUBBLOCK_MERGE_MODE_EXTENSION
 bool CU::hasAffineNb(const CodingUnit& cu)
 {
@@ -45714,7 +45801,11 @@ bool CU::hasAffineNb(const CodingUnit& cu)
   for (int i = 0; i < 7; i++)
   {
     const CodingUnit* cuNb = cu.cs->getCURestricted(pos[i], cu, CH_L);
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    affineNb += (cuNb && (cuNb->affine || (cuNb->geoFlag && (cuNb->firstPU->affineGPM[0] || cuNb->firstPU->affineGPM[1] || cuNb->firstPU->sgpmAffine) && !cu.slice->getCheckLDB()))) ? 1 : 0;
+#else
     affineNb += (cuNb && (cuNb->affine || (cuNb->geoFlag && (cuNb->firstPU->affineGPM[0] || cuNb->firstPU->affineGPM[1]) && !cu.slice->getCheckLDB()))) ? 1 : 0;
+#endif
     if (affineNb)
     {
       return true;
@@ -45748,7 +45839,11 @@ bool CU::hasAffineNb(const CodingUnit& cu)
     default: printf("error!"); exit(0); break;
     }
     const CodingUnit* cuNb = cu.cs->getCURestricted(cu.lumaPos().offset(offsetX, offsetY), cu, CH_L);
+#if JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+    affineNb += (cuNb && (cuNb->affine || (cuNb->geoFlag && (cuNb->firstPU->affineGPM[0] || cuNb->firstPU->affineGPM[1] || cuNb->firstPU->sgpmAffine) && !cu.slice->getCheckLDB()))) ? 1 : 0;
+#else
     affineNb += (cuNb && (cuNb->affine || (cuNb->geoFlag && (cuNb->firstPU->affineGPM[0] || cuNb->firstPU->affineGPM[1]) && !cu.slice->getCheckLDB()))) ? 1 : 0;
+#endif
     if (affineNb)
     {
       return true;
