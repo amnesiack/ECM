@@ -605,6 +605,9 @@ protected:
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   bool      m_geoBlendIntra;
 #endif
+#if JVET_AN0203_RGPM_NO_TM
+  bool      m_geoBlendInter;
+#endif
   bool      m_allowDisFracMMVD;
   bool      m_AffineAmvr;
   bool      m_HashME;
@@ -2020,6 +2023,10 @@ public:
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   void      setUseGeoBlendIntra             ( bool b )       { m_geoBlendIntra = b; }
   bool      getUseGeoBlendIntra             ()         const { return m_geoBlendIntra; }
+#endif
+#if JVET_AN0203_RGPM_NO_TM
+  void      setUseGeoBlendInter             ( bool b )       { m_geoBlendInter = b; }
+  bool      getUseGeoBlendInter             ()         const { return m_geoBlendInter; }
 #endif
   void      setAllowDisFracMMVD             ( bool b )       { m_allowDisFracMMVD = b;    }
   bool      getAllowDisFracMMVD             ()         const { return m_allowDisFracMMVD; }

@@ -1034,6 +1034,9 @@ void EncApp::xInitLibCfg()
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   m_cEncLib.setUseGeoBlendIntra                                  ( m_Geo ? m_geoBlendIntra : false);
 #endif
+#if JVET_AN0203_RGPM_NO_TM
+  m_cEncLib.setUseGeoBlendInter                                  ( m_Geo ? m_geoBlendInter : false);
+#endif
   m_cEncLib.setUseHashME                                         ( m_HashME );
 
   m_cEncLib.setAllowDisFracMMVD                                  ( m_allowDisFracMMVD );

@@ -6825,7 +6825,13 @@ void CABACReader::merge_idx( PredictionUnit& pu )
         pu.gpmInterIbcFlag = false;
 #endif
 #if JVET_AJ0274_REGRESSION_GPM_TM
-        pu.geoBlendTmFlag = m_BinDecoder.decodeBin(Ctx::GeoBlendTMFlag());
+#if JVET_AN0203_RGPM_NO_TM
+        pu.geoBlendTmFlag = false;
+        if ( CU::isGeoBlendTmAvail(*pu.cu) )
+#endif
+        {
+          pu.geoBlendTmFlag = m_BinDecoder.decodeBin(Ctx::GeoBlendTMFlag());
+        }
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
         if (!pu.geoBlendTmFlag && CU::isGeoBlendIntraAvailable(*pu.cu))

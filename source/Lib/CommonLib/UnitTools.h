@@ -199,6 +199,9 @@ namespace CU
   bool    isSbtMode                   (const uint8_t sbtInfo);
   bool    isSameSbtSize               (const uint8_t sbtInfo1, const uint8_t sbtInfo2);
 #if JVET_AJ0274_REGRESSION_GPM_TM
+#if JVET_AN0203_RGPM_NO_TM
+  bool    isGeoBlendTmAvail           (const CodingUnit& cu);
+#endif
   bool    checkGeoBlendTmAvail        (const CodingUnit& currCU, const CodingStructure* bestCS);
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
@@ -240,6 +243,9 @@ namespace CU
   bool isGeoBlendAvailable(const CodingUnit& cu);
 #if JVET_AK0101_REGRESSION_GPM_INTRA
   bool isGeoBlendIntraAvailable(const CodingUnit& cu);
+#endif
+#if JVET_AN0203_RGPM_NO_TM
+  bool useGeoBlendNoReorder           (const CodingUnit& cu);
 #endif
 #endif
 #if JVET_AH0066_JVET_AH0202_CCP_MERGE_LUMACBF0

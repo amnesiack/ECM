@@ -198,6 +198,14 @@ bool CU::isOnCtuBottom( const CodingUnit& cu )
 }
 
 #if JVET_AJ0274_REGRESSION_GPM_TM
+#if JVET_AN0203_RGPM_NO_TM
+bool CU::isGeoBlendTmAvail(const CodingUnit& cu)
+{
+  const CodingStructure& cs = *cu.cs;
+  return (cu.geoBlendFlag && cs.sps->getTMToolsEnableFlag()) ? true : false;
+}
+#endif
+
 bool CU::checkGeoBlendTmAvail(const CodingUnit& currCU, const CodingStructure* bestCS)
 {
   const CodingUnit* bestCUTest = bestCS->getCU(CHANNEL_TYPE_LUMA);
@@ -228,6 +236,12 @@ bool CU::checkGeoBlendTmAvail(const CodingUnit& currCU, const CodingStructure* b
   {
     skipGeoBlendTM = true;
   }
+#if JVET_AN0203_RGPM_NO_TM
+  else if (!bestCS->sps->getTMToolsEnableFlag())
+  {
+    skipGeoBlendTM = true;
+  }
+#endif
   return skipGeoBlendTM;
 }
 #endif
@@ -601,6 +615,13 @@ bool CU::isTLCond(const CodingUnit &cu)
   {
     return false;
   }
+}
+#endif
+
+#if JVET_AN0203_RGPM_NO_TM
+bool CU::useGeoBlendNoReorder(const CodingUnit& cu)
+{
+  return cu.cs->sps->getUseGeoBlend() && !cu.cs->sps->getTMToolsEnableFlag();
 }
 #endif
 
@@ -41967,7 +41988,14 @@ bool CU::isGeoBlendAvailable( const CodingUnit& cu )
 #if JVET_AK0101_REGRESSION_GPM_INTRA
 bool CU::isGeoBlendIntraAvailable(const CodingUnit& cu)
 {
+#if JVET_AN0203_RGPM_NO_TM
+  bool  bAvail = cu.slice->getSPS()->getUseGeoBlend();
+  bAvail &= CU::useGeoBlendNoReorder(cu) ? (cu.lumaPos().x > 0 || cu.lumaPos().y > 0) : true ;
+  bAvail &= cu.slice->getSPS()->getUseGeoBlendIntra();
+  return bAvail;
+#else
   return cu.slice->getSPS()->getUseGeoBlendIntra();
+#endif
 }
 #endif
 #endif

@@ -6418,7 +6418,12 @@ void CABACWriter::merge_idx( const PredictionUnit& pu )
         }
         DTRACE( g_trace_ctx, D_SYNTAX, "merge_idx() merge_idx=%d\n", pu.geoMergeIdx0 );
 #if JVET_AJ0274_REGRESSION_GPM_TM
-        m_BinEncoder.encodeBin(pu.geoBlendTmFlag, Ctx::GeoBlendTMFlag());
+#if JVET_AN0203_RGPM_NO_TM
+        if ( CU::isGeoBlendTmAvail(*pu.cu) )
+#endif
+        {
+          m_BinEncoder.encodeBin(pu.geoBlendTmFlag, Ctx::GeoBlendTMFlag());
+        }
 #endif
 #if JVET_AK0101_REGRESSION_GPM_INTRA
         if (!pu.geoBlendTmFlag && CU::isGeoBlendIntraAvailable(*pu.cu))
