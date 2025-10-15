@@ -242,6 +242,7 @@
 #endif
 #define JVET_AG0154_DECODER_DERIVED_CCP_FUSION            1 // JVET-AG0154: Decoder derived CCP mode with fusion candidates
 #define JVET_AN0168_REGRESSION_CCP_FUSION                 1 // JVET_AN0168: Regression-based CCP Fusion
+#define JVET_AN0203_RGPM_NO_TM                            1 // JVET_AN0203: Regression-based GPM in group2
 #define JVET_AG0059_CCP_MERGE_ENHANCEMENT                 1 // JVET-AG0059: Enhancements on CCP merge for chroma intra coding
 #define JVET_AH0065_RELAX_LINE_BUFFER                     1 // JVET-AH0065: Relaxing line buffer restriction
 #define JVET_AH0086_EIP_BIAS_AND_CLIP                     1 // JVET-AH0086: EIP with bias and clipping
@@ -2282,7 +2283,11 @@ struct AffineBlendingModel
     }
   }
 
+#if JVET_AN0203_RGPM_NO_TM
+  int compute( const int x, const int y, bool bClip=true ) const
+#else
   int compute( const int x, const int y, bool bClip=true )
+#endif
   {
     int weight = (params[0] * x + params[1] * y + params[2] + offset) >> shift ;
     if ( bClip )
@@ -2319,6 +2324,10 @@ struct AffineBlendingModel
     params[2] = 1 << (blendShift - 1);
     offset    = 0;
     shift     = 0;
+#if JVET_AN0203_RGPM_NO_TM
+    min       = 1;
+    max       = (1 << blendShift) - 1;
+#endif
   }
 #endif
 };

@@ -11265,7 +11265,12 @@ bool InterPrediction::getGeoBlendCand( const CodingUnit& cu, MergeCtx& geoMrgCtx
 
   maxNumMergeCandidatesFirstPass = std::min( (int)nbGeoBlendCandList, (int)maxNumMergeCandidatesFirstPass );
 
+#if JVET_AN0203_RGPM_NO_TM
+  bool  bStop = false;
+  for ( uint8_t idx = 0; (idx < maxNumMergeCandidatesFirstPass) && !bStop ; idx++ )
+#else
   for ( uint8_t idx = 0; idx < maxNumMergeCandidatesFirstPass; idx++ )
+#endif
   {
     std::pair<int8_t, int8_t> pairMergeCand = getGeoBlendCandIndexes( idx, listMergeCand0, listMergeCand1 );
 
@@ -11312,6 +11317,39 @@ bool InterPrediction::getGeoBlendCand( const CodingUnit& cu, MergeCtx& geoMrgCtx
 
     m_tplBuffers.set( mergeCand0, mergeCand1, cu.lumaSize() );
 
+#if JVET_AN0203_RGPM_NO_TM
+    Distortion uiCostTmp = 0;
+    bool  bDoDeriveBcwBlendingBiDir = CU::useGeoBlendNoReorder(cu) ? (idxCand == (-1) || idxCand == numGeoBlendInfoCand) : true;
+    if ( bDoDeriveBcwBlendingBiDir )
+    {
+      uiCostTmp = deriveBcwBlendingBiDir(*cu.firstPU, mvFieldA, mvFieldB
+  #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+                                                 , geoMrgCtx.licFlags[mergeCand0], geoMrgCtx.licFlags[mergeCand1]
+                                                 , scaleA, scaleB
+                                                 , offsetA, offsetB
+  #endif
+      );  // template distortion cost
+
+      if ( CU::useGeoBlendNoReorder(cu) )
+      {
+        if ( !cu.blendModel.valid || uiCostTmp == MAX_UINT64 )
+        {
+          CodingUnit& tempCu = *cu.firstPU->cu;
+          tempCu.blendModel.average();
+          tempCu.blendModel.valid = true;
+        }
+      }
+    }
+
+    bool bAddThisCandidate = !CU::useGeoBlendNoReorder(cu) || (cu.cs->pcv->isEncoder || idxCand >= numGeoBlendInfoCand) ;
+
+    if ( CU::useGeoBlendNoReorder(cu) )
+    {
+      uiCostTmp = 0;
+    }
+
+    if ( bAddThisCandidate )
+#else
     Distortion uiCostTmp = deriveBcwBlendingBiDir( *cu.firstPU, mvFieldA, mvFieldB 
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
                                                  , geoMrgCtx.licFlags[mergeCand0], geoMrgCtx.licFlags[mergeCand1]
@@ -11320,50 +11358,60 @@ bool InterPrediction::getGeoBlendCand( const CodingUnit& cu, MergeCtx& geoMrgCtx
 #endif
     );  // template distortion cost
 
-    if ( uiCostTmp < MAX_UINT64 )
-    {
-      GeoBlendInfo& geoBI = geoBlendInfo[numGeoBlendInfoCand];
-
-      geoBI.blendModel.copy( cu.blendModel );
-
-      geoBI.uiCostTmp   = uiCostTmp;  // used to re-order the candidates
-      geoBI.mvFieldA[0] = mvFieldA[0];
-      geoBI.mvFieldA[1] = mvFieldA[1];
-      geoBI.mvFieldB[0] = mvFieldB[0];
-      geoBI.mvFieldB[1] = mvFieldB[1];
-#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
-      geoBI.scaleA [0]  = scaleA [0];
-      geoBI.scaleA [1]  = scaleA [1];
-      geoBI.offsetA[0]  = offsetA[0];
-      geoBI.offsetA[1]  = offsetA[1];
-      geoBI.scaleB [0]  = scaleB [0];
-      geoBI.scaleB [1]  = scaleB [1];
-      geoBI.offsetB[0]  = offsetB[0];
-      geoBI.offsetB[1]  = offsetB[1];
 #endif
-      geoBI.dir[0]      = dir0;
-      geoBI.dir[1]      = dir1;
+    {
+      if ( uiCostTmp < MAX_UINT64 )
+      {
+        GeoBlendInfo& geoBI = geoBlendInfo[numGeoBlendInfoCand];
 
-      geoBI.mergeCand[0]  = mergeCand0;
-      geoBI.mergeCand[1]  = mergeCand1;
-      geoBI.iOrder        = numGeoBlendInfoCand;
+        geoBI.blendModel.copy( cu.blendModel );
 
-      numGeoBlendInfoCand++;
+        geoBI.uiCostTmp   = uiCostTmp;  // used to re-order the candidates
+        geoBI.mvFieldA[0] = mvFieldA[0];
+        geoBI.mvFieldA[1] = mvFieldA[1];
+        geoBI.mvFieldB[0] = mvFieldB[0];
+        geoBI.mvFieldB[1] = mvFieldB[1];
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+        geoBI.scaleA [0]  = scaleA [0];
+        geoBI.scaleA [1]  = scaleA [1];
+        geoBI.offsetA[0]  = offsetA[0];
+        geoBI.offsetA[1]  = offsetA[1];
+        geoBI.scaleB [0]  = scaleB [0];
+        geoBI.scaleB [1]  = scaleB [1];
+        geoBI.offsetB[0]  = offsetB[0];
+        geoBI.offsetB[1]  = offsetB[1];
+#endif
+        geoBI.dir[0]      = dir0;
+        geoBI.dir[1]      = dir1;
+
+        geoBI.mergeCand[0]  = mergeCand0;
+        geoBI.mergeCand[1]  = mergeCand1;
+        geoBI.iOrder        = numGeoBlendInfoCand;
+
+        numGeoBlendInfoCand++;
+      }
     }
+#if JVET_AN0203_RGPM_NO_TM
+    bStop = CU::useGeoBlendNoReorder(cu) ? (numGeoBlendInfoCand >= maxNumMergeCandidates) : false;
+#endif
   } // mergeCand1 or idx
 
   // re-order candidates with template cost
-  for (int i = 0; i < (numGeoBlendInfoCand - 1); i++)
+#if JVET_AN0203_RGPM_NO_TM
+  if ( !CU::useGeoBlendNoReorder(cu) )
+#endif
   {
-    for (int j = (i + 1); j < numGeoBlendInfoCand; j++)
+    for (int i = 0; i < (numGeoBlendInfoCand - 1); i++)
     {
-      if (geoBlendInfo[j].uiCostTmp < geoBlendInfo[i].uiCostTmp)
+      for (int j = (i + 1); j < numGeoBlendInfoCand; j++)
       {
-        std::swap(geoBlendInfo[i], geoBlendInfo[j]);
+        if (geoBlendInfo[j].uiCostTmp < geoBlendInfo[i].uiCostTmp)
+        {
+          std::swap(geoBlendInfo[i], geoBlendInfo[j]);
+        }
       }
     }
   }
-
   numGeoBlendInfoCand = std::min( numGeoBlendInfoCand, (int)maxNumMergeCandidates );
 
   CHECK( numGeoBlendInfoCand > cu.cs->sps->getMaxNumGeoCand(), "numGeoBlendInfoCand should be < sps->getMaxNumGeoCand()");
@@ -11541,7 +11589,12 @@ bool InterPrediction::getGeoBlendIntraCand(const CodingUnit& cu, IntraPrediction
   TemplateType eTempType = CU::deriveTimdRefType(cu.lx(), cu.ly(), cu.lwidth(), cu.lheight(), AML_MERGE_TEMPLATE_SIZE, AML_MERGE_TEMPLATE_SIZE, iRefX, iRefY, uiRefWidth, uiRefHeight);
   pcIntraPred->initTimdIntraPatternLuma(cu, area, eTempType != ABOVE_NEIGHBOR ? AML_MERGE_TEMPLATE_SIZE : 0, eTempType != LEFT_NEIGHBOR ? AML_MERGE_TEMPLATE_SIZE : 0, uiRefWidth, uiRefHeight);
 
+#if JVET_AN0203_RGPM_NO_TM
+  bool  bStop = false;
+  for (uint8_t idx = 0; (idx < maxNumMergeCandidatesFirstPass) && !bStop; idx++)
+#else
   for (uint8_t idx = 0; idx < maxNumMergeCandidatesFirstPass; idx++)
+#endif
   {
     std::pair<int8_t, int8_t> pairCand = getGeoBlendIntraCandIndexes(idx, intraCandList, interCandList);
     pairCand.first = pairCand.first + GEO_MAX_NUM_UNI_CANDS;
@@ -11562,54 +11615,96 @@ bool InterPrediction::getGeoBlendIntraCand(const CodingUnit& cu, IntraPrediction
 
     m_tplBuffers.set(mergeCand0, mergeCand1, cu.lumaSize());
 
+#if JVET_AN0203_RGPM_NO_TM
+    Distortion uiCostTmp = 0;
+    bool  bDoDeriveBcwBlendingBiDir = CU::useGeoBlendNoReorder(cu) ? (idxCand == (-1) || idxCand == numGeoBlendInfoCand) : true;
+    if ( bDoDeriveBcwBlendingBiDir )
+    {
+      uiCostTmp = deriveBcwBlendingBiDirIntra(*cu.firstPU, pcIntraPred, mvField
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+        , geoMrgCtx.licFlags[isIntra[0] ? mergeCand1 : mergeCand0], scale, offset
+#endif
+        , isIntra, mpmList[(isIntra[0] ? mergeCand0 : mergeCand1) - GEO_MAX_NUM_UNI_CANDS]);  // template distortion cost
+
+      if ( CU::useGeoBlendNoReorder(cu) )
+      {
+        if ( !cu.blendModel.valid || uiCostTmp == MAX_UINT64 )
+        {
+          CodingUnit& tempCu = *cu.firstPU->cu;
+          tempCu.blendModel.average();
+          tempCu.blendModel.valid = true;
+        }
+      }
+    }
+
+    bool bAddThisCandidate = !CU::useGeoBlendNoReorder(cu) || (cu.cs->pcv->isEncoder || idxCand >= numGeoBlendInfoCand) ;
+
+    if ( CU::useGeoBlendNoReorder(cu) )
+    {
+      uiCostTmp = 0;
+    }
+
+    if ( bAddThisCandidate )
+#else
     Distortion uiCostTmp = deriveBcwBlendingBiDirIntra(*cu.firstPU, pcIntraPred, mvField
 #if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
       , geoMrgCtx.licFlags[isIntra[0] ? mergeCand1 : mergeCand0], scale, offset
 #endif
       , isIntra, mpmList[(isIntra[0] ? mergeCand0 : mergeCand1) - GEO_MAX_NUM_UNI_CANDS]);  // template distortion cost
 
-    if (uiCostTmp < MAX_UINT64)
-    {
-      GeoBlendInfo& geoBI = geoBlendInfo[numGeoBlendInfoCand];
-
-      geoBI.blendModel.copy(cu.blendModel);
-
-      geoBI.uiCostTmp = uiCostTmp;  // used to re-order the candidates
-      geoBI.mvFieldA[0] = mvField[0];
-      geoBI.mvFieldA[1] = mvField[1];
-      geoBI.mvFieldB[0] = mvField[0];
-      geoBI.mvFieldB[1] = mvField[1];
-#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
-      geoBI.scaleA[0] = scale[0];
-      geoBI.scaleA[1] = scale[1];
-      geoBI.offsetA[0] = offset[0];
-      geoBI.offsetA[1] = offset[1];
-      geoBI.scaleB[0] = scale[0];
-      geoBI.scaleB[1] = scale[1];
-      geoBI.offsetB[0] = offset[0];
-      geoBI.offsetB[1] = offset[1];
 #endif
-      geoBI.dir[0] = isIntra[0] ? -1 : dir;
-      geoBI.dir[1] = isIntra[1] ? -1 : dir;
+    {
+      if (uiCostTmp < MAX_UINT64)
+      {
+        GeoBlendInfo& geoBI = geoBlendInfo[numGeoBlendInfoCand];
 
-      geoBI.mergeCand[0] = isIntra[0] ? (mergeCand0 - GEO_MAX_NUM_UNI_CANDS) : mergeCand0;
-      geoBI.mergeCand[1] = isIntra[1] ? (mergeCand1 - GEO_MAX_NUM_UNI_CANDS) : mergeCand1;
-      geoBI.iOrder = numGeoBlendInfoCand;
+        geoBI.blendModel.copy(cu.blendModel);
 
-      geoBI.isIntra[0] = isIntra[0];
-      geoBI.isIntra[1] = isIntra[1];
-      numGeoBlendInfoCand++;
+        geoBI.uiCostTmp = uiCostTmp;  // used to re-order the candidates
+        geoBI.mvFieldA[0] = mvField[0];
+        geoBI.mvFieldA[1] = mvField[1];
+        geoBI.mvFieldB[0] = mvField[0];
+        geoBI.mvFieldB[1] = mvField[1];
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+        geoBI.scaleA[0] = scale[0];
+        geoBI.scaleA[1] = scale[1];
+        geoBI.offsetA[0] = offset[0];
+        geoBI.offsetA[1] = offset[1];
+        geoBI.scaleB[0] = scale[0];
+        geoBI.scaleB[1] = scale[1];
+        geoBI.offsetB[0] = offset[0];
+        geoBI.offsetB[1] = offset[1];
+#endif
+        geoBI.dir[0] = isIntra[0] ? -1 : dir;
+        geoBI.dir[1] = isIntra[1] ? -1 : dir;
+
+        geoBI.mergeCand[0] = isIntra[0] ? (mergeCand0 - GEO_MAX_NUM_UNI_CANDS) : mergeCand0;
+        geoBI.mergeCand[1] = isIntra[1] ? (mergeCand1 - GEO_MAX_NUM_UNI_CANDS) : mergeCand1;
+        geoBI.iOrder = numGeoBlendInfoCand;
+
+        geoBI.isIntra[0] = isIntra[0];
+        geoBI.isIntra[1] = isIntra[1];
+        numGeoBlendInfoCand++;
+      }
     }
+#if JVET_AN0203_RGPM_NO_TM
+    bStop = CU::useGeoBlendNoReorder(cu) ? (numGeoBlendInfoCand >= maxNumMergeCandidates) : false;
+#endif
   } // mergeCand1 or idx
 
   // re-order candidates with template cost
-  for (int i = 0; i < (numGeoBlendInfoCand - 1); i++)
+#if JVET_AN0203_RGPM_NO_TM
+  if ( !CU::useGeoBlendNoReorder(cu) )
+#endif
   {
-    for (int j = (i + 1); j < numGeoBlendInfoCand; j++)
+    for (int i = 0; i < (numGeoBlendInfoCand - 1); i++)
     {
-      if (geoBlendInfo[j].uiCostTmp < geoBlendInfo[i].uiCostTmp)
+      for (int j = (i + 1); j < numGeoBlendInfoCand; j++)
       {
-        std::swap(geoBlendInfo[i], geoBlendInfo[j]);
+        if (geoBlendInfo[j].uiCostTmp < geoBlendInfo[i].uiCostTmp)
+        {
+          std::swap(geoBlendInfo[i], geoBlendInfo[j]);
+        }
       }
     }
   }
@@ -16726,7 +16821,16 @@ Distortion InterPrediction::deriveBcwBlending( PredictionUnit& pu, bool bUniDir[
   bool unvalid = abs(minWeight - maxWeight) <= 4;
   if ( unvalid ) 
   {
-    return MAX_UINT64;
+#if JVET_AN0203_RGPM_NO_TM
+    if ( CU::useGeoBlendNoReorder(*pu.cu) )
+    {
+      blendModel.average( shiftBlend );
+    }
+    else
+#endif
+    {
+      return MAX_UINT64;
+    }
   }
 
   DistParam cDistParam;
