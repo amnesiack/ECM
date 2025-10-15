@@ -6155,6 +6155,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       if (tplAvail)
       {
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND 
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES
+        m_pcInterSearch->generateMergeCandidates(pu, mergeCtx, pu.cs->sps->getMaxNumMergeCand());
+#endif
         m_pcInterSearch->adjustMergeCandidates(pu, mergeCtx, pu.cs->sps->getMaxNumMergeCand());
 #else
         m_pcInterSearch->adjustMergeCandidatesInOneCandidateGroup(pu, mergeCtx, pu.cs->sps->getMaxNumMergeCand());
@@ -6205,6 +6208,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #if JVET_AG0276_LIC_FLAG_SIGNALING
           if (hasOppositelicMrg && pu.cs->sps->getUseMergeOppositeLic())
           {
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES
+            m_pcInterSearch->generateMergeCandidates(pu, mergeCtxOppositeLic, pu.cs->sps->getMaxNumMergeCand(), true);
+#endif
             m_pcInterSearch->adjustMergeCandidates(pu, mergeCtxOppositeLic, pu.cs->sps->getMaxNumMergeCand());
           }
 #endif
@@ -6800,6 +6806,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         if (tplAvail)
         {
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND 
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES
+          m_pcInterSearch->generateMergeCandidates(pu, tmMrgCtx, pu.cs->sps->getMaxNumTMMergeCand());
+#endif
           m_pcInterSearch->adjustMergeCandidates(pu, tmMrgCtx, pu.cs->sps->getMaxNumTMMergeCand());
 #else
           m_pcInterSearch->adjustMergeCandidatesInOneCandidateGroup(pu, tmMrgCtx, pu.cs->sps->getMaxNumTMMergeCand());
@@ -6820,6 +6829,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           if (hasOppositelicMrg && pu.cs->sps->getUseTMMergeOppositeLic())
           {
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND 
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES
+            m_pcInterSearch->generateMergeCandidates(pu, tmMrgCtxOppositeLic, pu.cs->sps->getMaxNumTMMergeCand());
+#endif
             m_pcInterSearch->adjustMergeCandidates(pu, tmMrgCtxOppositeLic, pu.cs->sps->getMaxNumTMMergeCand());
 #else
             m_pcInterSearch->adjustMergeCandidatesInOneCandidateGroup(pu, tmMrgCtx, pu.cs->sps->getMaxNumTMMergeCand());

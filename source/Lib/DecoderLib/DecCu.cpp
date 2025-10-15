@@ -6193,6 +6193,9 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
                   }
 #endif
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES
+                  m_pcInterPred->generateMergeCandidates(pu, mrgCtx, pu.cs->sps->getMaxNumTMMergeCand());
+#endif
                   m_pcInterPred->adjustMergeCandidates(pu, mrgCtx, pu.cs->sps->getMaxNumTMMergeCand());
 #else
                   m_pcInterPred->adjustMergeCandidatesInOneCandidateGroup(pu, mrgCtx, mrgCtx.numValidMergeCand, pu.mergeIdx);
@@ -6327,6 +6330,15 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
                 {
 #endif
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES			
+
+                  m_pcInterPred->generateMergeCandidates(pu, mrgCtx,
+#if TM_MRG
+                    pu.tmMergeFlag ? pu.cs->sps->getMaxNumTMMergeCand() :
+#endif
+                    pu.cs->sps->getMaxNumMergeCand());
+
+#endif
                 m_pcInterPred->adjustMergeCandidates(pu, mrgCtx, 
 #if TM_MRG
                                                      pu.tmMergeFlag ? pu.cs->sps->getMaxNumTMMergeCand() : 
@@ -6397,6 +6409,13 @@ void DecCu::xDeriveCUMV(CodingUnit &cu)
                     {
 #endif
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES
+                      m_pcInterPred->generateMergeCandidates(pu, mrgCtx,
+#if TM_MRG 
+                        pu.tmMergeFlag ? pu.cs->sps->getMaxNumTMMergeCand() :
+#endif
+                        pu.cs->sps->getMaxNumMergeCand());
+#endif
                     m_pcInterPred->adjustMergeCandidates(pu, mrgCtx, 
 #if TM_MRG
                                                          pu.tmMergeFlag ? pu.cs->sps->getMaxNumTMMergeCand() : 

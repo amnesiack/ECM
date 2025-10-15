@@ -1336,6 +1336,9 @@ public:
     int8_t posList0 = -1, int8_t posList1 = -1, bool loadSave0 = false, bool loadSave1 = false);
 #endif
 #if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES 
+  void generateMergeCandidates          (PredictionUnit& pu, MergeCtx& mvpMergeCandCtx, int numRetrievedMergeCand, bool isOppositeLIC = false);
+#endif
   void adjustMergeCandidates            (PredictionUnit& pu, MergeCtx& smvpMergeCandCtx, int numRetrievedMergeCand);
 #endif
 #if JVET_AG0276_NLIC || JVET_AH0314_LIC_INHERITANCE_FOR_MRG
