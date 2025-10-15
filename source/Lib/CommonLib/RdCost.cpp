@@ -600,6 +600,34 @@ Distortion RdCost::getDistPart( const CPelBuf &org, const CPelBuf &cur, int bitD
   }
 }
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+Distortion RdCost::getDistColChroma( const CPelBuf &org, const CPelBuf &cur, int bitDepth, const ComponentID compID, DFunc eDFunc )
+{
+  DistParam cDtParam;
+
+  cDtParam.org        = org;
+  cDtParam.cur        = cur;
+  cDtParam.step       = 1;
+  cDtParam.bitDepth   = bitDepth;
+  cDtParam.compID     = compID;
+
+  if( isPowerOf2( org.width ) )
+  {
+#if CTU_256
+    cDtParam.distFunc = m_afpDistortFunc[eDFunc + std::min<int>( 7, floorLog2( org.width ) )];
+#else
+    cDtParam.distFunc = m_afpDistortFunc[eDFunc + floorLog2(org.width)];
+#endif
+  }
+  else
+  {
+    cDtParam.distFunc = m_afpDistortFunc[eDFunc];
+  }
+
+  return cDtParam.distFunc( cDtParam );
+}
+#endif
+
 // ====================================================================================================================
 // Distortion functions
 // ====================================================================================================================

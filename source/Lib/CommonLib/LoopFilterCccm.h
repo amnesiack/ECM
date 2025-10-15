@@ -418,7 +418,21 @@ protected:
     }
   };
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  Pel lfCccmDownsampleType1(const Pel* piSrc, const int iRecStride, const int x, const int y) const
+  {
+    int s = 2;
+    s += piSrc[2 * x + iRecStride * y * 2];
+    s += piSrc[2 * x + 1 + iRecStride * y * 2];
+    s += piSrc[2 * x + iRecStride * (y * 2 + 1)];
+    s += piSrc[2 * x + 1 + iRecStride * (y * 2 + 1)];
+    return (s >> 2) - m_lfCccmLumaOffset;
+  }
+
+  Pel lfCccmDownsampleType0(const Pel* piSrc, const int iRecStride, const int x, const int y) const
+#else
   Pel lfCccmDownsample(const Pel* piSrc, const int iRecStride, const int x, const int y) const
+#endif
   {
     const int offLeft = x > 0 ? -1 : 0;
     int s = 4;

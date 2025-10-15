@@ -1867,6 +1867,12 @@ public:
 #endif
 #endif
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  int calcHorCollocatedChroma(PelStorage* pcPicYuvOrg, int bitDepth, RdCost* pcRdCost);
+  bool deriveCclmParams(Area& areaY, Area& areaC, PelStorage* pcPicYuvOrg, MMLMParameters param[NUM_HORCOLCHROMA][2]);
+  Distortion calcCostColChroma(Area& areaC, PelStorage* pcPicYuvOrg, int col, MMLMParameters param[2], RdCost* pcRdCost, const ClpRng& clpRng);
+#endif
+
 #ifdef TARGET_SIMD_X86
   void    initIntraX86();
   template <X86_VEXT vext>

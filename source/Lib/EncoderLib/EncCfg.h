@@ -409,7 +409,11 @@ protected:
   unsigned m_log2MinCUSize;
 
   int       m_LMChroma;
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  int       m_horCollocatedChromaFlag;
+#else
   bool      m_horCollocatedChromaFlag;
+#endif
   bool      m_verCollocatedChromaFlag;
   int       m_IntraMTS;
   int       m_InterMTS;
@@ -1717,8 +1721,13 @@ public:
 #endif
   void      setUseLMChroma                  ( int n )        { m_LMChroma = n; }
   int       getUseLMChroma()                           const { return m_LMChroma; }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  void      setHorCollocatedChromaFlag( int b )              { m_horCollocatedChromaFlag = b; }
+  int       getHorCollocatedChromaFlag()               const { return m_horCollocatedChromaFlag; }
+#else
   void      setHorCollocatedChromaFlag( bool b )             { m_horCollocatedChromaFlag = b; }
   bool      getHorCollocatedChromaFlag()               const { return m_horCollocatedChromaFlag; }
+#endif
   void      setVerCollocatedChromaFlag( bool b )             { m_verCollocatedChromaFlag = b; }
   bool      getVerCollocatedChromaFlag()               const { return m_verCollocatedChromaFlag; }
 #if AHG7_MTS_TOOLOFF_CFG

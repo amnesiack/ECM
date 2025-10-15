@@ -7942,6 +7942,9 @@ int PU::getCCPModelCandidateList(const PredictionUnit &pu, CCPModelCandidate can
       curModel.params[1][0] = scaleCclm[1];
       curModel.params[1][1] = defaultB;
       curModel.shift[1]     = shiftCclm[1];
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+      curModel.numParams    = 2;
+#endif
 
       if (found1stCCLM && defaultA[posIdx])
       {
@@ -8689,6 +8692,9 @@ void PU::cclmModelToCcpParams(const ComponentID compId, CCPModelCandidate& param
   params.shift2[compId - 1] = cclmModel.shift2;
   params.yThres = cclmModel.yThres;
 #endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  params.numParams = 2;
+#endif
 }
 
 #if JVET_AB0174_CCCM_DIV_FREE
@@ -8708,6 +8714,9 @@ void PU::cccmModelToCcpParams(CCPModelCandidate& params, const CccmModel cccmMod
   std::memcpy(params.params2[0], cccmModelCb[1].params.data(), sizeof(TCccmCoeff) * cccmModelCb[1].getNumParams() );
   std::memcpy(params.params2[1], cccmModelCr[1].params.data(), sizeof(TCccmCoeff) * cccmModelCr[1].getNumParams() );
   params.yThres = yThres;
+#endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  params.numParams = cccmModelCb[0].getNumParams();
 #endif
 }
 
@@ -8741,6 +8750,9 @@ void PU::cccmModelToCcpParams(CCPModelCandidate& params, const CccmModel& cccmMo
   params.bd = cccmModelCb.bd;
 #if JVET_AB0174_CCCM_DIV_FREE
   params.lumaOffset = cccmLumaOffset;
+#endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  params.numParams = cccmModelCb.getNumParams();
 #endif
 }
 void PU::ccpParamsToCccmModel(const CCPModelCandidate& params, CccmModel& cccmModelCb, CccmModel& cccmModelCr)

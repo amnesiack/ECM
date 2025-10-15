@@ -2690,7 +2690,12 @@ void                    setCCALFEnabledFlag( bool b )                           
   bool      getHorCollocatedChromaFlag()                                  const     { return m_horCollocatedChromaFlag; }
   void      setVerCollocatedChromaFlag( bool b )                                    { m_verCollocatedChromaFlag = b;    }
   bool      getVerCollocatedChromaFlag()                                  const     { return m_verCollocatedChromaFlag; }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  bool      getCclmHorCollocatedChromaFlag()                              const     { return m_horCollocatedChromaFlag; }
+  bool      getCclmVerCollocatedChromaFlag()                              const     { return m_verCollocatedChromaFlag; }
+#else
   bool      getCclmCollocatedChromaFlag()                                 const     { return m_verCollocatedChromaFlag; }
+#endif
   void      setUseMTS             ( bool b )                                        { m_MTS = b; }
   bool      getUseMTS             ()                                      const     { return m_MTS; }
   bool      getUseImplicitMTS     ()                                      const     { return m_MTS && !m_IntraMTS; }

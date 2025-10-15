@@ -258,6 +258,7 @@
 #define JVET_AJ0057_HL_INTRA_METHOD_CONTROL               1 // JVET-AJ0057: High-level control of intra prediction methods
 #define JVET_AK0118_BF_FOR_INTRA_PRED                     1 // JVET-AK0118: Bilateral Filtering for Intra Prediction
 #define JVET_AK0059_MDIP                                  1 // JVET-AK0059: MDIP and excluding intra modes
+#define JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION 1 // JVET-AN0090: Adaptive Subsampling Filter Selection
 
 //IBC
 #define JVET_Y0058_IBC_LIST_MODIFY                        1 // JVET-Y0058: Modifications of IBC merge/AMVP list construction, ARMC-TM-IBC part is included under JVET_W0090_ARMC_TM

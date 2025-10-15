@@ -1029,6 +1029,9 @@ bool EncLib::encodePrep(bool flush, PelStorage* pcPicYuvOrg, const InputColourSp
   //PROF_ACCUM_AND_START_NEW_SET( getProfilerPic(), P_GOP_LEVEL );
   if( pcPicYuvOrg != NULL )
   {
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+    CHECK(m_horCollocatedChromaFlag < 0, "HorCollocatedChroma error");
+#endif
     // get original YUV
     Picture* pcPicCurr = NULL;
 
@@ -3646,5 +3649,17 @@ int EncCfg::getQPForPicture(const uint32_t gopIndex, const Slice *pSlice) const
 }
 #endif
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+void EncLib::deriveHorCollocatedChroma(PelStorage* pcPicYuvOrg)
+{
+  if (m_horCollocatedChromaFlag < 0)
+  {
+    CHECK(m_chromaFormatIDC != CHROMA_420, "HorCollocatedChroma error");
+    m_horCollocatedChromaFlag = m_cIntraSearch.calcHorCollocatedChroma(pcPicYuvOrg, m_bitDepth[CH_C], &m_cRdCost);
+    SPS &sps0 = *(m_spsMap.allocatePS( m_vps->getGeneralLayerIdx( m_layerId ) ));
+    sps0.setHorCollocatedChromaFlag(m_horCollocatedChromaFlag);
+  }
+}
+#endif
 
 //! \}

@@ -497,7 +497,11 @@ protected:
   bool      m_armcRefinedMotion;
 #endif
   int       m_LMChroma;
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  int       m_horCollocatedChromaFlag;
+#else
   bool      m_horCollocatedChromaFlag;
+#endif
   bool      m_verCollocatedChromaFlag;
   int       m_MTS;                                            ///< XZ: Multiple Transform Set
   int       m_MTSIntraMaxCand;                                ///< XZ: Number of additional candidates to test

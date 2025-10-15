@@ -1958,6 +1958,20 @@ bool EncApp::encodePrep( bool& eos )
   const InputColourSpaceConversion ipCSC = m_inputColourSpaceConvert;
   const InputColourSpaceConversion snrCSC = ( !m_snrInternalColourSpace ) ? m_inputColourSpaceConvert : IPCOLOURSPACE_UNCHANGED;
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  if (m_cEncLib.getHorCollocatedChromaFlag() < 0)
+  {
+    bool read = m_cVideoIOYuvInputFile.readFirstPOC( *m_orgPic, *m_trueOrgPic, ipCSC, m_sourcePadding, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
+    if (read && !m_cVideoIOYuvInputFile.isEof())
+    {
+      m_cEncLib.deriveHorCollocatedChroma(m_orgPic);
+    }
+    else
+    {
+      m_cEncLib.setHorCollocatedChromaFlag(1);
+    }
+  }
+#endif
   // read input YUV file
 #if EXTENSION_360_VIDEO
   if( m_ext360->isEnabled() )

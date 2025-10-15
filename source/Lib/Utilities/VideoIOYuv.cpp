@@ -1144,6 +1144,26 @@ bool VideoIOYuv::read ( PelUnitBuf& pic, PelUnitBuf& picOrg, const InputColourSp
   return true;
 }
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+bool VideoIOYuv::readFirstPOC ( PelUnitBuf& pic, PelUnitBuf& picOrg, const InputColourSpaceConversion ipcsc, int aiPad[2], ChromaFormat format, const bool bClipToRec709 )
+{
+  std::streampos pos = m_cHandle.tellg();
+  m_cHandle.seekg(0, ios::beg);
+#if Y4M_SUPPORT
+  if (m_inY4mFileHeaderLength)
+  {
+    m_cHandle.seekg(m_inY4mFileHeaderLength, ios::cur);
+  }
+#endif
+
+  bool ret = read(pic, picOrg, ipcsc, aiPad, format, bClipToRec709);
+
+  m_cHandle.seekg(pos, ios::beg);
+
+  return ret;
+}
+#endif
+
 /**
  * Write one Y'CbCr frame. No bit-depth conversion is performed, pcPicYuv is
  * assumed to be at TVideoIO::m_fileBitdepth depth.

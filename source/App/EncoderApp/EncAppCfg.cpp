@@ -1152,7 +1152,11 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("LMChroma",                                        m_LMChroma,                                           1, " LMChroma prediction "
                                                                                                                "\t0:  Disable LMChroma\n"
                                                                                                                "\t1:  Enable LMChroma\n")
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  ("HorCollocatedChroma",                             m_horCollocatedChromaFlag,                            1, "Specifies location of a chroma sample relatively to the luma sample in horizontal direction in the cross-component linear model intra prediction and the reference picture resampling (-1: auto)\n"
+#else
   ("HorCollocatedChroma",                             m_horCollocatedChromaFlag,                         true, "Specifies location of a chroma sample relatively to the luma sample in horizontal direction in the reference picture resampling\n"
+#endif
                                                                                                                "\t0:  horizontally shifted by 0.5 units of luma samples\n"
                                                                                                                "\t1:  collocated (default)\n")
   ("VerCollocatedChroma",                             m_verCollocatedChromaFlag,                        false, "Specifies location of a chroma sample relatively to the luma sample in vertical direction in the cross-component linear model intra prediction and the reference picture resampling\n"
@@ -3298,10 +3302,20 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 
   if (m_chromaFormatIDC != CHROMA_420)
   {
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+    if (m_horCollocatedChromaFlag != 1)
+    {
+      if (!m_horCollocatedChromaFlag)
+      {
+        msg(WARNING, "\nWARNING: HorCollocatedChroma is forced to 1 for chroma formats other than 4:2:0\n");
+      }
+      m_horCollocatedChromaFlag = 1;
+#else
     if (!m_horCollocatedChromaFlag)
     {
       msg(WARNING, "\nWARNING: HorCollocatedChroma is forced to 1 for chroma formats other than 4:2:0\n");
       m_horCollocatedChromaFlag = true;
+#endif
     }
     if (!m_verCollocatedChromaFlag)
     {
@@ -5561,6 +5575,9 @@ bool EncAppCfg::xCheckParameter()
 #endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
   xConfirmPara( CCCM_NUM_PARAMS_MAX < CCCM_NO_SUB_NUM_PARAMS, "Wrong CCCM_NUM_PARAMS_MAX, CCCM_NUM_PARAMS_MAX < CCCM_NO_SUB_NUM_PARAMS" );
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  xConfirmPara( CCCM_NUM_PARAMS_MAX < CCCM_NO_SUB_NUM_PARAMS2, "Wrong CCCM_NUM_PARAMS_MAX, CCCM_NUM_PARAMS_MAX < CCCM_NO_SUB_NUM_PARAMS2" );
+#endif
 #endif
 #if JVET_AE0100_BVGCCCM
   xConfirmPara( CCCM_NUM_PARAMS_MAX < BVG_CCCM_NUM_PARAMS, "Wrong CCCM_NUM_PARAMS_MAX, CCCM_NUM_PARAMS_MAX < BVG_CCCM_NUM_PARAMS" );
