@@ -1158,6 +1158,9 @@ public:
 #endif
 
   Distortion   getDistPart(const CPelBuf &org, const CPelBuf &cur, const Pel* mask, int bitDepth, const ComponentID compID, DFunc eDFunc);
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  Distortion   getDistColChroma( const CPelBuf &org, const CPelBuf &cur, int bitDepth, const ComponentID compID, DFunc eDFunc );
+#endif
 };// END CLASS DEFINITION RdCost
 
 //! \}

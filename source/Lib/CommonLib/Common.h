@@ -398,6 +398,9 @@ struct CCPModelCandidate
 #if JVET_AN0168_REGRESSION_CCP_FUSION
   int ccpCandIndex = -1;
 #endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  int     numParams = 0;
+#endif
 
   template<int NUM>
   inline bool isTheSameParams(const CCPModelCandidate& p) const
@@ -534,17 +537,53 @@ struct CCPModelCandidate
         {
           return false;
         }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+        if (numParams == CCCM_NO_SUB_NUM_PARAMS)
+        {
+#endif
         if (isTheSameParams<CCCM_NO_SUB_NUM_PARAMS>(cand) && isTheSameParams2<CCCM_NO_SUB_NUM_PARAMS>(cand))
         {
           return true;
         }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+        }
+        else if (numParams == CCCM_NO_SUB_NUM_PARAMS2)
+        {
+          if (isTheSameParams<CCCM_NO_SUB_NUM_PARAMS2>(cand) && isTheSameParams2<CCCM_NO_SUB_NUM_PARAMS2>(cand))
+          {
+            return true;
+          }
+        }
+        else
+        {
+          THROW("Wrong numParams");
+        }
+#endif
       }
       else
       {
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+        if (numParams == CCCM_NO_SUB_NUM_PARAMS)
+        {
+#endif
         if (isTheSameParams<CCCM_NO_SUB_NUM_PARAMS>(cand))
         {
           return true;
         }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+        }
+        else if (numParams == CCCM_NO_SUB_NUM_PARAMS2)
+        {
+          if (isTheSameParams<CCCM_NO_SUB_NUM_PARAMS2>(cand))
+          {
+            return true;
+          }
+        }
+        else
+        {
+          THROW("Wrong numParams");
+        }
+#endif
       }
       return false;
     }

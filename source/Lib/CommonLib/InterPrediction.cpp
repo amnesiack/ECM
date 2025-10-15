@@ -45230,7 +45230,11 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
       s[1] = piSrc[2 * x + offLeft + iRecStride * y];
       s[2] = piSrc[2 * x + 1 + iRecStride * y];
     }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+    else if( pu->cs->sps->getCclmVerCollocatedChromaFlag() )
+#else
     else if( pu->cs->sps->getCclmCollocatedChromaFlag() )
+#endif
     {
       const int offLeft = x > 0 ? -1 : 0;
       const int offAbove = y > 0 ? -1 : 0;
@@ -45283,7 +45287,11 @@ std::vector<Mv> InterPrediction::deriveMVDFromMVSDIdxAffineSI(PredictionUnit& pu
       s[1] -= offset;
       s[2] -= offset;
     }
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+    else if( pu->cs->sps->getCclmVerCollocatedChromaFlag() )
+#else
     else if( pu->cs->sps->getCclmCollocatedChromaFlag() )
+#endif
     {
       s[0] -= offset;
       s[1] -= offset;

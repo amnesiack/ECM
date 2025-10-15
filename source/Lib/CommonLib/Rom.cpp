@@ -6743,13 +6743,25 @@ int g_gradDivTable[ 16 ] = { 0, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 1, 1, 0 };
 int g_rmvfMultApproxTbl[ 3 << sizeof( int64_t ) ];
 #endif
 #if JVET_AA0126_GLM
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+const int8_t g_glmPattern[2][ NUM_GLM_PATTERN ][ 6 ] =
+{
+  {
+#else
 const int8_t g_glmPattern[ NUM_GLM_PATTERN ][ 6 ] =
 {
+#endif
   {  1,  0, -1,  1,  0, -1, }, {  1,  2,  1, -1, -2, -1, }, {  2,  1, -1,  1, -1, -2, }, { -1,  1,  2, -2, -1,  1, },
 #if !JVET_AA0057_CCCM
   {  0,  2, -2,  0,  1, -1, }, {  1,  1,  1, -1, -1, -1, }, {  1,  1, -1,  1, -1, -1, }, { -1,  1,  1, -1, -1,  1, },
   {  0,  1, -1,  0,  1, -1, }, {  0,  1,  1,  0, -1, -1, }, {  1,  1,  0,  0, -1, -1, }, {  0,  1,  1, -1, -1,  0, },
   {  1, -1,  0,  1, -1,  0, }, {  1,  1,  0, -1, -1,  0, }, {  1,  2,  0,  0, -2, -1, }, {  0,  2,  1, -1, -2,  0, },
+#endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  },
+  {
+    {  0,  1, -1,  0,  1, -1, }, {  0,  1,  1,  0, -1, -1, }, {  0,  1, 0,   0,  0, -1, }, {  0,  0,  1,  0, -1,  0, },
+  },
 #endif
 };
 #endif

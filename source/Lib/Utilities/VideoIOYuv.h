@@ -94,6 +94,9 @@ public:
 
   // If fileFormat=NUM_CHROMA_FORMAT, use the format defined by pPicYuvTrueOrg
   bool  read ( PelUnitBuf& pic, PelUnitBuf& picOrg, const InputColourSpaceConversion ipcsc, int aiPad[2], ChromaFormat fileFormat=NUM_CHROMA_FORMAT, const bool bClipToRec709=false );     ///< read one frame with padding parameter
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  bool  readFirstPOC ( PelUnitBuf& pic, PelUnitBuf& picOrg, const InputColourSpaceConversion ipcsc, int aiPad[2], ChromaFormat fileFormat=NUM_CHROMA_FORMAT, const bool bClipToRec709=false );     ///< read one frame with padding parameter
+#endif
 
   // If fileFormat=NUM_CHROMA_FORMAT, use the format defined by pPicYuv
   bool  write( uint32_t orgWidth, uint32_t orgHeight, const CPelUnitBuf& pic,

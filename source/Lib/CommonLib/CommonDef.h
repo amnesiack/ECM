@@ -1608,6 +1608,9 @@ static const int CCCM_NUM_MODES           = 3;
 #endif
 #if JVET_AC0147_CCCM_NO_SUBSAMPLING
 static const int CCCM_NO_SUB_NUM_PARAMS   = 11;
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+static const int CCCM_NO_SUB_NUM_PARAMS2  = 9;
+#endif
 static const double CCCM_NO_SUB_WEIGHT    = 1.1; 
 #endif
 #if JVET_AC0054_GLCCCM
@@ -1629,6 +1632,9 @@ static const int NUM_BVG_CCCM_CANDS       = 5;
 static const int BVG_CCCM_POS_OFFSET      = 4;
 static const int BVG_CCCM_NUM_PARAMS      = 11;
 #endif
+#endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+static const int NUM_HORCOLCHROMA         = 2;
 #endif
 
 #if JVET_AA0126_GLM

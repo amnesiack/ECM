@@ -350,6 +350,9 @@ public:
 #if JVET_AA0093_DIVERSITY_CRITERION_FOR_ARMC
   void setQPOffsetList(const int QPOffset[MAX_GOP]);
 #endif
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  void deriveHorCollocatedChroma(PelStorage* pcPicYuvOrg);
+#endif
 };
 
 //! \}

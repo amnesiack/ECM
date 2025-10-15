@@ -1064,6 +1064,10 @@ void LoopFilterCccm::lfCccmFillDownsampledLumaBuffers(const CodingStructure &cs)
   const int endy = downsampleArea.bottomRight().y+1;
   const int endx = downsampleArea.bottomRight().x+1;
 
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+  Pel (LoopFilterCccm::*lfCccmDownsample)(const Pel*, const int, const int, const int) const =
+    ( !cs.sps->getCclmVerCollocatedChromaFlag() && !cs.sps->getCclmHorCollocatedChromaFlag() ) ? &LoopFilterCccm::lfCccmDownsampleType1 : &LoopFilterCccm::lfCccmDownsampleType0;
+#endif
   const Pel *bufSao = m_lfCccmSaoY.buf;
   const int srcStrideSao = m_lfCccmSaoY.stride;
 
@@ -1071,7 +1075,11 @@ void LoopFilterCccm::lfCccmFillDownsampledLumaBuffers(const CodingStructure &cs)
   {
     for (int x = startx, xx = 0; x < endx; x++, xx++)
     {
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+      dstSao[xx] = (this->*lfCccmDownsample)(bufSao, srcStrideSao, x, y);
+#else
       dstSao[xx] = lfCccmDownsample(bufSao, srcStrideSao, x, y);
+#endif
     }
     dstSao += dstStrideSao;
   }
