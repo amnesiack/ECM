@@ -974,6 +974,41 @@ public:
   bool  mrgDuplicated[NUM_MERGE_CANDS];
   void  setGeoMrgDuplicate( const PredictionUnit& pu );
 #endif
+#if JVET_AN0236_GENERATED_MERGE_CANDIDATES 
+  void copyToMergeCtx(const MergeCtx& other) // create new from existing
+  {
+    // create a copy of the list
+    numValidMergeCand = other.numValidMergeCand;
+#if JVET_Z0102_NO_ARMC_FOR_ZERO_CAND
+    numCandToTestEnc = other.numCandToTestEnc;
+#endif
+    memcpy(bcwIdx, other.bcwIdx, numValidMergeCand * sizeof(uint8_t));
+    memcpy(interDirNeighbours, other.interDirNeighbours, numValidMergeCand * sizeof(unsigned char));
+    memcpy(posNeighbours, other.posNeighbours, numValidMergeCand * sizeof(Position));
+    memcpy(mvFieldNeighbours, other.mvFieldNeighbours, (numValidMergeCand *2) * sizeof(MvField));
+    memcpy(useAltHpelIf, other.useAltHpelIf, numValidMergeCand * sizeof(bool));
+#if JVET_AG0276_NLIC
+    memcpy(altLMFlag, other.altLMFlag, numValidMergeCand * sizeof(bool));
+#endif
+#if INTER_LIC 
+    memcpy(licFlags,other.licFlags, numValidMergeCand * sizeof(bool));
+    memcpy(candCost, other.candCost, numValidMergeCand * sizeof(Distortion));
+    memcpy(candtype, other.candtype, numValidMergeCand * sizeof(int));
+#if MULTI_HYP_PRED
+    memcpy(addHypNeighbours, other.addHypNeighbours, numValidMergeCand * sizeof(MultiHypVec));
+#endif
+#endif 
+#if JVET_AH0314_LIC_INHERITANCE_FOR_MRG
+    for (int ui = 0; ui < numValidMergeCand; ui++)
+    {
+      copyLICParamFromCtx(ui, other, ui);
+#if JVET_AG0276_NLIC
+      altLMParaNeighbours[ui]= other.altLMParaNeighbours[ui];
+#endif
+    }
+#endif
+  }
+#endif
 };
 #if JVET_AG0164_AFFINE_GPM
 class InterPrediction;
