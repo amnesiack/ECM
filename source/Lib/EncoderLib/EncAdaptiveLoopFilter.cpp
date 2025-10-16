@@ -168,7 +168,11 @@ void AlfCovariance::reduceClipCost(const AlfFilterShape& alfShape, int *clip) co
 
 #if JVET_AD0222_ALF_RESI_CLASS
 #if JVET_AF0177_ALF_COV_FLOAT
+#if JVET_AN0086_RESIDUAL_CHECK
+double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, Ty f, bool optimize_clip, bool enableLessClip, bool encAlfResidualCheck) const
+#else
 double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, Ty f, bool optimize_clip, bool enableLessClip) const
+#endif
 #else
 double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, double *f, bool optimize_clip, bool enableLessClip) const
 #endif
@@ -203,7 +207,11 @@ double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, 
 
   setEyFromClip( clip, kE, ky, size );
 
-  gnsSolveByChol( kE, ky, f, size );
+  gnsSolveByChol( kE, ky, f, size 
+#if JVET_AN0086_RESIDUAL_CHECK
+  , encAlfResidualCheck
+#endif
+  );
   err_best = calculateError( clip, f, size );
   memcpy( fBest, f, copySize );
   int step = optimize_clip ? (numBins+1)/2 : 0;
@@ -237,7 +245,11 @@ double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, 
           kE[k][l] = E(clip[k],clip[l],k,l);
         }
 
-        gnsSolveByChol( kE, ky, f, size );
+        gnsSolveByChol( kE, ky, f, size 
+#if JVET_AN0086_RESIDUAL_CHECK
+        , encAlfResidualCheck
+#endif
+        );
         err_last = calculateError( clip, f, size );
 
         if( err_last < err_min )
@@ -263,7 +275,11 @@ double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, 
           kE[k][l] = E(clip[k], clip[l], k, l);
         }
 
-        gnsSolveByChol( kE, ky, f, size );
+        gnsSolveByChol( kE, ky, f, size 
+#if JVET_AN0086_RESIDUAL_CHECK
+        , encAlfResidualCheck
+#endif
+        );
         err_last = calculateError( clip, f, size );
 
         if( err_last < err_min )
@@ -320,7 +336,11 @@ double AlfCovariance::optimizeFilter(const AlfFilterShape& alfShape, int* clip, 
     Ty ky_max;
     setEyFromClip( clip_max, kE_max, ky_max, size );
 
-    gnsSolveByChol( kE_max, ky_max, f, size );
+    gnsSolveByChol( kE_max, ky_max, f, size 
+#if JVET_AN0086_RESIDUAL_CHECK
+    , encAlfResidualCheck
+#endif
+    );
     err_last = calculateError( clip_max, f, size );
     if( err_last < err_best )
     {
@@ -516,11 +536,19 @@ double AlfCovariance::calculateError( const int *clip, const double *coeff, cons
   return pixAcc - sum;
 }
 
-double AlfCovariance::calculateError( const int *clip ) const
+#if JVET_AN0086_RESIDUAL_CHECK
+double AlfCovariance::calculateError( const int *clip, bool encAlfResidualCheck ) const
+#else
+double AlfCovariance::calculateError( const int* clip ) const
+#endif
 {
   Ty c;
 
-  return optimizeFilter( clip, c, numCoeff );
+  return optimizeFilter( clip, c, numCoeff 
+#if JVET_AN0086_RESIDUAL_CHECK
+  , encAlfResidualCheck
+#endif
+  );
 }
 //********************************
 // Cholesky decomposition
@@ -644,7 +672,11 @@ void AlfCovariance::gnsBacksubstitution( TE R, double* z, int size, double* A ) 
 }
 
 #if JVET_AF0177_ALF_COV_FLOAT
+#if JVET_AN0086_RESIDUAL_CHECK
+int AlfCovariance::gnsSolveByChol( const int *clip, Ty x, int numEq, bool encAlfResidualCheck ) const
+#else
 int AlfCovariance::gnsSolveByChol( const int *clip, Ty x, int numEq ) const
+#endif
 #else
 int AlfCovariance::gnsSolveByChol( const int *clip, double *x, int numEq ) const
 #endif
@@ -653,13 +685,21 @@ int AlfCovariance::gnsSolveByChol( const int *clip, double *x, int numEq ) const
   Ty rhs;
 
   setEyFromClip( clip, LHS, rhs, numEq );
-  return gnsSolveByChol( LHS, rhs, x, numEq );
+  return gnsSolveByChol( LHS, rhs, x, numEq 
+#if JVET_AN0086_RESIDUAL_CHECK
+  , encAlfResidualCheck
+#endif
+  );
 }
 
 #if JVET_AF0177_ALF_COV_FLOAT
-int AlfCovariance::gnsSolveByChol( TE LHS, Ty rhs, Ty x, int numEq ) const
+#if JVET_AN0086_RESIDUAL_CHECK
+int AlfCovariance::gnsSolveByChol( TE LHS, Ty rhs, Ty x, int numEq, bool encAlfResidualCheck ) const
 #else
-int AlfCovariance::gnsSolveByChol( TE LHS, double* rhs, double *x, int numEq ) const
+int AlfCovariance::gnsSolveByChol( TE LHS, Ty rhs, Ty x, int numEq ) const
+#endif
+#else
+int AlfCovariance::gnsSolveByChol(TE LHS, double* rhs, double* x, int numEq) const
 #endif
 {
   Ty aux;     /* Auxiliary vector */
@@ -670,7 +710,6 @@ int AlfCovariance::gnsSolveByChol( TE LHS, double* rhs, double *x, int numEq ) c
   /* The equation to be solved is LHSx = rhs */
 
   /* Compute upper triangular U such that U'*U = LHS */
-
 #if ENABLE_SIMD_OPT_ALF_CHOLESKY
   if (AdaptiveLoopFilter::m_fastCholeskyDec(LHS, U, numEq)) /* If Cholesky decomposition has been successful */
 #else
@@ -719,6 +758,41 @@ int AlfCovariance::gnsSolveByChol( TE LHS, double* rhs, double *x, int numEq ) c
     /* Solve U*x = aux for x */
     gnsBacksubstitution( U, aux, numEq, x );
   }
+#if JVET_AN0086_RESIDUAL_CHECK
+  if (encAlfResidualCheck)
+  {
+    Ty productAx;
+    Ty residualVector;
+
+    std::memset(productAx, 0, sizeof(float) * numEq);
+
+    for (int i = 0; i < numEq; i++)
+    {
+      for (int j = i; j < numEq; j++)
+      {
+        if (i == j)
+        {
+          productAx[i] += LHS[i][i] * x[i];
+        }
+        else
+        {
+          productAx[i] += LHS[i][j] * x[j];
+          productAx[j] += LHS[i][j] * x[i]; // A[j][i] = A[i][j]
+        }
+      }
+    }
+
+    // residualVector = rhs - productAx
+    for (int i = 0; i < numEq; i++)
+    {
+      residualVector[i] = rhs[i] - productAx[i];
+      if (std::abs(residualVector[i]) > RESIDUAL_CHECK_THR)
+      {
+        std::memset(x, 0, sizeof(float) * numEq);
+      }
+    }
+  }
+#endif
   return res;
 }
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -3986,7 +4060,11 @@ void EncAdaptiveLoopFilter::deriveCoeffQuantMultipleBitDepths(int *filterClipp, 
 #endif
 
 #if JVET_AD0222_ALF_RESI_CLASS
-  cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip, m_enableLessClip );
+  cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip, m_enableLessClip 
+#if JVET_AN0086_RESIDUAL_CHECK
+  , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+  );
 #else
   cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip );
 #endif
@@ -4760,7 +4838,11 @@ double EncAdaptiveLoopFilter::deriveCoeffQuant(int* filterClipp, int* filterCoef
   static double cA[MAX_NUM_ALF_LUMA_COEFF];
 #endif
 #if JVET_AD0222_ALF_RESI_CLASS
-  cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip, m_enableLessClip );
+  cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip, m_enableLessClip 
+#if JVET_AN0086_RESIDUAL_CHECK
+  , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+  );
 #else
   cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip );
 #endif
@@ -4919,7 +5001,11 @@ double EncAdaptiveLoopFilter::deriveCoeffForTAlfQuant(int* filterClipp, int* fil
   static double cA[MAX_NUM_ALF_LUMA_COEFF];
 #endif
 #if JVET_AD0222_ALF_RESI_CLASS
-  cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip, m_enableLessClip );
+  cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip, m_enableLessClip 
+#if JVET_AN0086_RESIDUAL_CHECK
+  , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+  );
 #else
   cov.optimizeFilter( shape, filterClipp, filterCoeff, optimizeClip );
 #endif
@@ -5345,14 +5431,22 @@ void EncAdaptiveLoopFilter::mergeClasses( const AlfFilterShape& alfShape, AlfCov
 #endif
     {
 #if JVET_AD0222_ALF_RESI_CLASS
-      err[i] = covMerged[i].optimizeFilterClip( alfShape, clipMerged[numRemaining - 1][i], m_enableLessClip );
+      err[i] = covMerged[i].optimizeFilterClip( alfShape, clipMerged[numRemaining - 1][i], m_enableLessClip 
+#if JVET_AN0086_RESIDUAL_CHECK
+      , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+      );
 #else
       err[i] = covMerged[i].optimizeFilterClip( alfShape, clipMerged[numRemaining-1][i] );
 #endif
     }
     else
     {
-      err[i] = covMerged[i].calculateError( clipMerged[numRemaining-1][i] );
+      err[i] = covMerged[i].calculateError( clipMerged[numRemaining-1][i] 
+#if JVET_AN0086_RESIDUAL_CHECK
+      , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+      );
     }
   }
 
@@ -5381,7 +5475,11 @@ void EncAdaptiveLoopFilter::mergeClasses( const AlfFilterShape& alfShape, AlfCov
             double errorMerged = 0;
             if (classChanged[i][j])
             {
-              errorMerged = tmpCov.calculateError(tmpClip);
+              errorMerged = tmpCov.calculateError(tmpClip
+#if JVET_AN0086_RESIDUAL_CHECK
+                , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+              );
               classChanged[i][j] = false;
               errorHistory[i][j] = errorMerged;
               memcpy(clipHistory[i][j], tmpClip, sizeof(tmpClip));
@@ -10256,7 +10354,11 @@ void EncAdaptiveLoopFilter::deriveCcAlfFilterCoeff( ComponentID compID, const Pe
     }
   }
 
-  m_alfCovarianceFrameCcAlf[0].gnsSolveByChol(kE, ky, filterCoeffDbl, size);
+  m_alfCovarianceFrameCcAlf[0].gnsSolveByChol(kE, ky, filterCoeffDbl, size
+#if JVET_AN0086_RESIDUAL_CHECK
+  , m_encCfg->getAlfResidualCheckEnabled()
+#endif
+  );
 #if JVET_AH0057_CCALF_COEFF_PRECISION
   roundFiltCoeffCCALF(filterCoeffInt, filterCoeffDbl, size, (1 << coeffPrec));
 #else

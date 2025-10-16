@@ -113,6 +113,10 @@
 #define NULL              0
 #endif
 
+#if JVET_AN0086_RESIDUAL_CHECK
+static const float RESIDUAL_CHECK_THR = 200.0f;
+#endif
+
 #if JVET_AM0056_PRED_TRANSFORM_COEFF_CODING
 static const int PTCC_SIG_THR                      = 31000;   // threshold for 15bit CABAC precsion
 #endif

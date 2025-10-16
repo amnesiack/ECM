@@ -1182,6 +1182,9 @@ void EncApp::xInitLibCfg()
 #endif
 
   // ADD_NEW_TOOL : (encoder app) add setting of tool enabling flags and associated parameters here
+#if JVET_AN0086_RESIDUAL_CHECK
+  m_cEncLib.setAlfResidualCheckEnabled                           ( m_encAlfResidualCheck );
+#endif
   m_cEncLib.setVirtualBoundariesEnabledFlag                      ( m_virtualBoundariesEnabledFlag );
   if( m_cEncLib.getVirtualBoundariesEnabledFlag() )
   {

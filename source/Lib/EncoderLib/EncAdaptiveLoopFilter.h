@@ -291,26 +291,46 @@ struct AlfCovariance
     }
   }
 #if JVET_AF0177_ALF_COV_FLOAT
+#if JVET_AN0086_RESIDUAL_CHECK
+  double optimizeFilter(const int* clip, Ty f, int size, bool encAlfResidualCheck = false) const
+#else
   double optimizeFilter(const int* clip, Ty f, int size) const
+#endif
 #else
   double optimizeFilter(const int* clip, double *f, int size) const
 #endif
   {
-    gnsSolveByChol( clip, f, size );
+    gnsSolveByChol( clip, f, size 
+#if JVET_AN0086_RESIDUAL_CHECK
+    , encAlfResidualCheck
+#endif
+    );
     return calculateError( clip, f );
   }
 
 #if JVET_AD0222_ALF_RESI_CLASS
 #if JVET_AF0177_ALF_COV_FLOAT
+#if JVET_AN0086_RESIDUAL_CHECK
+  double optimizeFilter(const AlfFilterShape& alfShape, int* clip, Ty f, bool optimize_clip, bool enableLessClip, bool encAlfResidualCheck = false) const;
+#else
   double optimizeFilter(const AlfFilterShape& alfShape, int* clip, Ty f, bool optimize_clip, bool enableLessClip) const;
+#endif
 #else
   double optimizeFilter(const AlfFilterShape& alfShape, int* clip, double *f, bool optimize_clip, bool enableLessClip) const;
 #endif
+#if JVET_AN0086_RESIDUAL_CHECK
+  double optimizeFilterClip(const AlfFilterShape& alfShape, int* clip, bool enableLessClip, bool encAlfResidualCheck = false) const
+  {
+    Ty f;
+    return optimizeFilter(alfShape, clip, f, true, enableLessClip, encAlfResidualCheck);
+  }
+#else
   double optimizeFilterClip(const AlfFilterShape& alfShape, int* clip, bool enableLessClip) const
   {
     Ty f;
     return optimizeFilter(alfShape, clip, f, true, enableLessClip);
   }
+#endif
 #else 
   double optimizeFilter(const AlfFilterShape& alfShape, int* clip, double *f, bool optimize_clip) const;
   double optimizeFilterClip(const AlfFilterShape& alfShape, int* clip) const
@@ -320,7 +340,11 @@ struct AlfCovariance
   }
 #endif
 
+#if JVET_AN0086_RESIDUAL_CHECK
+  double calculateError( const int *clip, bool encAlfResidualCheck = false ) const;
+#else
   double calculateError( const int *clip ) const;
+#endif
 #if JVET_AF0177_ALF_COV_FLOAT
   double calculateError( const int *clip, const Ty coeff ) const { return calculateError(clip, coeff, numCoeff); }
   double calculateError( const int *clip, const Ty coeff, const int numCoeff ) const;
@@ -345,14 +369,22 @@ struct AlfCovariance
   void getClipMax(const AlfFilterShape& alfShape, int *clip_max) const;
   void reduceClipCost(const AlfFilterShape& alfShape, int *clip) const;
 #if JVET_AF0177_ALF_COV_FLOAT
+#if JVET_AN0086_RESIDUAL_CHECK
+  int  gnsSolveByChol( TE LHS, Ty rhs, Ty x, int numEq, bool encAlfResidualCheck = false ) const;
+#else
   int  gnsSolveByChol( TE LHS, Ty rhs, Ty x, int numEq ) const;
+#endif
 #else
   int  gnsSolveByChol( TE LHS, double* rhs, double *x, int numEq ) const;
 #endif
 private:
   // Cholesky decomposition
 #if JVET_AF0177_ALF_COV_FLOAT
+#if JVET_AN0086_RESIDUAL_CHECK
+  int  gnsSolveByChol( const int *clip, Ty x, int numEq, bool encAlfResidualCheck = false) const;
+#else
   int  gnsSolveByChol( const int *clip, Ty x, int numEq ) const;
+#endif
   void gnsTransposeBacksubstitution( TE U, Ty rhs, Ty x, int order ) const;
   void gnsBacksubstitution( TE R, Ty z, int size, Ty A ) const;
 #else

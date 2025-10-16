@@ -748,6 +748,9 @@ protected:
 #endif
   
   // ADD_NEW_TOOL : (encoder app) add tool enabling flags and associated parameters here
+#if JVET_AN0086_RESIDUAL_CHECK
+  bool      m_encAlfResidualCheck;
+#endif
   bool      m_virtualBoundariesEnabledFlag;
   bool      m_virtualBoundariesPresentFlag;
   unsigned  m_numVerVirtualBoundaries;

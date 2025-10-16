@@ -81,6 +81,7 @@
 #define INTRA_TRANS_ENC_OPT                               1 // JVET-Y0141: Software optimization, including TIMD/DIMD/MTS/LFNS encoder fast algorithm, SIMD implementation and CM initial value retraining 
 #define JVET_AA0129_INTERHASH_OBMCOFF_RD                  1 // JVET-AA0129: improved encoder RDO of inter-hash based ME considering OBMC off
 #define JVET_AL0114_ODD_MODE                              1 // JVET-AL0114: try odd modes instead of even modes in the first round of non-RD intra mode selection
+#define JVET_AN0086_RESIDUAL_CHECK                        1 // JVET-AN0086: Using residual check to avoid unreliable ALF coefficients
 
 // SIMD optimizations
 #define MCIF_SIMD_NEW                                     1 // SIMD for interpolation
