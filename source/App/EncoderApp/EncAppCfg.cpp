@@ -1445,6 +1445,9 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   ("RefineTmvpCfgIdx",                                m_refineTmvpCfgIdx,                                  0u, "RefineTmvpCfgIdx")
 #endif
   // ADD_NEW_TOOL : (encoder app) add parsing parameters here
+#if JVET_AN0086_RESIDUAL_CHECK
+  ("AlfResidualCheck",                                m_encAlfResidualCheck,                            false, "Encoder optimization with residual check after ALF coefficients calculation" )
+#endif
   ( "VirtualBoundariesPresentInSPSFlag",              m_virtualBoundariesPresentFlag,                    true, "Virtual Boundary position information is signalled in SPS or PH (1:SPS, 0:PH)  [default: on]" )
   ("NumVerVirtualBoundaries",                         m_numVerVirtualBoundaries,                           0u, "Number of vertical virtual boundaries (0-3, inclusive)")
   ("NumHorVirtualBoundaries",                         m_numHorVirtualBoundaries,                           0u, "Number of horizontal virtual boundaries (0-3, inclusive)")
@@ -6042,6 +6045,9 @@ void EncAppCfg::xPrintParameter()
     msg( VERBOSE, "WrapAroundOffset:%d ", m_wrapAroundOffset );
   }
   // ADD_NEW_TOOL (add some output indicating the usage of tools)
+#if JVET_AN0086_RESIDUAL_CHECK
+  msg(VERBOSE, "AlfResidualCheckEnabled:%d ", m_encAlfResidualCheck );
+#endif
   msg( VERBOSE, "VirtualBoundariesEnabledFlag:%d ", m_virtualBoundariesEnabledFlag );
   msg( VERBOSE, "VirtualBoundariesPresentInSPSFlag:%d ", m_virtualBoundariesPresentFlag );
   if( m_virtualBoundariesPresentFlag )

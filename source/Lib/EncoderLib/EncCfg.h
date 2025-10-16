@@ -704,6 +704,9 @@ protected:
 #endif
 
   // ADD_NEW_TOOL : (encoder lib) add tool enabling flags and associated parameters here
+#if JVET_AN0086_RESIDUAL_CHECK
+  bool      m_encAlfResidualCheck;
+#endif
   bool      m_virtualBoundariesEnabledFlag;
   bool      m_virtualBoundariesPresentFlag;
   unsigned  m_numVerVirtualBoundaries;
@@ -2200,6 +2203,10 @@ public:
 #endif
 
   // ADD_NEW_TOOL : (encoder lib) add access functions here
+#if JVET_AN0086_RESIDUAL_CHECK
+  void      setAlfResidualCheckEnabled( bool n ) { m_encAlfResidualCheck = n; }
+  bool      getAlfResidualCheckEnabled() const { return m_encAlfResidualCheck; }
+#endif
   void      setVirtualBoundariesEnabledFlag( bool b ) { m_virtualBoundariesEnabledFlag = b; }
   bool      getVirtualBoundariesEnabledFlag() const { return m_virtualBoundariesEnabledFlag; }
   void      setVirtualBoundariesPresentFlag( bool b ) { m_virtualBoundariesPresentFlag = b; }
