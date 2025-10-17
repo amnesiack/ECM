@@ -536,6 +536,7 @@
 #define JVET_AH0176_LOW_DELAY_B_CTX                       1 // JVET-AH0176 6.1: context initialization for B-slice
 #define JVET_AI0281_CABAC_RETRAIN                         1 // JVET-AI0281: context initialization training
 #define JVET_AK0135_CABAC_RETRAIN                         1 // JVET-AK0135: context initialization training
+#define JVET_AN0214_CABAC_RETRAIN                         1 // JVET-AN0214: context initialization training
 #define JVET_AM0068_AE0102_NONCTC_FIX                     1 // JVET_AM0068 non-CTC (DQ and sign prediction disabled) fix for JVET_AE0102
 #define JVET_AM0068_AG0100_NONCTC_FIX                     1 // JVET_AM0068 non-CTC (DQ and sign prediction disabled) fix for JVET_AG0100
 
