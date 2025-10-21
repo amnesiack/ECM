@@ -152,6 +152,23 @@ private:
   static const TFilterCoeff m_lumaIntra8tapNonSmoothingFilterExt[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][8];
 #endif
 #endif
+
+#if JVET_AN0158_INTRA_LONGTAP
+  static const TFilterCoeff m_lumaIntra10tapNonSmoothingFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][10];
+#if JVET_W0123_TIMD_FUSION
+  static const TFilterCoeff m_lumaIntra10tapNonSmoothingFilterExt[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][10];
+#endif
+  static const TFilterCoeff m_lumaIntra12tapNonSmoothingFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][12];
+#if JVET_W0123_TIMD_FUSION
+  static const TFilterCoeff m_lumaIntra12tapNonSmoothingFilterExt[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][12];
+#endif
+  static const TFilterCoeff m_lumaIntra16tapNonSmoothingFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS][16];
+#if JVET_W0123_TIMD_FUSION
+  static const TFilterCoeff m_lumaIntra16tapNonSmoothingFilterExt[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][16];
+#endif
+#endif 
+
+
 #if JVET_W0123_TIMD_FUSION
 #if JVET_Z0117_CHROMA_IF
   static const TFilterCoeff g_aiExtIntraCubicFilter[CHROMA_INTERPOLATION_FILTER_SUB_SAMPLE_POSITIONS << 1][4]; ///< Chroma filter taps
@@ -360,6 +377,11 @@ public:
   static TFilterCoeff const * const getExtIntraCubicFilter(const int deltaFract) { return g_aiExtIntraCubicFilter[deltaFract]; };
   static TFilterCoeff const * const getExtIntraGaussFilter(const int deltaFract) { return g_aiExtIntraGaussFilter[deltaFract]; };
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+  static TFilterCoeff const* const getIntraNtapNonSmoothingFilter(const bool bExtIntraDir, const int deltaFract, const int Ntaps);
+  static constexpr int getMaxNumTapsIntra() { return 16; }
+#endif
+
 #if JVET_AK0087_INTRA_8TAP
   static TFilterCoeff const* const getIntra8tapCubicFilter(const int deltaFract) { return m_lumaIntra8tapNonSmoothingFilter[deltaFract]; };
 #if JVET_W0123_TIMD_FUSION

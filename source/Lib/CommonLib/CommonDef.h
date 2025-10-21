@@ -759,6 +759,21 @@ static const int DIMD_FUSION_NUM =                                  6;
 #endif
 #endif
 
+#if JVET_AN0158_INTRA_LONGTAP
+static const int MAX_MODE_NUM =                    DIMD_FUSION_NUM - 1;
+static const int MAX_TAP_NUM_LARGE =                8 * (MAX_MODE_NUM); // 8 * (DIMD_FUSION_NUM - 1): sutrract 1 owing to planar mode used in DIMD fusion, 8 stands for the 8-tap filter
+static constexpr int FILTER_LENGTH_SET[]     = { 16, 12, 10, 8, 6, 4 };
+static constexpr int FILTER_LENGTH_NUMBER = sizeof(FILTER_LENGTH_SET) / sizeof(FILTER_LENGTH_SET[0]);
+static constexpr int MIN_FILTER_LENGTH = FILTER_LENGTH_SET[FILTER_LENGTH_NUMBER - 1];
+static constexpr int MAX_FILTER_LENGTH =          FILTER_LENGTH_SET[0];
+static constexpr int FILTER_LENGTH_STEP = (MAX_FILTER_LENGTH - MIN_FILTER_LENGTH) / (FILTER_LENGTH_NUMBER - 1);
+static constexpr int FILTER_LOG2_WEIGHT_SUM                        = 6;
+static constexpr int FILTER_WEIGHT_SUM =   1 << FILTER_LOG2_WEIGHT_SUM;
+static constexpr int FILTER_ROUND_OFFSET =      FILTER_WEIGHT_SUM >> 1;
+static constexpr int FILTER_TIMD_NUM_TAPS =                         12;
+#endif 
+
+
 #if JVET_AK0059_MDIP
 static const int MDIP_NUM =                                         1;
 static const int EXCLUDING_MODE_NUM =                               20;
@@ -857,6 +872,9 @@ static const int OBIC_IDX =                                       250;
 static const int OBIC_FUSION_NUM =                                  6;
 static const int NUM_OBIC_CUS    =                            13 + 18; // (13: adjacent, 18: non-adjacent)
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+static const int MAX_TAP_NUM_SMALL = 8 * (std::max(OBIC_FUSION_NUM, DIMD_FUSION_NUM_SMALL) - 1); // 8 * OBIC_FUSION_NUM
+#endif 
 #if JVET_AB0155_SGPM
 static const int SGPM_IDX =                                       200;   ///< index for SGPM mode
 #endif

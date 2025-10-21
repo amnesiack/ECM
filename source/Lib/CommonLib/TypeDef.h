@@ -130,6 +130,8 @@
 #define GRAD_PDPC                                         1 // Gradient PDPC extension for angular-intra modes for luma.
 #define INTRA_6TAP                                        1 // 6TapCubic + 6 TapGaussian + left side 4 tap weak filtering for intra.
 #define JVET_AK0087_INTRA_8TAP                            1 // JVET-AK0087: 8-tap non-smoothing filter for angular intra prediction
+#define JVET_AN0158_INTRA_LONGTAP                         1 // JVET-AN0158: Longer tap interpolation filtering
+
 #define SECONDARY_MPM                                     1 // Primary MPM and secondary MPM: Add neighbouring modes into MPMs from positions AR, BL, AL, derived modes
 #define ENABLE_DIMD                                       1 // Decoder side intra mode derivation
 #if ENABLE_DIMD
