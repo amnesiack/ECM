@@ -1595,6 +1595,10 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
   const bool isIntraSlice = cs.slice->isIntra() ? true : false;
 #endif
 
+#if JVET_AN0158_INTRA_LONGTAP
+  m_numTapsPerModeTIMD = (pu.cu->timd && isLuma(compID)) ? xGetNumTapsTIMD(pu, compID) : std::make_pair(0, 0);
+#endif
+
 #if JVET_AG0152_SGPM_ITMP_IBC
   bool isBvPredicted = 0;
   if (pu.cu->sgpm && pu.cu->sgpmMode0 >= SGPM_BV_START_IDX &&  isLuma( compId ) )
@@ -1740,6 +1744,10 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 
     if( !pdpWasApplied )
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+    {
+      m_budget = isLuma(compID) && pu.cu->dimd && pu.cu->dimdBlending && !pu.cu->obicFlag && !pu.cu->timd && !pu.cu->intraMergeMode ? xGetInterpolationFilteringBudget(pu, compID) : IF_LENGTH_INFO();
+#endif 
     switch (uiDirMode)
     {
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -1796,6 +1804,11 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
         weightMode = 4;
       }
 #endif
+
+#if JVET_AN0158_INTRA_LONGTAP
+      m_ipaParam.numTapsTIMD = m_numTapsPerModeTIMD.first;
+#endif
+
 #if JVET_AK0118_BF_FOR_INTRA_PRED
       applyBf = ( pu.cu->timd || pu.cu->timdSad || pu.cu->obicFlag || pu.cu->dimd || (isLuma(compID) && PU::isSgpm(pu)) || forceBfOff || !isIntraSlice || !intraPredBfEnabled ) ? false : true;
       if( applyBf )
@@ -1832,7 +1845,15 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
       srcBuf, piPred, channelType, clpRng); break;
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+      m_ipaParam.numTapsTIMD = 0;
+#endif
+
     }
+#if JVET_AN0158_INTRA_LONGTAP
+    }
+#endif
+
 #if CIIP_PDPC
   }
 #endif
@@ -1939,6 +1960,10 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     PelBuf predAngExtra[DIMD_FUSION_NUM-2];
     for( int i = 0; i < DIMD_FUSION_NUM-2; ++i)
     {
+#if JVET_AN0158_INTRA_LONGTAP
+      m_dimdCurrentPredIdx = i + 2;
+#endif
+
 #if JVET_AC0098_LOC_DEP_DIMD
       blendModes[i] = (pu.cu->dimdBlendMode[i] != PLANAR_IDX);
 #else
@@ -2003,6 +2028,10 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #endif
       }
     }
+
+#if JVET_AN0158_INTRA_LONGTAP
+    m_dimdCurrentPredIdx = 0;
+#endif
 
     m_ipaParam.applyPDPC = applyPdpc;
 
@@ -3205,11 +3234,18 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
 #if JVET_AK0118_BF_FOR_INTRA_PRED
     default:
         applyBf = false;
+#if JVET_AN0158_INTRA_LONGTAP
+        m_ipaParam.numTapsTIMD = m_numTapsPerModeTIMD.second;
+#endif
         xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
         pu,
 #endif
-        srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, 0); break;
+        srcBuf3rd, predFusion, channelType, clpRng, bExtIntraDir, srcBuf2nd, applyBf, cs, blkQp, pu, pu.cu->ispMode != NOT_INTRA_SUBPARTITIONS, 0); 
+#if JVET_AN0158_INTRA_LONGTAP
+        m_ipaParam.numTapsTIMD = 0;
+#endif
+        break;
 #else
     default:          xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
@@ -3636,7 +3672,8 @@ void IntraPrediction::predIntraAng( const ComponentID compId, PelBuf &piPred, co
     case(DC_IDX):     xPredIntraDc(srcBuf3rd, predFusion, channelType, false); break;
 #if JVET_AB0157_INTRA_FUSION
 #if JVET_AK0118_BF_FOR_INTRA_PRED
-    default: xPredIntraAng(
+    default: 
+    xPredIntraAng(
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
     pu,
 #endif
@@ -5468,6 +5505,594 @@ void IntraPrediction::initPredIntraParams(const PredictionUnit & pu, const CompA
 }
 
 
+
+#if JVET_AN0158_INTRA_LONGTAP
+template <int N> int convolve(Pel* const p, const TFilterCoeff* const f)
+{
+  int res = 0;
+  for (int i = 0; i < N; ++i)
+  {
+    res += int(p[i]) * int(f[i]);
+  }
+
+  return res;
+}
+int convolve(const int N,  Pel * const p, const TFilterCoeff * const f)
+{
+  switch (N)
+  {
+  case 16: return convolve<16>(p, f); break;
+  case 14: return convolve<14>(p, f); break;
+  case 12: return convolve<12>(p, f); break;
+  case 10: return convolve<10>(p, f); break;
+  case 8: return convolve<8>(p, f); break;
+  case 6: return convolve<6>(p, f); break;
+  case 4: return convolve<4>(p, f); break;
+  }
+
+  int res = 0;
+  for (int i = 0; i < N; ++i)
+  {
+    res += int(p[i])*int(f[i]);
+  }
+
+  return res;
+}
+
+std::pair<int,int> IntraPrediction::xGetNumTapsTIMD(const PredictionUnit& pu, const ComponentID& compID) const
+{
+  CHECK(!isLuma(compID), "The IntraPrediction::xGetNumTapsTIMD() function was invoked for a chroma component, although it's not supported in this function");
+  
+  const auto modeIsAngular = [](const int modeIdx, const bool bExtIntraDir = true)
+  {
+    return (modeIdx != PLANAR_IDX) && (modeIdx != DC_IDX) && !(modeIdx >= TIMD_BV_IDX);
+  };
+
+  const auto nonAngularModeIsNotDc = [](const int modeIdx)
+  {
+    return DC_IDX != modeIdx;
+  };
+
+  const int extNumTaps     = MAX_FILTER_LENGTH;
+  const int defaultNumTaps = 8;
+
+  CHECK(!pu.cu->timd, "TIMD check for non-TIMD pu");
+  if (!pu.cu->timdSad && pu.cu->timdMrg) //TIMD merge
+  {
+    const int primaryMode           = pu.cu->timdMrgList[0][0];
+    const bool primaryModeIsAngular = modeIsAngular(primaryMode);
+    int angCnt         = !!primaryModeIsAngular;
+    int nonAngNonDcCnt = primaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(primaryMode);
+    int totalModeCnt   = 1;
+      
+    if (pu.cu->timdMrgIsBlended[0])
+    {
+      if (pu.cu->timdMrgFusionWeight[0][1] > 0)
+      {
+        const int  secondaryMode          = pu.cu->timdMrgList[0][1];
+        const bool secondaryModeIsAngular = modeIsAngular(secondaryMode);
+        angCnt += !!secondaryModeIsAngular;
+        nonAngNonDcCnt += secondaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(secondaryMode);
+        ++totalModeCnt;
+      }
+
+      if (pu.cu->timdMrgFusionWeight[0][2] > 0)
+      {
+        const int  tertiaryMode          = pu.cu->timdMrgList[0][2];
+        const bool tertiaryModeIsAngular = modeIsAngular(tertiaryMode);
+        angCnt += !!tertiaryModeIsAngular;
+        nonAngNonDcCnt += tertiaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(tertiaryMode);
+        ++totalModeCnt;
+      }
+    }
+
+    const int dcCnt = totalModeCnt - angCnt - nonAngNonDcCnt;
+    CHECK(dcCnt < 0 || dcCnt > 1, "Weird value of the DC mode count for TIMD merge");
+    if (1 == angCnt && 0 == nonAngNonDcCnt)
+    {
+      if (0 == dcCnt)
+      {
+        return primaryModeIsAngular ? std::make_pair(defaultNumTaps, 0) : std::make_pair(0, defaultNumTaps);
+      }
+      else
+      {
+        return primaryModeIsAngular ? std::make_pair(extNumTaps, 0) : std::make_pair(0, extNumTaps);
+      }
+    }
+    else
+    {
+      return std::make_pair(FILTER_TIMD_NUM_TAPS, FILTER_TIMD_NUM_TAPS);
+    }
+  }
+  else if (!pu.cu->timdMrg && pu.cu->timdSad) //TIMD-SAD
+  {
+    const int  primaryMode          = pu.cu->timdModeSad;
+    const bool primaryModeIsAngular = modeIsAngular(primaryMode);
+    int angCnt         = !!primaryModeIsAngular;
+    int nonAngNonDcCnt = primaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(primaryMode);
+    int totalModeCnt   = 1;
+
+    if (pu.cu->timdIsBlendedSad)
+    {
+      if (pu.cu->timdFusionWeightSad[1] > 0)
+      {
+        const int  secondaryMode          = pu.cu->timdModeSecondarySad;
+        const bool secondaryModeIsAngular = modeIsAngular(secondaryMode);
+        angCnt += !!secondaryModeIsAngular;
+        nonAngNonDcCnt += secondaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(secondaryMode);
+        ++totalModeCnt;
+      }
+
+      if (pu.cu->timdFusionWeightSad[2] > 0)
+      {
+        const int nonAngMode = pu.cu->timdModeNonAngSad;
+        nonAngNonDcCnt += !!nonAngularModeIsNotDc(nonAngMode);
+        ++totalModeCnt;
+      }
+    }
+
+    const int dcCnt = totalModeCnt - angCnt - nonAngNonDcCnt;
+    CHECK(dcCnt < 0 || dcCnt > 1, "Weird value of the DC mode count for TIMD-SAD");
+    if (1 == angCnt && 0 == nonAngNonDcCnt)
+    {
+      if (0 == dcCnt)
+      {
+        return primaryModeIsAngular ? std::make_pair(defaultNumTaps, 0) : std::make_pair(0, defaultNumTaps);
+      }
+      else
+      {
+        return primaryModeIsAngular ? std::make_pair(extNumTaps, 0) : std::make_pair(0, extNumTaps);
+      }
+    }
+    else
+    {
+      return std::make_pair(FILTER_TIMD_NUM_TAPS, FILTER_TIMD_NUM_TAPS);
+    }
+  }
+  else if (!pu.cu->timdMrg && !pu.cu->timdSad) //conventional TIMD
+  {
+    const int  primaryMode          = pu.cu->timdMode;
+    const bool primaryModeIsAngular = modeIsAngular(primaryMode);
+    int angCnt         = !!primaryModeIsAngular;
+    int nonAngNonDcCnt = primaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(primaryMode);
+    int totalModeCnt   = 1;
+
+    if (pu.cu->timdIsBlended)
+    {
+      if (pu.cu->timdFusionWeight[1] > 0)
+      {
+        const int  secondaryMode          = pu.cu->timdModeSecondary;
+        const bool secondaryModeIsAngular = modeIsAngular(secondaryMode);
+        angCnt += !!secondaryModeIsAngular;
+        nonAngNonDcCnt += secondaryModeIsAngular ? 0 : !!nonAngularModeIsNotDc(secondaryMode);
+        ++totalModeCnt;
+      }
+
+      if (pu.cu->timdFusionWeight[2] > 0)
+      {
+        const int nonAngMode = pu.cu->timdModeNonAng;
+        nonAngNonDcCnt += !!nonAngularModeIsNotDc(nonAngMode);
+        ++totalModeCnt;
+      }
+    }
+    
+    const int dcCnt = totalModeCnt - angCnt - nonAngNonDcCnt;
+    CHECK(dcCnt < 0 || dcCnt > 1, "Weird value of the DC mode count for TIMD");
+    if (1 == angCnt && 0 == nonAngNonDcCnt)
+    {
+      if (0 == dcCnt)
+      {
+        return primaryModeIsAngular ? std::make_pair(defaultNumTaps, 0) : std::make_pair(0, defaultNumTaps);
+      }
+      else
+      {
+        return primaryModeIsAngular ? std::make_pair(extNumTaps, 0) : std::make_pair(0, extNumTaps);
+      }
+    }
+    else
+    {
+      return std::make_pair(FILTER_TIMD_NUM_TAPS, FILTER_TIMD_NUM_TAPS);
+    }
+  }
+ 
+  THROW("The IntraPrediction::xGetNumTapsTIMD() function was invoked for an unsupported TIMD submode");
+}
+
+
+
+bool IntraPrediction::checkModeIsVer(int predMode)
+{
+  return  predMode >= DIA_IDX;
+}
+
+int IntraPrediction::getIntraPredAngle(const bool bExtIntraDir, const bool isModeVer, const int predMode, const PredictionUnit& pu)
+{
+  //returns the value of angular parameter for the given prediction mode 
+
+#if JVET_W0123_TIMD_FUSION
+  const int    intraPredAngleMode = isModeVer ? (predMode - (bExtIntraDir ? EXT_VER_IDX : VER_IDX)) : (-(predMode - (bExtIntraDir ? EXT_HOR_IDX : HOR_IDX)));
+#else
+  const int    intraPredAngleMode = isModeVer ? predMode - VER_IDX : -(predMode - HOR_IDX);
+#endif
+
+
+  const int     absAngMode = abs(intraPredAngleMode);
+  const int     signAng = intraPredAngleMode < 0 ? -1 : 1;
+#if JVET_W0123_TIMD_FUSION
+  const int absAng = bExtIntraDir ? g_extAngTable[absAngMode] : g_angTable[absAngMode];
+#else
+  const int absAng = angTable[absAngMode];
+#endif
+  return signAng * absAng;
+}
+
+IntraPrediction::IF_LENGTH_INFO IntraPrediction::xGetInterpolationFilteringBudget(const PredictionUnit& pu, const ComponentID& compID) const
+{
+  CHECK(!isLuma(compID), "The IntraPrediction::xGetInterpolationFilteringBudget() function was invoked for a chroma component, although it's not supported in this function");
+
+  const SizeType blockSize = pu.cu->lwidth() * pu.cu->lheight();
+  const int      maxTapNumber = (blockSize >= 128) ? MAX_TAP_NUM_LARGE : MAX_TAP_NUM_SMALL;
+
+  const auto clipFilterLength = [maxTapNumber](const int weight, const bool roundOff = true)
+    {
+      const int initFilterLength = (maxTapNumber * weight + (roundOff ? FILTER_ROUND_OFFSET : 0)) >> FILTER_LOG2_WEIGHT_SUM;
+      const int clippedFilterLength = Clip3(MIN_FILTER_LENGTH, MAX_FILTER_LENGTH, initFilterLength);
+      const int filterLength = (clippedFilterLength >> 1) << 1; //align the value with FILTER_LENGTH_SET[]
+
+      CHECK((0 != weight) && (0 == filterLength), "Unexpectedly, filterLength equals 0");
+      return filterLength;
+    };
+
+  const auto modeIsAngular = [](const int modeIdx, const bool bExtIntraDir = true)
+    {
+      return (modeIdx != PLANAR_IDX) && (modeIdx != DC_IDX) && !(modeIdx >= TIMD_BV_IDX);
+    };
+
+  const auto modeRequiresInterpolFilter = [&pu = std::as_const(pu), &compID = std::as_const(compID)](const int modeIdx, const bool bExtIntraDir = true)
+    {
+      const int predMode = bExtIntraDir ? getWideAngleExt(pu.blocks[compID].width, pu.blocks[compID].height, modeIdx) : getModifiedWideAngle(pu.blocks[compID].width, pu.blocks[compID].height, modeIdx);
+      const int intraPredAngle = getIntraPredAngle(bExtIntraDir, checkModeIsVer(predMode), predMode, pu);
+
+      return !(bExtIntraDir ? isIntegerSlopeExt(std::abs(intraPredAngle)) : isIntegerSlope(std::abs(intraPredAngle)));
+    };
+
+  IF_LENGTH_INFO ifLengthInfo;
+
+  const auto addFilterLengthForAngularMode = [&ifLengthInfo, modeIsAngular, modeRequiresInterpolFilter](const int modeIdx, const int filterLength, const bool bExtIntraDir = true)
+    {
+      if (modeIsAngular(modeIdx, bExtIntraDir))
+      {
+        const int actualFilterLength = modeRequiresInterpolFilter(modeIdx, bExtIntraDir) ? filterLength : 0;
+        ifLengthInfo.push_back(std::make_pair(modeIdx, actualFilterLength));
+        return actualFilterLength;
+      }
+
+      return 0;
+    };
+
+  static_vector<std::pair<int, int>, DIMD_FUSION_NUM> fusionInfo; //<mode, weight>
+  const auto addFusionWeightForAngularMode = [&fusionInfo, modeIsAngular, modeRequiresInterpolFilter](const int modeIdx, const int modeWeight, const bool bExtIntraDir = false)
+    {
+      if (modeIsAngular(modeIdx, bExtIntraDir))
+      {
+        const int actualModeWeight = modeRequiresInterpolFilter(modeIdx, bExtIntraDir) ? modeWeight : 0;
+        fusionInfo.push_back(std::make_pair(modeIdx, actualModeWeight));
+        return actualModeWeight;
+      }
+
+      return 0;
+    };
+
+  if (pu.cu->dimd)
+  {
+    if (!pu.cu->obicFlag && !pu.cu->intraMergeMode && !pu.cu->bvgDimdFlag) //conventional DIMD
+    {
+      const int dimdModeNum = (blockSize >= 128) ? DIMD_FUSION_NUM : DIMD_FUSION_NUM_SMALL;
+      const int primaryModeIdx = pu.cu->dimdMode;
+      const int primaryModeWeight = pu.cu->dimdRelWeight[0];
+
+      int partialWeightSum = addFusionWeightForAngularMode(primaryModeIdx, primaryModeWeight);
+
+      if (pu.cu->dimdBlending)
+      {
+        for (int i = 0; i < dimdModeNum - 2; ++i)
+        {
+          const int modeIdx = pu.cu->dimdBlendMode[i];
+          const int modeWeight = pu.cu->dimdRelWeight[2 + i];
+          if (modeIdx < 0 || 0 == modeWeight)
+          {
+            break;
+          }
+          CHECK(modeIdx >= NUM_LUMA_MODE, "modeIdx is out of range");
+          partialWeightSum += addFusionWeightForAngularMode(modeIdx, modeWeight);
+        }
+      }
+      CHECK(partialWeightSum > FILTER_WEIGHT_SUM, "The total weight is exceeded!");
+    }
+  }
+  else if (pu.cu->timd)
+  {
+    if (!pu.cu->timdSad && pu.cu->timdMrg) //TIMD merge
+    {
+      const int primaryMode = pu.cu->timdMrgList[0][0];
+      int tapSum = addFilterLengthForAngularMode(primaryMode, FILTER_LENGTH_SET[0]);
+
+      if (pu.cu->timdMrgIsBlended[0])
+      {
+        const int secondaryMode = pu.cu->timdMrgList[0][1];
+        tapSum += addFilterLengthForAngularMode(secondaryMode, FILTER_LENGTH_SET[0]);
+      }
+      CHECK(tapSum > maxTapNumber, "The tap budget is exceeded!");
+    }
+    else if (!pu.cu->timdMrg && pu.cu->timdSad) //TIMD-SAD
+    {
+      const int primaryMode = pu.cu->timdModeSad;
+      int tapSum = addFilterLengthForAngularMode(primaryMode, FILTER_LENGTH_SET[0]);
+
+      if (pu.cu->timdIsBlendedSad)
+      {
+        const int secondaryMode = pu.cu->timdModeSecondarySad;
+        tapSum += addFilterLengthForAngularMode(secondaryMode, FILTER_LENGTH_SET[0]);
+      }
+      CHECK(tapSum > maxTapNumber, "The tap budget is exceeded!");
+    }
+    else if (!pu.cu->timdMrg && !pu.cu->timdSad) //conventional TIMD
+    {
+      const int primaryMode = pu.cu->timdMode;
+      int tapSum = addFilterLengthForAngularMode(primaryMode, FILTER_LENGTH_SET[0]);
+
+      if (pu.cu->timdIsBlended)
+      {
+        const int secondaryMode = pu.cu->timdModeSecondary;
+        tapSum += addFilterLengthForAngularMode(secondaryMode, FILTER_LENGTH_SET[0]);
+      }
+      CHECK(tapSum > maxTapNumber, "The tap budget is exceeded!");
+    }
+    else
+    {
+      THROW("The IntraPrediction::xGetInterpolationFilteringBudget() function was invoked for an unsupported TIMD submode");
+    }
+
+    return ifLengthInfo;
+  }
+
+  //filter length selection for all DIMD submodes
+  const int angModeNumber = static_cast<int>(fusionInfo.size());
+
+  if (0 == angModeNumber)
+  {
+    return ifLengthInfo;
+  }
+
+  if (1 == angModeNumber)
+  {
+    addFilterLengthForAngularMode(fusionInfo[0].first, FILTER_LENGTH_SET[0], false);
+    return ifLengthInfo;
+  }
+
+  int curWeightSum = 0;
+  for (int i = 0; i < angModeNumber; ++i)
+  {
+    curWeightSum += fusionInfo[i].second;
+  }
+
+  if (0 == curWeightSum) //all the modes to be fused are int-slope and don't need interpolation filters
+  {
+    for (int i = 0; i < angModeNumber; ++i)
+    {
+      addFilterLengthForAngularMode(fusionInfo[i].first, 0, false);
+    }
+
+    return ifLengthInfo;
+  }
+
+  const int curRoundOffset = curWeightSum >> 1;
+  const int lastAngMode = angModeNumber - 1;
+  int lastAngModeWeight = FILTER_WEIGHT_SUM;
+
+  for (int i = 0; i < lastAngMode; ++i)
+  {
+    const int actWeight = ((fusionInfo[i].second << FILTER_LOG2_WEIGHT_SUM) + curRoundOffset) / curWeightSum;
+    lastAngModeWeight -= actWeight;
+    fusionInfo[i].second = actWeight;
+  }
+  fusionInfo[lastAngMode].second = lastAngModeWeight;
+
+  int tapSum = 0;
+  for (int i = 0; i < angModeNumber; ++i)
+  {
+    const int curFilterLength = clipFilterLength(fusionInfo[i].second);
+    tapSum += addFilterLengthForAngularMode(fusionInfo[i].first, curFilterLength, false);
+  }
+  CHECK(angModeNumber != ifLengthInfo.size(), "Inconsistent sizes of fusionInfo and ifLengthInfo");
+  //CHECK(tapSum > maxTapNumber, "The tap budget is exceeded!");
+
+  if (maxTapNumber < tapSum)
+  {
+    int tapExcess = tapSum - maxTapNumber;
+    while (tapExcess > 0)
+    {
+      int prevTapExcess = tapExcess;
+      for (int i = angModeNumber - 1; i >= 0; --i)
+      {
+        if (!modeRequiresInterpolFilter(ifLengthInfo[i].first, false))
+        {
+          continue;
+        }
+
+        const int curIfLength = ifLengthInfo[i].second;
+        const int updIfLength = std::max(MIN_FILTER_LENGTH, curIfLength - FILTER_LENGTH_STEP);
+        const int ifLengthReduction = curIfLength - updIfLength;
+
+        ifLengthInfo[i].second = updIfLength;
+        tapExcess -= ifLengthReduction;
+        if (tapExcess <= 0)
+        {
+          break;
+        }
+      }
+
+      if (prevTapExcess == tapExcess)
+      {
+        break;
+      }
+    }
+    CHECK(tapExcess > 0, "The tap budget is exceeded!");
+  }
+  else if (maxTapNumber > tapSum)
+  {
+    int tapUnused = maxTapNumber - tapSum;
+    for (int i = 0; i < angModeNumber; ++i)
+    {
+      if (!modeRequiresInterpolFilter(ifLengthInfo[i].first, false))
+      {
+        continue;
+      }
+
+      const int curIfLength = ifLengthInfo[i].second;
+      const int updIfLength = std::min(MAX_FILTER_LENGTH, curIfLength + tapUnused);
+      const int ifLengthIncrease = updIfLength - curIfLength;
+
+      ifLengthInfo[i].second = updIfLength;
+      tapUnused -= ifLengthIncrease;
+      if (tapUnused == 0)
+      {
+        break;
+      }
+    }
+    CHECK(tapUnused < 0, "The tap budget is either exceeded or not fully used!");
+  }
+
+  return ifLengthInfo;
+}
+IntraPrediction::IF_LENGTH_INFO IntraPrediction::xAdjustTapBudget(const IF_LENGTH_INFO& initIfTapInfo, const MODE_FUSION_INFO& fusionInfo, const SizeType& blkWidth, const SizeType& blkHeight) const
+{
+  const int      angModeNumber = static_cast<int>(initIfTapInfo.size());
+  const SizeType blockSize = blkWidth * blkHeight;
+  const int      maxTapNumber = (blockSize >= 128) ? MAX_TAP_NUM_LARGE : MAX_TAP_NUM_SMALL;
+
+  CHECK(angModeNumber != fusionInfo.size(), "Inconsistent input data: the number of modes is different in initTapBudget and fusionInfo!");
+
+  int curTapNumber = 0;
+  int curTapNumberModifiable = 0;
+  int curWeightSum = 0;
+  int curWeightSumModifiable = 0;
+  static_vector<std::pair<bool, int>, MAX_MODE_NUM> modifiableIfLength;
+
+  for (int modeCnt = 0; modeCnt < angModeNumber; ++modeCnt)
+  {
+    const int curFilterLength = initIfTapInfo[modeCnt].second;
+    const int curWeight = fusionInfo[modeCnt].second;
+    modifiableIfLength.push_back(std::make_pair(!(MIN_FILTER_LENGTH >= curFilterLength), 0));
+    if (modifiableIfLength[modeCnt].first)
+    {
+      modifiableIfLength[modeCnt].second = curFilterLength - MIN_FILTER_LENGTH;
+      curTapNumberModifiable += curFilterLength;
+      curWeightSumModifiable += curWeight;
+    }
+    curTapNumber += curFilterLength;
+    curWeightSum += curWeight;
+    CHECK(initIfTapInfo[modeCnt].first != fusionInfo[modeCnt].first, "Inconsistent input data: different modes are indicated at the same positions in initTapBudget and fusionInfo!");
+  }
+  CHECK(FILTER_WEIGHT_SUM != curWeightSum, "The actual sum of fusion weights is not equal to the target one!");
+
+  IF_LENGTH_INFO adjIfTapInfo;
+  std::copy(initIfTapInfo.cbegin(), initIfTapInfo.cend(), adjIfTapInfo.begin());
+  if (maxTapNumber >= curTapNumber)
+  {
+    return adjIfTapInfo;
+  }
+
+  int tapExcess = curTapNumber - maxTapNumber;
+  static_vector<int, MAX_MODE_NUM> tapReductionInfo;
+  const auto getTapReductions = [&initIfTapInfo, &fusionInfo, initTapExcess = std::as_const(tapExcess), &modifiableIfLength, &tapReductionInfo]()
+    {
+      constexpr int precShift = 16;
+      constexpr int precMult = 2 << precShift;
+
+      const int angModeNumber = static_cast<int>(initIfTapInfo.size());
+      static_vector<int, MAX_MODE_NUM> weightRecip;
+      int weightRecipSum = 0;
+
+      for (int modeCnt = 0; modeCnt < angModeNumber; ++modeCnt)
+      {
+        tapReductionInfo.push_back(0);
+
+        if (modifiableIfLength[modeCnt].first)
+        {
+          const int curWeight = fusionInfo[modeCnt].second;
+          const int curWeightRecip = (precMult + (curWeight >> 1)) / curWeight;
+          weightRecip.push_back(curWeightRecip);
+          weightRecipSum += curWeightRecip;
+        }
+        else
+        {
+          weightRecip.push_back(0);
+        }
+      }
+
+      const int weightRecipRoundOffset = weightRecipSum >> 1;
+      int tapExcess = initTapExcess;
+      int reducedTapNumber = 0;
+      for (int modeCnt = angModeNumber - 1; modeCnt >= 0; --modeCnt)
+      {
+        if (modifiableIfLength[modeCnt].first)
+        {
+          const int curWeightRecip = weightRecip[modeCnt];
+          const int curInitTapReduction = (curWeightRecip * tapExcess + weightRecipRoundOffset) / weightRecipSum;
+          const int curEvenTapReduction = curInitTapReduction + (curInitTapReduction & 0x1); 
+          const int curTapReduction = std::min(curEvenTapReduction, modifiableIfLength[modeCnt].second);
+          if (curTapReduction == modifiableIfLength[modeCnt].second)
+          {
+            modifiableIfLength[modeCnt].first = false;
+          }
+          modifiableIfLength[modeCnt].second -= curTapReduction;
+          reducedTapNumber += curTapReduction;
+          tapReductionInfo[modeCnt] = curTapReduction;
+        }
+      }
+
+      if (tapExcess > reducedTapNumber)
+      {
+        tapExcess -= reducedTapNumber;
+        return tapExcess;
+      }
+
+      return 0;
+    };
+
+  bool tapReductionInfoIsUnavail = true;
+  for (int modeCnt = angModeNumber - 1; modeCnt >= 0; --modeCnt)
+  {
+    if (!modifiableIfLength[modeCnt].first)
+    {
+      continue;
+    }
+
+    if (FILTER_LENGTH_STEP == tapExcess)
+    {
+      adjIfTapInfo[modeCnt].second = initIfTapInfo[modeCnt].second - FILTER_LENGTH_STEP;
+      tapExcess -= FILTER_LENGTH_STEP;
+      break;
+    }
+
+    if (tapReductionInfoIsUnavail)
+    {
+      getTapReductions();
+      tapReductionInfoIsUnavail = false;
+    }
+
+    const int curTapReduction = tapReductionInfo[modeCnt];
+    adjIfTapInfo[modeCnt].second = initIfTapInfo[modeCnt].second - curTapReduction;
+  }
+
+  return adjIfTapInfo;
+}
+#endif 
+
+
+
+
 /** Function for deriving the simplified angular intra predictions.
 *
 * This function derives the prediction samples for the angular mode based on the prediction direction indicated by
@@ -5506,6 +6131,11 @@ void IntraPrediction::xPredIntraAng(
   const CPelBuf &pSrc, PelBuf &pDst, const ChannelType channelType, const ClpRng& clpRng)
 #endif
 {
+#if JVET_AN0158_INTRA_LONGTAP
+  constexpr int interpFilterNumPadded   = InterpolationFilter::getMaxNumTapsIntra()/2 - 2;
+  constexpr int numAdditionalRefSamples = (interpFilterNumPadded - 1) * 2;
+#endif 
+
   int width =int(pDst.width);
   int height=int(pDst.height);
 
@@ -5561,7 +6191,10 @@ void IntraPrediction::xPredIntraAng(
   Pel  refAbove[2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
   Pel  refLeft [2 * MAX_CU_SIZE + 3 + 33 * MAX_REF_LINE_IDX];
 #else
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+  Pel refAbove[(MAX_CU_SIZE << 3) + 5 + numAdditionalRefSamples + 33 * MAX_REF_LINE_IDX];
+  Pel refLeft[(MAX_CU_SIZE  << 3) + 5 + numAdditionalRefSamples + 33 * MAX_REF_LINE_IDX];
+#elif JVET_AK0087_INTRA_8TAP
   Pel refAbove[(MAX_CU_SIZE << 3) + 7 + 33 * MAX_REF_LINE_IDX];
   Pel refLeft[(MAX_CU_SIZE << 3) + 7 + 33 * MAX_REF_LINE_IDX];
 #else
@@ -5586,7 +6219,10 @@ void IntraPrediction::xPredIntraAng(
 
   Pel *refMain2nd = NULL;
   Pel *refSide2nd = NULL;
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+  Pel refAbove2nd[(MAX_CU_SIZE << 3) + 10 + numAdditionalRefSamples + 33 * (MAX_REF_LINE_IDX + 1)];
+  Pel refLeft2nd[(MAX_CU_SIZE  << 3) + 10 + numAdditionalRefSamples + 33 * (MAX_REF_LINE_IDX + 1)];
+#elif JVET_AK0087_INTRA_8TAP
   Pel refAbove2nd[(MAX_CU_SIZE << 3) + 12 + 33 * (MAX_REF_LINE_IDX + 1)];
   Pel refLeft2nd[(MAX_CU_SIZE << 3) + 12 + 33 * (MAX_REF_LINE_IDX + 1)];
 #else
@@ -5605,7 +6241,18 @@ void IntraPrediction::xPredIntraAng(
   if (intraPredAngle < 0)
   {
 #if INTRA_6TAP
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+    const Pel* src = pSrc.buf;
+    Pel* dst = refAbove + height + interpFilterNumPadded;
+    ::memcpy(dst, src, sizeof(Pel) * (width + interpFilterNumPadded + 1 + multiRefIdx + 1));
+
+    src = pSrc.buf + pSrc.stride;
+    dst = refLeft + width + interpFilterNumPadded;
+    ::memcpy(dst, src, sizeof(Pel) * (height + interpFilterNumPadded + 1 + multiRefIdx + 1));
+
+    refMain = (bIsModeVer ? refAbove + height : refLeft + width  ) + interpFilterNumPadded;
+    refSide = (bIsModeVer ? refLeft + width   : refAbove + height) + interpFilterNumPadded;
+#elif JVET_AK0087_INTRA_8TAP
     const Pel *src = pSrc.buf;
     Pel *dst = refAbove + height + 2;
     ::memcpy(dst, src, sizeof(Pel) * (width + 3 + multiRefIdx + 1));
@@ -5642,7 +6289,10 @@ void IntraPrediction::xPredIntraAng(
       }
     }
 #endif
-#if JVET_AK0087_INTRA_8TAP
+
+#if JVET_AN0158_INTRA_LONGTAP
+    for (int k = -(sizeSide + interpFilterNumPadded); k <= -1; k++)
+#elif JVET_AK0087_INTRA_8TAP
     for (int k = -(sizeSide + 2); k <= -1; k++)
 #else
     // left extend by 1
@@ -5681,7 +6331,7 @@ void IntraPrediction::xPredIntraAng(
         int val = ((int)f[0] * leftMinus1 + (int)f[1] * left + (int)f[2] * right + f[3] * (int)rightPlus1 + 32) >> 6;
         refMain[k] = (Pel)ClipPel(val, clpRng);
 #if JVET_AJ0057_HL_INTRA_METHOD_CONTROL
-      }
+    }
 #endif
     }
 #else
@@ -5707,7 +6357,38 @@ void IntraPrediction::xPredIntraAng(
   else
   {
 #if INTRA_6TAP
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+  const Pel* src = pSrc.buf;
+  Pel* dst = refAbove + interpFilterNumPadded;
+  ::memcpy(dst, src, sizeof(Pel)* (m_topRefLength + multiRefIdx + interpFilterNumPadded));
+
+  src = pSrc.buf + pSrc.stride;
+  dst = refLeft + interpFilterNumPadded;
+  ::memcpy(dst, src, sizeof(Pel)* (m_leftRefLength + multiRefIdx + interpFilterNumPadded));
+
+  for (int i = interpFilterNumPadded - 1; i >= 0; --i)
+  {
+    refAbove[i] = refAbove[interpFilterNumPadded];
+    refLeft[i]  = refLeft [interpFilterNumPadded];
+  }
+
+  refMain = (bIsModeVer ? refAbove  : refLeft  ) + interpFilterNumPadded;
+  refSide = (bIsModeVer ? refLeft   : refAbove ) + interpFilterNumPadded;
+
+  const int log2Ratio = floorLog2(width) - floorLog2(height);
+  const int s = std::max<int>(0, bIsModeVer ? log2Ratio : -log2Ratio);
+#if JVET_W0123_TIMD_FUSION
+  const int maxIndex = (multiRefIdx << s) + 6;
+#else
+  const int maxIndex = (multiRefIdx << s) + 2;
+#endif
+  const int refLength = bIsModeVer ? m_topRefLength : m_leftRefLength;
+  const Pel val = refMain[refLength + multiRefIdx];
+  for (int z = 1; z <= (maxIndex + interpFilterNumPadded); z++)
+  {
+    refMain[refLength + multiRefIdx + z] = val;
+  }
+#elif JVET_AK0087_INTRA_8TAP
     const Pel *src = pSrc.buf;
     Pel *dst = refAbove + 2;
     ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx + 2));
@@ -5807,7 +6488,18 @@ void IntraPrediction::xPredIntraAng(
     // Initialize the Main and Left reference array.
     if (intraPredAngle < 0)
     {
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+      const Pel* src = pSrc2nd.buf;
+      Pel* dst = refAbove2nd + height + interpFilterNumPadded + 1;
+      ::memcpy(dst, src, sizeof(Pel)* (m_topRefLength + interpFilterNumPadded + multiRefIdx2nd));
+
+      src = pSrc2nd.buf + pSrc2nd.stride;
+      dst = refLeft2nd + width + interpFilterNumPadded + 1;
+      ::memcpy(dst, src, sizeof(Pel)* (m_leftRefLength + interpFilterNumPadded + multiRefIdx2nd));
+
+      refMain2nd = (bIsModeVer ? refAbove2nd + height : refLeft2nd  + width ) + interpFilterNumPadded + 1;
+      refSide2nd = (bIsModeVer ? refLeft2nd  + width  : refAbove2nd + height) + interpFilterNumPadded + 1;
+#elif JVET_AK0087_INTRA_8TAP
       const Pel *src = pSrc2nd.buf;
       Pel *      dst = refAbove2nd + height + 3;
       ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + 2 + multiRefIdx2nd));
@@ -5835,7 +6527,9 @@ void IntraPrediction::xPredIntraAng(
       // Extend the Main reference to the left.
       int sizeSide = bIsModeVer ? height : width;
       int sizeSideRange = bIsModeVer ? m_leftRefLength + multiRefIdx2nd : m_topRefLength + multiRefIdx2nd;
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+      for (int k = -(sizeSide + 1 + interpFilterNumPadded); k <= -1; k++)
+#elif JVET_AK0087_INTRA_8TAP
       for (int k = -(sizeSide + 3); k <= -1; k++)
 #else
       // left extend by 1
@@ -5869,7 +6563,39 @@ void IntraPrediction::xPredIntraAng(
     }
     else
     {
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+      const Pel *src = pSrc2nd.buf;
+      Pel *      dst = refAbove2nd + interpFilterNumPadded;
+      ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx2nd + interpFilterNumPadded));
+
+      src = pSrc2nd.buf + pSrc2nd.stride;
+      dst = refLeft2nd + interpFilterNumPadded;
+      ::memcpy(dst, src, sizeof(Pel) * (m_leftRefLength + multiRefIdx2nd + interpFilterNumPadded));
+
+      for (int i = interpFilterNumPadded - 1; i >= 0; --i)
+      {
+        refAbove2nd[i] = refAbove2nd[interpFilterNumPadded];
+        refLeft2nd[i]  = refLeft2nd [interpFilterNumPadded];
+      }
+
+      refMain2nd     = (bIsModeVer ? refAbove2nd : refLeft2nd  ) + interpFilterNumPadded;
+      refSide2nd     = (bIsModeVer ? refLeft2nd  : refAbove2nd ) + interpFilterNumPadded;
+
+      const int log2Ratio = floorLog2(width) - floorLog2(height);
+      const int s = std::max<int>(0, bIsModeVer ? log2Ratio : -log2Ratio);
+
+#if JVET_W0123_TIMD_FUSION
+      const int maxIndex = (multiRefIdx2nd << s) + 6 + 4;
+#else
+      const int maxIndex = (multiRefIdx2nd << s) + 2;
+#endif
+      const int refLength = bIsModeVer ? m_topRefLength : m_leftRefLength;
+      const Pel val       = refMain2nd[refLength + multiRefIdx2nd];
+      for (int z = 1; z <= (maxIndex + interpFilterNumPadded); z++)
+      {
+        refMain2nd[refLength + multiRefIdx2nd + z] = val;
+      }
+#elif JVET_AK0087_INTRA_8TAP
       const Pel *src = pSrc2nd.buf;
       Pel *      dst = refAbove2nd + 2;
       ::memcpy(dst, src, sizeof(Pel) * (m_topRefLength + multiRefIdx2nd + 2));
@@ -5954,6 +6680,9 @@ void IntraPrediction::xPredIntraAng(
   refSide += multiRefIdx;
 
   Pel *pDsty = pDstBuf;
+#if JVET_AN0158_INTRA_LONGTAP
+  int numberOfTaps = 0;
+#endif 
 
   if( intraPredAngle == 0 )  // pure vertical or pure horizontal
   {
@@ -6004,10 +6733,74 @@ void IntraPrediction::xPredIntraAng(
         {
           const bool useCubicFilter = !m_ipaParam.interpolationFlag;
 
-#if JVET_AK0087_INTRA_8TAP
-          bool use8TapFilter=false;
+#if JVET_AN0158_INTRA_LONGTAP
+          numberOfTaps = 6;
+
           if (useCubicFilter)
           {
+            numberOfTaps = 8;
+          }
+          if (numberOfTaps == 8)
+          {
+            numberOfTaps = InterpolationFilter::getMaxNumTapsIntra();
+
+            if (((pu.cu->timd && !pu.cu->timdMrg && pu.cu->timdIsBlended) || (pu.cu->timdMrg && pu.cu->timdMrgIsBlended[pu.cu->timdMrg - 1])) && isLuma(channelType)
+#if JVET_AJ0146_TIMDSAD
+              && !pu.cu->timdSad
+#endif
+              && m_ipaParam.numTapsTIMD
+              )
+            {
+              numberOfTaps = m_ipaParam.numTapsTIMD;
+            }
+#if JVET_AM0074_INTRA_MERGE
+            if (pu.cu->dimd && pu.cu->dimdBlending && isLuma(channelType) && !pu.cu->obicFlag && !pu.cu->bvgDimdFlag && !pu.cu->intraMergeMode)
+#elif JVET_AL0108_BVG_DIMD
+            if (pu.cu->dimd && pu.cu->dimdBlending && isLuma(channelType) && !pu.cu->obicFlag && !pu.cu->bvgDimdFlag)
+#elif JVET_AH0076_OBIC
+            if (pu.cu->dimd && pu.cu->dimdBlending && isLuma(channelType) && !pu.cu->obicFlag)
+#else
+            if (pu.cu->dimd && pu.cu->dimdBlending && isLuma(channelType))
+#endif
+            {
+              const int w = pu.cu->dimdRelWeight[m_dimdCurrentPredIdx];
+              if (w > 48)
+              {
+                numberOfTaps = 8;
+              }
+              else if (w >= 32)
+              {
+                numberOfTaps = 8;
+              }
+              else if (w >= 25)
+              {
+                numberOfTaps = 16;
+              }
+              else if (w >= 8)
+              {
+                numberOfTaps = 16;
+              }
+              else
+              {
+                numberOfTaps = 16;
+              }
+            }
+          }
+          if (width < 8 && numberOfTaps>10)
+          {
+            numberOfTaps = 10;
+          }
+#endif
+#if JVET_AK0087_INTRA_8TAP
+          bool use8TapFilter=false;
+#if JVET_AN0158_INTRA_LONGTAP
+          if (useCubicFilter && numberOfTaps == 8)
+          {
+#else
+          if (useCubicFilter)
+          {
+#endif
+
 #if JVET_AM0163_CUBIC_FILTER_FOR_TIMD
             if (bExtIntraDir)
             {
@@ -6022,6 +6815,12 @@ void IntraPrediction::xPredIntraAng(
 #if JVET_AM0163_CUBIC_FILTER_FOR_TIMD
             }
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+            if (!use8TapFilter)
+            {
+              numberOfTaps = 6;
+            }
+#endif 
           }
 #endif
 
@@ -6033,7 +6832,12 @@ void IntraPrediction::xPredIntraAng(
           const TFilterCoeff        intraSmoothingFilterExt[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract)), TFilterCoeff(128 - (deltaFract)), TFilterCoeff(64 + (deltaFract)), TFilterCoeff(deltaFract), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2Ext[6] = { TFilterCoeff(16 - (deltaFract >> 2)), TFilterCoeff(64 - 3*(deltaFract >> 2)), TFilterCoeff(96 - (deltaFract >> 1)), TFilterCoeff(64 + (deltaFract >> 1)),
             TFilterCoeff(16 + 3*(deltaFract >> 2)), TFilterCoeff((deltaFract >> 2)) };
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+          const TFilterCoeff* const f =
+                                        (useCubicFilter) ? InterpolationFilter::getIntraNtapNonSmoothingFilter( bExtIntraDir, deltaFract, numberOfTaps)
+                                                         : (width >= 32 && height >= 32) ? (bExtIntraDir ? intraSmoothingFilter2Ext : intraSmoothingFilter2) 
+                                                                                         : (bExtIntraDir ? intraSmoothingFilterExt  : intraSmoothingFilter);
+#elif JVET_AK0087_INTRA_8TAP
           const TFilterCoeff* const f = (useCubicFilter)  ? (use8TapFilter  ? ( bExtIntraDir ? InterpolationFilter::getExtIntra8tapCubicFilter(deltaFract) : InterpolationFilter::getIntra8tapCubicFilter(deltaFract) )
                                                                             : ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract) : InterpolationFilter::getIntraLumaFilterTable(deltaFract) ) )
                                                           : (width >= 32 && height >= 32) ? (bExtIntraDir ? intraSmoothingFilter2Ext : intraSmoothingFilter2) 
@@ -6069,7 +6873,12 @@ void IntraPrediction::xPredIntraAng(
           const TFilterCoeff        intraSmoothingFilterExtRL[6] = { TFilterCoeff(0), TFilterCoeff(64 - (deltaFract2nd)), TFilterCoeff(128 - (deltaFract2nd)), TFilterCoeff(64 + (deltaFract2nd)), TFilterCoeff(deltaFract2nd), TFilterCoeff(0) };
           const TFilterCoeff        intraSmoothingFilter2ExtRL[6] = { TFilterCoeff(16 - (deltaFract2nd >> 2)), TFilterCoeff(64 - 3*(deltaFract2nd >> 2)), TFilterCoeff(96 - (deltaFract2nd >> 1)), TFilterCoeff(64 + (deltaFract2nd >> 1)),
             TFilterCoeff(16 + 3*(deltaFract2nd >> 2)), TFilterCoeff((deltaFract2nd >> 2)) };
-#if JVET_AK0087_INTRA_8TAP
+#if JVET_AN0158_INTRA_LONGTAP
+          const TFilterCoeff* const fRL =
+                                          (useCubicFilter)  ? InterpolationFilter::getIntraNtapNonSmoothingFilter(bExtIntraDir, deltaFract2nd, numberOfTaps)
+                                                            : (width >=32 && height >=32) ? (bExtIntraDir ? intraSmoothingFilter2ExtRL : intraSmoothingFilter2RL) 
+                                                                                          : (bExtIntraDir ? intraSmoothingFilterExtRL  : intraSmoothingFilterRL);
+#elif JVET_AK0087_INTRA_8TAP
           const TFilterCoeff* const fRL = (useCubicFilter)  ? ( use8TapFilter  ? ( bExtIntraDir ? InterpolationFilter::getExtIntra8tapCubicFilter(deltaFract2nd) : InterpolationFilter::getIntra8tapCubicFilter(deltaFract2nd))
                                                                                : ( bExtIntraDir ? InterpolationFilter::getIntraLumaFilterTableExt(deltaFract2nd) : InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd)) )
                                                             : (width >=32 && height >=32) ? (bExtIntraDir ? intraSmoothingFilter2ExtRL : intraSmoothingFilter2RL) 
@@ -6080,6 +6889,47 @@ void IntraPrediction::xPredIntraAng(
 #else
           const TFilterCoeff* const fRL = (useCubicFilter) ? InterpolationFilter::getIntraLumaFilterTable(deltaFract2nd) : (width >=32 && height >=32)? intraSmoothingFilter2RL : intraSmoothingFilterRL;
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+          const int normNum  = 128;
+          const int bitShift = 8;
+
+          const int numExtraSamplesForIf = numberOfTaps/2 - 2;
+
+          if (weightMode == 0)
+          {
+            for (int x = 0; x < width; x++)
+            {
+              Pel* q = refMain2nd + deltaInt2nd + x - numExtraSamplesForIf;
+              const int val32 = (convolve(numberOfTaps, q, fRL) + normNum) >> bitShift;
+              const Pel val = (Pel)ClipPel(val32, clpRng);
+              pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
+            }
+          }
+          else if (weightMode == 4)
+          {
+            for (int x = 0; x < width; x++)
+            {
+              Pel* p = refMain + deltaInt + x - numExtraSamplesForIf;
+
+              const int val32 = (convolve(numberOfTaps, p, f) + normNum) >> bitShift;
+              const Pel val = (Pel)ClipPel(val32, clpRng);
+              pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
+            }
+          }
+          else
+          {
+            for (int x = 0; x < width; x++)
+            {
+              const int w0 = weightMode;
+              const int w1 = 4 - weightMode;
+              Pel* q = refMain2nd + deltaInt2nd + x - numExtraSamplesForIf;
+              Pel* p = refMain + deltaInt + x - numExtraSamplesForIf;
+              const int val32 = (w0 * convolve( numberOfTaps, p, f) + w1 * convolve(numberOfTaps, q, fRL) + normNum * 4) >> (bitShift + 2);
+              const Pel val = (Pel)ClipPel(val32, clpRng);
+              pDsty[x] = ClipPel(val, clpRng);   // always clip even though not always needed
+            }
+          }
+#else 
 #if JVET_AK0087_INTRA_8TAP
           if ( use8TapFilter )
           {
@@ -6164,6 +7014,7 @@ void IntraPrediction::xPredIntraAng(
           }
 #if JVET_AK0087_INTRA_8TAP
           }
+#endif
 #endif
 #else
           for (int x = 0; x < width; x++)

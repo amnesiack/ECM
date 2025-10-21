@@ -526,6 +526,12 @@ private:
 #if LMS_LINEAR_MODEL
   unsigned m_auShiftLM[32]; // Table for substituting division operation by multiplication
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+  static constexpr int g_angTable[32] = { 0,    1,    2,    3,    4,    6,     8,   10,   12,   14,   16,   18,   20,   23,   26,   29,   32,   35,   39,  45,  51,  57,  64,  73,  86, 102, 128, 171, 256, 341, 512, 1024 };
+#if JVET_W0123_TIMD_FUSION
+  static constexpr int g_extAngTable[64] = { 0, 1, 2, 3, 4, 5, 6,7, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 74, 78, 84, 90, 96, 102, 108, 114, 121, 128, 137, 146, 159, 172, 188, 204, 230, 256, 299, 342, 427, 512, 597, 682, 853, 1024, 1536, 2048, 3072 };
+#endif
+#endif
   struct IntraPredParam //parameters of Intra Prediction
   {
     bool refFilterFlag;
@@ -542,6 +548,10 @@ private:
 #if JVET_AB0157_INTRA_FUSION
     bool fetchRef2nd;
     bool applyFusion;
+#endif
+
+#if JVET_AN0158_INTRA_LONGTAP
+    int numTapsTIMD;
 #endif
 
     // clang-format off
@@ -561,12 +571,21 @@ private:
       , fetchRef2nd(false)
       , applyFusion(false)
 #endif
+#if JVET_AN0158_INTRA_LONGTAP
+      , numTapsTIMD(0)
+#endif
+
     // clang-format on
     {
     }
   };
 
   IntraPredParam m_ipaParam;
+
+#if JVET_AN0158_INTRA_LONGTAP
+  int m_dimdCurrentPredIdx = 0;
+  std::pair<int,int> m_numTapsPerModeTIMD;
+#endif
 
 #if JVET_AD0120_LBCCP || JVET_AG0154_DECODER_DERIVED_CCP_FUSION
   Pel* m_pCCFilterTemp;
@@ -738,6 +757,17 @@ protected:
                               3
 #endif
                               ][TMP_FUSION_NUM];
+#endif
+
+#if JVET_AN0158_INTRA_LONGTAP
+  std::pair<int, int> xGetNumTapsTIMD(const PredictionUnit& pu, const ComponentID& compID) const;
+  using IF_LENGTH_INFO = static_vector<std::pair<int, int>, MAX_MODE_NUM>; // <mode, if_length>
+  IF_LENGTH_INFO xGetInterpolationFilteringBudget(const PredictionUnit& pu, const ComponentID& compID) const;
+
+  IF_LENGTH_INFO m_budget;
+
+  using MODE_FUSION_INFO = static_vector<std::pair<int, int>, MAX_MODE_NUM>;
+  IF_LENGTH_INFO xAdjustTapBudget(const IF_LENGTH_INFO& initIfTapInfo, const MODE_FUSION_INFO& fusionInfo, const SizeType& blkWidth, const SizeType& blkHeight) const;
 #endif
 
   // prediction
@@ -1518,6 +1548,11 @@ public:
   void initPredIntraParams         ( const PredictionUnit & pu,  const CompArea compArea, const SPS& sps );
 #endif
 #endif
+
+#if JVET_AN0158_INTRA_LONGTAP
+  static bool checkModeIsVer(int predMode);
+  static int getIntraPredAngle(const bool bExtIntraDir, const bool isModeVer, const int predMode, const PredictionUnit& pu);
+#endif 
 #if JVET_AB0155_SGPM
   void initIntraPatternChType      (const CodingUnit &cu, const CompArea &area, const bool forceRefFilterFlag = false,
     const int partIdx = 0

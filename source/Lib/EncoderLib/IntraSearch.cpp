@@ -3798,6 +3798,8 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
                 int dimdMode = cu.dimdMode;
                 pu.intraDir[CHANNEL_TYPE_LUMA] = dimdMode;
+
+#if !JVET_AN0158_INTRA_LONGTAP
                 if (cu.dimdBlending)
                 {
 #if JVET_AH0209_PDP
@@ -3844,6 +3846,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 #endif
                 }
                 else
+#endif
                 {
                   initIntraPatternChType(cu, pu.Y(), false);
                   predIntraAng(COMPONENT_Y, piPred, pu);
