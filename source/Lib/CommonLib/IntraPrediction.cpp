@@ -5974,9 +5974,7 @@ IntraPrediction::IF_LENGTH_INFO IntraPrediction::xAdjustTapBudget(const IF_LENGT
   CHECK(angModeNumber != fusionInfo.size(), "Inconsistent input data: the number of modes is different in initTapBudget and fusionInfo!");
 
   int curTapNumber = 0;
-  int curTapNumberModifiable = 0;
   int curWeightSum = 0;
-  int curWeightSumModifiable = 0;
   static_vector<std::pair<bool, int>, MAX_MODE_NUM> modifiableIfLength;
 
   for (int modeCnt = 0; modeCnt < angModeNumber; ++modeCnt)
@@ -5987,8 +5985,6 @@ IntraPrediction::IF_LENGTH_INFO IntraPrediction::xAdjustTapBudget(const IF_LENGT
     if (modifiableIfLength[modeCnt].first)
     {
       modifiableIfLength[modeCnt].second = curFilterLength - MIN_FILTER_LENGTH;
-      curTapNumberModifiable += curFilterLength;
-      curWeightSumModifiable += curWeight;
     }
     curTapNumber += curFilterLength;
     curWeightSum += curWeight;
