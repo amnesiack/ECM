@@ -9761,7 +9761,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
         storeFusionTemp( numPos );
 #endif
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
-          m_skipCcpMergeListConstruction = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipCcpMergeListConstruction = true;
+          }
           m_ccpMergeListSize = numPos;
           for (int i = 0; i < numPos; i++)
           {
@@ -9827,7 +9830,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
           {
             m_candListAdjust[i] = ccpMergeAdjustCandList[i];
           }
-          m_skipCcpMergeAdjustListConstruction = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipCcpMergeAdjustListConstruction = true;
+          }
         }
         else if (PU::hasCcpMergeAdjustFlag(pu))
         {
@@ -10214,7 +10220,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
               predCr.copyFrom(ccpFusionStorage[m_ddCcpMergeFusionModeIndex[i]].Cr());
             }
             m_numCcpMergefusionRdo = numRdDdccpMergeFusion;
-            m_skipDdCcpMergeFusionList = true;
+            if (pu.cu->slice->getSeparateTreeEnabled())
+            {
+              m_skipDdCcpMergeFusionList = true;
+            }
             pu.ddNonLocalCCPFusion = 0;
           }
 
@@ -10358,7 +10367,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
           pu.cccmFlag = 1;
           m_mmlmThreshold2 = xCccmCalcRefAver(pu, 2);
           decoderDerivedCcp(pu, m_decoderDerivedCcpList);
-          m_skipDdCcpListConstruction = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipDdCcpListConstruction = true;
+          }
         }
         numDdccpModes = int(m_decoderDerivedCcpList.size());
 
@@ -10423,7 +10435,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
               predIntraChromaLM(COMPONENT_Cr, m_ddCcpStorageTemp.Cr(), pu, pu.Cb(), pu.intraDir[1], false, &modelsCr);
             }
             predDecoderDerivedIntraCCCMFusions(pu, m_ddCcpStorageTemp.Cb(), m_ddCcpStorageTemp.Cr(), m_decoderDerivedCcpList);
-            firstTransformDdccp = false;
+            if (pu.cu->slice->getSeparateTreeEnabled())
+            {
+              firstTransformDdccp = false;
+            }
           }
 
           sadCb = distParamSadCb.distFunc(distParamSadCb) * 2;
@@ -12296,7 +12311,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
         reorderCCPCandidates(pu, candList, numPos);
 #endif
 #if JVET_AL0126_CCP_MERGE_WITH_ADJUST
-          m_skipCcpMergeListConstruction = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipCcpMergeListConstruction = true;
+          }
           m_ccpMergeListSize = numPos;
           for (int i = 0; i < numPos; i++)
           {
@@ -12371,7 +12389,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
           {
             m_candListAdjust[i] = ccpMergeAdjustCandList[i];
           }
-          m_skipCcpMergeAdjustListConstruction = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipCcpMergeAdjustListConstruction = true;
+          }
         }
         else if (PU::hasCcpMergeAdjustFlag(pu))
         {
@@ -12703,7 +12724,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
             predCb.copyFrom(ccpFusionStorage[m_ddCcpMergeFusionModeIndex[i]].Cb());
             predCr.copyFrom(ccpFusionStorage[m_ddCcpMergeFusionModeIndex[i]].Cr());
           }
-          m_skipDdCcpMergeFusionList = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipDdCcpMergeFusionList = true;
+          }
           pu.ddNonLocalCCPFusion = 0;
         }
 
@@ -13278,7 +13302,10 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
           pu.cccmFlag = 1;
           m_mmlmThreshold2 = xCccmCalcRefAver(pu, 2);
           decoderDerivedCcp(pu, m_decoderDerivedCcpList);
-          m_skipDdCcpListConstruction = true;
+          if (pu.cu->slice->getSeparateTreeEnabled())
+          {
+            m_skipDdCcpListConstruction = true;
+          }
         }
         int numDdccpModes = int(m_decoderDerivedCcpList.size());
 #endif
@@ -19111,7 +19138,10 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
         PelBuf   predCr = m_ddCcpStorageTemp.Cr();
         predCb.copyFrom(piPredCb);
         predCr.copyFrom(piPredCr);
-        firstTransformDdccp = false;
+        if (pu.cu->slice->getSeparateTreeEnabled())
+        {
+          firstTransformDdccp = false;
+        }
 #endif
       }
     }

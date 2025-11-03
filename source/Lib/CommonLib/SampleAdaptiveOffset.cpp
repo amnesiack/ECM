@@ -1023,7 +1023,7 @@ void SampleAdaptiveOffset::offsetCTUnoClip( const UnitArea& area, const CPelUnit
 #if JVET_Z0105_LOOP_FILTER_VIRTUAL_BOUNDARY
 		    , isCtuCrossedByVirtualBoundaries, horVirBndryPosComp, verVirBndryPosComp, numHorVirBndry, numVerVirBndry
 #endif
-	    );    
+	    );
 #else
 #if JVET_X0071_CHROMA_BILATERAL_FILTER
       if(isLuma(compID) || isChroma(compID))
