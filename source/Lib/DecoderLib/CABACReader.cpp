@@ -4051,7 +4051,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
         if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
         {
 #endif
-        intraChromaFusionMode(pu);
+          intraChromaFusionMode(pu);
 #if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
         }
 #endif
@@ -4079,7 +4079,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
       if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
       {
 #endif
-      intraChromaFusionMode(pu);
+        intraChromaFusionMode(pu);
 #if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
       }
 #endif
@@ -4138,7 +4138,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
     if (PU::cccmMultiModeAvail(pu, MMLM_CHROMA_IDX, true))
     {
 #endif
-    intraChromaFusionMode(pu);
+      intraChromaFusionMode(pu);
 #if JVET_AL0191_INTRA_CHROMA_ENCOPT_CCP_CONSTRAINTS
     }
 #endif

@@ -10155,7 +10155,10 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
     if (!m_intraObmcReload && (pu.cu->slice->getSliceType() == I_SLICE || isInter))
     {
-      m_intraObmcReload = true;
+      if (pu.cu->slice->getSeparateTreeEnabled())
+      {
+        m_intraObmcReload = true;
+      }
     }
     m_geoOBMC = false;
 #endif
@@ -10383,7 +10386,10 @@ void InterPrediction::subBlockOBMC(PredictionUnit  &pu, PelUnitBuf* pDst)
 #if JVET_AK0212_GPM_OBMC_MODIFICATION
   if (!m_intraObmcReload && (pu.cu->slice->getSliceType() == I_SLICE || isInter))
   {
-    m_intraObmcReload = true;
+    if (pu.cu->slice->getSeparateTreeEnabled())
+    {
+      m_intraObmcReload = true;
+    }
   }
   m_geoOBMC = false;
 #endif
