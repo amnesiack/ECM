@@ -448,8 +448,8 @@ void Quant::dequant(const TransformUnit &tu,
       {
         const TCoeff clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
 #if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
-        Intermediate_Int iCoeffQ;
-        iCoeffQ = ((Intermediate_Int(clipQCoef) * piDequantCoef[n]) + iAdd) >> rightShift;
+        Intermediate_Int iCoeffQ = ( ( Intermediate_Int( clipQCoef ) * piDequantCoef[ n ] ) + iAdd ) >> rightShift;
+
         if (sps->getUseQcs())
         {
           TCoeff clipQCoef2 = clipQCoef;
@@ -465,10 +465,6 @@ void Quant::dequant(const TransformUnit &tu,
           }
           iCoeffQ = (Intermediate_Int)((1024 - coef) * iCoeffQ + coef * iCoeffQ2) >> 10;
         }
-        else
-        {
-          iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[n]) + iAdd ) >> rightShift;
-        }
 #else
         const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[n]) + iAdd ) >> rightShift;
 #endif
@@ -483,8 +479,8 @@ void Quant::dequant(const TransformUnit &tu,
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
 #if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
-        Intermediate_Int iCoeffQ;
-        iCoeffQ           = (Intermediate_Int(clipQCoef) * piDequantCoef[n]) << leftShift;
+        Intermediate_Int iCoeffQ = ( Intermediate_Int( clipQCoef ) * piDequantCoef[ n ] ) << leftShift;
+
         if (sps->getUseQcs())
         {
           TCoeff clipQCoef2 = clipQCoef;
@@ -498,10 +494,6 @@ void Quant::dequant(const TransformUnit &tu,
             coef = m_coeffShift64[absIdx];
           }
           iCoeffQ = (Intermediate_Int)((1024 - coef) * iCoeffQ + coef * iCoeffQ2) >> 10;
-        }
-        else
-        {
-          iCoeffQ   = (Intermediate_Int(clipQCoef) * piDequantCoef[n]) << leftShift;
         }
 #else
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * piDequantCoef[n]) << leftShift;
@@ -530,8 +522,8 @@ void Quant::dequant(const TransformUnit &tu,
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
 #if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
-        Intermediate_Int iCoeffQ;
-        iCoeffQ           = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
+        Intermediate_Int iCoeffQ = ( Intermediate_Int( clipQCoef ) * scale + iAdd ) >> rightShift;
+
         if (sps->getUseQcs())
         {
           TCoeff clipQCoef2 = clipQCoef;
@@ -545,10 +537,6 @@ void Quant::dequant(const TransformUnit &tu,
             coef = m_coeffShift64[absIdx];
           }
           iCoeffQ = (Intermediate_Int)((1024 - coef) * iCoeffQ + coef * iCoeffQ2) >> 10;
-        }
-        else
-        {
-          iCoeffQ   = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
         }
 #else
         const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
@@ -564,8 +552,8 @@ void Quant::dequant(const TransformUnit &tu,
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
 #if JVET_AN0095_QUANTIZATION_CENTER_SHIFT
-        Intermediate_Int iCoeffQ;
-        iCoeffQ           = (Intermediate_Int(clipQCoef) * scale) << leftShift;
+        Intermediate_Int iCoeffQ = ( Intermediate_Int( clipQCoef ) * scale ) << leftShift;
+
         if (sps->getUseQcs())
         {
           TCoeff clipQCoef2 = clipQCoef;
