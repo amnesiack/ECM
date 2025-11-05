@@ -1206,8 +1206,10 @@ const CtxSet &ctxSetGt4 = isLfnst ? Ctx::GtxFlagL[6 + chType] : Ctx::GtxFlag[6 +
       const TCoeff & level     = qCoeff[rasterPos];
       if (level)
       {
-        if (enableScalingLists)
-          invQScale = piDequantCoef[rasterPos];   // scalingfactor*levelScale
+        if( enableScalingLists )
+        {
+          invQScale = piDequantCoef[ rasterPos ];   // scalingfactor*levelScale
+        }
         if (shift < 0 && (enableScalingLists || scanIdx == lastScanIdx))
         {
           invQScale <<= -shift;

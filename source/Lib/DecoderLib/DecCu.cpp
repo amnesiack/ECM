@@ -1564,8 +1564,8 @@ void DecCu::xIntraRecBlk( TransformUnit& tu, const ComponentID compID )
 #if JVET_AG0154_DECODER_DERIVED_CCP_FUSION
       if (pu.ddNonLocalCCPFusion > 0)
       {
-        int Idx = 2 * (pu.ddNonLocalCCPFusion - 1);
-        m_pcIntraPred->predDecoderDerivedCcpMergeFusion(pu, piPred, predCr, candList[fusionList[Idx]], candList[fusionList[Idx + 1]]
+        const int idx = 2 * (pu.ddNonLocalCCPFusion - 1);
+        m_pcIntraPred->predDecoderDerivedCcpMergeFusion(pu, piPred, predCr, candList[fusionList[idx]], candList[fusionList[idx + 1]]
 #if JVET_AN0168_REGRESSION_CCP_FUSION
           , (pu.ddNonLocalCCPFusion - 1)
 #endif
