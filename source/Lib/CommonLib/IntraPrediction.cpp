@@ -21932,7 +21932,7 @@ void IntraPrediction::deriveMdipMode(const CPelBuf &recoBuf, const CompArea &are
     else if (curAmp > mdipAmpLeft[1])
     {
       mdipAmpLeft[1]   = curAmp;
-      mdipAmpLeft[1]   = curMode;
+      mdipModeLeft[1]  = curMode;
     }
   }
 
