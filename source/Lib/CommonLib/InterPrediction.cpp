@@ -23444,6 +23444,19 @@ void InterPrediction::getAffAMLRefTemplate(PredictionUnit &pu, PelUnitBuf &pcBuf
 #endif
 }
 
+// Explicit instantiation, needed for referencing in IntraPredection
+#if JVET_AA0093_ENHANCED_MMVD_EXTENSION && JVET_AN0093_JRGPM_WITH_AFFINE_AND_INTRA
+#if JVET_AD0140_MVD_PREDICTION
+template bool InterPrediction::getAffAMLRefTemplate<false>( PredictionUnit& pu, PelUnitBuf& pcBufPredRefTop, PelUnitBuf& pcBufPredRefLeft,
+#else
+void InterPrediction::getAffAMLRefTemplate( PredictionUnit& pu, PelUnitBuf& pcBufPredRefTop, PelUnitBuf& pcBufPredRefLeft,
+#endif
+#if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION
+  bool isBilinear, AffineMergeCtx affMrgCtx,
+#endif
+  int8_t posList0, int8_t posList1, bool load0, bool load1 );
+#endif
+
 #if JVET_AG0164_AFFINE_GPM
 bool InterPrediction::getAffAMLRefTemplateImp(PredictionUnit &pu, PelUnitBuf &pcBufPredRefTop, PelUnitBuf &pcBufPredRefLeft
 #if JVET_AC0185_ENHANCED_TEMPORAL_MOTION_DERIVATION

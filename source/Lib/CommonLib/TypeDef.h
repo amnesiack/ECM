@@ -2458,14 +2458,20 @@ public:
 
   iterator        insert( const_iterator _pos, const T& _val )
                                                 { CHECKD( _size >= N, "capacity exceeded" );
-                                                  for( difference_type i = _size - 1; i >= _pos - _arr; i-- ) _arr[i + 1] = _arr[i];
+                                                  if constexpr( N > 1 )
+                                                  {
+                                                    for( difference_type i = _size - 1; i >= _pos - _arr; i-- ) _arr[i + 1] = _arr[i];
+                                                  }
                                                   *const_cast<iterator>( _pos ) = _val;
                                                   _size++;
                                                   return const_cast<iterator>( _pos ); }
 
   iterator        insert( const_iterator _pos, T&& _val )
                                                 { CHECKD( _size >= N, "capacity exceeded" );
-                                                  for( difference_type i = _size - 1; i >= _pos - _arr; i-- ) _arr[i + 1] = _arr[i];
+                                                  if constexpr( N > 1 )
+                                                  {
+                                                    for( difference_type i = _size - 1; i >= _pos - _arr; i-- ) _arr[i + 1] = _arr[i];
+                                                  }
                                                   *const_cast<iterator>( _pos ) = std::forward<T>( _val );
                                                   _size++; return const_cast<iterator>( _pos ); }
   template<class InputIt>
