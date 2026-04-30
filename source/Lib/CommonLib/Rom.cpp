@@ -6744,7 +6744,11 @@ int g_rmvfMultApproxTbl[ 3 << sizeof( int64_t ) ];
 #endif
 #if JVET_AA0126_GLM
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+const int8_t g_glmPattern[3][ NUM_GLM_PATTERN ][ 9 ] =
+#else
 const int8_t g_glmPattern[2][ NUM_GLM_PATTERN ][ 6 ] =
+#endif
 {
   {
 #else
@@ -6762,6 +6766,11 @@ const int8_t g_glmPattern[ NUM_GLM_PATTERN ][ 6 ] =
   {
     {  0,  1, -1,  0,  1, -1, }, {  0,  1,  1,  0, -1, -1, }, {  0,  1, 0,   0,  0, -1, }, {  0,  0,  1,  0, -1,  0, },
   },
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  {
+    {  2,  0, -2,  1,  0, -1,  1,  0, -1, }, {  0,  0,  0, -1, -2, -1,  1,  2,  1, }, {  1,  0, -1,  0, -1, -2,  2,  1,  0, }, { -1,  0,  1, -2, -1,  0,  0,  1,  2, },
+  },
+#endif
 #endif
 };
 #endif

@@ -263,6 +263,9 @@
 #define JVET_AK0118_BF_FOR_INTRA_PRED                     1 // JVET-AK0118: Bilateral Filtering for Intra Prediction
 #define JVET_AK0059_MDIP                                  1 // JVET-AK0059: MDIP and excluding intra modes
 #define JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION 1 // JVET-AN0090: Adaptive Subsampling Filter Selection
+#if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#define JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX      1 // JVET-AP0105: Fix on subsampling filter of CCLM/CCCM for HDR sequences (ChromaLocType = 2)
+#endif
 
 //IBC
 #define JVET_Y0058_IBC_LIST_MODIFY                        1 // JVET-Y0058: Modifications of IBC merge/AMVP list construction, ARMC-TM-IBC part is included under JVET_W0090_ARMC_TM

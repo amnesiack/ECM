@@ -1066,6 +1066,9 @@ void LoopFilterCccm::lfCccmFillDownsampledLumaBuffers(const CodingStructure &cs)
 
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
   Pel (LoopFilterCccm::*lfCccmDownsample)(const Pel*, const int, const int, const int) const =
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    ( cs.sps->getCclmVerCollocatedChromaFlag() && cs.sps->getCclmHorCollocatedChromaFlag() ) ? &LoopFilterCccm::lfCccmDownsampleType2 :
+#endif
     ( !cs.sps->getCclmVerCollocatedChromaFlag() && !cs.sps->getCclmHorCollocatedChromaFlag() ) ? &LoopFilterCccm::lfCccmDownsampleType1 : &LoopFilterCccm::lfCccmDownsampleType0;
 #endif
   const Pel *bufSao = m_lfCccmSaoY.buf;

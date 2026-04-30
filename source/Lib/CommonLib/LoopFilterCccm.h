@@ -419,6 +419,20 @@ protected:
   };
 
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  Pel lfCccmDownsampleType2(const Pel* piSrc, const int iRecStride, const int x, const int y) const
+  {
+    const int offLeft = x > 0 ? -1 : 0;
+    const int offAbove = y > 0 ? -1 : 0;
+    int s = 4;
+    s += piSrc[2 * x + iRecStride * y * 2] * 4;
+    s += piSrc[2 * x + offLeft + iRecStride * y * 2];
+    s += piSrc[2 * x + 1 + iRecStride * y * 2];
+    s += piSrc[2 * x + iRecStride * (y * 2 + 1)];
+    s += piSrc[2 * x + iRecStride * (y * 2 + offAbove)];
+    return (s >> 3) - m_lfCccmLumaOffset;
+  }
+#endif
   Pel lfCccmDownsampleType1(const Pel* piSrc, const int iRecStride, const int x, const int y) const
   {
     int s = 2;
