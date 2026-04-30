@@ -3306,6 +3306,13 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 #endif
 
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  if (m_verCollocatedChromaFlag && m_horCollocatedChromaFlag != 1)
+  {
+    msg(WARNING, "\nWARNING: HorCollocatedChroma is forced to 1 for VerCollocatedChroma=1\n");
+    m_horCollocatedChromaFlag = 1;
+  }
+#endif
   if (m_chromaFormatIDC != CHROMA_420)
   {
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION

@@ -567,7 +567,11 @@ extern int g_rmvfMultApproxTbl[3 << sizeof(int64_t)];
 #endif
 #if JVET_AA0126_GLM
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+extern const int8_t g_glmPattern[3][NUM_GLM_PATTERN][9];
+#else
 extern const int8_t g_glmPattern[2][NUM_GLM_PATTERN][6];
+#endif
 #else
 extern const int8_t g_glmPattern[NUM_GLM_PATTERN][6];
 #endif

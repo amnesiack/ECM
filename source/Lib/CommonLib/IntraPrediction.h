@@ -1537,7 +1537,11 @@ public:
   );
 #if JVET_AA0126_GLM
   void xGetLumaRecPixelsGlmAll     (const PredictionUnit &pu, CompArea chromaArea);
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  Pel xGlmGetLumaVal               (const int* s, const int* c, const int glmIdx, const Pel val, const int locType = 0) const;
+#else
   Pel xGlmGetLumaVal               (const int s[6], const int c[6], const int glmIdx, const Pel val) const;
+#endif
 #endif
   /// set parameters from CU data for accessing intra data
   

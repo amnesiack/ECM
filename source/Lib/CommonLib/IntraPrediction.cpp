@@ -23161,10 +23161,20 @@ int isBelowLeftAvailableOBMC(const CodingUnit &cu, const ChannelType &chType, co
 #endif
 
 #if JVET_AA0126_GLM
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+Pel IntraPrediction::xGlmGetLumaVal(const int* s, const int* c, const int glmIdx, const Pel val, const int locType) const
+#else
 Pel IntraPrediction::xGlmGetLumaVal(const int s[6], const int c[6], const int glmIdx, const Pel val) const
+#endif
 {
   Pel grad = c[0] * s[0] + c[1] * s[1] + c[2] * s[2] 
            + c[3] * s[3] + c[4] * s[4] + c[5] * s[5];
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  if (locType == 2)
+  {
+    grad += (c[6] * s[6] + c[7] * s[7] + c[8] * s[8]);
+  }
+#endif
 #if NUM_GLM_WEIGHT && !JVET_AB0092_GLM_WITH_LUMA
   return (glmIdx >= NUM_GLM_PATTERN ? val + grad : grad);
 #else
@@ -23215,7 +23225,11 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
     }
   }
 #endif
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int c[9] = { 0 };
+#else
   int c[6] = { 0 };
+#endif
 
   int iDstStride = 2 * MAX_CU_SIZE + 1;
   Pel* pDst0Cb[NUM_GLM_IDC];
@@ -23305,7 +23319,11 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
   Pel*       pDstCr[NUM_GLM_IDC];
   Pel const* piSrc = nullptr;
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
   int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
 #endif
 
   if (aboveIsAvailable)
@@ -23323,6 +23341,12 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
       const int l = (i == 0 && !leftIsAvailable) ? 0 : 1;
       {
         piSrc = pRecSrc0 - iRecStride2;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        int s[9] = { piSrc[2 * i              - l], piSrc[2 * i                 ], piSrc[2 * i              + 1],
+                     piSrc[2 * i + iRecStride - l], piSrc[2 * i + iRecStride    ], piSrc[2 * i + iRecStride + 1],
+                     piSrc[2 * i - iRecStride - l], piSrc[2 * i - iRecStride    ], piSrc[2 * i - iRecStride + 1], };
+        int val = (chromaloctype == 2) ? ((4*s[1] + s[0] + s[2] + s[4] + s[7] + 4) >> 3) : (chromaloctype == 1) ? ((s[1] + s[2] + s[4] + s[5] + 2) >> 2) : ((s[0] + 2*s[1] + s[2] + s[3] + 2*s[4] + s[5] + 4) >> 3);
+#else
         int s[6] = { piSrc[2 * i              - l], piSrc[2 * i                 ], piSrc[2 * i              + 1],
                      piSrc[2 * i + iRecStride - l], piSrc[2 * i + iRecStride    ], piSrc[2 * i + iRecStride + 1] };
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
@@ -23330,6 +23354,7 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
 #else
         int val = (1 * s[0] + 2 * s[1] + 1 * s[2] 
                  + 1 * s[3] + 2 * s[4] + 1 * s[5] + 4) >> 3;
+#endif
 #endif
         pDstCb[0][i] = val;
         pDstCr[0][i] = val;
@@ -23346,6 +23371,13 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
 #endif
           int grad = c[0] * s[0] + c[1] * s[1] + c[2] * s[2] 
                    + c[3] * s[3] + c[4] * s[4] + c[5] * s[5];
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+          if (chromaloctype == 2)
+          {
+            c[6] = g_glmPattern[chromaloctype][p][6], c[7] = g_glmPattern[chromaloctype][p][7], c[8] = g_glmPattern[chromaloctype][p][8];
+            grad += c[6] * s[6] + c[7] * s[7] + c[8] * s[8];
+          }
+#endif
           pDstCb[k][i] = (k - 1 < NUM_GLM_PATTERN) ? grad : val + grad;
           pDstCr[k][i] = (k - 1 < NUM_GLM_PATTERN) ? grad : val + grad;
         }
@@ -23367,6 +23399,13 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
     for (int j = 0; j < uiCHeight + addedLeftBelow; j++)
     {
       {
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        const int t = (j == 0 && !aboveIsAvailable) ? 0 : -iRecStride;
+        int s[9] = { piSrc[           - 1], piSrc[             0], piSrc[             1],
+                     piSrc[iRecStride - 1], piSrc[iRecStride    ], piSrc[iRecStride + 1],
+                     piSrc[t          - 1], piSrc[t             ], piSrc[t          + 1] };
+        int val = (chromaloctype == 2) ? ((4*s[1] + s[0] + s[2] + s[4] + s[7] + 4) >> 3) : (chromaloctype == 1) ? ((s[1] + s[2] + s[4] + s[5] + 2) >> 2) : ((s[0] + 2*s[1] + s[2] + s[3] + 2*s[4] + s[5] + 4) >> 3);
+#else
         int s[6] = { piSrc[           - 1], piSrc[             0], piSrc[             1],
                      piSrc[iRecStride - 1], piSrc[iRecStride    ], piSrc[iRecStride + 1] };
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
@@ -23374,6 +23413,7 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
 #else
         int val = (1 * s[0] + 2 * s[1] + 1 * s[2] 
                  + 1 * s[3] + 2 * s[4] + 1 * s[5] + 4) >> 3;
+#endif
 #endif
         pDstCb[0][0] = val;
         pDstCr[0][0] = val;
@@ -23390,6 +23430,13 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
 #endif
           int grad = c[0] * s[0] + c[1] * s[1] + c[2] * s[2] 
                    + c[3] * s[3] + c[4] * s[4] + c[5] * s[5];
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+          if (chromaloctype == 2)
+          {
+            c[6] = g_glmPattern[chromaloctype][p][6], c[7] = g_glmPattern[chromaloctype][p][7], c[8] = g_glmPattern[chromaloctype][p][8];
+            grad += c[6] * s[6] + c[7] * s[7] + c[8] * s[8];
+          }
+#endif
           pDstCb[k][0] = (k - 1 < NUM_GLM_PATTERN) ? grad : val + grad;
           pDstCr[k][0] = (k - 1 < NUM_GLM_PATTERN) ? grad : val + grad;
         }
@@ -23410,7 +23457,16 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
     for( int i = 0; i < uiCWidth; i++ )
     {
       const int l = (i == 0 && !leftIsAvailable) ? 0 : 1;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+      const int t = (j == 0 && !aboveIsAvailable) ? 0 : -iRecStride;
+#endif
       {
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        int s[9] = { pRecSrc0[2 * i              - l], pRecSrc0[2 * i                 ], pRecSrc0[2 * i              + 1],
+                     pRecSrc0[2 * i + iRecStride - l], pRecSrc0[2 * i + iRecStride    ], pRecSrc0[2 * i + iRecStride + 1],
+                     pRecSrc0[2 * i + t          - l], pRecSrc0[2 * i + t             ], pRecSrc0[2 * i + t          + 1] };
+        int val = (chromaloctype == 2) ? ((4*s[1] + s[0] + s[2] + s[4] + s[7] + 4) >> 3) : (chromaloctype == 1) ? ((s[1] + s[2] + s[4] + s[5] + 2) >> 2) : ((s[0] + 2*s[1] + s[2] + s[3] + 2*s[4] + s[5] + 4) >> 3);
+#else
         int s[6] = { pRecSrc0[2 * i              - l], pRecSrc0[2 * i                 ], pRecSrc0[2 * i              + 1],
                      pRecSrc0[2 * i + iRecStride - l], pRecSrc0[2 * i + iRecStride    ], pRecSrc0[2 * i + iRecStride + 1] };
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
@@ -23418,6 +23474,7 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
 #else
         int val = (1 * s[0] + 2 * s[1] + 1 * s[2] 
                  + 1 * s[3] + 2 * s[4] + 1 * s[5] + 4) >> 3;
+#endif
 #endif
         pDst0Cb[0][i] = val;
         pDst0Cr[0][i] = val;
@@ -23434,6 +23491,13 @@ void IntraPrediction::xGetLumaRecPixelsGlmAll(const PredictionUnit &pu, CompArea
 #endif
           int grad = c[0] * s[0] + c[1] * s[1] + c[2] * s[2] 
                    + c[3] * s[3] + c[4] * s[4] + c[5] * s[5];
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+          if (chromaloctype == 2)
+          {
+            c[6] = g_glmPattern[chromaloctype][p][6], c[7] = g_glmPattern[chromaloctype][p][7], c[8] = g_glmPattern[chromaloctype][p][8];
+            grad += c[6] * s[6] + c[7] * s[7] + c[8] * s[8];
+          }
+#endif
           pDst0Cb[k][i] = (k - 1 < NUM_GLM_PATTERN) ? grad : val + grad;
           pDst0Cr[k][i] = (k - 1 < NUM_GLM_PATTERN) ? grad : val + grad;
         }
@@ -23526,18 +23590,33 @@ void IntraPrediction::xGetLumaRecPixels(const PredictionUnit &pu, CompArea chrom
 #if JVET_AA0126_GLM
   ComponentID compID = chromaArea.compID;
   int glmIdc = pu.glmIdc.getIdc(compID, 0);
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int c[9] = { 0 };
+#else
   int c[6] = { 0 };
+#endif
   CHECK(glmIdc < 0 || glmIdc >= NUM_GLM_IDC, "glmIdc out of range");
 
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
   if (glmIdc != 0)
   {
     int glmIdx = glmIdc - 1;
     int p = glmIdx >= NUM_GLM_PATTERN ? glmIdx - NUM_GLM_PATTERN : glmIdx;
     CHECK(p < 0 || p >= NUM_GLM_PATTERN, "glmPattern out of range");
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if !JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
     int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
     c[0] = g_glmPattern[chromaloctype][p][0], c[1] = g_glmPattern[chromaloctype][p][1], c[2] = g_glmPattern[chromaloctype][p][2];
     c[3] = g_glmPattern[chromaloctype][p][3], c[4] = g_glmPattern[chromaloctype][p][4], c[5] = g_glmPattern[chromaloctype][p][5];
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    if (chromaloctype == 2)
+    {
+      c[6] = g_glmPattern[chromaloctype][p][6], c[7] = g_glmPattern[chromaloctype][p][7], c[8] = g_glmPattern[chromaloctype][p][8];
+    }
+#endif
 #else
     c[0] = g_glmPattern[p][0], c[1] = g_glmPattern[p][1], c[2] = g_glmPattern[p][2];
     c[3] = g_glmPattern[p][3], c[4] = g_glmPattern[p][4], c[5] = g_glmPattern[p][5];
@@ -23751,9 +23830,16 @@ void IntraPrediction::xGetLumaRecPixels(const PredictionUnit &pu, CompArea chrom
       {
         piSrc = pRecSrc0 - iRecStride2;
         int l = leftPadding ? 0 : 1;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        int s[9] = { piSrc[2 * i              - l], piSrc[2 * i                 ], piSrc[2 * i              + 1],
+                     piSrc[2 * i + iRecStride - l], piSrc[2 * i + iRecStride    ], piSrc[2 * i + iRecStride + 1],
+                     piSrc[2 * i - iRecStride - l], piSrc[2 * i - iRecStride    ], piSrc[2 * i - iRecStride + 1] };
+        pDst[i] = xGlmGetLumaVal(s, c, glmIdc - 1, pDst[i], chromaloctype);
+#else
         int s[6] = { piSrc[2 * i              - l], piSrc[2 * i                 ], piSrc[2 * i              + 1],
                      piSrc[2 * i + iRecStride - l], piSrc[2 * i + iRecStride    ], piSrc[2 * i + iRecStride + 1] };
         pDst[i] = xGlmGetLumaVal(s, c, glmIdc - 1, pDst[i]);
+#endif
       }
 #endif
     }
@@ -23827,9 +23913,18 @@ void IntraPrediction::xGetLumaRecPixels(const PredictionUnit &pu, CompArea chrom
 #if JVET_AA0126_GLM
       if (glmIdc != 0)
       {
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        const bool abovePadding = j == 0 && !aboveIsAvailable;
+        const int t = -(abovePadding ? 0 : iRecStride);
+        int s[9] = { piSrc[           - 1], piSrc[             0], piSrc[             1],
+                     piSrc[iRecStride - 1], piSrc[iRecStride    ], piSrc[iRecStride + 1],
+                     piSrc[t          - 1], piSrc[t             ], piSrc[t          + 1] };
+        pDst[0] = xGlmGetLumaVal(s, c, glmIdc - 1, pDst[0], chromaloctype);
+#else
         int s[6] = { piSrc[           - 1], piSrc[             0], piSrc[             1],
                      piSrc[iRecStride - 1], piSrc[iRecStride    ], piSrc[iRecStride + 1] };
         pDst[0] = xGlmGetLumaVal(s, c, glmIdc - 1, pDst[0]);
+#endif
       }
 #endif
 
@@ -23906,9 +24001,18 @@ void IntraPrediction::xGetLumaRecPixels(const PredictionUnit &pu, CompArea chrom
       {
         const bool leftPadding = i == 0 && !leftIsAvailable;
         int l = leftPadding ? 0 : 1;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        const bool abovePadding = j == 0 && !aboveIsAvailable;
+        const int t = -(abovePadding ? 0 : iRecStride);
+        int s[9] = { pRecSrc0[2 * i              - l], pRecSrc0[2 * i                 ], pRecSrc0[2 * i              + 1],
+                     pRecSrc0[2 * i + iRecStride - l], pRecSrc0[2 * i + iRecStride    ], pRecSrc0[2 * i + iRecStride + 1],
+                     pRecSrc0[2 * i + t          - l], pRecSrc0[2 * i + t             ], pRecSrc0[2 * i + t          + 1] };
+        pDst0[i] = xGlmGetLumaVal(s, c, glmIdc - 1, pDst0[i], chromaloctype);
+#else
         int s[6] = { pRecSrc0[2 * i              - l], pRecSrc0[2 * i                 ], pRecSrc0[2 * i              + 1],
                      pRecSrc0[2 * i + iRecStride - l], pRecSrc0[2 * i + iRecStride    ], pRecSrc0[2 * i + iRecStride + 1] };
         pDst0[i] = xGlmGetLumaVal(s, c, glmIdc - 1, pDst0[i]);
+#endif
       }
 #endif
     }
@@ -32603,7 +32707,11 @@ void IntraPrediction::xCccmApplyModelOffset(const PredictionUnit &pu, const Comp
   else if( ( type & CCP_TYPE_NSCCCM ) && pu.cccmNoSubFlag )
   {
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
     int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
 #endif
     for( int y = 0; y < refLumaBlk.height; y += stepY )
     {
@@ -32622,7 +32730,26 @@ void IntraPrediction::xCccmApplyModelOffset(const PredictionUnit &pu, const Comp
         }
 
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        const Pel *src2 = refLumaBlk.bufAt( x, y - 1 );
+        if (chromaloctype == 2)
+        {
+          samples[0] = src0[0] + lumaOffset;
+          samples[1] = src0[-1] + lumaOffset;
+          samples[2] = src0[1] + lumaOffset;
+          samples[3] = src1[0] + lumaOffset;
+          samples[4] = src2[0] + lumaOffset;
+          samples[5] = cccmModel.nonlinear( src0[0] + lumaOffset );
+          samples[6] = cccmModel.nonlinear( src0[-1] + lumaOffset );
+          samples[7] = cccmModel.nonlinear( src0[1] + lumaOffset );
+          samples[8] = cccmModel.nonlinear( src1[0] + lumaOffset );
+          samples[9] = cccmModel.nonlinear( src2[0] + lumaOffset );
+          samples[10] = cccmModel.bias();
+        }
+        else if (chromaloctype == 1)
+#else
         if (chromaloctype)
+#endif
         {
           samples[0] = src0[0] + lumaOffset;
           samples[1] = src0[1] + lumaOffset;
@@ -33271,7 +33398,11 @@ int IntraPrediction::xUpdateOffsetsAndGetCostCCCM(const PredictionUnit &pu, cons
     end = 2;
   }
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
   int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
 #endif
 
   for( int i = start; i < end; i++ )
@@ -33390,11 +33521,32 @@ int IntraPrediction::xUpdateOffsetsAndGetCostCCCM(const PredictionUnit &pu, cons
       const int stride = step[i] * srcStrideBuf[i];
       const Pel *src0 = i ? refLumaBlk.bufAt( -stepX, 0 ) : refLumaBlk.bufAt( 0, -stepY );
       const Pel *src1 = i ? refLumaBlk.bufAt( -stepX, 1 ) : refLumaBlk.bufAt( 0, -stepY + 1 );
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+      const Pel *src2 = i ? refLumaBlk.bufAt( -stepX, -1 ) : refLumaBlk.bufAt( 0, -stepY - 1 );
+#endif
 
       for( int pos = 0; pos < posEnd[i]; pos++ )
       {
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        if (chromaloctype == 2)
+        {
+          samples[0] = src0[0] + lumaOffset;
+          samples[1] = src0[-1] + lumaOffset;
+          samples[2] = src0[1] + lumaOffset;
+          samples[3] = src1[0] + lumaOffset;
+          samples[4] = src2[0] + lumaOffset;
+          samples[5] = cccmModel[0].nonlinear( src0[0] + lumaOffset );
+          samples[6] = cccmModel[0].nonlinear( src0[-1] + lumaOffset );
+          samples[7] = cccmModel[0].nonlinear( src0[1] + lumaOffset );
+          samples[8] = cccmModel[0].nonlinear( src1[0] + lumaOffset );
+          samples[9] = cccmModel[0].nonlinear( src2[0] + lumaOffset );
+          samples[10] = cccmModel[0].bias();
+        }
+        else if (chromaloctype == 1)
+#else
         if (chromaloctype)
+#endif
         {
           samples[0] = src0[0] + lumaOffset;
           samples[1] = src0[1] + lumaOffset;
@@ -33463,6 +33615,9 @@ int IntraPrediction::xUpdateOffsetsAndGetCostCCCM(const PredictionUnit &pu, cons
 
         src0 += stride;
         src1 += stride;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        src2 += stride;
+#endif
       }
     }
 #endif
@@ -34866,7 +35021,12 @@ int IntraPrediction::xGetCostCCCM(const PredictionUnit &pu, const ComponentID co
       const Pel *src0 = i ? refLumaBlk.bufAt( -stepX, 0 ) : refLumaBlk.bufAt( 0, -stepY );
       const Pel *src1 = i ? refLumaBlk.bufAt( -stepX, 1 ) : refLumaBlk.bufAt( 0, -stepY + 1 );
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+      const Pel *src2 = i ? refLumaBlk.bufAt( -stepX, -1 ) : refLumaBlk.bufAt( 0, -stepY - 1 );
+      int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
       int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
 #endif
 
       for( int pos = 0; pos < posEnd[i]; pos++ )
@@ -34892,7 +35052,25 @@ int IntraPrediction::xGetCostCCCM(const PredictionUnit &pu, const ComponentID co
           }
         }
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        if (chromaloctype == 2)
+        {
+          samples[0] = src0[0] + lumaOffset;
+          samples[1] = src0[-1] + lumaOffset;
+          samples[2] = src0[1] + lumaOffset;
+          samples[3] = src1[0] + lumaOffset;
+          samples[4] = src2[0] + lumaOffset;
+          samples[5] = cccmModel[0].nonlinear( src0[0] + lumaOffset );
+          samples[6] = cccmModel[0].nonlinear( src0[-1] + lumaOffset );
+          samples[7] = cccmModel[0].nonlinear( src0[1] + lumaOffset );
+          samples[8] = cccmModel[0].nonlinear( src1[0] + lumaOffset );
+          samples[9] = cccmModel[0].nonlinear( src2[0] + lumaOffset );
+          samples[10] = cccmModel[0].bias();
+        }
+        else if (chromaloctype == 1)
+#else
         if (chromaloctype)
+#endif
         {
           samples[0] = src0[0] + lumaOffset;
           samples[1] = src0[1] + lumaOffset;
@@ -34938,6 +35116,9 @@ int IntraPrediction::xGetCostCCCM(const PredictionUnit &pu, const ComponentID co
 
         src0 += stride;
         src1 += stride;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        src2 += stride;
+#endif
       }
     }
 #endif
@@ -35437,6 +35618,13 @@ void IntraPrediction::adjustCCPCandidates(PredictionUnit &pu, CCPModelCandidate 
           pMaxIdx = 4;
         }
         else
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        if ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() )
+        {
+          pMaxIdx = 5;
+        }
+        else
+#endif
 #endif
         pMaxIdx = 6;
       }
@@ -36523,11 +36711,77 @@ Pel IntraPrediction::xCccmGetLumaVal(const PredictionUnit& pu, const CPelBuf pi,
     }
 #endif
   }
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  else if ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() )
+#else
   else if ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() && downsFilterIdx == 0 )
+#endif
 #else
   else if (pu.cs->sps->getCclmCollocatedChromaFlag())
 #endif
   {
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    const int lumaPosPicX1 = 2 * x;
+    const int lumaPosPicY1 = 2 * y;
+    int lumaPosPicX0 = lumaPosPicX1 - 1; lumaPosPicX0 = lumaPosPicX0 < 0 ? 0 : lumaPosPicX0;
+    const int lumaPosPicX2 = lumaPosPicX1 + 1;
+    const int lumaPosPicY2 = lumaPosPicY1 + 1;
+    const int shift0 = iRecStride * lumaPosPicY1;
+    const int shift1 = iRecStride * lumaPosPicY2;
+    int lumaPosPicY0 = lumaPosPicY1 - 1; lumaPosPicY0 = lumaPosPicY0 < 0 ? 0 : lumaPosPicY0;
+    const int shift2 = iRecStride * lumaPosPicY0;
+
+    if (downsFilterIdx == 0)
+    {
+      int s = 4;
+
+      s += piSrc[lumaPosPicX1 + shift0] * 4;
+      s += piSrc[lumaPosPicX0 + shift0];
+      s += piSrc[lumaPosPicX2 + shift0];
+      s += piSrc[lumaPosPicX1 + shift1];
+      s += piSrc[lumaPosPicX1 + shift2];
+      ypval = s >> 3;
+    }
+    else if (downsFilterIdx == 1)
+    {
+      int s = 0;
+
+      s += piSrc[lumaPosPicX0 + shift0] * 2;
+      s -= piSrc[lumaPosPicX2 + shift0] * 2;
+      s += piSrc[lumaPosPicX0 + shift1];
+      s -= piSrc[lumaPosPicX2 + shift1];
+      s += piSrc[lumaPosPicX0 + shift2];
+      s -= piSrc[lumaPosPicX2 + shift2];
+
+      ypval = s < 0 ? 0 : s;
+    }
+    else if (downsFilterIdx == 2)
+    {
+      int s = 0;
+
+      s += piSrc[lumaPosPicX0 + shift2];
+      s += piSrc[lumaPosPicX1 + shift2] * 2;
+      s += piSrc[lumaPosPicX2 + shift2];
+      s -= piSrc[lumaPosPicX0 + shift1];
+      s -= piSrc[lumaPosPicX1 + shift1] * 2;
+      s -= piSrc[lumaPosPicX2 + shift1];
+
+      ypval = s < 0 ? 0 : s;
+    }
+    else
+    {
+      int s = 0;
+
+      s -= piSrc[lumaPosPicX0 + shift0];
+      s += piSrc[lumaPosPicX1 + shift2];
+      s += piSrc[lumaPosPicX2 + shift2] * 2;
+      s -= piSrc[lumaPosPicX0 + shift1] * 2;
+      s -= piSrc[lumaPosPicX1 + shift1];
+      s += piSrc[lumaPosPicX2 + shift0];
+
+      ypval = s < 0 ? 0 : s;
+    }
+#else
     int s = 4;
     int offLeft = x > 0 ? -1 : 0;
     int offAbove = y > 0 ? -1 : 0;
@@ -36537,6 +36791,7 @@ Pel IntraPrediction::xCccmGetLumaVal(const PredictionUnit& pu, const CPelBuf pi,
     s += piSrc[2 * x + iRecStride * (2 * y + 1)];
     s += piSrc[2 * x + iRecStride * (2 * y + offAbove)];
     ypval = s >> 3;
+#endif
   }
   else
   {
@@ -37227,7 +37482,11 @@ void IntraPrediction::xCccmApplyModel(const PredictionUnit& pu, const ComponentI
 #endif  
   refLumaBlk = xCccmGetLumaPuBuf( pu );
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
   int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
 #endif
 
   for (int y = 0; y < refLumaBlk.height; y += stepY )
@@ -37266,7 +37525,25 @@ void IntraPrediction::xCccmApplyModel(const PredictionUnit& pu, const ComponentI
       if( pu.cccmNoSubFlag )
       {
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        if (chromaloctype == 2)
+        {
+          samples[0] = src0[0];
+          samples[1] = src0[-1];
+          samples[2] = src0[1];
+          samples[3] = src1[0];
+          samples[4] = src2[0];
+          samples[5] = cccmModel.nonlinear( src0[0] );
+          samples[6] = cccmModel.nonlinear( src0[-1] );
+          samples[7] = cccmModel.nonlinear( src0[1] );
+          samples[8] = cccmModel.nonlinear( src1[0] );
+          samples[9] = cccmModel.nonlinear( src2[0] );
+          samples[10] = cccmModel.bias();
+        }
+        else if (chromaloctype == 1)
+#else
         if (chromaloctype)
+#endif
         {
           samples[0] = src0[0];
           samples[1] = src0[1];
@@ -37441,7 +37718,11 @@ void IntraPrediction::xCccmCalcModels(const PredictionUnit& pu, CccmModel& cccmM
   }
 #endif
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+  int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
   int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
 #endif
 
   for (int y = yStart; y < yEnd; y += stepY )
@@ -37505,7 +37786,25 @@ void IntraPrediction::xCccmCalcModels(const PredictionUnit& pu, CccmModel& cccmM
       if( pu.cccmNoSubFlag )
       {
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        if (chromaloctype == 2)
+        {
+          m_a[0][sampleNum] = src0[0];
+          m_a[1][sampleNum] = src0[-1];
+          m_a[2][sampleNum] = src0[1];
+          m_a[3][sampleNum] = src1[0];
+          m_a[4][sampleNum] = src2[0];
+          m_a[5][sampleNum] = cccmModelCb.nonlinear( src0[0] );
+          m_a[6][sampleNum] = cccmModelCb.nonlinear( src0[-1] );
+          m_a[7][sampleNum] = cccmModelCb.nonlinear( src0[1] );
+          m_a[8][sampleNum] = cccmModelCb.nonlinear( src1[0] );
+          m_a[9][sampleNum] = cccmModelCb.nonlinear( src2[0] );
+          m_a[10][sampleNum] = cccmModelCb.bias();
+        }
+        else if (chromaloctype == 1)
+#else
         if (chromaloctype)
+#endif
         {
           m_a[0][sampleNum] = src0[0];
           m_a[1][sampleNum] = src0[1];
@@ -37853,11 +38152,19 @@ void IntraPrediction::xCccmCreateLumaNoSubRef( const PredictionUnit& pu, CompAre
   {
     const int stepX        = 1 << chromaScaleX;
     const int stepY        = 1 << chromaScaleY;
-    
+
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+    int t = (chromaloctype == 2) ? 1 : 0;
+#endif
     // Generate top template
     if (refSizeY > 0)
     {
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+      for (int y = refSizeY - stepY - t; y < refSizeY; y++)
+#else
       for (int y = refSizeY - stepY; y < refSizeY; y++)
+#endif
       {
         for ( int x = refSizeX - 1; x < puBorderX; x++ )
         {
@@ -37877,7 +38184,11 @@ void IntraPrediction::xCccmCreateLumaNoSubRef( const PredictionUnit& pu, CompAre
     {
       for (int x = refSizeX - stepX - 1; x < refSizeX; x++)
       {
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+        for( int y = refSizeY - t; y <= puBorderY; y++ )
+#else
         for( int y = refSizeY; y <= puBorderY; y++ )
+#endif
         {
           int chromaPosPicX = refPosPicX + x;
           int chromaPosPicY = refPosPicY + y;
@@ -40355,21 +40666,43 @@ Pel IntraPrediction::xGlmGetGradVal(const PredictionUnit& pu, const int glmIdx, 
   else
   {
     int p = glmIdx > NUM_GLM_PATTERN ? glmIdx - NUM_GLM_PATTERN - 1 : glmIdx - 1;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    int c[9] = { 0 };
+#else
     int c[6] = { 0 };
+#endif
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    int chromaloctype = ( pu.cs->sps->getCclmVerCollocatedChromaFlag() && pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 2 : ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#else
     int chromaloctype = ( !pu.cs->sps->getCclmVerCollocatedChromaFlag() && !pu.cs->sps->getCclmHorCollocatedChromaFlag() ) ? 1 : 0;
+#endif
     c[0] = g_glmPattern[chromaloctype][p][0], c[1] = g_glmPattern[chromaloctype][p][1], c[2] = g_glmPattern[chromaloctype][p][2];
     c[3] = g_glmPattern[chromaloctype][p][3], c[4] = g_glmPattern[chromaloctype][p][4], c[5] = g_glmPattern[chromaloctype][p][5];
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    if (chromaloctype == 2)
+    {
+      c[6] = g_glmPattern[chromaloctype][p][6], c[7] = g_glmPattern[chromaloctype][p][7], c[8] = g_glmPattern[chromaloctype][p][8];
+    }
+#endif
 #else
     c[0] = g_glmPattern[p][0], c[1] = g_glmPattern[p][1], c[2] = g_glmPattern[p][2];
     c[3] = g_glmPattern[p][3], c[4] = g_glmPattern[p][4], c[5] = g_glmPattern[p][5];
 #endif
 
     int offLeft = x > 0 ? -1 : 0;
+#if JVET_AP0105_SUBSAMPLING_FILTER_CCLM_CCCM_FIX
+    int offAbove = y > 0 ? -1 : 0;
+    int s[9] = { piSrc[2 * x + offLeft + iRecStride * y * 2], piSrc[2 * x + iRecStride * y * 2], piSrc[2 * x + 1 + iRecStride * y * 2],
+                 piSrc[2 * x + offLeft + iRecStride * (y * 2 + 1)], piSrc[2 * x + iRecStride * (y * 2 + 1)], piSrc[2 * x + 1 + iRecStride * (y * 2 + 1)],
+                 piSrc[2 * x + offLeft + iRecStride * (y * 2 + offAbove)], piSrc[2 * x + iRecStride * (y * 2 + offAbove)], piSrc[2 * x + 1 + iRecStride * (y * 2 + offAbove)] };
+    ypval = xGlmGetLumaVal(s, c, p + 1, 0, chromaloctype);
+#else
     int s[6] = { piSrc[2 * x + offLeft + iRecStride * y * 2], piSrc[2 * x + iRecStride * y * 2], piSrc[2 * x + 1 + iRecStride * y * 2],
                  piSrc[2 * x + offLeft + iRecStride * (y * 2 + 1)], piSrc[2 * x + iRecStride * (y * 2 + 1)], piSrc[2 * x + 1 + iRecStride * (y * 2 + 1)] };
 
     ypval = xGlmGetLumaVal(s, c, p + 1, 0);
+#endif
   }
 
   return ypval;
