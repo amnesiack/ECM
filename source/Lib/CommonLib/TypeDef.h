@@ -204,6 +204,7 @@
 #define JVET_AC0054_GLCCCM                                1 // JVET-AC0054: Gradient and location based CCCM
 #define JVET_AD0202_CCCM_MDF                              1 // JVET-AD0202: CCCM with multiple downsampling filters
 #define JVET_AE0100_BVGCCCM                               1 // JVET-AE0100: Block vector guided CCCM
+#define JVET_AP0168_CCCM_CLIP                             1 // JVET-AP0168: CCCM clipping
 #endif
 #define JVET_AA0126_GLM                                   1 // JVET-AA0126: Gradient linear model
 #if JVET_AA0126_GLM

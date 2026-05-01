@@ -379,6 +379,25 @@ struct CCPModelCandidate
   int     bd = 0;
   int     midVal = 0;
   int     type = 0;
+
+#if JVET_AP0168_CCCM_CLIP
+  int     rangeMinCb =  0 ;
+  int     rangeMaxCb =  0 ;
+  bool    rangeChangeCb = false;
+
+  int     rangeMinCr =  0 ;
+  int     rangeMaxCr =  0 ;
+  bool    rangeChangeCr = false;
+
+  int     rangeMinCb2 = 0;
+  int     rangeMaxCb2 = 0;
+  bool    rangeChangeCb2 = false;
+
+  int     rangeMinCr2 = 0;
+  int     rangeMaxCr2 = 0;
+  bool    rangeChangeCr2 = false;
+#endif
+
 #if JVET_AB0174_CCCM_DIV_FREE
   int     lumaOffset = 0;
 #endif

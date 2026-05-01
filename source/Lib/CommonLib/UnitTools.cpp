@@ -8731,10 +8731,31 @@ void PU::cccmModelToCcpParams(CCPModelCandidate& params, const CccmModel cccmMod
 #if JVET_AB0174_CCCM_DIV_FREE
   params.lumaOffset = cccmLumaOffset;
 #endif
+#if JVET_AP0168_CCCM_CLIP
+  params.rangeMinCb = cccmModelCb[0].rangeMin  ;
+  params.rangeMaxCb = cccmModelCb[0].rangeMax  ;
+  params.rangeChangeCb = cccmModelCb[0].rangeChange;
+
+  params.rangeMinCr = cccmModelCr[0].rangeMin  ;
+  params.rangeMaxCr = cccmModelCr[0].rangeMax  ;
+  params.rangeChangeCr = cccmModelCr[0].rangeChange;
+#endif
+
 #if MMLM
   std::memcpy(params.params2[0], cccmModelCb[1].params.data(), sizeof(TCccmCoeff) * cccmModelCb[1].getNumParams() );
   std::memcpy(params.params2[1], cccmModelCr[1].params.data(), sizeof(TCccmCoeff) * cccmModelCr[1].getNumParams() );
   params.yThres = yThres;
+
+  #if JVET_AP0168_CCCM_CLIP
+  params.rangeMinCb2 = cccmModelCb[1].rangeMin;
+  params.rangeMaxCb2 = cccmModelCb[1].rangeMax;
+  params.rangeChangeCb2 = cccmModelCb[1].rangeChange;
+
+  params.rangeMinCr2 = cccmModelCr[1].rangeMin;
+  params.rangeMaxCr2 = cccmModelCr[1].rangeMax;
+  params.rangeChangeCr2 = cccmModelCr[1].rangeChange;
+ #endif
+
 #endif
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
   params.numParams = cccmModelCb[0].getNumParams();
@@ -8747,6 +8768,21 @@ void PU::ccpParamsToCccmModel(const CCPModelCandidate& params, CccmModel cccmMod
   std::memcpy(&cccmModelCr[0].params[0], params.params[1], sizeof(TCccmCoeff) * cccmModelCr[0].getNumParams() );
   cccmModelCb[0].midVal = cccmModelCr[0].midVal = params.midVal;
   cccmModelCb[0].bd = cccmModelCr[0].bd = params.bd;
+
+#if JVET_AP0168_CCCM_CLIP
+  cccmModelCb[0].rangeMin = params.rangeMinCb;
+  cccmModelCb[0].rangeMax = params.rangeMaxCb;
+  cccmModelCb[0].rangeChange = params.rangeChangeCb;
+
+  cccmModelCr[0].rangeMin = params.rangeMinCr;
+  cccmModelCr[0].rangeMax = params.rangeMaxCr;
+  cccmModelCr[0].rangeChange = params.rangeChangeCr;
+
+  cccmModelCb[0].isInherited = true;
+  cccmModelCr[0].isInherited = true;
+
+#endif
+
 #if MMLM
   if (params.type & CCP_TYPE_MMLM)
   {
@@ -8754,6 +8790,17 @@ void PU::ccpParamsToCccmModel(const CCPModelCandidate& params, CccmModel cccmMod
     std::memcpy(&cccmModelCr[1].params[0], params.params2[1], sizeof(TCccmCoeff) * cccmModelCr[1].getNumParams() );
     cccmModelCb[1].midVal = cccmModelCr[1].midVal = params.midVal;
     cccmModelCb[1].bd = cccmModelCr[1].bd = params.bd;
+
+#if JVET_AP0168_CCCM_CLIP
+    cccmModelCb[1].rangeMin = params.rangeMinCb2;
+    cccmModelCb[1].rangeMax = params.rangeMaxCb2;
+    cccmModelCb[1].rangeChange = params.rangeChangeCb2;
+    cccmModelCr[1].rangeMin = params.rangeMinCr2;
+    cccmModelCr[1].rangeMax = params.rangeMaxCr2;
+    cccmModelCr[1].rangeChange = params.rangeChangeCr2;
+    cccmModelCb[1].isInherited = true;
+    cccmModelCr[1].isInherited = true;
+#endif
   }
 #endif
 }
@@ -8775,6 +8822,16 @@ void PU::cccmModelToCcpParams(CCPModelCandidate& params, const CccmModel& cccmMo
 #if JVET_AN0090_ADAPTIVE_SUBSAMPLING_FILTER_SELECTION
   params.numParams = cccmModelCb.getNumParams();
 #endif
+
+#if JVET_AP0168_CCCM_CLIP
+  params.rangeMinCb = cccmModelCb.rangeMin ;
+  params.rangeMaxCb = cccmModelCb.rangeMax ;
+  params.rangeChangeCb = cccmModelCb.rangeChange;
+
+  params.rangeMinCr = cccmModelCr.rangeMin ;
+  params.rangeMaxCr = cccmModelCr.rangeMax ;
+  params.rangeChangeCr = cccmModelCr.rangeChange;
+#endif
 }
 void PU::ccpParamsToCccmModel(const CCPModelCandidate& params, CccmModel& cccmModelCb, CccmModel& cccmModelCr)
 {
@@ -8782,6 +8839,20 @@ void PU::ccpParamsToCccmModel(const CCPModelCandidate& params, CccmModel& cccmMo
   std::memcpy(&cccmModelCr.params[0], params.params[1], sizeof(TCccmCoeff) * cccmModelCr.getNumParams() );
   cccmModelCb.midVal = cccmModelCr.midVal = params.midVal;
   cccmModelCb.bd = cccmModelCr.bd = params.bd;
+
+#if JVET_AP0168_CCCM_CLIP
+  cccmModelCb.rangeMin = params.rangeMinCb;
+  cccmModelCb.rangeMax = params.rangeMaxCb;
+  cccmModelCb.rangeChange = params.rangeChangeCb;
+
+  cccmModelCr.rangeMin = params.rangeMinCr;
+  cccmModelCr.rangeMax = params.rangeMaxCr;
+  cccmModelCr.rangeChange = params.rangeChangeCr;
+
+  cccmModelCb.isInherited = true;
+  cccmModelCr.isInherited = true;
+#endif
+
 }
 #endif
 

@@ -113,6 +113,13 @@
 #define NULL              0
 #endif
 
+#if JVET_AP0168_CCCM_CLIP
+constexpr int DEF_DIFF_HIGH_RES =   105;
+constexpr int DEF_DIFF_LOW_RES =     21;
+constexpr int MARGIN_PCT =           20;
+constexpr int MIN_SAMPLES =          32;
+#endif
+
 #if JVET_AN0086_RESIDUAL_CHECK
 static const float RESIDUAL_CHECK_THR = 200.0f;
 #endif
