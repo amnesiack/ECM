@@ -439,6 +439,7 @@
 #define JVET_AL0079_AFFINE_MC                             1 // JVET-AL0079: Per-pixel based Affine MC regardless of OBMC flag
 #define JVET_AL0162_CONSTRUCTED_AFFINE_CMVP               1 // JVET-AL0162: CMVP extension for constructed affine merge candidates
 #define JVET_AM0106_CHAIN_AMVP_MERGE                      1 // JVET-AM0106: Chained motion vector prediction in AMVP and merge modes
+#define JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION          1 // JVET-AP0086: Test 2.1a, Modified GPM partition mode with refined offset direction derivation.
 
 // Inter template matching tools
 #define JVET_AJ0096_SATD_REORDER_INTER                    1 // JVET-AJ0096: SATD-based reordering for inter coding
