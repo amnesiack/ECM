@@ -6541,6 +6541,35 @@ void initGeoTemplate()
         int16_t offsetY = ( GEO_WEIGHT_MASK_SIZE - height ) >> 1;
         if( distance > 0 )
         {
+#if JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION
+          int mask = g_angle2mask[angle];
+          int shiftHor = 0;
+          if (mask <= 2)
+          {
+            shiftHor = 1;
+          }
+          else if (mask >= 6 && mask <= 8)
+          {
+            shiftHor = 0;
+          }
+          else
+          {
+            int blockratio = wIdx - hIdx;
+            int distanceX = angle;
+            int distanceY = (distanceX + (GEO_NUM_ANGLES >> 2)) % GEO_NUM_ANGLES;
+            int gpmratio  = (g_dis[distanceX] == 0) ? 8 : (g_dis[distanceY] == 0) ? -8 : floorLog2(abs(g_dis[distanceY])) - floorLog2(abs(g_dis[distanceX]));
+            shiftHor = (gpmratio < blockratio) || ((gpmratio == blockratio) && (height < width));
+          }
+          int16_t delta = ((angle < 16) ? 1 : -1) * ((distance * (int32_t)(shiftHor ? width : height)) >> 3);
+          if (shiftHor)
+          {
+            offsetX += delta;
+          }
+          else
+          {
+            offsetY += delta;
+          }
+#else
           if( angle % 16 == 8 || ( angle % 16 != 0 && height >= width ) )
           {
             offsetY += angle < 16 ? ( ( distance * ( int32_t ) height ) >> 3 ) : -( ( distance * ( int32_t ) height ) >> 3 );
@@ -6549,6 +6578,7 @@ void initGeoTemplate()
           {
             offsetX += angle < 16 ? ( ( distance * ( int32_t ) width ) >> 3 ) : -( ( distance * ( int32_t ) width ) >> 3 );
           }
+#endif
         }
         g_weightOffset[ splitDir ][ hIdx ][ wIdx ][ 0 ] = offsetX;
         g_weightOffset[ splitDir ][ hIdx ][ wIdx ][ 1 ] = offsetY;
@@ -6574,6 +6604,35 @@ void initGeoTemplate()
         int16_t offsetY = ( GEO_WEIGHT_MASK_SIZE - height ) >> 1;
         if( distance > 0 )
         {
+#if JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION
+          int mask = g_angle2mask[angle];
+          int shiftHor = 0;
+          if (mask <= 2)
+          {
+            shiftHor = 1;
+          }
+          else if (mask >= 6 && mask <= 8)
+          {
+            shiftHor = 0;
+          }
+          else
+          {
+            int blockratio = wIdx - hIdx;
+            int distanceX = angle;
+            int distanceY = (distanceX + (GEO_NUM_ANGLES >> 2)) % GEO_NUM_ANGLES;
+            int gpmratio  = (g_dis[distanceX] == 0) ? 8 : (g_dis[distanceY] == 0) ? -8 : floorLog2(abs(g_dis[distanceY])) - floorLog2(abs(g_dis[distanceX]));
+            shiftHor = (gpmratio < blockratio) || ((gpmratio == blockratio) && (height < width));
+          }
+          int16_t delta = ((angle < 16) ? 1 : -1) * ((distance * (int32_t)(shiftHor ? width : height)) >> 3);
+          if (shiftHor)
+          {
+            offsetX += delta;
+          }
+          else
+          {
+            offsetY += delta;
+          }
+#else
           if( angle % 16 == 8 || ( angle % 16 != 0 && height >= width ) )
           {
             offsetY += angle < 16 ? ( ( distance * ( int32_t ) height ) >> 3 ) : -( ( distance * ( int32_t ) height ) >> 3 );
@@ -6582,6 +6641,7 @@ void initGeoTemplate()
           {
             offsetX += angle < 16 ? ( ( distance * ( int32_t ) width ) >> 3 ) : -( ( distance * ( int32_t ) width ) >> 3 );
           }
+#endif
         }
         g_weightOffsetEx[ splitDir ][ hIdx ][ wIdx ][ 0 ] = offsetX;
         g_weightOffsetEx[ splitDir ][ hIdx ][ wIdx ][ 1 ] = offsetY;

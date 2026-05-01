@@ -36471,6 +36471,33 @@ void PU::spanIpmInfoSgpm(PredictionUnit &pu)
 
   if (distanceIdx > 0)
   {
+#if JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION
+    int mask = g_angle2mask[angle];
+    int shiftHor = 0;
+    if (mask <= 2)
+    {
+      shiftHor = 1;
+    }
+    else if (mask >= 6 && mask <= 8)
+    {
+      shiftHor = 0;
+    }
+    else
+    {
+      int blockratio = floorLog2(pu.lwidth()) - floorLog2(pu.lheight());
+      int gpmratio = (g_dis[distanceX] == 0) ? 8 : (g_dis[distanceY] == 0) ? -8 : floorLog2(abs(g_dis[distanceY])) - floorLog2(abs(g_dis[distanceX]));
+      shiftHor = (gpmratio < blockratio) || ((gpmratio == blockratio)&&(pu.lheight() < pu.lwidth()));
+    }
+    int16_t delta = ((angle < 16) ? 1 : -1) * ( int )((distanceIdx * (shiftHor ? pu.lwidth() : pu.lheight())) >> 3);
+    if (shiftHor)
+    {
+      offsetX += delta;
+    }
+    else
+    {
+      offsetY += delta;
+    }
+#else
     if( angle % 16 == 8 || ( angle % 16 != 0 && pu.lheight() >= pu.lwidth() ) )
     {
       offsetY += angle < 16 ? ( ( distanceIdx * pu.lheight() ) >> 3 ) : -( int ) ( ( distanceIdx * pu.lheight() ) >> 3 );
@@ -36479,6 +36506,7 @@ void PU::spanIpmInfoSgpm(PredictionUnit &pu)
     {
       offsetX += angle < 16 ? ( ( distanceIdx * pu.lwidth() ) >> 3 ) : -( int ) ( ( distanceIdx * pu.lwidth() ) >> 3 );
     }
+#endif
   }
 
   IpmBuf   ib      = pu.getIpmBuf();
@@ -37995,6 +38023,33 @@ void PU::spanGeoMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const uint8
 
   if (distanceIdx > 0)
   {
+#if JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION
+    int mask = g_angle2mask[angle];
+    int shiftHor = 0;
+    if (mask <= 2)
+    {
+      shiftHor = 1;
+    }
+    else if (mask >= 6 && mask <= 8)
+    {
+      shiftHor = 0;
+    }
+    else
+    {
+      int blockratio = floorLog2(pu.lwidth()) - floorLog2(pu.lheight());
+      int gpmratio = (g_dis[distanceX] == 0) ? 8 : (g_dis[distanceY] == 0) ? -8 : floorLog2(abs(g_dis[distanceY])) - floorLog2(abs(g_dis[distanceX]));
+      shiftHor = (gpmratio < blockratio) || ((gpmratio == blockratio)&&(pu.lheight() < pu.lwidth()));
+    }
+    int16_t delta = ((angle < 16) ? 1 : -1) * ( int )((distanceIdx * (shiftHor ? pu.lwidth() : pu.lheight())) >> 3);
+    if (shiftHor)
+    {
+      offsetX += delta;
+    }
+    else
+    {
+      offsetY += delta;
+    }
+#else
     if( angle % 16 == 8 || ( angle % 16 != 0 && pu.lheight() >= pu.lwidth() ) )
     {
       offsetY += angle < 16 ? ( ( distanceIdx * pu.lheight() ) >> 3 ) : -( int ) ( ( distanceIdx * pu.lheight() ) >> 3 );
@@ -38003,6 +38058,7 @@ void PU::spanGeoMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const uint8
     {
       offsetX += angle < 16 ? ( ( distanceIdx * pu.lwidth() ) >> 3 ) : -( int ) ( ( distanceIdx * pu.lwidth() ) >> 3 );
     }
+#endif
   }
 
   MotionInfo *motionInfo = mb.buf;
@@ -38325,6 +38381,33 @@ void PU::spanGeoIBCMotionInfo(PredictionUnit &pu, MergeCtx &geoMrgCtx)
   int     offsetY     = (-(int) pu.lheight()) >> 1;
   if (distanceIdx > 0)
   {
+#if JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION
+    int mask = g_angle2mask[angle];
+    int shiftHor = 0;
+    if (mask <= 2)
+    {
+      shiftHor = 1;
+    }
+    else if (mask >= 6 && mask <= 8)
+    {
+      shiftHor = 0;
+    }
+    else
+    {
+      int blockratio = floorLog2(pu.lwidth()) - floorLog2(pu.lheight());
+      int gpmratio = (g_dis[distanceX] == 0) ? 8 : (g_dis[distanceY] == 0) ? -8 : floorLog2(abs(g_dis[distanceY])) - floorLog2(abs(g_dis[distanceX]));
+      shiftHor = (gpmratio < blockratio) || ((gpmratio == blockratio)&&(pu.lheight() < pu.lwidth()));
+    }
+    int16_t delta = ((angle < 16) ? 1 : -1) * ( int )((distanceIdx * (shiftHor ? pu.lwidth() : pu.lheight())) >> 3);
+    if (shiftHor)
+    {
+      offsetX += delta;
+    }
+    else
+    {
+      offsetY += delta;
+    }
+#else
     if (angle % 16 == 8 || (angle % 16 != 0 && pu.lheight() >= pu.lwidth()))
     {
       offsetY += angle < 16 ? ((distanceIdx * pu.lheight()) >> 3) : -(int) ((distanceIdx * pu.lheight()) >> 3);
@@ -38333,6 +38416,7 @@ void PU::spanGeoIBCMotionInfo(PredictionUnit &pu, MergeCtx &geoMrgCtx)
     {
       offsetX += angle < 16 ? ((distanceIdx * pu.lwidth()) >> 3) : -(int) ((distanceIdx * pu.lwidth()) >> 3);
     }
+#endif
   }
 
   IpmBuf   ib = pu.getIpmBuf();
@@ -39080,6 +39164,33 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
   int offsetY = (-(int)pu.lheight()) >> 1;
   if (distanceIdx > 0)
   {
+#if JVET_AP0086_GPM_REFINED_OFFSET_DIRECTION
+    int mask = g_angle2mask[angle];
+    int shiftHor = 0;
+    if (mask <= 2)
+    {
+      shiftHor = 1;
+    }
+    else if (mask >= 6 && mask <= 8)
+    {
+      shiftHor = 0;
+    }
+    else
+    {
+      int blockratio = floorLog2(pu.lwidth()) - floorLog2(pu.lheight());
+      int gpmratio = (g_dis[distanceX] == 0) ? 8 : (g_dis[distanceY] == 0) ? -8 : floorLog2(abs(g_dis[distanceY])) - floorLog2(abs(g_dis[distanceX]));
+      shiftHor = (gpmratio < blockratio) || ((gpmratio == blockratio)&&(pu.lheight() < pu.lwidth()));
+    }
+    int16_t delta = ((angle < 16) ? 1 : -1) * ( int )((distanceIdx * (shiftHor ? pu.lwidth() : pu.lheight())) >> 3);
+    if (shiftHor)
+    {
+      offsetX += delta;
+    }
+    else
+    {
+      offsetY += delta;
+    }
+#else
     if (angle % 16 == 8 || (angle % 16 != 0 && pu.lheight() >= pu.lwidth()))
     {
       offsetY += angle < 16 ? ((distanceIdx * pu.lheight()) >> 3) : -(int)((distanceIdx * pu.lheight()) >> 3);
@@ -39088,6 +39199,7 @@ void PU::spanGeoMMVDMotionInfo( PredictionUnit &pu, MergeCtx &geoMrgCtx, const u
     {
       offsetX += angle < 16 ? ((distanceIdx * pu.lwidth()) >> 3) : -(int)((distanceIdx * pu.lwidth()) >> 3);
     }
+#endif
   }
 
 #if JVET_AG0164_AFFINE_GPM
