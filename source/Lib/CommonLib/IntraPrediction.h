@@ -69,6 +69,7 @@ class InterPrediction;
 // Class definition
 // ====================================================================================================================
 
+
 /// prediction class
 enum PredBuf
 {
@@ -198,6 +199,13 @@ struct CccmModel
     decimBits = DECIM_BITS(bd);
     decimRound = (1 << (decimBits - 1));
 #endif
+#if JVET_AP0168_CCCM_CLIP
+    rangeMin =  INT16_MAX;
+    rangeMax =  INT16_MIN;
+    rangeChange = false;
+    isInherited = false;
+#endif
+
   }
 
   ~CccmModel() {}
@@ -209,11 +217,34 @@ struct CccmModel
   int        decimRound;
   int        decimBits;
 #endif
+#if JVET_AP0168_CCCM_CLIP
+  Pel        rangeMin ;
+  Pel        rangeMax ;
+  bool       rangeChange;
+  bool       isInherited;
+#endif
+
   
   const int getNumParams() const
   {
     return (int)params.size();
   }
+
+#if JVET_AP0168_CCCM_CLIP
+  void resetRange()
+  {
+    rangeMin = INT16_MAX;
+    rangeMax = INT16_MIN;
+    rangeChange = false;
+  }
+
+  void initRange(Pel val)
+  {
+    rangeMin = val;
+    rangeMax = val;
+    rangeChange = false;
+  }
+#endif
 
   void clearModel()
   {
@@ -225,6 +256,9 @@ struct CccmModel
     params[numParams - 1] = (TCccmCoeff)1 << decimBits; // Default bias to 1
 #else
     params[numParams - 1] = 1 << CCCM_DECIM_BITS; // Default bias to 1
+#endif
+#if JVET_AP0168_CCCM_CLIP
+    resetRange();
 #endif
   }
 
@@ -770,6 +804,11 @@ protected:
   IF_LENGTH_INFO xAdjustTapBudget(const IF_LENGTH_INFO& initIfTapInfo, const MODE_FUSION_INFO& fusionInfo, const SizeType& blkWidth, const SizeType& blkHeight) const;
 #endif
 
+#if JVET_AP0168_CCCM_CLIP
+  void xSetMinMaxClpRng(ClpRng& rng, const CccmModel& model, const ClpRng& DefRng, const PredictionUnit &pu);
+  inline bool xUpdateModelRange(CccmModel& model, int v);
+#endif
+
   // prediction
   void xPredIntraPlanar           ( const CPelBuf &pSrc, PelBuf &pDst
 #if JVET_AC0105_DIRECTIONAL_PLANAR
@@ -1080,8 +1119,6 @@ public:
   void adjustCCPCandidates ( PredictionUnit &pu, CCPModelCandidate candList[], int maxCandNum, int candIdx = -1);
 #endif
   void predCCPCandidate           ( PredictionUnit &pu, PelBuf &predCb, PelBuf &predCr);
-
-  void xCclmApplyModel            (const PredictionUnit &pu, const ComponentID compId, CccmModel& cccmModel, int modelId, int modelThr, PelBuf &piPred);
   void xCccmApplyModelOffset      (const PredictionUnit& pu, const ComponentID compId, CccmModel& cccmModel, int modelId, int modelThr, PelBuf& piPred, int lumaOffset, int chromaOffset[2], int type, int refSizeX = 0, int refSizeY = 0 );
   void xGlmApplyModelOffset       (const PredictionUnit& pu, const ComponentID compId, const CompArea& chromaArea, CccmModel& glmModel, int glmIdc, PelBuf& piPred, int lumaOffset, int chromaOffset);  
 
