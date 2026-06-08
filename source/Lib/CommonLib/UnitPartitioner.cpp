@@ -463,7 +463,14 @@ void QTBTPartitioner::canSplit( const CodingStructure &cs, bool& canNo, bool& ca
                                                              ((currArea().blocks[chType].lumaSize().height) >> 1)));
 
     if (!cs.sps->getPLTMode() || (!pColPic->cs->slice->isIntra()))
-    {
+    {      
+      const unsigned curMinQtSize = cs.picHeader->getSplitConsOverrideFlag()
+        ? cs.picHeader->getMinQTSize(cs.slice->getSliceType(), chType)
+        : cs.sps->getMinQTSize(cs.slice->getSliceType(), chType);
+           
+      const unsigned curMaxQtDepth = cs.pcv->maxCUWidthLog2 - floorLog2(curMinQtSize);
+      currentSplitPred.minqtDetphCol = std::min(currentSplitPred.minqtDetphCol, (uint8_t)curMaxQtDepth);     
+
 #if JVET_AI0136_ADAPTIVE_DUAL_TREE
       if ((int)(currQtDepth + 1) < (int)(currentSplitPred.minqtDetphCol) && ((currMtDepth==0 && canQt) || !cs.slice->getSeparateTreeEnabled()) )
 #else
